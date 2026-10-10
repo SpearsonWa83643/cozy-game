@@ -84,3 +84,25 @@ wait on game state rather than on time.
 - `src/audio.ts`: WebAudio synth (bells, fizzle, sparkle, birdsong)
 - `src/scenes/World.ts`: gameplay, camera, puzzle and ambience
 - `src/scenes/UI.ts`: HUD, prompts, dialog and toasts
+
+## iPad / touch (v0.3)
+
+- **Walk:** drag anywhere — a floating joystick appears under your thumb (analog; the base follows your thumb).
+- **Go somewhere:** tap a spot; the hero walks there with grid A* pathing around trees, the pond and walls.
+- **Use things:** tap an object (sign, lantern, chest, cat) to walk over and use it, or press the big
+  contextual button (bottom-right, 96 px) that appears with the action name ("Light", "Read", "Pet", "Next").
+  Tap anywhere to advance dialog.
+- **Sound:** the speaker button (top-right) cycles on / quiet / off (also `M`); the choice is remembered.
+- Safe-area insets respected; landscape-first, portrait reframes the camera. Page scroll, pinch/double-tap
+  zoom, selection and callouts are suppressed. Audio unlocks on the first touch (iOS-safe, plays through the
+  mute switch on Safari 17+).
+- "Add to Home Screen": apple-mobile-web-app meta, inlined icon and data-URL manifest. Note Safari can only
+  install it from an http(s) URL (opening the .html from the Files app shows a preview), so host the single
+  file anywhere static (or `npx vite preview --host` on your LAN) and add it from Safari.
+- Memory: painted canvases are uploaded as plain textures and their backing stores released; the ground is
+  painted at 1.5x on touch devices (was 2x) — ~27 MB instead of 48 MB, no duplicate ImageData copies.
+
+Ambient: generative WebAudio score (Fmaj9–Dm9–Bbmaj7–C6/9–Am7–Bbmaj9–Gm9–C9sus pads, soft bass, sparse
+kalimba), plus butterflies, a passing flock, a duck family, fish and splash rings, a shy frog, a cat on the
+cottage step (pet it), wind gusts that ripple through grass and trees with drifting leaves, falling leaves,
+and a slow light-colour drift. Touch test: `npm run test:touch` (iPad 1180x820 @2x, hasTouch, file://).

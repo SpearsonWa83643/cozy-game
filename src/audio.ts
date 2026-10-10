@@ -1,38 +1,313 @@
 // Tiny WebAudio synth: bell chimes, fizzles and sparkles. No audio files needed.
+export type VolumeLevel = 'on' | 'quiet' | 'off';
+const LEVELS: Record<VolumeLevel, number> = { on: 0.6, quiet: 0.26, off: 0 };
+
+const midi = (n: number) => 440 * Math.pow(2, (n - 69) / 12);
+
 class Synth {
   private ctx: AudioContext | null = null;
-  private out!: GainNode;
+  private master!: GainNode;
+  private out!: GainNode; // SFX bus
+  private music!: GainNode; // music bus
   private wet!: GainNode;
+  private padFilter!: BiquadFilterNode;
   muted = false;
+  level: VolumeLevel = 'on';
+  private musicTimer: number | null = null;
+  private nextChordAt = 0;
+  private chordIdx = 0;
+  private lastMelody = 72;
 
+  constructor() {
+    try {
+      const saved = localStorage.getItem('cozy.vol') as VolumeLevel | null;
+      if (saved && saved in LEVELS) this.level = saved;
+    } catch { /* storage unavailable */ }
+    document.addEventListener('visibilitychange', () => {
+      if (!this.ctx) return;
+      if (document.hidden) void this.ctx.suspend();
+      else void this.ctx.resume();
+    });
+  }
+
+  /** Must be called from a user gesture (touchend/keydown/click) — required by iOS Safari. */
   unlock() {
     if (!this.ctx) {
       const AC = window.AudioContext || (window as any).webkitAudioContext;
       if (!AC) return;
+      // Play through the iPad's mute switch like a music app would (Safari 17+).
+      try { if ((navigator as any).audioSession) (navigator as any).audioSession.type = 'playback'; } catch { /* ignore */ }
       this.ctx = new AC();
       const ctx = this.ctx;
+      this.master = ctx.createGain();
+      this.master.gain.value = LEVELS[this.level];
+      this.master.connect(ctx.destination);
       this.out = ctx.createGain();
-      this.out.gain.value = 0.55;
-      this.out.connect(ctx.destination);
+      this.out.gain.value = 0.9;
+      this.out.connect(this.master);
+      this.music = ctx.createGain();
+      this.music.gain.value = 0;
+      this.music.connect(this.master);
       // Generated reverb impulse for a dreamy tail.
-      const len = ctx.sampleRate * 2.6;
+      const len = Math.floor(ctx.sampleRate * 3.2);
       const buf = ctx.createBuffer(2, len, ctx.sampleRate);
       for (let ch = 0; ch < 2; ch++) {
         const d = buf.getChannelData(ch);
-        for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.6);
+        for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2.4);
       }
       const conv = ctx.createConvolver();
       conv.buffer = buf;
       this.wet = ctx.createGain();
       this.wet.gain.value = 0.4;
       this.wet.connect(conv);
-      conv.connect(this.out);
+      conv.connect(this.master);
+      // Warm, slowly breathing low-pass for the pads.
+      this.padFilter = ctx.createBiquadFilter();
+      this.padFilter.type = 'lowpass';
+      this.padFilter.frequency.value = 950;
+      this.padFilter.Q.value = 0.4;
+      const lfo = ctx.createOscillator();
+      const lfoAmt = ctx.createGain();
+      lfo.frequency.value = 0.045;
+      lfoAmt.gain.value = 320;
+      lfo.connect(lfoAmt);
+      lfoAmt.connect(this.padFilter.frequency);
+      lfo.start();
+      this.padFilter.connect(this.music);
+      this.padFilter.connect(this.wet);
+      // iOS needs a sound started inside the gesture to fully unlock.
+      const o = ctx.createOscillator();
+      const g = ctx.createGain();
+      g.gain.value = 0.0001;
+      o.connect(g); g.connect(ctx.destination);
+      o.start(); o.stop(ctx.currentTime + 0.05);
     }
-    if (this.ctx.state === 'suspended') void this.ctx.resume();
+    if (this.ctx.state !== 'running') void this.ctx.resume();
+    this.startMusic();
+  }
+
+  get unlocked() { return !!this.ctx; }
+
+  setLevel(level: VolumeLevel) {
+    this.level = level;
+    try { localStorage.setItem('cozy.vol', level); } catch { /* ignore */ }
+    if (this.ctx) this.master.gain.setTargetAtTime(LEVELS[level], this.ctx.currentTime, 0.15);
+  }
+
+  cycleLevel(): VolumeLevel {
+    const order: VolumeLevel[] = ['on', 'quiet', 'off'];
+    this.setLevel(order[(order.indexOf(this.level) + 1) % order.length]);
+    return this.level;
+  }
+
+  // ------------------------------------------------------------ generative ambient music
+  private static CHORDS = [
+    // [bass, pad notes, melody pool] — F major, slow and open.
+    { bass: 41, pad: [53, 57, 60, 64, 67], mel: [72, 74, 76, 79, 81, 84] },          // Fmaj9
+    { bass: 38, pad: [50, 53, 57, 60, 64], mel: [72, 74, 77, 79, 81] },              // Dm9
+    { bass: 46, pad: [50, 53, 57, 62, 64], mel: [74, 76, 77, 81, 82] },              // Bbmaj7(9)
+    { bass: 36, pad: [48, 52, 55, 57, 62], mel: [72, 74, 76, 79, 84] },              // C6/9
+    { bass: 45, pad: [52, 57, 60, 64, 67], mel: [72, 76, 79, 81, 84] },              // Am7
+    { bass: 46, pad: [50, 53, 57, 60, 65], mel: [72, 74, 77, 81] },                  // Bbmaj9
+    { bass: 43, pad: [50, 55, 58, 62, 65], mel: [74, 77, 79, 82] },                  // Gm9
+    { bass: 36, pad: [48, 53, 55, 58, 62], mel: [72, 74, 77, 79] },                  // C9sus
+  ];
+  private static CHORD_LEN = 8.5;
+
+  startMusic() {
+    if (!this.ctx || this.musicTimer !== null) return;
+    this.music.gain.setValueAtTime(0, this.ctx.currentTime);
+    this.music.gain.linearRampToValueAtTime(0.5, this.ctx.currentTime + 6);
+    this.nextChordAt = this.ctx.currentTime + 0.3;
+    const tick = () => {
+      if (!this.ctx || this.ctx.state !== 'running') return;
+      while (this.nextChordAt < this.ctx.currentTime + 2) {
+        this.scheduleChord(this.nextChordAt);
+        this.nextChordAt += Synth.CHORD_LEN;
+      }
+    };
+    tick();
+    this.musicTimer = window.setInterval(tick, 400);
+  }
+
+  private scheduleChord(t: number) {
+    const ctx = this.ctx!;
+    const chord = Synth.CHORDS[this.chordIdx % Synth.CHORDS.length];
+    this.chordIdx++;
+    const L = Synth.CHORD_LEN;
+    // Pad: two slightly detuned voices per note, long swells overlapping the next chord.
+    chord.pad.forEach((n, k) => {
+      for (const det of [-5, 5]) {
+        const o = ctx.createOscillator();
+        o.type = det < 0 ? 'sine' : 'triangle';
+        o.frequency.value = midi(n);
+        o.detune.value = det + (Math.random() * 4 - 2);
+        const g = ctx.createGain();
+        const peak = (det < 0 ? 0.03 : 0.014) * (k === 0 ? 1.1 : 1);
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.linearRampToValueAtTime(peak, t + 2.8 + k * 0.25);
+        g.gain.setValueAtTime(peak, t + L - 0.5);
+        g.gain.linearRampToValueAtTime(0.0001, t + L + 3.5);
+        o.connect(g); g.connect(this.padFilter);
+        o.start(t); o.stop(t + L + 3.7);
+      }
+    });
+    // Soft bass.
+    {
+      const o = ctx.createOscillator();
+      o.frequency.value = midi(chord.bass);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.07, t + 1.6);
+      g.gain.linearRampToValueAtTime(0.0001, t + L + 1.5);
+      o.connect(g); g.connect(this.music);
+      o.start(t); o.stop(t + L + 1.6);
+    }
+    // Sparse kalimba melody on a 0.71 s grid, mostly stepwise.
+    const beat = L / 12;
+    for (let i = 1; i < 12; i++) {
+      if (Math.random() > 0.3) continue;
+      const pool = chord.mel;
+      const near = pool.filter((p) => Math.abs(p - this.lastMelody) <= 5);
+      const src = near.length && Math.random() < 0.8 ? near : pool;
+      const n = src[Math.floor(Math.random() * src.length)];
+      this.lastMelody = n;
+      this.kalimba(midi(n), t + i * beat + (Math.random() * 0.06), 0.035 + Math.random() * 0.035);
+      if (Math.random() < 0.15) this.kalimba(midi(n + 12), t + i * beat + 0.18, 0.015);
+    }
+  }
+
+  private kalimba(freq: number, t: number, vol: number) {
+    const ctx = this.ctx!;
+    const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+    if (pan) pan.pan.value = Math.random() * 0.8 - 0.4;
+    const dest: AudioNode = pan ?? this.music;
+    if (pan) { pan.connect(this.music); pan.connect(this.wet); }
+    for (const [m, a, d] of [[1, 1, 1.8], [3.0, 0.1, 0.35], [5.4, 0.05, 0.18]] as const) {
+      const o = ctx.createOscillator();
+      o.frequency.value = freq * m;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol * a, t + 0.004);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      o.connect(g); g.connect(dest);
+      o.start(t); o.stop(t + d + 0.05);
+    }
+  }
+
+  // ------------------------------------------------------------ critter + ambience SFX
+  private noise(dur: number) {
+    const ctx = this.ctx!;
+    const len = Math.floor(ctx.sampleRate * dur);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    return src;
+  }
+
+  wind(strength = 1) {
+    if (!this.ready) return;
+    const ctx = this.ctx!;
+    const t = ctx.currentTime;
+    const src = this.noise(4);
+    const f = ctx.createBiquadFilter();
+    f.type = 'bandpass';
+    f.Q.value = 0.7;
+    f.frequency.setValueAtTime(300, t);
+    f.frequency.linearRampToValueAtTime(900, t + 1.6);
+    f.frequency.linearRampToValueAtTime(350, t + 4);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(0.05 * strength, t + 1.4);
+    g.gain.linearRampToValueAtTime(0.0001, t + 4);
+    src.connect(f); f.connect(g); g.connect(this.out);
+    src.start(t);
+  }
+
+  purr() {
+    if (!this.ready) return;
+    const ctx = this.ctx!;
+    const t = ctx.currentTime;
+    const src = this.noise(1.8);
+    const f = ctx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.value = 260;
+    const g = ctx.createGain();
+    g.gain.value = 0;
+    const am = ctx.createOscillator();
+    const amG = ctx.createGain();
+    am.frequency.value = 24;
+    amG.gain.value = 0.06;
+    am.connect(amG); amG.connect(g.gain);
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, t);
+    env.gain.linearRampToValueAtTime(1, t + 0.25);
+    env.gain.linearRampToValueAtTime(0.0001, t + 1.7);
+    src.connect(f); f.connect(g); g.connect(env); env.connect(this.out);
+    src.start(t); am.start(t); am.stop(t + 1.8);
+    this.bell(1318.5, 0.05, 0.05, 1.2);
+  }
+
+  croak() {
+    if (!this.ready) return;
+    const ctx = this.ctx!;
+    for (let k = 0; k < 2; k++) {
+      const t = ctx.currentTime + k * 0.16;
+      const o = ctx.createOscillator();
+      o.type = 'square';
+      o.frequency.setValueAtTime(180, t);
+      o.frequency.exponentialRampToValueAtTime(120, t + 0.1);
+      const f = ctx.createBiquadFilter();
+      f.type = 'lowpass';
+      f.frequency.value = 600;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.03, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.11);
+      o.connect(f); f.connect(g); g.connect(this.out);
+      o.start(t); o.stop(t + 0.13);
+    }
+  }
+
+  plip() {
+    if (!this.ready) return;
+    const ctx = this.ctx!;
+    const t = ctx.currentTime;
+    const o = ctx.createOscillator();
+    o.frequency.setValueAtTime(1400, t);
+    o.frequency.exponentialRampToValueAtTime(380, t + 0.09);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.05, t + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+    o.connect(g); g.connect(this.out); g.connect(this.wet);
+    o.start(t); o.stop(t + 0.15);
+  }
+
+  quack() {
+    if (!this.ready) return;
+    const ctx = this.ctx!;
+    const t = ctx.currentTime;
+    const o = ctx.createOscillator();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(420, t);
+    o.frequency.linearRampToValueAtTime(300, t + 0.14);
+    const f = ctx.createBiquadFilter();
+    f.type = 'bandpass';
+    f.frequency.value = 1100;
+    f.Q.value = 3;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.025, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.16);
+    o.connect(f); f.connect(g); g.connect(this.out);
+    o.start(t); o.stop(t + 0.18);
   }
 
   private get ready() {
-    return !!this.ctx && !this.muted && this.ctx.state === 'running';
+    return !!this.ctx && !this.muted && this.level !== 'off' && this.ctx.state === 'running';
   }
 
   private voice(freq: number, when: number, vol: number, dur: number, type: OscillatorType = 'sine', attack = 0.005) {

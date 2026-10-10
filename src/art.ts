@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { IS_TOUCH } from './device';
 import {
   WORLD_W, WORLD_H, POND, PATH_MAIN, PATH_NORTH, PATH_EAST, PATH_SOUTH, SHRINE, GARDEN, COTTAGE,
 } from './layout';
@@ -6,7 +7,8 @@ import {
 /** Supersampling for object textures (texture px per world unit). */
 export const S = 3;
 /** Supersampling for the big ground texture. */
-export const GS = 2;
+/** Ground supersampling: a bit lower on touch devices (iPad) to save memory; it is soft anyway. */
+export const GS = IS_TOUCH ? 1.5 : 2;
 
 type Ctx = CanvasRenderingContext2D;
 export type Rng = () => number;
@@ -47,28 +49,32 @@ export function canvasTex(
 ) {
   const cw = Math.ceil(w * scale);
   const ch = Math.ceil(h * scale);
-  let ctx: Ctx;
-  let canvas: HTMLCanvasElement | null = null;
-  let tex: Phaser.Textures.CanvasTexture | null = null;
-  if (standalone) {
-    tex = scene.textures.createCanvas(key, cw, ch);
-    if (!tex) throw new Error('could not create texture ' + key);
-    ctx = tex.getContext();
-  } else {
-    canvas = document.createElement('canvas');
-    canvas.width = cw;
-    canvas.height = ch;
-    ctx = canvas.getContext('2d')!;
-  }
+  const canvas = document.createElement('canvas');
+  canvas.width = cw;
+  canvas.height = ch;
+  const ctx = canvas.getContext('2d')!;
   ctx.save();
   ctx.scale(scale, scale);
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   draw(ctx);
   ctx.restore();
-  if (tex) tex.refresh();
-  else pending.push({ key, canvas: canvas!, w: cw, h: ch, scale });
+  if (standalone) uploadCanvas(scene, key, canvas);
+  else pending.push({ key, canvas, w: cw, h: ch, scale });
   frameScale[key] = scale;
+}
+
+/**
+ * Uploads a painted canvas as a plain (non-Canvas) texture, then releases the canvas backing
+ * store. Phaser's CanvasTexture keeps an extra ImageData copy, which would double memory;
+ * on iPad Safari canvas memory is tight, so we keep only the GPU copy.
+ */
+function uploadCanvas(scene: Phaser.Scene, key: string, canvas: HTMLCanvasElement) {
+  const tex = scene.textures.addImage(key, canvas as unknown as HTMLImageElement);
+  if (!tex) throw new Error('could not create texture ' + key);
+  canvas.width = 1;
+  canvas.height = 1;
+  return tex;
 }
 
 /** Shelf-packs every queued canvas into one power-of-two atlas texture. */
@@ -90,14 +96,21 @@ export function buildAtlas(scene: Phaser.Scene) {
   let packed = tryPack(W);
   while (packed.H > W * 2 && W < 8192) { W *= 2; packed = tryPack(W); }
   const H = pot(packed.H);
-  const tex = scene.textures.createCanvas(ATLAS, W, H)!;
-  const ctx = tex.getContext();
+  const atlas = document.createElement('canvas');
+  atlas.width = W;
+  atlas.height = H;
+  const ctx = atlas.getContext('2d')!;
   for (const it of items) {
     const [x, y] = packed.pos[it.key];
     ctx.drawImage(it.canvas, x, y);
+    it.canvas.width = 1; // free each piece right away (Safari counts canvas memory)
+    it.canvas.height = 1;
+  }
+  const tex = uploadCanvas(scene, ATLAS, atlas);
+  for (const it of items) {
+    const [x, y] = packed.pos[it.key];
     tex.add(it.key, 0, x, y, it.w, it.h);
   }
-  tex.refresh();
   pending = [];
   console.info(`[cozy] atlas ${W}x${H}, ${items.length} frames`);
 }
@@ -1232,6 +1245,188 @@ function paintSoft(ctx: Ctx, size: number, inner = 1, falloff = 1) {
   ctx.fillRect(0, 0, size, size);
 }
 
+
+// ---------------------------------------------------------------- critters
+
+function paintButterfly(ctx: Ctx, w: number, h: number) {
+  // Light wings so per-instance tints read well; darker rims and dots for detail.
+  const cx = w / 2;
+  for (const side of [-1, 1]) {
+    ctx.save();
+    ctx.translate(cx, h / 2);
+    ctx.scale(side, 1);
+    ctx.beginPath();
+    ctx.ellipse(4, -2.5, 4.6, 3.6, -0.5, 0, Math.PI * 2);
+    ctx.fillStyle = hsl(45, 30, 96);
+    ctx.fill();
+    ctx.lineWidth = 0.9;
+    ctx.strokeStyle = hsl(30, 30, 35, 0.7);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.ellipse(3.2, 2.6, 3, 2.4, 0.5, 0, Math.PI * 2);
+    ctx.fillStyle = hsl(45, 30, 90);
+    ctx.fill();
+    ctx.stroke();
+    dab(ctx, 5, -3, 1.1, 1.1, 0, hsl(30, 40, 30, 0.6));
+    ctx.restore();
+  }
+  ctx.strokeStyle = hsl(25, 30, 20);
+  ctx.lineWidth = 1.3;
+  ctx.beginPath(); ctx.moveTo(cx, h / 2 - 3.5); ctx.lineTo(cx, h / 2 + 4); ctx.stroke();
+  ctx.lineWidth = 0.6;
+  ctx.beginPath(); ctx.moveTo(cx, h / 2 - 3.5); ctx.lineTo(cx - 2, h / 2 - 6.5); ctx.moveTo(cx, h / 2 - 3.5); ctx.lineTo(cx + 2, h / 2 - 6.5); ctx.stroke();
+}
+
+function paintBird(ctx: Ctx, w: number, h: number) {
+  const cx = w / 2;
+  const cy = h / 2;
+  ctx.fillStyle = hsl(25, 30, 30);
+  ctx.beginPath();
+  ctx.moveTo(cx - 10, cy - 1);
+  ctx.quadraticCurveTo(cx - 5, cy - 6, cx, cy - 1);
+  ctx.quadraticCurveTo(cx + 5, cy - 6, cx + 10, cy - 1);
+  ctx.quadraticCurveTo(cx + 5, cy - 2, cx, cy + 2);
+  ctx.quadraticCurveTo(cx - 5, cy - 2, cx - 10, cy - 1);
+  ctx.fill();
+  dab(ctx, cx, cy + 0.5, 2, 3.4, 0, hsl(25, 30, 26));
+  dab(ctx, cx, cy - 2.6, 1.6, 1.6, 0, hsl(20, 35, 36));
+  dab(ctx, cx, cy - 4.2, 0.6, 0.9, 0, hsl(40, 80, 55));
+}
+
+function paintFrog(ctx: Ctx, w: number, h: number) {
+  const cx = w / 2;
+  const by = h - 3;
+  dab(ctx, cx - 7, by - 1, 4, 2.4, 0.3, hsl(100, 45, 34)); // back legs
+  dab(ctx, cx + 7, by - 1, 4, 2.4, -0.3, hsl(100, 45, 34));
+  dab(ctx, cx, by - 6, 8.5, 6.5, 0, hsl(98, 48, 42));
+  dab(ctx, cx - 1.5, by - 8, 5, 3, 0, hsl(85, 55, 58, 0.8));
+  dab(ctx, cx, by - 3.2, 5.5, 2.6, 0, hsl(70, 50, 76));
+  for (const sx of [-1, 1]) {
+    dab(ctx, cx + sx * 4.2, by - 12, 3.1, 3.1, 0, hsl(98, 48, 44));
+    dab(ctx, cx + sx * 4.2, by - 12.2, 2, 2, 0, hsl(45, 30, 96));
+    dab(ctx, cx + sx * 4.4, by - 12, 1.1, 1.3, 0, hsl(250, 30, 15));
+    dab(ctx, cx + sx * 3.2, by - 6.2, 1.5, 0.9, 0, hsl(350, 70, 70, 0.6));
+  }
+  ctx.strokeStyle = hsl(100, 40, 22);
+  ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.arc(cx, by - 8, 2.4, 0.3, Math.PI - 0.3); ctx.stroke();
+  dab(ctx, cx - 4, by - 0.5, 2, 1.2, 0, hsl(100, 45, 36));
+  dab(ctx, cx + 4, by - 0.5, 2, 1.2, 0, hsl(100, 45, 36));
+}
+
+function paintDuck(ctx: Ctx, w: number, h: number, baby: boolean) {
+  const cx = w / 2 - 2;
+  const cy = h * 0.62;
+  if (baby) {
+    dab(ctx, cx, cy, 6.5, 4.5, 0, hsl(48, 90, 66));
+    dab(ctx, cx - 1.5, cy - 1.5, 3.5, 2, 0, hsl(52, 100, 82, 0.8));
+    dab(ctx, cx + 5, cy - 4.5, 3.6, 3.4, 0, hsl(48, 90, 64));
+    dab(ctx, cx + 8.6, cy - 4, 1.8, 1, 0, hsl(28, 90, 58));
+    dab(ctx, cx + 6, cy - 5.4, 0.8, 0.9, 0, hsl(250, 30, 15));
+    return;
+  }
+  dab(ctx, cx, cy, 11, 6.5, 0, hsl(30, 35, 52));
+  dab(ctx, cx - 2, cy - 2, 7, 3.2, 0, hsl(32, 35, 66, 0.8));
+  dab(ctx, cx - 3, cy + 0.5, 6, 3, 0.1, hsl(28, 30, 40)); // wing
+  dab(ctx, cx - 1, cy + 0.6, 1.8, 1.4, 0, hsl(220, 70, 55)); // speculum
+  ctx.fillStyle = hsl(25, 25, 25);
+  ctx.beginPath(); ctx.moveTo(cx - 10, cy - 2); ctx.lineTo(cx - 14, cy - 4.5); ctx.lineTo(cx - 10.5, cy + 0.5); ctx.fill();
+  dab(ctx, cx + 8, cy - 3.5, 2.6, 3.6, 0, hsl(0, 0, 96)); // neck ring area
+  dab(ctx, cx + 9, cy - 7.5, 4.4, 4, 0, hsl(150, 55, 32));
+  dab(ctx, cx + 8, cy - 8.8, 2, 1.2, 0, hsl(150, 50, 55, 0.6));
+  dab(ctx, cx + 13.8, cy - 6.8, 2.8, 1.3, 0, hsl(46, 90, 58));
+  dab(ctx, cx + 10, cy - 8.2, 0.9, 1, 0, hsl(250, 30, 12));
+}
+
+function paintCat(ctx: Ctx, w: number, h: number) {
+  const cx = w / 2;
+  const by = h - 3;
+  const fur = hsl(28, 75, 60);
+  const furDark = hsl(24, 70, 46);
+  dab(ctx, cx, by - 8, 11, 8.5, 0, fur); // body loaf
+  dab(ctx, cx - 3, by - 11, 6, 4, 0, hsl(32, 85, 72, 0.7));
+  ctx.strokeStyle = furDark;
+  ctx.lineWidth = 1.4;
+  for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.arc(cx + i * 4.5, by - 4, 6, Math.PI * 1.15, Math.PI * 1.45); ctx.stroke(); }
+  dab(ctx, cx, by - 4, 5, 3.4, 0, hsl(35, 40, 94)); // chest
+  dab(ctx, cx - 3.6, by - 0.8, 2.6, 1.6, 0, hsl(35, 40, 94)); // paws
+  dab(ctx, cx + 3.6, by - 0.8, 2.6, 1.6, 0, hsl(35, 40, 94));
+  // Head.
+  const hy = by - 17;
+  ctx.fillStyle = fur;
+  ctx.beginPath(); ctx.moveTo(cx - 7.5, hy - 2); ctx.lineTo(cx - 6, hy - 10); ctx.lineTo(cx - 1.5, hy - 5); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(cx + 7.5, hy - 2); ctx.lineTo(cx + 6, hy - 10); ctx.lineTo(cx + 1.5, hy - 5); ctx.fill();
+  dab(ctx, cx - 5.5, hy - 6, 1.3, 2, -0.3, hsl(350, 60, 78));
+  dab(ctx, cx + 5.5, hy - 6, 1.3, 2, 0.3, hsl(350, 60, 78));
+  dab(ctx, cx, hy, 8, 6.6, 0, fur);
+  dab(ctx, cx - 2.5, hy - 2.5, 3.5, 2, 0, hsl(32, 85, 72, 0.7));
+  ctx.strokeStyle = furDark;
+  ctx.lineWidth = 1.2;
+  for (const dx of [-2, 0, 2]) { ctx.beginPath(); ctx.moveTo(cx + dx, hy - 6); ctx.lineTo(cx + dx, hy - 3.6); ctx.stroke(); }
+  dab(ctx, cx, hy + 2.6, 3.4, 2.2, 0, hsl(35, 40, 94));
+  // Happy closed eyes.
+  ctx.strokeStyle = hsl(25, 40, 18);
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(cx - 3.2, hy + 0.6, 1.6, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+  ctx.beginPath(); ctx.arc(cx + 3.2, hy + 0.6, 1.6, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke();
+  dab(ctx, cx, hy + 2, 0.9, 0.6, 0, hsl(350, 60, 65));
+  dab(ctx, cx - 5, hy + 2.6, 1.6, 1, 0, hsl(350, 80, 75, 0.6));
+  dab(ctx, cx + 5, hy + 2.6, 1.6, 1, 0, hsl(350, 80, 75, 0.6));
+}
+
+function paintCatTail(ctx: Ctx, w: number, h: number) {
+  ctx.strokeStyle = hsl(28, 75, 58);
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(2, h - 3);
+  ctx.quadraticCurveTo(w * 0.6, h - 2, w - 3, 4);
+  ctx.stroke();
+  ctx.strokeStyle = hsl(24, 70, 46);
+  ctx.lineWidth = 4.2;
+  ctx.beginPath(); ctx.moveTo(w * 0.62, h * 0.55); ctx.lineTo(w * 0.7, h * 0.42); ctx.stroke();
+  ctx.strokeStyle = hsl(35, 40, 94);
+  ctx.beginPath(); ctx.moveTo(w - 4, 6); ctx.lineTo(w - 3, 4); ctx.stroke();
+}
+
+function paintFish(ctx: Ctx, w: number, h: number) {
+  ctx.fillStyle = 'rgba(20,40,60,1)';
+  ctx.beginPath();
+  ctx.ellipse(w * 0.45, h / 2, w * 0.33, h * 0.32, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(w * 0.75, h / 2);
+  ctx.lineTo(w - 1, h * 0.15);
+  ctx.lineTo(w - 1, h * 0.85);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function paintHeart(ctx: Ctx, w: number, h: number) {
+  ctx.fillStyle = hsl(350, 85, 70);
+  ctx.beginPath();
+  ctx.moveTo(w / 2, h - 1);
+  ctx.bezierCurveTo(-1, h * 0.45, w * 0.2, -1, w / 2, h * 0.3);
+  ctx.bezierCurveTo(w * 0.8, -1, w + 1, h * 0.45, w / 2, h - 1);
+  ctx.fill();
+  dab(ctx, w * 0.32, h * 0.32, 1.2, 0.8, -0.5, 'rgba(255,255,255,0.8)');
+}
+
+function paintLeafBig(ctx: Ctx, w: number, h: number) {
+  ctx.save();
+  ctx.translate(w / 2, h / 2);
+  ctx.rotate(0.4);
+  ctx.beginPath();
+  ctx.moveTo(-w * 0.42, 0);
+  ctx.quadraticCurveTo(0, -h * 0.55, w * 0.42, 0);
+  ctx.quadraticCurveTo(0, h * 0.55, -w * 0.42, 0);
+  ctx.fillStyle = '#ffffff';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+  ctx.lineWidth = 0.6;
+  ctx.beginPath(); ctx.moveTo(-w * 0.4, 0); ctx.lineTo(w * 0.4, 0); ctx.stroke();
+  ctx.restore();
+}
+
 export function paintAll(scene: Phaser.Scene) {
   paintGround(scene);
 
@@ -1321,5 +1516,16 @@ export function paintAll(scene: Phaser.Scene) {
     c.fillStyle = g;
     c.fillRect(0, 0, 256, 256);
   }, 1);
+  canvasTex(scene, 'butterfly', 18, 16, (c) => paintButterfly(c, 18, 16));
+  canvasTex(scene, 'bird', 22, 14, (c) => paintBird(c, 22, 14));
+  canvasTex(scene, 'frog', 24, 20, (c) => paintFrog(c, 24, 20));
+  canvasTex(scene, 'duck', 34, 24, (c) => paintDuck(c, 34, 24, false));
+  canvasTex(scene, 'duckling', 22, 14, (c) => paintDuck(c, 22, 14, true));
+  canvasTex(scene, 'cat', 30, 34, (c) => paintCat(c, 30, 34));
+  canvasTex(scene, 'cattail', 18, 16, (c) => paintCatTail(c, 18, 16));
+  canvasTex(scene, 'fish', 26, 10, (c) => paintFish(c, 26, 10));
+  canvasTex(scene, 'heart', 12, 11, (c) => paintHeart(c, 12, 11));
+  canvasTex(scene, 'leafw', 14, 9, (c) => paintLeafBig(c, 14, 9), 3);
+  canvasTex(scene, 'white', 4, 4, (c) => { c.fillStyle = '#fff'; c.fillRect(0, 0, 4, 4); }, 2);
   buildAtlas(scene);
 }

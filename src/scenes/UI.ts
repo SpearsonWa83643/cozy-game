@@ -2,7 +2,8 @@ import Phaser from 'phaser';
 import { S, ATLAS, frameScale } from '../art';
 import { DPR } from '../dpr';
 import { LANTERN_ORDER, LanternId } from '../layout';
-import { sfx } from '../audio';
+import { sfx, VolumeLevel } from '../audio';
+import { IS_TOUCH, safeInsets } from '../device';
 import type { WorldScene } from './World';
 
 const FONT = 'Nunito, "Trebuchet MS", sans-serif';
@@ -13,6 +14,28 @@ export class UIScene extends Phaser.Scene {
   h = 0;
   sunGlow!: Phaser.GameObjects.Image;
   vignette!: Phaser.GameObjects.Image;
+  dayTint!: Phaser.GameObjects.Image;
+  insets = { top: 0, right: 0, bottom: 0, left: 0 };
+  touchMode = IS_TOUCH;
+  // Floating joystick.
+  stickBase!: Phaser.GameObjects.Graphics;
+  stickKnob!: Phaser.GameObjects.Graphics;
+  stickPointer: Phaser.Input.Pointer | null = null;
+  stickOrigin = { x: 0, y: 0 };
+  stickStart = { x: 0, y: 0 };
+  stickDownAt = 0;
+  stickActive = false;
+  // Action button.
+  actionC!: Phaser.GameObjects.Container;
+  actionBg!: Phaser.GameObjects.Graphics;
+  actionLabel!: Phaser.GameObjects.Text;
+  actionZone!: Phaser.GameObjects.Zone;
+  actionShown = false;
+  // Volume button.
+  volC!: Phaser.GameObjects.Container;
+  volIcon!: Phaser.GameObjects.Graphics;
+  volZone!: Phaser.GameObjects.Zone;
+  dialogBox = { x: 0, y: 0, w: 0, h: 0 };
   // Prompt.
   promptC!: Phaser.GameObjects.Container;
   promptBg!: Phaser.GameObjects.Graphics;
@@ -62,6 +85,8 @@ export class UIScene extends Phaser.Scene {
     cam.setZoom(DPR);
     this.registry.set('dialogOpen', false);
 
+    // Slow colour drift of the light over a few minutes (golden -> rosy -> soft lavender).
+    this.dayTint = this.add.image(0, 0, ATLAS, 'white').setOrigin(0, 0).setBlendMode('MULTIPLY');
     this.vignette = this.add.image(0, 0, ATLAS, 'vignette').setOrigin(0, 0);
     // Warm late-afternoon light leaking in from the top-left.
     this.sunGlow = this.add.image(0, 0, ATLAS, 'glow').setBlendMode('ADD').setTint(0xffc879).setAlpha(0.32);
@@ -97,14 +122,20 @@ export class UIScene extends Phaser.Scene {
     this.toastText = this.text(0, 0, '', 18, '#fff8ea', 700).setOrigin(0.5);
     this.toastC = this.add.container(0, 0, [this.toastBg, this.toastText]).setAlpha(0);
 
-    this.controls = this.text(0, 0, 'WASD / Arrows to wander   \u00B7   E / Space to interact   \u00B7   F: FPS', 14, '#fff8ea', 700).setOrigin(1, 1).setAlpha(0.85).setShadow(0, 1, 'rgba(40,30,20,0.6)', 4);
-    this.tweens.add({ targets: this.controls, alpha: 0, delay: 14000, duration: 1500 });
+    this.controls = this.text(0, 0, '', 14, '#fff8ea', 700).setOrigin(1, 1).setAlpha(0.85).setShadow(0, 1, 'rgba(40,30,20,0.6)', 4);
+    this.tweens.add({ targets: this.controls, alpha: 0, delay: 16000, duration: 1500 });
+
+    this.buildTouchControls();
+    this.buildVolumeButton();
+    this.applyTouchMode();
 
     this.fpsText = this.text(0, 0, 'FPS --', 12, '#fff8ea', 700).setOrigin(1, 0).setAlpha(0.8)
       .setShadow(0, 1, 'rgba(30,20,15,0.7)', 3).setDepth(1000);
     let fpsPref: string | null = null;
     try { fpsPref = localStorage.getItem('cozy.fps'); } catch { /* storage unavailable */ }
     this.fpsText.setVisible(fpsPref !== '0');
+    this.input.keyboard!.on('keydown-M', () => this.cycleVolume());
+    this.input.keyboard!.on('keydown', () => { if (this.touchMode) { this.touchMode = false; this.applyTouchMode(); } });
     this.input.keyboard!.on('keydown-F', () => {
       this.fpsText.setVisible(!this.fpsText.visible);
       try { localStorage.setItem('cozy.fps', this.fpsText.visible ? '1' : '0'); } catch { /* file:// may block */ }
@@ -142,15 +173,27 @@ export class UIScene extends Phaser.Scene {
     this.w = this.scale.width / DPR;
     this.h = this.scale.height / DPR;
     this.cameras.main.setZoom(DPR);
+    this.insets = safeInsets();
+    const si = this.insets;
+    this.dayTint.setPosition(-8, -8).setDisplaySize(this.w + 16, this.h + 16);
     this.vignette.setDisplaySize(this.w, this.h);
+    this.hudC.setPosition(22 + si.left, 22 + si.top);
     this.sunGlow.setPosition(this.w * 0.08, this.h * 0.02).setScale(Math.max(this.w, this.h) * 1.1 / 256);
-    this.controls.setPosition(this.w - 18, this.h - 14);
-    this.fpsText.setPosition(this.w - 12, 10);
-    // Dialog panel geometry.
-    const pw = Math.min(680, this.w - 32);
+    this.fpsText.setPosition(this.w - 14 - si.right, 8 + si.top);
+    this.volC.setPosition(this.w - 44 - si.right, 58 + si.top);
+    this.volZone.setPosition(this.volC.x, this.volC.y);
+    const abx = this.w - 74 - si.right;
+    const aby = this.h - 78 - si.bottom;
+    this.actionC.setPosition(abx, aby);
+    this.actionZone.setPosition(abx, aby);
+    this.controls.setPosition(this.touchMode ? abx - 70 : this.w - 18 - si.right, this.h - 14 - si.bottom);
+    // Dialog panel geometry (lifted above the action button on narrow screens).
+    const pw = Math.min(680, this.w - 32 - si.left - si.right);
     const ph = 132;
     const px = (this.w - pw) / 2;
-    const py = this.h - ph - 22;
+    let py = this.h - ph - 22 - si.bottom;
+    if (this.touchMode && px + pw > abx - 56) py -= 112;
+    this.dialogBox = { x: px, y: py, w: pw, h: ph };
     const g = this.dialogBg;
     g.clear();
     g.fillStyle(0x2a1d14, 0.28);
@@ -240,6 +283,171 @@ export class UIScene extends Phaser.Scene {
   }
 
   // -------------------------------------------------------------- update
+  // -------------------------------------------------------------- touch controls
+  get world() { return this.scene.get('world') as WorldScene; }
+
+  buildTouchControls() {
+    this.input.addPointer(2);
+    this.stickBase = this.add.graphics().setVisible(false);
+    this.stickBase.fillStyle(0xfff6e2, 0.16);
+    this.stickBase.fillCircle(0, 0, 62);
+    this.stickBase.lineStyle(3, 0xfff6e2, 0.55);
+    this.stickBase.strokeCircle(0, 0, 62);
+    this.stickKnob = this.add.graphics().setVisible(false);
+    this.stickKnob.fillStyle(0x2f2219, 0.25);
+    this.stickKnob.fillCircle(0, 3, 28);
+    this.stickKnob.fillStyle(0xfff3d6, 0.9);
+    this.stickKnob.fillCircle(0, 0, 27);
+    this.stickKnob.lineStyle(3, 0xf2a93b, 1);
+    this.stickKnob.strokeCircle(0, 0, 27);
+
+    // Big contextual action button (96 px), bottom-right inside the safe area.
+    this.actionBg = this.add.graphics();
+    this.actionBg.fillStyle(0x2a1d14, 0.3);
+    this.actionBg.fillCircle(0, 5, 48);
+    this.actionBg.fillStyle(0xfbf1dc, 0.96);
+    this.actionBg.fillCircle(0, 0, 48);
+    this.actionBg.lineStyle(4, 0xf2a93b, 1);
+    this.actionBg.strokeCircle(0, 0, 43);
+    this.actionLabel = this.text(0, 0, '', 19, INK, 800).setOrigin(0.5);
+    this.actionC = this.add.container(0, 0, [this.actionBg, this.actionLabel]).setAlpha(0);
+    this.actionZone = this.add.zone(0, 0, 112, 112).setInteractive(new Phaser.Geom.Circle(56, 56, 56), Phaser.Geom.Circle.Contains);
+    this.actionZone.on('pointerdown', () => {
+      if (!this.actionShown) return;
+      this.tweens.add({ targets: this.actionC, scale: { from: 0.88, to: 1 }, duration: 220, ease: 'Back.easeOut' });
+      this.world.tryInteract();
+    });
+
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
+      if (p.wasTouch && !this.touchMode) { this.touchMode = true; this.applyTouchMode(); }
+      if (over.some((o) => o === this.volZone || (o === this.actionZone && this.actionShown))) return;
+      if (this.registry.get('dialogOpen')) { this.world.tryInteract(); return; }
+      if (this.stickPointer) return;
+      this.stickPointer = p;
+      this.stickStart = { x: p.x / DPR, y: p.y / DPR };
+      this.stickOrigin = { ...this.stickStart };
+      this.stickDownAt = this.time.now;
+      this.stickActive = false;
+    });
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      if (p !== this.stickPointer || !p.isDown) return;
+      const x = p.x / DPR;
+      const y = p.y / DPR;
+      let dx = x - this.stickOrigin.x;
+      let dy = y - this.stickOrigin.y;
+      let d = Math.hypot(dx, dy);
+      if (!this.stickActive && Math.hypot(x - this.stickStart.x, y - this.stickStart.y) > 12) {
+        this.stickActive = true;
+        this.stickBase.setVisible(true).setAlpha(0);
+        this.stickKnob.setVisible(true).setAlpha(0);
+        this.tweens.add({ targets: [this.stickBase, this.stickKnob], alpha: 1, duration: 120 });
+      }
+      if (!this.stickActive) return;
+      const R = 62;
+      if (d > R) {
+        // Floating stick: the base follows the thumb so it never runs out of travel.
+        this.stickOrigin.x += (dx / d) * (d - R);
+        this.stickOrigin.y += (dy / d) * (d - R);
+        dx = x - this.stickOrigin.x; dy = y - this.stickOrigin.y; d = R;
+      }
+      this.stickBase.setPosition(this.stickOrigin.x, this.stickOrigin.y);
+      this.stickKnob.setPosition(this.stickOrigin.x + dx, this.stickOrigin.y + dy);
+      this.world.setStick({ x: dx / R, y: dy / R });
+    });
+    const release = (p: Phaser.Input.Pointer) => {
+      if (p !== this.stickPointer) return;
+      if (!this.stickActive && this.time.now - this.stickDownAt < 400) this.world.tapScreen(p.x, p.y);
+      this.stickPointer = null;
+      this.stickActive = false;
+      this.world.setStick(null);
+      this.tweens.add({ targets: [this.stickBase, this.stickKnob], alpha: 0, duration: 160, onComplete: () => { this.stickBase.setVisible(false); this.stickKnob.setVisible(false); } });
+    };
+    this.input.on('pointerup', release);
+    this.input.on('pointerupoutside', release);
+    this.input.on('gameout', () => { if (this.stickPointer) release(this.stickPointer); });
+  }
+
+  buildVolumeButton() {
+    const bg = this.add.graphics();
+    bg.fillStyle(0x2c2420, 0.3);
+    bg.fillCircle(0, 2, 25);
+    bg.fillStyle(0xf3e6cc, 0.92);
+    bg.fillCircle(0, 0, 24);
+    bg.lineStyle(2.5, 0xb59b7c, 1);
+    bg.strokeCircle(0, 0, 24);
+    this.volIcon = this.add.graphics();
+    this.volC = this.add.container(0, 0, [bg, this.volIcon]);
+    this.volZone = this.add.zone(0, 0, 64, 64).setInteractive(new Phaser.Geom.Circle(32, 32, 32), Phaser.Geom.Circle.Contains);
+    this.volZone.on('pointerdown', () => this.cycleVolume());
+    this.drawVolIcon(sfx.level);
+  }
+
+  cycleVolume() {
+    sfx.unlock();
+    const lvl = sfx.cycleLevel();
+    this.drawVolIcon(lvl);
+    this.tweens.add({ targets: this.volC, scale: { from: 0.85, to: 1 }, duration: 220, ease: 'Back.easeOut' });
+    this.toast(lvl === 'on' ? 'Music & sounds: on' : lvl === 'quiet' ? 'Music & sounds: quiet' : 'Music & sounds: off');
+  }
+
+  drawVolIcon(lvl: VolumeLevel) {
+    const g = this.volIcon;
+    g.clear();
+    g.fillStyle(0x6b4a33, 1);
+    g.fillRect(-11, -4, 6, 8);
+    g.fillTriangle(-6, -4, 2, -10, 2, 10);
+    g.fillTriangle(-6, -4, 2, 10, -6, 4);
+    g.lineStyle(2.4, 0x6b4a33, 1);
+    if (lvl === 'off') {
+      g.lineStyle(2.6, 0xc0563a, 1);
+      g.lineBetween(6, -6, 14, 6);
+      g.lineBetween(14, -6, 6, 6);
+      return;
+    }
+    g.beginPath(); g.arc(3, 0, 6, -0.9, 0.9); g.strokePath();
+    if (lvl === 'on') { g.beginPath(); g.arc(3, 0, 11, -0.9, 0.9); g.strokePath(); }
+  }
+
+  applyTouchMode() {
+    this.registry.set('touchMode', this.touchMode);
+    this.controls.setText(this.touchMode
+      ? 'Drag anywhere to walk   \u00B7   Tap a spot to go there   \u00B7   Tap things to use them'
+      : 'WASD / Arrows to wander   \u00B7   E / Space to interact   \u00B7   M: sound   \u00B7   F: FPS');
+    this.dialogHint.setText(this.touchMode ? 'tap \u25B8' : 'E \u25B8');
+    this.promptLabelText = '';
+    if (this.w) this.layout();
+  }
+
+  updateTouchUI(time: number) {
+    const world = this.world;
+    const dialog = !!this.registry.get('dialogOpen');
+    const label = dialog
+      ? (this.typing ? '\u2026' : this.page < this.pages.length - 1 ? 'Next' : 'Close')
+      : world?.prompt?.label ?? '';
+    const show = this.touchMode && !!label && !world?.locked;
+    if (show && this.actionLabel.text !== label) this.actionLabel.setText(label);
+    if (show !== this.actionShown) {
+      this.actionShown = show;
+      this.tweens.killTweensOf(this.actionC);
+      this.tweens.add({ targets: this.actionC, alpha: show ? 1 : 0, scale: show ? { from: 0.7, to: 1 } : 0.85, duration: show ? 260 : 160, ease: show ? 'Back.easeOut' : 'Sine.easeIn' });
+    }
+    if (show) this.actionLabel.setScale(1 + Math.sin(time / 260) * 0.03);
+  }
+
+  updateDayTint(time: number) {
+    // ~4 minute loop through gentle colour grades; multiply blend keeps it subtle.
+    const keys = [0xffffff, 0xfff2de, 0xffe7dc, 0xf3ecff, 0xfff6e6];
+    const t = (time / 240000) % 1 * keys.length;
+    const i = Math.floor(t);
+    const f = t - i;
+    const ease = f * f * (3 - 2 * f);
+    const a = Phaser.Display.Color.IntegerToColor(keys[i]);
+    const b = Phaser.Display.Color.IntegerToColor(keys[(i + 1) % keys.length]);
+    const c = Phaser.Display.Color.Interpolate.ColorWithColor(a, b, 1000, ease * 1000);
+    this.dayTint.setTint(Phaser.Display.Color.GetColor(c.r, c.g, c.b));
+    this.sunGlow.setAlpha(0.3 + 0.07 * Math.sin(time / 38000));
+  }
+
   updateFps(time: number) {
     // Use real wall-clock frame times (Phaser's delta is smoothed).
     const now = performance.now();
@@ -266,6 +474,8 @@ export class UIScene extends Phaser.Scene {
 
   update(time: number, delta: number) {
     this.updateFps(time);
+    this.updateTouchUI(time);
+    this.updateDayTint(time);
     // Typewriter.
     if (this.registry.get('dialogOpen') && this.typing) {
       const full = this.pages[this.page];
@@ -276,7 +486,7 @@ export class UIScene extends Phaser.Scene {
         this.tweens.add({ targets: this.dialogHint, alpha: 1, duration: 300 });
       }
     }
-    this.dialogHint.setY(this.h - 22 - 14 + Math.sin(time / 250) * 2);
+    this.dialogHint.setY(this.dialogBox.y + this.dialogBox.h - 14 + Math.sin(time / 250) * 2);
 
     // Interaction prompt follows its world target.
     const world = this.scene.get('world') as WorldScene;
@@ -289,19 +499,26 @@ export class UIScene extends Phaser.Scene {
         this.promptLabelText = p.label;
         this.promptLabel.setText(p.label);
         const lw = this.promptLabel.width;
-        const tw = 34 + lw + 16;
+        const key = !this.touchMode;
+        this.promptKey.setVisible(key);
+        const tw = (key ? 34 : 18) + lw + 16;
         const g = this.promptBg;
         g.clear();
         g.fillStyle(0x2f2219, 0.25);
         g.fillRoundedRect(-tw / 2 + 1, -14 + 3, tw, 30, 15);
         g.fillStyle(0x3d2c20, 0.82);
         g.fillRoundedRect(-tw / 2, -15, tw, 30, 15);
-        g.fillStyle(0xf2a93b, 1);
-        g.fillRoundedRect(-tw / 2 + 4, -11, 22, 22, 7);
+        if (key) {
+          g.fillStyle(0xf2a93b, 1);
+          g.fillRoundedRect(-tw / 2 + 4, -11, 22, 22, 7);
+        } else {
+          g.fillStyle(0xf2a93b, 1);
+          g.fillCircle(-tw / 2 + 13, 0, 5);
+        }
         g.fillStyle(0x3d2c20, 0.82);
         g.fillTriangle(-6, 15, 6, 15, 0, 22);
         this.promptKey.setPosition(-tw / 2 + 15, 0);
-        this.promptLabel.setPosition(-tw / 2 + 32, 0);
+        this.promptLabel.setPosition(-tw / 2 + (key ? 32 : 24), 0);
       }
       this.promptC.setPosition(sx, sy - 6 + Math.sin(time / 300) * 3);
       this.promptC.setAlpha(Math.min(1, this.promptC.alpha + delta / 150));

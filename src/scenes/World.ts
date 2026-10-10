@@ -1,19 +1,25 @@
 import Phaser from 'phaser';
-import { S, ATLAS, frameScale, mulberry32, pondValue, pondHit, distToPaths, ALL_PATHS } from '../art';
+import { S, GS, ATLAS, frameScale, mulberry32, pondValue, pondHit, distToPaths, ALL_PATHS } from '../art';
 import {
   WORLD_W, WORLD_H, PLAYER_START, POND, COTTAGE, GARDEN, WALL_Y, GATE, SHRINE, SHRINE_CLEARING, SIGN,
   LANTERNS, LANTERN_ORDER, LanternId,
 } from '../layout';
 import { sfx } from '../audio';
 import { DPR } from '../dpr';
+import { NavGrid } from '../pathfind';
+import { Life } from '../life';
 
-type Interactable = {
+export type Interactable = {
   x: number; y: number; r: number; label: string;
+  /** Height above the base where the prompt bubble floats. */
+  promptY: number;
+  /** Where to stand when walking over to use it (offset from x, y). Default: just below. */
+  approach?: [number, number];
   enabled: () => boolean;
   action: () => void;
 };
 
-type Swayer = { obj: Phaser.GameObjects.Image; amp: number; speed: number; phase: number; base: number; kick: number };
+type Swayer = { obj: Phaser.GameObjects.Image; amp: number; speed: number; phase: number; base: number; kick: number; gust: number };
 
 type Lantern = {
   id: LanternId; x: number; y: number; lit: boolean;
@@ -57,6 +63,16 @@ export class WorldScene extends Phaser.Scene {
   gateGlows: Phaser.GameObjects.Image[] = [];
   windowGlows: Phaser.GameObjects.Image[] = [];
   nextChirp = 4000;
+  // Touch / tap-to-move.
+  nav!: NavGrid;
+  stick: { x: number; y: number } | null = null;
+  path: [number, number][] = [];
+  pathTarget: Interactable | null = null;
+  pathStuck = 0;
+  pathLastD = Infinity;
+  tapMarker!: Phaser.GameObjects.Image;
+  life!: Life;
+  catPets = 0;
 
   constructor() { super('world'); }
 
@@ -86,7 +102,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   sway(obj: Phaser.GameObjects.Image, amp: number, speed: number) {
-    this.swayers.push({ obj, amp, speed, phase: Math.random() * Math.PI * 2, base: obj.rotation, kick: 0 });
+    this.swayers.push({ obj, amp, speed, phase: Math.random() * Math.PI * 2, base: obj.rotation, kick: 0, gust: 0 });
   }
 
   shadow(x: number, y: number, w: number, alpha = 1) {
@@ -99,7 +115,7 @@ export class WorldScene extends Phaser.Scene {
     this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
     this.solids = this.physics.add.staticGroup();
 
-    this.add.image(0, 0, 'ground').setOrigin(0, 0).setScale(1 / 2).setDepth(-1000);
+    this.add.image(0, 0, 'ground').setOrigin(0, 0).setScale(1 / GS).setDepth(-1000);
 
     this.buildPond();
     this.buildCottage();
@@ -110,6 +126,9 @@ export class WorldScene extends Phaser.Scene {
     this.buildSign();
     this.buildPlayer();
     this.buildAtmosphere();
+    this.life = new Life(this);
+    this.buildNav();
+    this.tapMarker = this.fx(0, 0, 'ripple', 0.5).setBlendMode('ADD').setAlpha(0).setDepth(-300);
 
     // Camera.
     const cam = this.cameras.main;
@@ -128,8 +147,7 @@ export class WorldScene extends Phaser.Scene {
     // Input.
     const kb = this.input.keyboard!;
     this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,E,SPACE,ENTER') as Record<string, Phaser.Input.Keyboard.Key>;
-    kb.on('keydown', () => sfx.unlock());
-    this.input.on('pointerdown', () => sfx.unlock());
+    kb.on('keydown', () => { sfx.unlock(); this.path = []; this.pathTarget = null; });
     const onInteract = () => this.tryInteract();
     this.keys.E.on('down', onInteract);
     this.keys.SPACE.on('down', onInteract);
@@ -142,8 +160,12 @@ export class WorldScene extends Phaser.Scene {
   fitCamera() {
     const w = this.scale.width / DPR;
     const h = this.scale.height / DPR;
-    const base = Math.min(h / 560, w / 780);
+    // Landscape: frame ~560 world units tall. Portrait: frame ~560 units wide, so the
+    // character stays a comfortable size instead of shrinking to fit the long axis.
+    const base = w >= h ? Math.min(h / 560, w / 780) : Math.min(w / 560, h / 640);
     this.cameras.main.setZoom(Math.max(0.6, base) * DPR);
+    // Snap to the player after a resize/rotation instead of lerping in from far away.
+    if (this.feet) this.cameras.main.centerOn(this.feet.x, this.feet.y + 18);
   }
 
   // ------------------------------------------------------------ world building
@@ -295,7 +317,7 @@ export class WorldScene extends Phaser.Scene {
     this.solidRect(SHRINE.x - 24, SHRINE.y - 6, 48, 16);
     this.chest = chest;
     this.interactables.push({
-      x: SHRINE.x, y: SHRINE.y + 10, r: 62, label: 'Open',
+      x: SHRINE.x, y: SHRINE.y + 10, r: 62, label: 'Open', promptY: 50,
       enabled: () => !this.chestOpened,
       action: () => this.openChest(),
     });
@@ -421,7 +443,7 @@ export class WorldScene extends Phaser.Scene {
       this.lanterns.push(lantern);
       this.solidCircle(L.x, L.y - 8, 15);
       this.interactables.push({
-        x: L.x, y: L.y, r: 58, label: 'Light',
+        x: L.x, y: L.y, r: 58, label: 'Light', promptY: 100,
         enabled: () => !lantern.lit && !this.solved,
         action: () => this.lightLantern(lantern),
       });
@@ -441,7 +463,7 @@ export class WorldScene extends Phaser.Scene {
     this.img(SIGN.x, SIGN.y, 'sign').setDepth(SIGN.y);
     this.solidCircle(SIGN.x, SIGN.y - 5, 8);
     this.interactables.push({
-      x: SIGN.x, y: SIGN.y, r: 56, label: 'Read', enabled: () => true,
+      x: SIGN.x, y: SIGN.y, r: 56, label: 'Read', promptY: 70, enabled: () => true,
       action: () => this.game.events.emit('dialog', [
         'An old sign, its letters worn soft by the rain:',
         '"When the sun first wakes, then climbs to its height, then sinks to sleep \u2014 light the stone lanterns so, and the old gate will listen."',
@@ -573,6 +595,7 @@ export class WorldScene extends Phaser.Scene {
         this.tweens.add({ targets: this.gateGlows, alpha: 0.7, duration: 900 });
         cam.shake(450, 0.0035);
         (this.barrier.body as Phaser.Physics.Arcade.StaticBody).enable = false;
+        this.buildNav();
         this.time.delayedCall(1900, () => {
           cam.pan(this.feet.x, this.feet.y + 18, 1100, 'Sine.easeInOut', false, (_c2: any, p2: number) => {
             if (p2 < 1) return;
@@ -641,7 +664,93 @@ export class WorldScene extends Phaser.Scene {
     if (this.registry.get('dialogOpen')) { this.game.events.emit('dialog-advance'); return; }
     if (this.locked) return;
     const target = this.nearestInteractable();
-    if (target) target.action();
+    if (target) { this.path = []; this.pathTarget = null; target.action(); }
+  }
+
+  // ------------------------------------------------------------ touch: tap-to-move + stick
+  buildNav() {
+    const nav = new NavGrid(WORLD_W, WORLD_H, 20);
+    const PAD = 9;
+    for (const z of this.solids.getChildren() as Phaser.GameObjects.Zone[]) {
+      const b = z.body as Phaser.Physics.Arcade.StaticBody;
+      if (!b || !b.enable) continue;
+      if (b.isCircle) nav.blockCircle(b.center.x, b.center.y, b.halfWidth, PAD);
+      else nav.blockRect(b.x, b.y, b.width, b.height, PAD);
+    }
+    nav.blockWhere((x, y) => pondHit(x, y) || x < 10 || y < 10 || x > WORLD_W - 10 || y > WORLD_H - 10);
+    this.nav = nav;
+  }
+
+  /** Analog stick from the UI (screen-space, magnitude 0..1), or null when released. */
+  setStick(v: { x: number; y: number } | null) {
+    this.stick = v;
+    if (v) { this.path = []; this.pathTarget = null; }
+  }
+
+  /** Tap at a canvas-pixel position: walk there, or to an object and use it. */
+  tapScreen(px: number, py: number) {
+    const p = this.cameras.main.getWorldPoint(px, py);
+    this.tapWorld(p.x, p.y);
+  }
+
+  tapWorld(wx: number, wy: number) {
+    if (this.locked || this.registry.get('dialogOpen')) return;
+    // Objects are drawn above their base, so test against a point partway up the sprite too.
+    let target: Interactable | null = null;
+    let bestD = 64;
+    for (const it of this.interactables) {
+      if (!it.enabled()) continue;
+      const d = Math.min(Math.hypot(wx - it.x, wy - it.y), Math.hypot(wx - it.x, wy - (it.y - it.promptY * 0.55)));
+      if (d < bestD) { bestD = d; target = it; }
+    }
+    // Already standing next to it: just use it.
+    if (target && this.nearestInteractable() === target) { target.action(); this.path = []; this.pathTarget = null; return; }
+    const [ax, ay] = target?.approach ?? [0, 26];
+    const gx = target ? target.x + ax : wx;
+    const gy = target ? target.y + ay : wy;
+    const path = this.nav.find(this.feet.x, this.feet.y, gx, gy);
+    this.pathTarget = target;
+    this.path = path ?? [];
+    this.pathStuck = 0;
+    this.pathLastD = Infinity;
+    const end = this.path[this.path.length - 1];
+    if (end) {
+      this.tapMarker.setPosition(end[0], end[1]).setAlpha(0.8).setScale(0.18 / frameScale.ripple);
+      this.tweens.killTweensOf(this.tapMarker);
+      this.tweens.add({ targets: this.tapMarker, scale: 0.6 / frameScale.ripple, alpha: 0, duration: 700, ease: 'Sine.easeOut' });
+    }
+  }
+
+  /** Steering vector towards the next waypoint (magnitude 0..1). */
+  followPath(dt: number): [number, number] {
+    if (!this.path.length) return [0, 0];
+    // Arrived next to the target object? Use it.
+    if (this.pathTarget && this.nearestInteractable() === this.pathTarget) {
+      const t = this.pathTarget;
+      this.path = []; this.pathTarget = null;
+      t.action();
+      return [0, 0];
+    }
+    const [wx, wy] = this.path[0];
+    const dx = wx - this.feet.x;
+    const dy = wy - this.feet.y;
+    const d = Math.hypot(dx, dy);
+    const last = this.path.length === 1;
+    if (d < (last ? 6 : 16)) {
+      this.path.shift();
+      if (!this.path.length) {
+        const t = this.pathTarget;
+        this.pathTarget = null;
+        if (t && Math.hypot(t.x - this.feet.x, (t.y - this.feet.y) * 1.3) < t.r * 1.4) t.action();
+      }
+      return this.followPath(dt);
+    }
+    // Stuck detection: if we stop closing in, give up gracefully.
+    if (d > this.pathLastD - 0.5) this.pathStuck += dt; else this.pathStuck = Math.max(0, this.pathStuck - dt);
+    this.pathLastD = d;
+    if (this.pathStuck > 0.9) { this.path = []; this.pathTarget = null; return [0, 0]; }
+    const ease = last ? Math.min(1, d / 40 + 0.25) : 1;
+    return [(dx / d) * ease, (dy / d) * ease];
   }
 
   nearestInteractable(): Interactable | null {
@@ -665,8 +774,18 @@ export class WorldScene extends Phaser.Scene {
       ix = (k.D.isDown || k.RIGHT.isDown ? 1 : 0) - (k.A.isDown || k.LEFT.isDown ? 1 : 0);
       iy = (k.S.isDown || k.DOWN.isDown ? 1 : 0) - (k.W.isDown || k.UP.isDown ? 1 : 0);
     }
-    const len = Math.hypot(ix, iy);
-    if (len) { ix /= len; iy /= len; }
+    let len = Math.hypot(ix, iy);
+    if (len) { ix /= len; iy /= len; len = 1; }
+    else if (!frozen && this.stick) {
+      const m = Math.min(1, Math.hypot(this.stick.x, this.stick.y));
+      if (m > 0.12) {
+        const k2 = Math.min(1, (m - 0.12) / 0.6) * 0.75 + 0.25; // analog, with a gentle floor
+        ix = (this.stick.x / m) * k2; iy = (this.stick.y / m) * k2; len = k2;
+      }
+    } else if (!frozen && this.path.length) {
+      [ix, iy] = this.followPath(dt);
+      len = Math.hypot(ix, iy);
+    }
     const v = this.body.velocity;
     const blend = 1 - Math.exp(-dt * (len ? 12 : 16));
     this.body.setVelocity(v.x + (ix * SPEED - v.x) * blend, v.y + (iy * SPEED - v.y) * blend);
@@ -706,14 +825,21 @@ export class WorldScene extends Phaser.Scene {
 
     // Sway everything gently; rustle what the player brushes past.
     const t = time / 1000;
+    const breeze = 0.85 + 0.3 * Math.sin(t * 0.23) + 0.1 * Math.sin(t * 0.71);
+    const gx = this.life?.gustX ?? null;
     for (const s of this.swayers) {
+      if (gx !== null) {
+        const d = Math.abs(s.obj.x - gx);
+        if (d < 120) s.gust = Math.min(1, s.gust + dt * 5 * (1 - d / 120));
+      }
+      s.gust *= Math.exp(-dt * 1.1);
       if (speed > 40) {
         const dx = s.obj.x - this.feet.x;
         const dy = s.obj.y - this.feet.y;
         if (dx * dx + dy * dy < 26 * 26) s.kick = Math.min(1, s.kick + dt * 6) * Math.sign(dx || 1);
       }
       s.kick *= Math.exp(-dt * 2.5);
-      s.obj.rotation = s.base + Math.sin(t * s.speed + s.phase + s.obj.x * 0.004) * s.amp + s.kick * 0.35;
+      s.obj.rotation = s.base + Math.sin(t * s.speed + s.phase + s.obj.x * 0.004) * s.amp * breeze + s.kick * 0.35 + s.gust * Math.min(0.25, s.amp * 3);
     }
 
     // Ambient motion.
@@ -729,10 +855,12 @@ export class WorldScene extends Phaser.Scene {
       if (L.lit) L.glow.setScale(0.9 + 0.03 * Math.sin(t * 9 + L.x) + 0.02 * Math.sin(t * 23 + L.y));
     }
 
+    this.life.update(time, dt);
+
     if (time > this.nextChirp) { sfx.chirp(); this.nextChirp = time + 5000 + Math.random() * 9000; }
 
     const it = frozen ? null : this.nearestInteractable();
-    this.prompt = it ? { x: it.x, y: it.y - (it.label === 'Light' ? 100 : it.label === 'Open' ? 50 : 70), label: it.label } : null;
+    this.prompt = it ? { x: it.x, y: it.y - it.promptY, label: it.label } : null;
   }
 
   // ------------------------------------------------------------ test hooks
@@ -745,6 +873,7 @@ export class WorldScene extends Phaser.Scene {
           x: Math.round(self.feet.x), y: Math.round(self.feet.y),
           litOrder: [...self.litOrder], solved: self.solved, gateOpen: self.gateOpen, chestOpened: self.chestOpened, locked: self.locked,
           prompt: self.prompt?.label ?? null, fps: Math.round(self.game.loop.actualFps),
+          pathLen: self.path.length, catPets: self.catPets, ducks: self.life?.ducks.length ?? 0,
           dialogOpen: !!self.registry.get('dialogOpen'),
         };
       },
@@ -754,6 +883,11 @@ export class WorldScene extends Phaser.Scene {
         self.cameras.main.centerOn(x, y + 18);
       },
       lanterns: LANTERNS,
+      tapWorld: (x: number, y: number) => self.tapWorld(x, y),
+      worldToScreen(x: number, y: number) {
+        const cam = self.cameras.main;
+        return { x: (x - cam.worldView.x) * cam.zoom / DPR, y: (y - cam.worldView.y) * cam.zoom / DPR };
+      },
     };
   }
 }

@@ -5,6 +5,27 @@ import { WorldScene } from './scenes/World';
 import { UIScene } from './scenes/UI';
 
 import { DPR } from './dpr';
+import { sfx } from './audio';
+
+// ---- Touch hygiene: no page scroll, pinch/double-tap zoom, selection or callouts.
+const stop = (e: Event) => { if (e.cancelable) e.preventDefault(); };
+document.addEventListener('touchmove', stop, { passive: false });
+document.addEventListener('gesturestart', stop as EventListener, { passive: false } as any);
+document.addEventListener('gesturechange', stop as EventListener, { passive: false } as any);
+document.addEventListener('dblclick', stop, { passive: false });
+document.addEventListener('contextmenu', stop);
+document.addEventListener('selectstart', stop);
+let lastTouchEnd = 0;
+document.addEventListener('touchend', (e) => {
+  const now = Date.now();
+  if (now - lastTouchEnd < 320) stop(e); // iOS double-tap zoom
+  lastTouchEnd = now;
+}, { passive: false });
+
+// ---- Audio unlock: iOS Safari only allows it inside a real gesture (touchend/click/keydown).
+for (const ev of ['touchend', 'pointerup', 'click', 'keydown']) {
+  window.addEventListener(ev, () => sfx.unlock(), { capture: true, passive: true });
+}
 
 const params = new URLSearchParams(location.search);
 
@@ -39,14 +60,27 @@ async function start() {
       mipmapFilter: params.get('mip') === '0' ? '' : 'LINEAR_MIPMAP_LINEAR',
     },
     fps: { target: 60 },
+    input: { activePointers: 3, touch: { capture: true } },
+    disableContextMenu: true,
+    audio: { noAudio: true }, // we use our own WebAudio synth
+    banner: false,
     physics: { default: 'arcade', arcade: { debug: false } },
     scene: [BootScene, WorldScene, UIScene],
   });
 
-  window.addEventListener('resize', () => {
-    game.scale.resize(Math.round(window.innerWidth * DPR), Math.round(window.innerHeight * DPR));
+  let lastW = w, lastH = h;
+  const onResize = () => {
+    const nw = window.innerWidth, nh = window.innerHeight;
+    if (nw === lastW && nh === lastH) return;
+    lastW = nw; lastH = nh;
+    game.scale.resize(Math.round(nw * DPR), Math.round(nh * DPR));
     game.scale.setZoom(1 / DPR);
-  });
+    window.scrollTo(0, 0);
+  };
+  window.addEventListener('resize', onResize);
+  // iOS reports the new size a beat after rotating.
+  window.addEventListener('orientationchange', () => { setTimeout(onResize, 120); setTimeout(onResize, 500); });
+  window.visualViewport?.addEventListener('resize', onResize);
 
   (window as any).__game = game;
 }
