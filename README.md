@@ -17,9 +17,17 @@ npm run preview    # serves dist/ → http://localhost:4173
 
 `dist/` is fully static (relative paths), so any static file server works, e.g. `npx serve dist`.
 
+### Single-file build (play from disk)
+```bash
+npm run build:single   # → dist-single/index.html (JS, CSS, font all inlined)
+```
+A prebuilt copy lives at `share/WillowmereGlade.html`. Double-click it to open it in Chrome,
+Safari or Firefox; it needs no server and makes no network requests.
+
 ### Controls
 - **WASD / Arrow keys**: walk (8 directions)
 - **E / Space / Enter**: interact, and advance dialog
+- **F**: toggle the FPS readout (top-right: current, 10 s rolling average, and the worst recent frame as "low"). It is on by default.
 
 ### Debug URL flags
 - `?bloom=1` turns on the optional GPU bloom (Phaser 4 filters). It is off by default.
@@ -68,7 +76,7 @@ wait on game state rather than on time.
 - Everything is drawn from one atlas, and `maxTextures` defaults to 1. On SwiftShader, Phaser's
   multi-texture batching dropped triangles from sprites. With the atlas, the single-unit batch
   costs almost nothing.
-- Font: Nunito (SIL Open Font License 1.1) is bundled in `public/fonts/`.
+- Font: Nunito (SIL Open Font License 1.1) is bundled in `src/assets/`.
 
 ## Layout
 - `src/art.ts`: procedural painters (ground, trees, cottage, player, FX) and the atlas packer

@@ -38,6 +38,15 @@ export class UIScene extends Phaser.Scene {
   toastText!: Phaser.GameObjects.Text;
   toastTween?: Phaser.Tweens.TweenChain | Phaser.Tweens.Tween;
   controls!: Phaser.GameObjects.Text;
+  // FPS readout (toggle with F).
+  fpsText!: Phaser.GameObjects.Text;
+  fpsFrames: number[] = [];   // frame deltas in the last ~10 s (ms)
+  fpsSum = 0;
+  fpsAccum = 0;
+  fpsCount = 0;
+  fpsCurrent = 0;
+  fpsNextUpdate = 0;
+  lastFrameAt = 0;
 
   constructor() { super('ui'); }
 
@@ -88,8 +97,18 @@ export class UIScene extends Phaser.Scene {
     this.toastText = this.text(0, 0, '', 18, '#fff8ea', 700).setOrigin(0.5);
     this.toastC = this.add.container(0, 0, [this.toastBg, this.toastText]).setAlpha(0);
 
-    this.controls = this.text(0, 0, 'WASD / Arrows to wander   \u00B7   E / Space to interact', 14, '#fff8ea', 700).setOrigin(1, 1).setAlpha(0.85).setShadow(0, 1, 'rgba(40,30,20,0.6)', 4);
+    this.controls = this.text(0, 0, 'WASD / Arrows to wander   \u00B7   E / Space to interact   \u00B7   F: FPS', 14, '#fff8ea', 700).setOrigin(1, 1).setAlpha(0.85).setShadow(0, 1, 'rgba(40,30,20,0.6)', 4);
     this.tweens.add({ targets: this.controls, alpha: 0, delay: 14000, duration: 1500 });
+
+    this.fpsText = this.text(0, 0, 'FPS --', 12, '#fff8ea', 700).setOrigin(1, 0).setAlpha(0.8)
+      .setShadow(0, 1, 'rgba(30,20,15,0.7)', 3).setDepth(1000);
+    let fpsPref: string | null = null;
+    try { fpsPref = localStorage.getItem('cozy.fps'); } catch { /* storage unavailable */ }
+    this.fpsText.setVisible(fpsPref !== '0');
+    this.input.keyboard!.on('keydown-F', () => {
+      this.fpsText.setVisible(!this.fpsText.visible);
+      try { localStorage.setItem('cozy.fps', this.fpsText.visible ? '1' : '0'); } catch { /* file:// may block */ }
+    });
 
     this.layout();
     this.scale.on('resize', this.layout, this);
@@ -126,6 +145,7 @@ export class UIScene extends Phaser.Scene {
     this.vignette.setDisplaySize(this.w, this.h);
     this.sunGlow.setPosition(this.w * 0.08, this.h * 0.02).setScale(Math.max(this.w, this.h) * 1.1 / 256);
     this.controls.setPosition(this.w - 18, this.h - 14);
+    this.fpsText.setPosition(this.w - 12, 10);
     // Dialog panel geometry.
     const pw = Math.min(680, this.w - 32);
     const ph = 132;
@@ -220,7 +240,32 @@ export class UIScene extends Phaser.Scene {
   }
 
   // -------------------------------------------------------------- update
+  updateFps(time: number) {
+    // Use real wall-clock frame times (Phaser's delta is smoothed).
+    const now = performance.now();
+    const d = this.lastFrameAt ? now - this.lastFrameAt : 16.7;
+    this.lastFrameAt = now;
+    // Skip hitches over 1 s (startup texture painting, background tabs) so stats stay meaningful.
+    if (d > 1000) return;
+    this.fpsFrames.push(d);
+    this.fpsSum += d;
+    while (this.fpsSum > 10_000 && this.fpsFrames.length > 1) this.fpsSum -= this.fpsFrames.shift()!;
+    this.fpsAccum += d;
+    this.fpsCount++;
+    if (time >= this.fpsNextUpdate && this.fpsAccum > 0) {
+      this.fpsCurrent = (this.fpsCount * 1000) / this.fpsAccum;
+      this.fpsAccum = 0;
+      this.fpsCount = 0;
+      this.fpsNextUpdate = time + 250;
+      const avg = (this.fpsFrames.length * 1000) / this.fpsSum;
+      const worst = 1000 / Math.max(...this.fpsFrames.slice(-120));
+      this.fpsText.setText(`FPS ${this.fpsCurrent.toFixed(0)}  \u00B7  avg ${avg.toFixed(0)} (10s)  \u00B7  low ${worst.toFixed(0)}`);
+      (window as any).__fps = { current: this.fpsCurrent, avg10s: avg, low: worst };
+    }
+  }
+
   update(time: number, delta: number) {
+    this.updateFps(time);
     // Typewriter.
     if (this.registry.get('dialogOpen') && this.typing) {
       const full = this.pages[this.page];

@@ -8,7 +8,8 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0 --port 4173 --strictPort",
     "typecheck": "tsc --noEmit",
-    "test": "playwright test"
+    "test": "playwright test",
+    "build:single": "tsc --noEmit && vite build --mode single"
   },
   "dependencies": {
     "phaser": "4.2.1"
@@ -16,6 +17,7 @@
   "devDependencies": {
     "@playwright/test": "^1.64.0",
     "typescript": "^7.0.2",
-    "vite": "^8.3.4"
+    "vite": "^8.3.4",
+    "vite-plugin-singlefile": "^2.3.3"
   }
 }
