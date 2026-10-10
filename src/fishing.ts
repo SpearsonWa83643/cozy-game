@@ -98,9 +98,10 @@ export class Fishing {
   }
 
   /** Any tap / action press while fishing. */
-  tap() {
+  /** at: the input event's timestamp (performance clock), so a dropped frame never costs a fair tap. */
+  tap(at?: number) {
     if (this.state === 'bite') { this.startReel(); return; }
-    if (this.state === 'reel') { this.reelTap(); return; }
+    if (this.state === 'reel') { this.reelTap(at); return; }
     if (this.state === 'wait' || this.state === 'cast') { this.cancel('You reel the line back in.'); return; }
   }
 
@@ -141,9 +142,10 @@ export class Fishing {
     return 0.5 + 0.5 * Math.sin((now - r.t0) / 1000 * r.speed * Math.PI);
   }
 
-  reelTap() {
+  reelTap(at?: number) {
     const r = this.reel!;
-    const pos = this.markerPos();
+    const now = performance.now();
+    const pos = this.markerPos(at && at > now - 400 && at <= now ? at : now);
     const ok = Math.abs(pos - r.zone) <= r.width / 2;
     r.flash = 0.35; r.flashOk = ok;
     sfx.reel(ok);

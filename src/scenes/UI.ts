@@ -474,7 +474,7 @@ export class UIScene extends Phaser.Scene {
       if (this.cardOpen) { this.closeCard(); return; }
       if (this.registry.get('dialogOpen')) { this.world.tryInteract(); return; }
       const fs = this.world.fishing?.state;
-      if (fs === 'bite' || fs === 'reel') { this.world.fishing.tap(); return; }
+      if (fs === 'bite' || fs === 'reel') { this.world.fishing.tap(p.downTime); return; }
       if (this.stickPointer) return;
       this.stickPointer = p;
       this.stickStart = { x: p.x / DPR, y: p.y / DPR };

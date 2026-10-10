@@ -136,9 +136,9 @@ export class MenuScene extends Phaser.Scene {
 
   // ------------------------------------------------------------ map
   renderMap(a: { x: number; y: number; w: number; h: number }) {
-    const s = Math.min(a.w / WORLD_W, (a.h - 10) / WORLD_H);
+    const s = Math.min(a.w / WORLD_W, (a.h - 34) / WORLD_H);
     const mw = WORLD_W * s, mh = WORLD_H * s;
-    const mx = a.x + (a.w - mw) / 2, my = a.y + (a.h - mh) / 2;
+    const mx = a.x + (a.w - mw) / 2, my = a.y + (a.h - 34 - mh) / 2;
     this.mapGeom = { x: mx, y: my, s };
     const key = 'minimap';
     const px = Math.ceil(mw * DPR), ph = Math.ceil(mh * DPR);
@@ -147,25 +147,34 @@ export class MenuScene extends Phaser.Scene {
     const c = canvas.getContext('2d')!;
     const k = px / WORLD_W;
     const cols: Record<AreaId, string> = { glade: '#8fbf63', river: '#86c27a', forest: '#6f9e7a', orchard: '#c2c46a', lake: '#98c574' };
-    const cell = 40;
-    for (let y = 0; y < WORLD_H; y += cell) for (let x = 0; x < WORLD_W; x += cell) {
-      const cx = x + cell / 2, cy = y + cell / 2;
+    // Sample the world coarsely into a tiny canvas, then upscale with smoothing for soft painted edges.
+    const cell = 25;
+    const cw = Math.ceil(WORLD_W / cell), chh = Math.ceil(WORLD_H / cell);
+    const lo = document.createElement('canvas'); lo.width = cw; lo.height = chh;
+    const lc = lo.getContext('2d')!;
+    const fog = document.createElement('canvas'); fog.width = cw; fog.height = chh;
+    const fc = fog.getContext('2d')!;
+    fc.fillStyle = 'rgba(243,230,204,0.93)';
+    for (let j = 0; j < chh; j++) for (let i = 0; i < cw; i++) {
+      const cx = i * cell + cell / 2, cy = j * cell + cell / 2;
       const ar = areaAt(cx, cy);
       const wa = waterAt(cx, cy);
       const lake = ar === 'lake' && !wa ? Math.hypot((cx - 1050) / 700, (cy - 2480) / 330) : 9;
-      c.fillStyle = wa ? '#5aa6c8' : lake < 1.3 ? '#e8d6a6' : cols[ar];
-      c.fillRect(x * k, y * k, cell * k + 0.6, cell * k + 0.6);
+      lc.fillStyle = wa ? '#5aa6c8' : lake < 1.3 ? '#e8d6a6' : cols[ar];
+      lc.fillRect(i, j, 1, 1);
+      if (!save.visited.includes(ar)) fc.fillRect(i, j, 1, 1);
     }
+    c.imageSmoothingEnabled = true;
+    c.imageSmoothingQuality = 'high';
+    c.drawImage(lo, 0, 0, px, ph);
     c.strokeStyle = '#e9d3a6'; c.lineWidth = 26 * k; c.lineCap = 'round'; c.lineJoin = 'round';
     for (const p of ALL_PATHS) { c.beginPath(); p.forEach(([x, y], i) => (i ? c.lineTo(x * k, y * k) : c.moveTo(x * k, y * k))); c.stroke(); }
     c.fillStyle = '#9b7146';
     for (const b of Object.values(BRIDGES)) c.fillRect((b.x - b.half) * k, (b.y - 20) * k, b.half * 2 * k, 40 * k);
     c.fillRect((PIER.x - 20) * k, PIER.y0 * k, 40 * k, (PIER.y1 - PIER.y0) * k);
     // Unvisited areas stay misty.
-    c.fillStyle = 'rgba(243,230,204,0.92)';
-    for (let y = 0; y < WORLD_H; y += cell) for (let x = 0; x < WORLD_W; x += cell) {
-      if (!save.visited.includes(areaAt(x + cell / 2, y + cell / 2))) c.fillRect(x * k, y * k, cell * k + 0.6, cell * k + 0.6);
-    }
+    c.drawImage(fog, 0, 0, px, ph);
+    lo.width = lo.height = fog.width = fog.height = 1;
     if (this.textures.exists(key)) this.textures.remove(key);
     this.textures.addImage(key, canvas as unknown as HTMLImageElement);
     canvas.width = 1; canvas.height = 1;
