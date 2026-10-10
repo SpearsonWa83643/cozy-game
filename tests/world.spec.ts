@@ -80,9 +80,10 @@ test('bigger world: areas, puzzle, fishing, wardrobe, creatures', async ({ page 
   // 4. Fishing at the lake pier: cast, hook the bite, play the timing game until a catch.
   await teleport(page, 1250, 2270, 1500);
   const cdp = await page.context().newCDPSession(page);
-  const touch = async (x: number, y: number) => {
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 2, radiusX: 6, radiusY: 6, force: 1 }] });
-    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  const touch = async (x: number, y: number, epochMs?: number) => {
+    const ts = epochMs ? { timestamp: epochMs / 1000 } : {};
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y, id: 2, radiusX: 6, radiusY: 6, force: 1 }], ...ts });
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [], ...ts });
   };
   let shotTaken = false;
   for (let attempt = 0; attempt < 8 && (await cozy(page, 'fish()')).catches === 0; attempt++) {
@@ -93,11 +94,13 @@ test('bigger world: areas, puzzle, fishing, wardrobe, creatures', async ({ page 
     await expect.poll(async () => (await cozy(page, 'fish()')).state, { timeout: 20_000, intervals: [100] }).toMatch(/reel|idle/);
     for (let k = 0; k < 20 && (await cozy(page, 'fish()')).state === 'reel'; k++) {
       if (!shotTaken) { await page.screenshot({ path: `${SHOTS}/hd-ipad-v4-02-fishing.png` }); shotTaken = true; }
-      const ms = await cozy(page, 'fishMsToZone()');
-      if (ms < 0) break;
-      await page.waitForTimeout(Math.max(0, ms - 25));
-      await touch(590, 300);
-      await page.waitForTimeout(250);
+      // The game judges a reel tap at the touch event's own timestamp, so stamp the tap at the moment
+      // the marker crosses the green zone (exactly what a well-timed finger does).
+      const at = await cozy(page, 'fishZoneEpoch(300)');
+      if (at < 0) break;
+      await page.waitForTimeout(Math.max(0, at - Date.now()));
+      await touch(590, 300, at);
+      await page.waitForTimeout(400);
     }
     await page.waitForTimeout(1500);
   }
@@ -106,7 +109,10 @@ test('bigger world: areas, puzzle, fishing, wardrobe, creatures', async ({ page 
   await page.waitForTimeout(600);
   await page.screenshot({ path: `${SHOTS}/hd-ipad-v4-02b-catch.png` });
   await cdp.detach();
-  await page.waitForTimeout(4500);
+  // Dismiss the catch card with a tap (it also fades on its own).
+  if (await page.evaluate(() => (window as any).__game.scene.getScene('ui').cardOpen)) await page.touchscreen.tap(590, 300);
+  await expect.poll(() => page.evaluate(() => (window as any).__game.scene.getScene('ui').cardOpen), { timeout: 30_000 }).toBe(false);
+  await page.waitForTimeout(800);
 
   // 5. Tap creatures: crab on the shore, ducks + cat in the glade, rabbit in the orchard, deer + owl in the wood.
   const reactions0 = (await state(page)).reactions;
@@ -114,9 +120,12 @@ test('bigger world: areas, puzzle, fishing, wardrobe, creatures', async ({ page 
     const p0 = pick(await cozy(page, 'critters()'));
     expect(p0, name).toBeTruthy();
     await teleport(page, p0![0] + off[0], p0![1] + off[1], 1500);
-    const p = pick(await cozy(page, 'critters()'))!;
     const before = (await state(page)).reactions;
-    await tapWorld(page, p[0], p[1]);
+    for (let tries = 0; tries < 4 && (await state(page)).reactions === before; tries++) {
+      const p = pick(await cozy(page, 'critters()'));
+      if (p) await tapWorld(page, p[0], p[1]);
+      await page.waitForTimeout(1500);
+    }
     await expect.poll(async () => (await state(page)).reactions, { timeout: 20_000, intervals: [200], message: name }).toBeGreaterThan(before);
     await page.waitForTimeout(700);
   };

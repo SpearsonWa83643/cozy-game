@@ -472,6 +472,7 @@ export function paintAll2(scene: Phaser.Scene) {
   for (let i = 0; i < 2; i++) canvasTex(scene, `birch${i}`, 110, 230, (c) => paintBirch(c, 110, 230, 200 + i), 2.5);
   canvasTex(scene, 'apple0', 150, 180, (c) => paintTree(c, 150, 180, 'apple', 301), 2.5);
   canvasTex(scene, 'apple1', 150, 180, (c) => paintTree(c, 150, 180, 'pear', 302), 2.5);
+  canvasTex(scene, 'fishicon', 120, 56, (c) => paintFishIcon(c, 120, 56), 2);
   canvasTex(scene, 'windmill', 120, 190, (c) => paintWindmill(c, 120, 190), 2);
   canvasTex(scene, 'blades', 190, 190, (c) => paintBlades(c, 190), 2);
   canvasTex(scene, 'bellpost', 40, 96, (c) => paintBellPost(c, 40, 96));
@@ -508,4 +509,34 @@ export function paintAll2(scene: Phaser.Scene) {
   for (const k of ['ic_key', 'ic_crown', 'ic_shells', 'ic_hood', 'ic_star']) { const f = paintIcon(k); canvasTex(scene, k, 48, 48, (c) => f(c, 48, 48), 2); }
   canvasTex(scene, 'mist', 128, 64, (c) => { c.save(); c.scale(1, 0.5); paintSoft(c, 128, 0.6, 1.4); c.restore(); }, 1);
   void softCircle;
+}
+
+/** A light, tint-friendly fish for catch cards and the journal (multiply tint gives the species colour). */
+export function paintFishIcon(c: Ctx, w: number, h: number) {
+  const cy = h / 2;
+  // Tail.
+  c.fillStyle = '#d9d9d9';
+  c.beginPath(); c.moveTo(w * 0.78, cy); c.quadraticCurveTo(w * 0.9, cy - h * 0.1, w * 0.99, cy - h * 0.4); c.quadraticCurveTo(w * 0.94, cy, w * 0.99, cy + h * 0.4); c.quadraticCurveTo(w * 0.9, cy + h * 0.1, w * 0.78, cy); c.fill();
+  // Fins.
+  c.fillStyle = '#cfcfcf';
+  c.beginPath(); c.moveTo(w * 0.35, cy - h * 0.3); c.quadraticCurveTo(w * 0.48, cy - h * 0.55, w * 0.62, cy - h * 0.28); c.closePath(); c.fill();
+  c.beginPath(); c.moveTo(w * 0.42, cy + h * 0.25); c.quadraticCurveTo(w * 0.5, cy + h * 0.48, w * 0.58, cy + h * 0.24); c.closePath(); c.fill();
+  // Body.
+  const g = c.createLinearGradient(0, cy - h * 0.35, 0, cy + h * 0.35);
+  g.addColorStop(0, '#e6e6e6'); g.addColorStop(0.55, '#ffffff'); g.addColorStop(1, '#f4f4f4');
+  c.fillStyle = g;
+  c.beginPath(); c.ellipse(w * 0.45, cy, w * 0.37, h * 0.32, 0, 0, Math.PI * 2); c.fill();
+  // Soft stripes + scales.
+  c.save(); c.beginPath(); c.ellipse(w * 0.45, cy, w * 0.37, h * 0.32, 0, 0, Math.PI * 2); c.clip();
+  c.fillStyle = 'rgba(0,0,0,0.08)';
+  for (let i = 0; i < 4; i++) { c.beginPath(); c.ellipse(w * (0.34 + i * 0.1), cy - h * 0.05, w * 0.025, h * 0.3, 0.15, 0, Math.PI * 2); c.fill(); }
+  c.fillStyle = 'rgba(255,255,255,0.7)';
+  c.beginPath(); c.ellipse(w * 0.42, cy - h * 0.14, w * 0.22, h * 0.07, -0.05, 0, Math.PI * 2); c.fill();
+  c.restore();
+  // Gill + eye + outline.
+  c.strokeStyle = 'rgba(0,0,0,0.25)'; c.lineWidth = 1.5;
+  c.beginPath(); c.arc(w * 0.27, cy, h * 0.2, -0.9, 0.9); c.stroke();
+  c.beginPath(); c.ellipse(w * 0.45, cy, w * 0.37, h * 0.32, 0, 0, Math.PI * 2); c.stroke();
+  c.fillStyle = '#1f1a17'; c.beginPath(); c.arc(w * 0.18, cy - h * 0.06, h * 0.07, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#fff'; c.beginPath(); c.arc(w * 0.17, cy - h * 0.08, h * 0.025, 0, Math.PI * 2); c.fill();
 }

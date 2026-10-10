@@ -349,7 +349,7 @@ export class MenuScene extends Phaser.Scene {
       const rec = save.fish[sp.id];
       const [bg, z] = this.btn(x, y, tw, th, () => { sfx.blip(); this.hint(rec ? sp.blurb : `Found in the ${sp.where}. ${sp.rarity === 'rare' ? 'Rare!' : ''}`); }, rec ? 0xfff4d6 : 0xe6dccb, rec ? (sp.rarity === 'rare' ? 0xb48cff : 0xf2a93b) : 0xd9b98f, 16);
       this.content.add([bg, z]);
-      const ic = this.add.image(x + tw / 2, y + th * 0.36, ATLAS, 'fish').setTint(rec ? sp.tint : 0x4a3e34).setAlpha(rec ? 1 : 0.35);
+      const ic = this.add.image(x + tw / 2, y + th * 0.36, ATLAS, 'fishicon').setTint(rec ? sp.tint : 0x4a3e34).setAlpha(rec ? 1 : 0.35);
       ic.setScale((tw * (sp.rarity === 'junk' ? 0.4 : 0.55)) / ic.width);
       this.content.add(ic);
       const stars = '\u2605'.repeat(RARITY_STARS[sp.rarity]) || '\u00B7';

@@ -1097,6 +1097,17 @@ export class WorldScene extends Phaser.Scene {
         }
         return -1;
       },
+      /** Epoch ms of the next marker pass through the zone centre, at least `lead` ms ahead. */
+      fishZoneEpoch(lead = 250) {
+        const f = self.fishing;
+        if (!f.reel) return -1;
+        const r = f.reel;
+        const now = performance.now();
+        for (let ms = lead; ms < 5000; ms += 2) {
+          if (Math.abs(f.markerPos(now + ms) - r.zone) < r.width * 0.12) return performance.timeOrigin + now + ms;
+        }
+        return -1;
+      },
       worldToScreen(x: number, y: number) {
         const cam = self.cameras.main;
         return { x: (x - cam.worldView.x) * cam.zoom / DPR, y: (y - cam.worldView.y) * cam.zoom / DPR };

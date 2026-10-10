@@ -349,7 +349,7 @@ export class UIScene extends Phaser.Scene {
     this.reelC = this.add.container(0, 0, [this.reelG, this.reelText]).setVisible(false);
     this.biteText = this.text(0, 0, 'A bite! Tap!', 34, '#fff3d6', 900).setOrigin(0.5).setStroke('#6b4326', 6).setShadow(0, 3, 'rgba(40,25,15,0.6)', 8, true, true).setAlpha(0);
     this.cardG = this.add.graphics();
-    this.cardFish = this.add.image(0, 0, ATLAS, 'fish');
+    this.cardFish = this.add.image(0, 0, ATLAS, 'fishicon');
     this.cardTitle = this.text(0, 0, '', 24, INK, 900).setOrigin(0.5);
     this.cardSub = this.text(0, 0, '', 16, '#8a6a50', 700).setOrigin(0.5).setAlign('center');
     this.cardNew = this.text(0, 0, 'NEW!', 16, '#fffaf0', 900).setOrigin(0.5);

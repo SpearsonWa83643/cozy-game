@@ -145,7 +145,7 @@ export class Fishing {
   reelTap(at?: number) {
     const r = this.reel!;
     const now = performance.now();
-    const pos = this.markerPos(at && at > now - 400 && at <= now ? at : now);
+    const pos = this.markerPos(at && at > now - 1500 && at <= now + 5 ? at : now);
     const ok = Math.abs(pos - r.zone) <= r.width / 2;
     r.flash = 0.35; r.flashOk = ok;
     sfx.reel(ok);
@@ -178,7 +178,7 @@ export class Fishing {
     // The fish leaps out of the water to you.
     sfx.splash(true);
     sfx.caught(sp.rarity === 'rare');
-    const img = this.w.add.image(this.bx, this.by, ATLAS, 'fish').setScale((0.9 + size / 80) / (frameScale.fish ?? S)).setTint(sp.tint).setDepth(9200);
+    const img = this.w.add.image(this.bx, this.by, ATLAS, 'fishicon').setScale((0.2 + size / 300) / (frameScale.fishicon ?? S)).setTint(sp.tint).setDepth(9200);
     const [px, py] = [this.w.feet.x, this.w.feet.y - 50];
     this.bobber.setVisible(false);
     this.w.tweens.addCounter({
