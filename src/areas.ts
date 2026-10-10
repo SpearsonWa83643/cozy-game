@@ -157,7 +157,7 @@ export function buildAreas(w: WorldScene) {
   {
     const rng = mulberry32(601);
     const xr = (y: number) => riverXAt(y) + riverHalfAt(y) + 40;
-    scatter(rng, 2380, 40, WORLD_W - 20, FOREST_EDGE_Y - 30, 230, 74, 26, (x, y) => {
+    scatter(rng, 2380, 40, WORLD_W - 20, FOREST_EDGE_Y - 30, 150, 96, 30, (x, y) => {
       if (x < xr(y)) return;
       tree(x, y, rng() < 0.82 ? `birch${Math.floor(rng() * 2)}` : 'teal' === 'teal' ? 'tree1' : 'pine0', 0.85 + rng() * 0.35, rng, 'birch');
     });

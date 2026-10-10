@@ -77,6 +77,9 @@ export class WorldScene extends Phaser.Scene {
   solids!: Phaser.Physics.Arcade.StaticGroup;
   keys!: Record<string, Phaser.Input.Keyboard.Key>;
   swayers: Swayer[] = [];
+  /** Trees whose canopy fades when you walk behind them. */
+  canopies: Phaser.GameObjects.Image[] = [];
+  canopyTick = 0;
   interactables: Interactable[] = [];
   lanterns: Lantern[] = [];
   litOrder: LanternId[] = [];
@@ -172,7 +175,7 @@ export class WorldScene extends Phaser.Scene {
   // ------------------------------------------------------------ create
   create() {
     this.reacts = new Reacts(this);
-    this.swayers = []; this.interactables = []; this.lanterns = []; this.litOrder = []; this.tappables = [];
+    this.swayers = []; this.interactables = []; this.lanterns = []; this.litOrder = []; this.tappables = []; this.canopies = [];
     this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
     this.solids = this.physics.add.staticGroup();
     this.ground = new GroundStreamer(this);
@@ -876,6 +879,18 @@ export class WorldScene extends Phaser.Scene {
   }
 
   // ------------------------------------------------------------ update
+  /** Gently fade any canopy the hero is standing behind so you never lose them in the woods. */
+  fadeCanopies() {
+    const px = this.feet.x, py = this.feet.y;
+    for (const t of this.canopies) {
+      if (!t.visible) continue;
+      const dx = Math.abs(px - t.x), dy = t.y - py;
+      const behind = dx < t.displayWidth * 0.42 && dy > 4 && dy < t.displayHeight * 0.92;
+      const target = behind ? 0.5 : 1;
+      if (Math.abs(t.alpha - target) > 0.01) t.setAlpha(t.alpha + (target - t.alpha) * 0.35);
+    }
+  }
+
   update(time: number, delta: number) {
     const dt = Math.min(delta, 50) / 1000;
     const k = this.keys;
@@ -986,6 +1001,7 @@ export class WorldScene extends Phaser.Scene {
     this.reacts.update(time, dt);
     const view = this.cameras.main.worldView;
     this.cull.update(view);
+    if ((this.canopyTick = (this.canopyTick + 1) % 4) === 0) this.fadeCanopies();
     this.ground.update(view, 1);
     for (const e of this.ambient) e.setPosition(view.x, view.y);
     this.areaTimer -= dt;

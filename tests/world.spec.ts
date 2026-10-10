@@ -137,13 +137,17 @@ test('bigger world: areas, puzzle, fishing, wardrobe, creatures', async ({ page 
   await tapCritter('deer', (c) => c.deer[0], [240, 60]);
   expect((await state(page)).reactions).toBeGreaterThanOrEqual(reactions0 + 6);
 
-  // 6. Scenic shots of the new areas.
-  await teleport(page, 3480, 860, 4000);
-  await page.screenshot({ path: `${SHOTS}/hd-ipad-v4-01-mistbirch.png` });
-  await teleport(page, 3600, 2080, 4000);
-  await page.screenshot({ path: `${SHOTS}/hd-ipad-v4-04-orchard.png` });
-  await teleport(page, 1180, 2080, 4000);
-  await page.screenshot({ path: `${SHOTS}/hd-ipad-v4-06-shore.png` });
+  // 6. Scenic shots of the new areas (wait for that area's title card).
+  const scenic = async (x: number, y: number, title: string, file: string) => {
+    await teleport(page, x, y, 500);
+    await expect.poll(() => page.evaluate(() => { const u = (window as any).__game.scene.getScene('ui'); return u.toastText.text; }), { timeout: 60_000 }).toBe(title);
+    await expect.poll(() => page.evaluate(() => (window as any).__game.scene.getScene('ui').toastC.alpha), { timeout: 30_000 }).toBeGreaterThan(0.9);
+    await page.waitForTimeout(2500);
+    await page.screenshot({ path: `${SHOTS}/${file}` });
+  };
+  await scenic(3480, 860, 'Mistbirch Wood', 'hd-ipad-v4-01-mistbirch.png');
+  await scenic(3600, 2080, 'Windmill Orchard', 'hd-ipad-v4-04-orchard.png');
+  await scenic(1180, 2080, 'Shellwater Shore', 'hd-ipad-v4-06-shore.png');
 
   const tiles = (await state(page)).tiles;
   expect(tiles).toBeLessThanOrEqual(24); // streamed ground stays bounded

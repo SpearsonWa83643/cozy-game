@@ -22,6 +22,7 @@ export class Reacts {
   private count() { if (this.w.life) this.w.life.reactions++; }
 
   tree(t: Phaser.GameObjects.Image, kind: 'fruit' | 'blossom' | 'leaf' | 'pear' | 'apple' | 'birch') {
+    this.w.canopies.push(t);
     this.w.tappables.push({
       x: () => t.x, y: () => t.y - t.displayHeight * 0.58, r: Math.max(34, t.displayWidth * 0.32), soft: true,
       tap: () => {
