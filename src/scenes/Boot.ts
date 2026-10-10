@@ -1,0 +1,19 @@
+import Phaser from 'phaser';
+import { paintAll } from '../art';
+
+export class BootScene extends Phaser.Scene {
+  constructor() { super('boot'); }
+
+  create() {
+    const t0 = performance.now();
+    paintAll(this);
+    console.info(`[cozy] painted textures in ${(performance.now() - t0).toFixed(0)}ms`);
+    const loading = document.getElementById('loading');
+    if (loading) {
+      loading.style.opacity = '0';
+      setTimeout(() => loading.remove(), 700);
+    }
+    this.scene.start('world');
+    this.scene.launch('ui');
+  }
+}

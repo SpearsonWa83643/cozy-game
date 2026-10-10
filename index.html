@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Willowmere Glade</title>
+    <style>
+      @font-face {
+        font-family: 'Nunito';
+        src: url('./fonts/Nunito.ttf') format('truetype');
+        font-weight: 200 1000;
+        font-display: block;
+      }
+      html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #2b3a2f; }
+      #game { position: fixed; inset: 0; }
+      #game canvas { display: block; }
+      #loading {
+        position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+        font-family: 'Nunito', sans-serif; color: #f6e9c8; font-size: 22px; letter-spacing: 0.08em;
+        background: radial-gradient(circle at 50% 45%, #4f6b47, #22301f);
+        transition: opacity 0.6s ease;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="game"></div>
+    <div id="loading">painting the glade…</div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
