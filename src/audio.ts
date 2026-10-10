@@ -113,6 +113,18 @@ class Synth {
     { bass: 36, pad: [48, 53, 55, 58, 62], mel: [72, 74, 77, 79] },                  // C9sus
   ];
   private static CHORD_LEN = 8.5;
+  /** Per-area mood: transposition (semitones), melody density and pad brightness. */
+  private static MOODS: Record<string, { tr: number; dens: number; cut: number }> = {
+    glade: { tr: 0, dens: 0.3, cut: 950 }, river: { tr: 0, dens: 0.36, cut: 1200 },
+    forest: { tr: -3, dens: 0.2, cut: 700 }, orchard: { tr: 2, dens: 0.42, cut: 1350 }, lake: { tr: -1, dens: 0.26, cut: 850 },
+  };
+  private mood = Synth.MOODS.glade;
+  area = 'glade';
+  setArea(a: string) {
+    this.area = a;
+    this.mood = Synth.MOODS[a] ?? Synth.MOODS.glade;
+    if (this.ctx && this.padFilter) this.padFilter.frequency.linearRampToValueAtTime(this.mood.cut, this.ctx.currentTime + 4);
+  }
 
   startMusic() {
     if (!this.ctx || this.musicTimer !== null) return;
@@ -132,7 +144,9 @@ class Synth {
 
   private scheduleChord(t: number) {
     const ctx = this.ctx!;
-    const chord = Synth.CHORDS[this.chordIdx % Synth.CHORDS.length];
+    const base = Synth.CHORDS[this.chordIdx % Synth.CHORDS.length];
+    const tr = this.mood.tr;
+    const chord = { bass: base.bass + tr, pad: base.pad.map((n) => n + tr), mel: base.mel.map((n) => n + tr) };
     this.chordIdx++;
     const L = Synth.CHORD_LEN;
     // Pad: two slightly detuned voices per note, long swells overlapping the next chord.
@@ -166,7 +180,7 @@ class Synth {
     // Sparse kalimba melody on a 0.71 s grid, mostly stepwise.
     const beat = L / 12;
     for (let i = 1; i < 12; i++) {
-      if (Math.random() > 0.3) continue;
+      if (Math.random() > this.mood.dens) continue;
       const pool = chord.mel;
       const near = pool.filter((p) => Math.abs(p - this.lastMelody) <= 5);
       const src = near.length && Math.random() < 0.8 ? near : pool;
@@ -305,6 +319,53 @@ class Synth {
     o.connect(f); f.connect(g); g.connect(this.out);
     o.start(t); o.stop(t + 0.18);
   }
+
+  private noiseBurst(dur: number, freq: number, q: number, vol: number, type: BiquadFilterType = 'bandpass', when = 0, sweep = 0) {
+    const ctx = this.ctx!;
+    const t = ctx.currentTime + when;
+    const src = this.noise(dur);
+    const f = ctx.createBiquadFilter();
+    f.type = type; f.frequency.setValueAtTime(freq, t); f.Q.value = q;
+    if (sweep) f.frequency.exponentialRampToValueAtTime(Math.max(60, freq * sweep), t + dur);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + Math.min(0.03, dur * 0.2));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(f); f.connect(g); g.connect(this.out);
+    src.start(t); src.stop(t + dur + 0.02);
+  }
+  rustle() { if (!this.ready) return; this.noiseBurst(0.35, 2600, 0.8, 0.05); this.noiseBurst(0.25, 4200, 1.2, 0.025, 'bandpass', 0.12); }
+  tock() { if (!this.ready) return; this.voice(320, 0, 0.06, 0.12, 'triangle'); this.noiseBurst(0.06, 900, 2, 0.04); }
+  pickup() { if (!this.ready) return; this.bell(1318.5, 0, 0.07, 0.6); this.bell(1760, 0.07, 0.06, 0.8); }
+  chimes() { if (!this.ready) return; [1568, 1975.5, 2349.3, 1760, 2637].forEach((f, i) => this.bell(f, i * 0.09 + Math.random() * 0.04, 0.06, 2.4)); }
+  creak() {
+    if (!this.ready) return;
+    const ctx = this.ctx!, t = ctx.currentTime;
+    const o = ctx.createOscillator(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(110, t); o.frequency.linearRampToValueAtTime(150, t + 0.5); o.frequency.linearRampToValueAtTime(95, t + 0.9);
+    const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 700; f.Q.value = 6;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.03, t + 0.1); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.95);
+    o.connect(f); f.connect(g); g.connect(this.out); o.start(t); o.stop(t + 1);
+    this.noiseBurst(1.2, 500, 0.6, 0.04, 'lowpass');
+  }
+  unlockGate() { if (!this.ready) return; this.tock(); this.voice(220, 0.12, 0.08, 0.2, 'triangle'); this.solve(); }
+  hoot() { if (!this.ready) return; for (const [w, d] of [[0, 0.35], [0.5, 0.25], [0.8, 0.6]]) { this.voice(392, w, 0.07, d, 'sine', 0.06); this.voice(370, w + 0.02, 0.03, d, 'triangle', 0.06); } }
+  thump() { if (!this.ready) return; this.voice(90, 0, 0.12, 0.12, 'sine'); this.voice(70, 0.11, 0.1, 0.1, 'sine'); }
+  splash(big = false) { if (!this.ready) return; this.noiseBurst(big ? 0.6 : 0.35, 1400, 0.7, big ? 0.09 : 0.05, 'bandpass', 0, 0.4); this.plip(); }
+  bite() { if (!this.ready) return; this.plip(); this.noiseBurst(0.2, 1800, 1, 0.05, 'bandpass', 0.05, 0.5); this.voice(880, 0.02, 0.05, 0.25, 'triangle'); }
+  reel(ok: boolean) { if (!this.ready) return; if (ok) { this.voice(1046.5, 0, 0.08, 0.25, 'triangle'); this.voice(1568, 0.06, 0.05, 0.3, 'triangle'); } else { this.voice(220, 0, 0.06, 0.25, 'triangle'); this.voice(207.6, 0.08, 0.05, 0.3, 'triangle'); } }
+  cast() { if (!this.ready) return; this.noiseBurst(0.3, 3000, 2, 0.03, 'bandpass', 0, 0.3); }
+  caught(rare = false) { if (!this.ready) return; const arp = rare ? [784, 988, 1175, 1568, 1976] : [784, 988, 1175, 1568]; arp.forEach((f, i) => this.bell(f, i * 0.09, 0.12, 2)); }
+  dig() { if (!this.ready) return; this.noiseBurst(0.25, 700, 0.8, 0.08, 'lowpass'); this.noiseBurst(0.2, 1500, 1, 0.04, 'bandpass', 0.18); }
+  /** Bell-puzzle pitches (also sung by the songbird an octave higher). */
+  bellNote(i: number, bird = false) {
+    if (!this.ready) return;
+    const notes = [659.25, 783.99, 880, 1046.5];
+    const f = notes[i % 4] * (bird ? 2 : 1);
+    if (bird) { this.voice(f, 0, 0.06, 0.18, 'sine', 0.02); this.voice(f * 1.12, 0.07, 0.04, 0.12, 'sine', 0.01); }
+    else this.bell(f, 0, 0.16, 2.6);
+  }
+  softFail() { if (!this.ready) return; this.voice(330, 0, 0.06, 0.4, 'triangle'); this.voice(311, 0.12, 0.05, 0.5, 'triangle'); }
 
   private get ready() {
     return !!this.ctx && !this.muted && this.level !== 'off' && this.ctx.state === 'running';

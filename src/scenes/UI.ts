@@ -5,6 +5,8 @@ import { LANTERN_ORDER, LanternId } from '../layout';
 import { sfx, VolumeLevel } from '../audio';
 import { IS_TOUCH, safeInsets } from '../device';
 import type { WorldScene } from './World';
+import type { Species } from '../catalog';
+import { RARITY_STARS } from '../catalog';
 
 const FONT = 'Nunito, "Trebuchet MS", sans-serif';
 const INK = '#4a3426';
@@ -127,6 +129,8 @@ export class UIScene extends Phaser.Scene {
 
     this.buildTouchControls();
     this.buildVolumeButton();
+    this.buildMenuButtons();
+    this.buildFishUI();
     this.applyTouchMode();
 
     this.fpsText = this.text(0, 0, 'FPS --', 12, '#fff8ea', 700).setOrigin(1, 0).setAlpha(0.8)
@@ -134,7 +138,10 @@ export class UIScene extends Phaser.Scene {
     let fpsPref: string | null = null;
     try { fpsPref = localStorage.getItem('cozy.fps'); } catch { /* storage unavailable */ }
     this.fpsText.setVisible(fpsPref !== '0');
-    this.input.keyboard!.on('keydown-M', () => this.cycleVolume());
+    this.input.keyboard!.on('keydown-V', () => this.cycleVolume());
+    this.input.keyboard!.on('keydown-M', () => this.game.events.emit('menu', 'map'));
+    this.input.keyboard!.on('keydown-B', () => this.game.events.emit('menu', 'wardrobe'));
+    this.input.keyboard!.on('keydown-I', () => this.game.events.emit('menu', 'treasures'));
     this.input.keyboard!.on('keydown', () => { if (this.touchMode) { this.touchMode = false; this.applyTouchMode(); } });
     this.input.keyboard!.on('keydown-F', () => {
       this.fpsText.setVisible(!this.fpsText.visible);
@@ -182,6 +189,11 @@ export class UIScene extends Phaser.Scene {
     this.fpsText.setPosition(this.w - 14 - si.right, 8 + si.top);
     this.volC.setPosition(this.w - 44 - si.right, 58 + si.top);
     this.volZone.setPosition(this.volC.x, this.volC.y);
+    this.mapC.setPosition(this.w - 108 - si.right, 58 + si.top);
+    this.mapZone.setPosition(this.mapC.x, this.mapC.y);
+    this.bagC.setPosition(this.w - 172 - si.right, 58 + si.top);
+    this.bagZone.setPosition(this.bagC.x, this.bagC.y);
+    this.layoutFishUI();
     const abx = this.w - 74 - si.right;
     const aby = this.h - 78 - si.bottom;
     this.actionC.setPosition(abx, aby);
@@ -282,7 +294,144 @@ export class UIScene extends Phaser.Scene {
     });
   }
 
-  // -------------------------------------------------------------- update
+  // -------------------------------------------------------------- satchel + map buttons
+  mapC!: Phaser.GameObjects.Container; mapZone!: Phaser.GameObjects.Zone;
+  bagC!: Phaser.GameObjects.Container; bagZone!: Phaser.GameObjects.Zone;
+  badge!: Phaser.GameObjects.Graphics;
+  roundButton(draw: (g: Phaser.GameObjects.Graphics) => void, onTap: () => void) {
+    const bg = this.add.graphics();
+    bg.fillStyle(0x2c2420, 0.3); bg.fillCircle(0, 2, 25);
+    bg.fillStyle(0xf3e6cc, 0.92); bg.fillCircle(0, 0, 24);
+    bg.lineStyle(2.5, 0xb59b7c, 1); bg.strokeCircle(0, 0, 24);
+    const icon = this.add.graphics();
+    draw(icon);
+    const c = this.add.container(0, 0, [bg, icon]);
+    const z = this.add.zone(0, 0, 64, 64).setInteractive(new Phaser.Geom.Circle(32, 32, 32), Phaser.Geom.Circle.Contains);
+    z.on('pointerdown', () => { if (this.registry.get('menuOpen')) return; sfx.unlock(); this.tweens.add({ targets: c, scale: { from: 0.85, to: 1 }, duration: 220, ease: 'Back.easeOut' }); onTap(); });
+    return [c, z] as const;
+  }
+  buildMenuButtons() {
+    [this.mapC, this.mapZone] = this.roundButton((g) => {
+      g.fillStyle(0xe9d3a6, 1); g.lineStyle(2, 0x6b4a33, 1);
+      g.beginPath(); g.moveTo(-12, -8); g.lineTo(-4, -11); g.lineTo(4, -8); g.lineTo(12, -11); g.lineTo(12, 9); g.lineTo(4, 12); g.lineTo(-4, 9); g.lineTo(-12, 12); g.closePath(); g.fillPath(); g.strokePath();
+      g.lineBetween(-4, -11, -4, 9); g.lineBetween(4, -8, 4, 12);
+      g.fillStyle(0xe85d3a, 1); g.fillCircle(7, -1, 2.6);
+    }, () => this.game.events.emit('menu', 'map'));
+    [this.bagC, this.bagZone] = this.roundButton((g) => {
+      g.fillStyle(0xa8743f, 1); g.fillRoundedRect(-11, -6, 22, 17, 5);
+      g.lineStyle(2.4, 0x6b4a33, 1); g.strokeRoundedRect(-11, -6, 22, 17, 5);
+      g.beginPath(); g.arc(0, -6, 6, Math.PI, 0); g.strokePath();
+      g.fillStyle(0xc98f52, 1); g.fillRoundedRect(-11, -6, 22, 7, 4);
+      g.fillStyle(0xf2c14e, 1); g.fillCircle(0, 1, 2.4);
+    }, () => this.game.events.emit('menu', 'wardrobe'));
+    this.badge = this.add.graphics().setVisible(false);
+    this.badge.fillStyle(0xe85d3a, 1); this.badge.fillCircle(17, -17, 7); this.badge.lineStyle(2, 0xfffaf0, 1); this.badge.strokeCircle(17, -17, 7);
+    this.bagC.add(this.badge);
+    const ev = this.game.events;
+    const ping = () => { this.badge.setVisible(true); this.tweens.add({ targets: this.bagC, scale: { from: 1.25, to: 1 }, duration: 500, ease: 'Back.easeOut' }); };
+    ev.on('treasure', ping);
+    ev.on('fish-caught', (d: { isNew: boolean; unlocked: string[] }) => { if (d.isNew || d.unlocked.length) ping(); });
+    ev.on('minor', () => { /* counts only */ });
+    ev.on('menu-opened', () => this.badge.setVisible(false));
+  }
+
+  // -------------------------------------------------------------- fishing UI
+  reelC!: Phaser.GameObjects.Container; reelG!: Phaser.GameObjects.Graphics; reelText!: Phaser.GameObjects.Text;
+  biteText!: Phaser.GameObjects.Text;
+  cardC!: Phaser.GameObjects.Container; cardG!: Phaser.GameObjects.Graphics; cardFish!: Phaser.GameObjects.Image;
+  cardTitle!: Phaser.GameObjects.Text; cardSub!: Phaser.GameObjects.Text; cardNew!: Phaser.GameObjects.Text;
+  cardOpen = false;
+  cardTimer: Phaser.Time.TimerEvent | null = null;
+  reelBox = { x: 0, y: 0, w: 0, h: 0 };
+  buildFishUI() {
+    this.reelG = this.add.graphics();
+    this.reelText = this.text(0, 0, '', 18, '#fff8ea', 800).setOrigin(0.5, 1).setShadow(0, 2, 'rgba(40,25,15,0.7)', 5);
+    this.reelC = this.add.container(0, 0, [this.reelG, this.reelText]).setVisible(false);
+    this.biteText = this.text(0, 0, 'A bite! Tap!', 34, '#fff3d6', 900).setOrigin(0.5).setStroke('#6b4326', 6).setShadow(0, 3, 'rgba(40,25,15,0.6)', 8, true, true).setAlpha(0);
+    this.cardG = this.add.graphics();
+    this.cardFish = this.add.image(0, 0, ATLAS, 'fish');
+    this.cardTitle = this.text(0, 0, '', 24, INK, 900).setOrigin(0.5);
+    this.cardSub = this.text(0, 0, '', 16, '#8a6a50', 700).setOrigin(0.5).setAlign('center');
+    this.cardNew = this.text(0, 0, 'NEW!', 16, '#fffaf0', 900).setOrigin(0.5);
+    this.cardC = this.add.container(0, 0, [this.cardG, this.cardFish, this.cardTitle, this.cardSub, this.cardNew]).setVisible(false);
+    const ev = this.game.events;
+    ev.on('fish-state', (st: string) => {
+      this.reelC.setVisible(st === 'reel');
+      if (st === 'bite') {
+        this.tweens.killTweensOf(this.biteText);
+        this.biteText.setAlpha(1).setScale(0.6);
+        this.tweens.add({ targets: this.biteText, scale: 1, duration: 300, ease: 'Back.easeOut' });
+      } else this.tweens.add({ targets: this.biteText, alpha: 0, duration: 150 });
+    });
+    ev.on('fish-caught', (d: { species: Species; size: number; isNew: boolean; unlocked: string[] }) => this.showCard(d));
+  }
+  layoutFishUI() {
+    if (!this.reelG) return;
+    const w = Math.min(460, this.w - 80), h = 56;
+    this.reelBox = { x: (this.w - w) / 2, y: this.h * 0.68, w, h };
+    this.biteText.setPosition(this.w / 2, this.h * 0.32);
+    this.cardC.setPosition(this.w / 2, this.h * 0.42);
+  }
+  updateFishUI(time: number) {
+    if (!this.reelC.visible) return;
+    const f = this.world.fishing;
+    const r = f.reel;
+    if (!r) return;
+    const { x, y, w, h } = this.reelBox;
+    const g = this.reelG;
+    g.clear();
+    g.fillStyle(0x2a1d14, 0.35); g.fillRoundedRect(x - 8, y - 6, w + 16, h + 22, 22);
+    g.fillStyle(0xfbf1dc, 0.97); g.fillRoundedRect(x, y, w, h, 18);
+    // Target zone.
+    const zx = x + 12 + (w - 24) * (r.zone - r.width / 2), zw = (w - 24) * r.width;
+    g.fillStyle(0x9be07a, 0.9); g.fillRoundedRect(zx, y + 10, zw, h - 20, 10);
+    g.lineStyle(2, 0x5ea845, 1); g.strokeRoundedRect(zx, y + 10, zw, h - 20, 10);
+    // Marker.
+    const mx = x + 12 + (w - 24) * f.markerPos();
+    g.fillStyle(r.flash > 0 ? (r.flashOk ? 0x5ea845 : 0xc0563a) : 0x3d2c20, 1);
+    g.fillRoundedRect(mx - 4, y + 4, 8, h - 8, 4);
+    g.fillTriangle(mx - 9, y - 2, mx + 9, y - 2, mx, y + 8);
+    // Progress pips.
+    for (let i = 0; i < r.need; i++) {
+      g.fillStyle(i < r.hits ? 0xf2a93b : 0xd9c7a8, 1);
+      g.fillCircle(x + w / 2 + (i - (r.need - 1) / 2) * 24, y + h + 8, 7);
+    }
+    for (let i = 0; i < 3; i++) {
+      g.fillStyle(i < r.misses ? 0xc0563a : 0xe6dccb, 1);
+      g.fillCircle(x + w - 14 - i * 16, y - 16, 5);
+    }
+    this.reelText.setPosition(x + w / 2, y - 10).setText(r.flash > 0 ? (r.flashOk ? 'Nice!' : 'Oops!') : 'Tap when the line is in the green!');
+    void time;
+  }
+  showCard(d: { species: Species; size: number; isNew: boolean; unlocked: string[] }) {
+    const g = this.cardG;
+    const w = 380, h = d.unlocked.length ? 250 : 220;
+    g.clear();
+    g.fillStyle(0x2a1d14, 0.3); g.fillRoundedRect(-w / 2 + 3, -h / 2 + 8, w, h, 24);
+    g.fillStyle(0xfbf1dc, 0.98); g.fillRoundedRect(-w / 2, -h / 2, w, h, 24);
+    g.lineStyle(3, d.species.rarity === 'rare' ? 0xb48cff : 0xf2a93b, 1); g.strokeRoundedRect(-w / 2 + 7, -h / 2 + 7, w - 14, h - 14, 18);
+    if (d.isNew) { g.fillStyle(0xe85d3a, 1); g.fillRoundedRect(w / 2 - 82, -h / 2 + 16, 64, 28, 14); }
+    this.cardNew.setPosition(w / 2 - 50, -h / 2 + 30).setVisible(d.isNew);
+    this.cardFish.setTint(d.species.tint).setPosition(0, -h / 2 + 64);
+    this.cardFish.setScale(Math.min(150, 70 + d.size) / this.cardFish.width);
+    const stars = '\u2605'.repeat(RARITY_STARS[d.species.rarity]);
+    this.cardTitle.setText(d.species.name).setPosition(0, -h / 2 + 118);
+    const lines = [`${d.size} cm   ${stars}`, d.species.blurb];
+    if (d.unlocked.length) lines.push(`Unlocked: ${d.unlocked.join(', ')}!`);
+    this.cardSub.setText(lines.join('\n')).setPosition(0, -h / 2 + 168).setWordWrapWidth(w - 50);
+    this.cardC.setVisible(true).setAlpha(0).setScale(0.7);
+    this.tweens.add({ targets: this.cardC, alpha: 1, scale: 1, duration: 320, ease: 'Back.easeOut' });
+    this.cardOpen = true;
+    this.cardTimer?.remove();
+    this.cardTimer = this.time.delayedCall(4200, () => this.closeCard());
+  }
+  closeCard() {
+    if (!this.cardOpen) return;
+    this.cardOpen = false;
+    this.cardTimer?.remove();
+    this.tweens.add({ targets: this.cardC, alpha: 0, scale: 0.9, duration: 180, onComplete: () => this.cardC.setVisible(false) });
+  }
+
   // -------------------------------------------------------------- touch controls
   get world() { return this.scene.get('world') as WorldScene; }
 
@@ -320,8 +469,12 @@ export class UIScene extends Phaser.Scene {
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (p.wasTouch && !this.touchMode) { this.touchMode = true; this.applyTouchMode(); }
-      if (over.some((o) => o === this.volZone || (o === this.actionZone && this.actionShown))) return;
+      if (this.registry.get('menuOpen')) return;
+      if (over.some((o) => o === this.volZone || o === this.mapZone || o === this.bagZone || (o === this.actionZone && this.actionShown))) return;
+      if (this.cardOpen) { this.closeCard(); return; }
       if (this.registry.get('dialogOpen')) { this.world.tryInteract(); return; }
+      const fs = this.world.fishing?.state;
+      if (fs === 'bite' || fs === 'reel') { this.world.fishing.tap(); return; }
       if (this.stickPointer) return;
       this.stickPointer = p;
       this.stickStart = { x: p.x / DPR, y: p.y / DPR };
@@ -411,8 +564,8 @@ export class UIScene extends Phaser.Scene {
   applyTouchMode() {
     this.registry.set('touchMode', this.touchMode);
     this.controls.setText(this.touchMode
-      ? 'Drag anywhere to walk   \u00B7   Tap a spot to go there   \u00B7   Tap things to use them'
-      : 'WASD / Arrows to wander   \u00B7   E / Space to interact   \u00B7   M: sound   \u00B7   F: FPS');
+      ? 'Drag anywhere to walk   \u00B7   Tap a spot to go there   \u00B7   Tap animals, things & water'
+      : 'WASD / Arrows   \u00B7   E / Space: interact & fish   \u00B7   B: bag   \u00B7   M: map   \u00B7   V: sound   \u00B7   F: FPS');
     this.dialogHint.setText(this.touchMode ? 'tap \u25B8' : 'E \u25B8');
     this.promptLabelText = '';
     if (this.w) this.layout();
@@ -421,10 +574,12 @@ export class UIScene extends Phaser.Scene {
   updateTouchUI(time: number) {
     const world = this.world;
     const dialog = !!this.registry.get('dialogOpen');
+    const fs = world?.fishing?.state ?? 'idle';
+    const fishLabel = fs === 'bite' ? 'Hook!' : fs === 'reel' ? 'Reel!' : fs === 'wait' ? 'Reel in' : '';
     const label = dialog
       ? (this.typing ? '\u2026' : this.page < this.pages.length - 1 ? 'Next' : 'Close')
-      : world?.prompt?.label ?? '';
-    const show = this.touchMode && !!label && !world?.locked;
+      : fishLabel || (world?.prompt?.label ?? '');
+    const show = this.touchMode && !!label && !world?.locked && !this.registry.get('menuOpen');
     if (show && this.actionLabel.text !== label) this.actionLabel.setText(label);
     if (show !== this.actionShown) {
       this.actionShown = show;
@@ -474,6 +629,7 @@ export class UIScene extends Phaser.Scene {
 
   update(time: number, delta: number) {
     this.updateFps(time);
+    this.updateFishUI(time);
     this.updateTouchUI(time);
     this.updateDayTint(time);
     // Typewriter.

@@ -1,8 +1,7 @@
 import Phaser from 'phaser';
 import { IS_TOUCH } from './device';
 import {
-  WORLD_W, WORLD_H, POND, PATH_MAIN, PATH_NORTH, PATH_EAST, PATH_SOUTH, SHRINE, GARDEN, COTTAGE,
-} from './layout';
+  WORLD_W, WORLD_H, POND, PATH_MAIN, PATH_NORTH, PATH_EAST, PATH_SOUTH, SHRINE, GARDEN, COTTAGE, PATH_RIVER_W, PATH_RIVERSIDE, PATH_FOREST, PATH_ORCHARD, PATH_ORCHARD_S, PATH_LAKE } from './layout';
 
 /** Supersampling for object textures (texture px per world unit). */
 export const S = 3;
@@ -10,7 +9,7 @@ export const S = 3;
 /** Ground supersampling: a bit lower on touch devices (iPad) to save memory; it is soft anyway. */
 export const GS = IS_TOUCH ? 1.5 : 2;
 
-type Ctx = CanvasRenderingContext2D;
+export type Ctx = CanvasRenderingContext2D;
 export type Rng = () => number;
 
 export function mulberry32(seed: number): Rng {
@@ -28,7 +27,7 @@ export const hsl = (h: number, s: number, l: number, a = 1) =>
   `hsla(${h.toFixed(1)},${s.toFixed(1)}%,${l.toFixed(1)}%,${a.toFixed(3)})`;
 
 const pot = (n: number) => 2 ** Math.ceil(Math.log2(Math.max(2, n)));
-const rr = (rng: Rng, a: number, b: number) => a + (b - a) * rng();
+export const rr = (rng: Rng, a: number, b: number) => a + (b - a) * rng();
 
 /** Key of the single texture atlas every prop/sprite/FX frame is packed into. */
 export const ATLAS = 'atlas';
@@ -116,7 +115,7 @@ export function buildAtlas(scene: Phaser.Scene) {
 }
 
 /** Organic, slightly wobbly closed blob path. */
-function blobPath(ctx: Ctx | Path2D, cx: number, cy: number, rx: number, ry: number, rng: Rng, wobble = 0.12, n = 14) {
+export function blobPath(ctx: Ctx | Path2D, cx: number, cy: number, rx: number, ry: number, rng: Rng, wobble = 0.12, n = 14) {
   const pts: [number, number][] = [];
   const phase = rng() * Math.PI * 2;
   for (let i = 0; i < n; i++) {
@@ -139,13 +138,13 @@ function blobPath(ctx: Ctx | Path2D, cx: number, cy: number, rx: number, ry: num
   ctx.closePath();
 }
 
-function blob(ctx: Ctx, cx: number, cy: number, rx: number, ry: number, fill: string | CanvasGradient, rng: Rng, wobble = 0.12) {
+export function blob(ctx: Ctx, cx: number, cy: number, rx: number, ry: number, fill: string | CanvasGradient, rng: Rng, wobble = 0.12) {
   blobPath(ctx, cx, cy, rx, ry, rng, wobble);
   ctx.fillStyle = fill;
   ctx.fill();
 }
 
-function softCircle(ctx: Ctx, x: number, y: number, r: number, color: [number, number, number], a: number) {
+export function softCircle(ctx: Ctx, x: number, y: number, r: number, color: [number, number, number], a: number) {
   const g = ctx.createRadialGradient(x, y, 0, x, y, r);
   const [h, s, l] = color;
   g.addColorStop(0, hsl(h, s, l, a));
@@ -154,7 +153,7 @@ function softCircle(ctx: Ctx, x: number, y: number, r: number, color: [number, n
   ctx.fillRect(x - r, y - r, r * 2, r * 2);
 }
 
-function dab(ctx: Ctx, x: number, y: number, rx: number, ry: number, rot: number, fill: string) {
+export function dab(ctx: Ctx, x: number, y: number, rx: number, ry: number, rot: number, fill: string) {
   ctx.beginPath();
   ctx.ellipse(x, y, Math.max(0.1, rx), Math.max(0.1, ry), rot, 0, Math.PI * 2);
   ctx.fillStyle = fill;
@@ -185,12 +184,35 @@ export function sampleSpline(pts: [number, number][], step = 6): [number, number
 }
 
 export function distToPaths(x: number, y: number, paths: [number, number][][]) {
+  if (paths === ALL_PATHS) return pathDist(x, y);
   let best = Infinity;
   for (const p of paths) for (const [px, py] of p) best = Math.min(best, Math.hypot(px - x, py - y));
   return best;
 }
 
-export const ALL_PATHS = [PATH_MAIN, PATH_NORTH, PATH_EAST, PATH_SOUTH].map((p) => sampleSpline(p, 10));
+export const ALL_PATHS = [PATH_MAIN, PATH_NORTH, PATH_EAST, PATH_SOUTH, PATH_RIVER_W, PATH_RIVERSIDE, PATH_FOREST, PATH_ORCHARD, PATH_ORCHARD_S, PATH_LAKE].map((p) => sampleSpline(p, 10));
+
+// Spatial buckets so path-distance queries stay cheap on the big map.
+const PB = 64;
+const pathBuckets = new Map<number, [number, number][]>();
+for (const p of ALL_PATHS) for (const pt of p) {
+  const bx0 = Math.floor((pt[0] - 120) / PB), bx1 = Math.floor((pt[0] + 120) / PB);
+  const by0 = Math.floor((pt[1] - 120) / PB), by1 = Math.floor((pt[1] + 120) / PB);
+  for (let by = by0; by <= by1; by++) for (let bx = bx0; bx <= bx1; bx++) {
+    const k = by * 1000 + bx;
+    let a = pathBuckets.get(k);
+    if (!a) pathBuckets.set(k, (a = []));
+    a.push(pt);
+  }
+}
+/** Distance to the nearest path centre line (capped at ~120). */
+export function pathDist(x: number, y: number) {
+  const a = pathBuckets.get(Math.floor(y / PB) * 1000 + Math.floor(x / PB));
+  if (!a) return 999;
+  let best = 1e9;
+  for (const [px, py] of a) { const d = (px - x) ** 2 + (py - y) ** 2; if (d < best) best = d; }
+  return Math.sqrt(best);
+}
 
 export function pondValue(x: number, y: number, pad = 0) {
   const dx = (x - POND.x) / (POND.rx + pad);
@@ -212,273 +234,19 @@ export function pondHit(x: number, y: number) {
 
 // ---------------------------------------------------------------- ground
 
-export function paintGround(scene: Phaser.Scene) {
-  const rng = mulberry32(1234);
-  canvasTex(scene, 'ground', WORLD_W, WORLD_H, (ctx) => {
-    // Base: warm sunlit top-left to cooler, deeper bottom-right.
-    const base = ctx.createLinearGradient(0, 0, WORLD_W, WORLD_H);
-    base.addColorStop(0, hsl(78, 52, 58));
-    base.addColorStop(0.45, hsl(92, 46, 51));
-    base.addColorStop(1, hsl(118, 38, 40));
-    ctx.fillStyle = base;
-    ctx.fillRect(0, 0, WORLD_W, WORLD_H);
-
-    // Large soft colour patches.
-    for (let i = 0; i < 260; i++) {
-      const x = rng() * WORLD_W;
-      const y = rng() * WORLD_H;
-      const r = rr(rng, 70, 260);
-      const warm = rng() < 0.5;
-      softCircle(ctx, x, y, r, warm ? [rr(rng, 60, 85), 60, rr(rng, 58, 68)] : [rr(rng, 110, 150), 40, rr(rng, 32, 42)], rr(rng, 0.12, 0.3));
-    }
-
-    // Shrine grove: mossier, darker, cooler.
-    softCircle(ctx, SHRINE.x, SHRINE.y + 20, 420, [140, 35, 28], 0.45);
-    // Forest edges darker (ambient occlusion feel).
-    const edge = (x0: number, y0: number, x1: number, y1: number) => {
-      const g = ctx.createLinearGradient(x0, y0, x1, y1);
-      g.addColorStop(0, hsl(150, 40, 16, 0.55));
-      g.addColorStop(1, hsl(150, 40, 16, 0));
-      ctx.fillStyle = g;
-      ctx.fillRect(0, 0, WORLD_W, WORLD_H);
-    };
-    edge(0, 0, 180, 0);
-    edge(WORLD_W, 0, WORLD_W - 180, 0);
-    edge(0, WORLD_H, 0, WORLD_H - 160);
-
-    // Painterly brush dabs.
-    for (let i = 0; i < 16000; i++) {
-      const x = rng() * WORLD_W;
-      const y = rng() * WORLD_H;
-      const t = (x / WORLD_W + y / WORLD_H) / 2;
-      const h = rr(rng, 75, 125) + t * 12;
-      const l = rr(rng, 36, 62) - t * 10;
-      dab(ctx, x, y, rr(rng, 2.5, 8), rr(rng, 1.2, 3), rr(rng, -0.6, 0.6), hsl(h, rr(rng, 35, 60), l, rr(rng, 0.18, 0.45)));
-    }
-    // Grass blade strokes.
-    ctx.lineWidth = 1.1;
-    for (let i = 0; i < 22000; i++) {
-      const x = rng() * WORLD_W;
-      const y = rng() * WORLD_H;
-      const len = rr(rng, 3, 8);
-      const lean = rr(rng, -2.5, 2.5);
-      const light = rng() < 0.45;
-      ctx.strokeStyle = light ? hsl(rr(rng, 70, 95), 60, rr(rng, 62, 74), 0.5) : hsl(rr(rng, 110, 140), 45, rr(rng, 24, 34), 0.45);
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      ctx.quadraticCurveTo(x + lean * 0.3, y - len * 0.6, x + lean, y - len);
-      ctx.stroke();
-    }
-
-    // Garden patch (tilled soil rows) next to the cottage.
-    {
-      const { x, y, w, h } = GARDEN;
-      ctx.save();
-      blobPath(ctx, x + w / 2, y + h / 2, w / 2 + 6, h / 2 + 6, rng, 0.05);
-      ctx.fillStyle = hsl(25, 40, 30, 0.9);
-      ctx.fill();
-      for (let r = 0; r < 4; r++) {
-        const ry = y + 18 + r * (h - 30) / 3;
-        ctx.strokeStyle = hsl(28, 45, 40);
-        ctx.lineWidth = 13;
-        ctx.beginPath();
-        ctx.moveTo(x + 10, ry);
-        ctx.lineTo(x + w - 10, ry + rr(rng, -2, 2));
-        ctx.stroke();
-        ctx.strokeStyle = hsl(30, 40, 48, 0.6);
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.moveTo(x + 12, ry - 3);
-        ctx.lineTo(x + w - 12, ry - 3);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-
-    // Dirt paths.
-    const strokePaths = (width: number, style: string, blur = 0) => {
-      ctx.save();
-      ctx.strokeStyle = style;
-      ctx.lineWidth = width;
-      if (blur) { ctx.shadowColor = style; ctx.shadowBlur = blur; }
-      for (const p of ALL_PATHS) {
-        ctx.beginPath();
-        p.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)));
-        ctx.stroke();
-      }
-      ctx.restore();
-    };
-    strokePaths(78, hsl(90, 30, 34, 0.25), 18);
-    strokePaths(62, hsl(36, 38, 56), 6);
-    strokePaths(50, hsl(40, 46, 68));
-    for (const p of ALL_PATHS) {
-      for (const [px, py] of p) {
-        for (let k = 0; k < 7; k++) {
-          const ox = rr(rng, -24, 24);
-          const oy = rr(rng, -24, 24);
-          dab(ctx, px + ox, py + oy, rr(rng, 2, 7), rr(rng, 1, 3), rng() * 3, rng() < 0.5 ? hsl(38, 50, rr(rng, 72, 80), 0.5) : hsl(30, 35, rr(rng, 50, 58), 0.35));
-        }
-        if (rng() < 0.25) {
-          const ox = rr(rng, -20, 20);
-          const oy = rr(rng, -20, 20);
-          dab(ctx, px + ox, py + oy + 1, 2.6, 1.8, 0, hsl(30, 20, 40, 0.5));
-          dab(ctx, px + ox, py + oy, 2.4, 1.6, 0, hsl(35, 15, rr(rng, 72, 84)));
-        }
-      }
-    }
-    // Grass creeping over path edges (offset along the path normal so it stays on the verge).
-    ctx.lineWidth = 1.3;
-    for (const p of ALL_PATHS) {
-      for (let i = 0; i < p.length; i++) {
-        const a0 = p[Math.max(0, i - 1)];
-        const a1 = p[Math.min(p.length - 1, i + 1)];
-        const tl = Math.hypot(a1[0] - a0[0], a1[1] - a0[1]) || 1;
-        const nx = -(a1[1] - a0[1]) / tl;
-        const ny = (a1[0] - a0[0]) / tl;
-        for (let k = 0; k < 6; k++) {
-          const side = rng() < 0.5 ? -1 : 1;
-          const d = rr(rng, 20, 30) * side;
-          const along = rr(rng, -5, 5);
-          const x = p[i][0] + nx * d + (ny * along);
-          const y = p[i][1] + ny * d - (nx * along);
-          if (distToPaths(x, y, ALL_PATHS) < 19) continue;
-          ctx.strokeStyle = hsl(rr(rng, 80, 110), 50, rr(rng, 38, 60), 0.8);
-          ctx.beginPath();
-          ctx.moveTo(x, y);
-          ctx.lineTo(x + rr(rng, -2, 2), y - rr(rng, 3, 7));
-          ctx.stroke();
-        }
-      }
-    }
-
-    // Stepping stones to the cottage door.
-    for (let i = 0; i < 3; i++) {
-      const x = COTTAGE.x - 8 + i * 6;
-      const y = COTTAGE.y + 22 + i * 22;
-      dab(ctx, x, y + 2, 15, 8, 0, hsl(30, 20, 35, 0.4));
-      dab(ctx, x, y, 14, 7.5, 0, hsl(40, 12, 76));
-      dab(ctx, x - 3, y - 2, 8, 3, 0, hsl(40, 20, 86, 0.6));
-    }
-
-    // Shrine platform: circular flagstones.
-    {
-      const { x, y, r } = SHRINE;
-      dab(ctx, x, y + 6, r + 10, (r + 10) * 0.62, 0, hsl(150, 30, 15, 0.35));
-      dab(ctx, x, y, r, r * 0.6, 0, hsl(200, 10, 62));
-      for (let ring = 0; ring < 3; ring++) {
-        const rad = r * (0.25 + ring * 0.3);
-        const n = 6 + ring * 6;
-        for (let i = 0; i < n; i++) {
-          const a = (i / n) * Math.PI * 2 + ring;
-          dab(ctx, x + Math.cos(a) * rad, y + Math.sin(a) * rad * 0.6, r * 0.13, r * 0.08, a, hsl(rr(rng, 190, 215), 10, rr(rng, 66, 78)));
-        }
-      }
-      for (let i = 0; i < 60; i++) {
-        const a = rng() * Math.PI * 2;
-        const d = rr(rng, 0.6, 1.0) * r;
-        dab(ctx, x + Math.cos(a) * d, y + Math.sin(a) * d * 0.6, rr(rng, 3, 9), rr(rng, 2, 4), rng() * 3, hsl(rr(rng, 85, 110), 45, rr(rng, 35, 48), 0.7));
-      }
-    }
-
-    // Pond.
-    {
-      const { x, y, rx, ry } = POND;
-      const prng = mulberry32(77);
-      ctx.save();
-      ctx.shadowColor = hsl(100, 40, 20, 0.6);
-      ctx.shadowBlur = 20;
-      blob(ctx, x, y + 6, rx + 22, ry + 18, hsl(80, 35, 38), prng, 0.08);
-      ctx.restore();
-      blob(ctx, x, y + 2, rx + 9, ry + 7, hsl(42, 40, 66), mulberry32(77), 0.08);
-      blob(ctx, x, y + 2, rx + 4, ry + 4, hsl(35, 32, 46), mulberry32(77), 0.08);
-      ctx.save();
-      blobPath(ctx, x, y, rx, ry, mulberry32(77), 0.08);
-      ctx.clip();
-      const wg = ctx.createRadialGradient(x + 20, y + 20, 10, x, y, rx);
-      wg.addColorStop(0, hsl(205, 58, 34));
-      wg.addColorStop(0.55, hsl(190, 55, 44));
-      wg.addColorStop(1, hsl(170, 48, 58));
-      ctx.fillStyle = wg;
-      ctx.fillRect(x - rx - 20, y - ry - 20, rx * 2 + 40, ry * 2 + 40);
-      // Sky reflection band.
-      softCircle(ctx, x - rx * 0.35, y - ry * 0.25, rx * 0.6, [45, 80, 85], 0.25);
-      softCircle(ctx, x + rx * 0.3, y + ry * 0.2, rx * 0.5, [190, 70, 75], 0.2);
-      // Bank shadow on the far (top) side.
-      ctx.lineWidth = 26;
-      ctx.strokeStyle = hsl(200, 50, 20, 0.35);
-      ctx.filter = 'blur(6px)';
-      blobPath(ctx, x, y + 12, rx, ry, mulberry32(77), 0.08);
-      ctx.stroke();
-      ctx.filter = 'none';
-      // Painted ripple strokes.
-      for (let i = 0; i < 260; i++) {
-        const px = x + rr(prng, -rx, rx);
-        const py = y + rr(prng, -ry, ry);
-        if (pondValue(px, py) > 0.9) continue;
-        const len = rr(prng, 6, 22);
-        ctx.strokeStyle = prng() < 0.6 ? hsl(185, 60, rr(prng, 62, 80), rr(prng, 0.15, 0.4)) : hsl(210, 55, 28, 0.25);
-        ctx.lineWidth = rr(prng, 1, 2.5);
-        ctx.beginPath();
-        ctx.moveTo(px - len, py);
-        ctx.quadraticCurveTo(px, py - 2, px + len, py);
-        ctx.stroke();
-      }
-      ctx.restore();
-      // Shoreline highlight.
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = hsl(50, 60, 88, 0.55);
-      blobPath(ctx, x, y, rx, ry, mulberry32(77), 0.08);
-      ctx.stroke();
-      // Grass and moss spilling over the bank so the rim isn't a clean ring.
-      for (let i = 0; i < 900; i++) {
-        const a = prng() * Math.PI * 2;
-        const k = 1.02 + prng() * 0.1;
-        const wob = 1 + Math.sin(a * 3 + 1.3) * 0.05 + Math.sin(a * 5 + 0.4) * 0.03;
-        const gx = x + Math.cos(a) * (rx + 4) * k * wob;
-        const gy = y + 3 + Math.sin(a) * (ry + 4) * k * wob;
-        if (prng() < 0.35) {
-          dab(ctx, gx, gy, rr(prng, 2, 6), rr(prng, 1.2, 3), prng() * 3, hsl(rr(prng, 85, 120), 45, rr(prng, 32, 52), 0.85));
-        } else {
-          ctx.strokeStyle = hsl(rr(prng, 80, 115), 50, rr(prng, 36, 62), 0.9);
-          ctx.lineWidth = 1.2;
-          ctx.beginPath();
-          ctx.moveTo(gx, gy);
-          ctx.lineTo(gx + rr(prng, -2, 2), gy - rr(prng, 3, 8));
-          ctx.stroke();
-        }
-      }
-    }
-
-    // Tiny painted flowers in meadow clusters.
-    const flowerHues = [[340, 75, 78], [0, 0, 97], [48, 90, 66], [270, 50, 78], [20, 85, 70]];
-    for (let c = 0; c < 70; c++) {
-      const cx = rng() * WORLD_W;
-      const cy = 380 + rng() * (WORLD_H - 420);
-      if (pondValue(cx, cy, 40) < 1 || distToPaths(cx, cy, ALL_PATHS) < 45) continue;
-      const col = flowerHues[Math.floor(rng() * flowerHues.length)];
-      const n = 10 + Math.floor(rng() * 25);
-      for (let i = 0; i < n; i++) {
-        const x = cx + rr(rng, -45, 45);
-        const y = cy + rr(rng, -30, 30);
-        dab(ctx, x, y + 1.2, 2.2, 1.4, 0, hsl(120, 40, 25, 0.5));
-        dab(ctx, x, y, 1.9, 1.6, 0, hsl(col[0] + rr(rng, -8, 8), col[1], col[2]));
-        dab(ctx, x - 0.4, y - 0.5, 0.8, 0.6, 0, hsl(55, 100, 90, 0.9));
-      }
-    }
-  }, GS, true);
-}
-
 // ---------------------------------------------------------------- props
 
-type TreeKind = 'oak' | 'blossom' | 'amber' | 'teal';
+export type TreeKind = 'oak' | 'blossom' | 'amber' | 'teal' | 'apple' | 'pear';
 const TREE_PALETTES: Record<TreeKind, { h: number; s: number; dark: number; mid: number; light: number; hi: [number, number, number] }> = {
   oak: { h: 100, s: 45, dark: 24, mid: 38, light: 52, hi: [70, 70, 70] },
   teal: { h: 150, s: 38, dark: 20, mid: 32, light: 45, hi: [95, 55, 62] },
   blossom: { h: 340, s: 55, dark: 52, mid: 70, light: 82, hi: [20, 90, 92] },
   amber: { h: 32, s: 75, dark: 38, mid: 52, light: 64, hi: [48, 95, 75] },
+  apple: { h: 92, s: 48, dark: 28, mid: 42, light: 56, hi: [65, 75, 72] },
+  pear: { h: 78, s: 50, dark: 30, mid: 44, light: 58, hi: [58, 80, 74] },
 };
 
-function paintTree(ctx: Ctx, w: number, h: number, kind: TreeKind, seed: number) {
+export function paintTree(ctx: Ctx, w: number, h: number, kind: TreeKind, seed: number) {
   const rng = mulberry32(seed);
   const pal = TREE_PALETTES[kind];
   const cx = w / 2;
@@ -541,6 +309,18 @@ function paintTree(ctx: Ctx, w: number, h: number, kind: TreeKind, seed: number)
     const x = cx + Math.cos(a) * R * rr(rng, 0.7, 0.95);
     const y = canopyY + Math.sin(a) * R * rr(rng, 0.6, 0.8);
     dab(ctx, x, y, rr(rng, 1.5, 3.5), rr(rng, 1, 2), rng() * 3, hsl(pal.hi[0], pal.hi[1], pal.hi[2], 0.8));
+  }
+  if (kind === 'apple' || kind === 'pear') {
+    for (let i = 0; i < 14; i++) {
+      const a = rng() * Math.PI * 2;
+      const d = Math.sqrt(rng()) * R * 0.85;
+      const x = cx + Math.cos(a) * d;
+      const y = canopyY + Math.sin(a) * d * 0.8 + 4;
+      const fh = kind === 'apple' ? 4 : 52;
+      dab(ctx, x, y + 0.8, 3.4, 3.4, 0, hsl(fh, 60, 32, 0.6));
+      dab(ctx, x, y, 3.1, kind === 'pear' ? 3.6 : 3.1, 0, hsl(fh, kind === 'apple' ? 72 : 70, kind === 'apple' ? 52 : 60));
+      dab(ctx, x - 1, y - 1, 1.1, 1.1, 0, hsl(fh, 80, 86));
+    }
   }
   if (kind === 'oak' || kind === 'teal') {
     // A few fruits / blossoms for colour.
@@ -1145,97 +925,7 @@ function paintFence(ctx: Ctx, w: number, h: number) {
 }
 
 // The little traveller: dir 0=front, 1=front¾, 2=side, 3=back¾, 4=back. step 0..2.
-function paintPlayer(ctx: Ctx, w: number, h: number, dir: number, step: number) {
-  const cx = w / 2;
-  const facing = [0, 0.55, 1, 0.55, 0][dir];
-  const back = dir >= 3;
-  const footY = h - 5;
-  // Feet.
-  const fo = step === 0 ? [0, 0] : step === 1 ? [-3, 2] : [2, -3];
-  const footDX = dir === 2 ? 3 : 6;
-  dab(ctx, cx - footDX + facing * 2, footY + fo[0] * 0.5, 4.5, 3, 0, hsl(20, 35, 26));
-  dab(ctx, cx + footDX + facing * 2, footY + fo[1] * 0.5, 4.5, 3, 0, hsl(20, 35, 26));
-  // Backpack (visible from back views / side).
-  if (dir >= 2) {
-    const bx = cx - facing * 9;
-    ctx.fillStyle = hsl(25, 45, 38);
-    ctx.beginPath(); ctx.roundRect(bx - 9, h - 36, 18, 20, 5); ctx.fill();
-    ctx.fillStyle = hsl(28, 50, 50);
-    ctx.beginPath(); ctx.roundRect(bx - 8, h - 35, 16, 7, 3); ctx.fill();
-  }
-  // Body / tunic.
-  const bodyTop = h - 33;
-  const bg = ctx.createLinearGradient(cx - 12, 0, cx + 12, 0);
-  bg.addColorStop(0, hsl(178, 45, 52));
-  bg.addColorStop(1, hsl(190, 50, 36));
-  ctx.fillStyle = bg;
-  ctx.beginPath();
-  ctx.moveTo(cx - 9, bodyTop);
-  ctx.quadraticCurveTo(cx - 15, h - 12, cx - 12, h - 8);
-  ctx.quadraticCurveTo(cx, h - 4, cx + 12, h - 8);
-  ctx.quadraticCurveTo(cx + 15, h - 12, cx + 9, bodyTop);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = hsl(30, 40, 30);
-  ctx.fillRect(cx - 12, h - 17, 24, 3);
-  if (dir < 2) {
-    ctx.fillStyle = hsl(28, 50, 30);
-    ctx.fillRect(cx - 7, bodyTop + 2, 2.5, 14);
-    ctx.fillRect(cx + 4.5, bodyTop + 2, 2.5, 14);
-  }
-  // Arms swinging.
-  const swing = step === 0 ? 0 : step === 1 ? 2.5 : -2.5;
-  dab(ctx, cx - 13, h - 18 + swing, 3.4, 4.6, 0.2, hsl(185, 45, 42));
-  dab(ctx, cx + 13, h - 18 - swing, 3.4, 4.6, -0.2, hsl(190, 50, 34));
-  // Head.
-  const hy = h - 42;
-  const hx = cx + facing * 2;
-  dab(ctx, hx, hy, 12.5, 12, 0, hsl(28, 55, 84));
-  dab(ctx, hx + 3, hy + 3, 8, 7, 0, hsl(22, 45, 76, 0.5));
-  if (!back) {
-    const ex = hx + facing * 5;
-    const eyeGap = 5.5 - facing * 2.5;
-    dab(ctx, ex - eyeGap, hy + 2, 1.6, 2.1, 0, hsl(250, 30, 18));
-    if (facing < 0.95) dab(ctx, ex + eyeGap, hy + 2, 1.6, 2.1, 0, hsl(250, 30, 18));
-    else dab(ctx, ex + eyeGap, hy + 2, 1.2, 2, 0, hsl(250, 30, 18));
-    dab(ctx, ex - eyeGap - 0.5, hy + 1.2, 0.6, 0.6, 0, '#fff');
-    dab(ctx, ex - eyeGap - 3, hy + 5.5, 2.6, 1.6, 0, hsl(350, 80, 75, 0.7));
-    if (facing < 0.95) dab(ctx, ex + eyeGap + 3, hy + 5.5, 2.6, 1.6, 0, hsl(350, 80, 75, 0.7));
-  } else {
-    // Hair tuft at nape.
-    dab(ctx, hx, hy + 6, 9, 4, 0, hsl(25, 45, 34));
-  }
-  // Scarf.
-  ctx.fillStyle = hsl(10, 78, 56);
-  ctx.beginPath(); ctx.roundRect(cx - 11, bodyTop - 3, 22, 7, 3.5); ctx.fill();
-  const tailX = back ? cx + 2 : cx - facing * 10 - 2;
-  ctx.beginPath();
-  ctx.moveTo(tailX - 3, bodyTop + 2);
-  ctx.quadraticCurveTo(tailX - 6 - facing * 4, bodyTop + 10, tailX - 4 - facing * 6, bodyTop + 15);
-  ctx.lineTo(tailX + 2 - facing * 6, bodyTop + 14);
-  ctx.quadraticCurveTo(tailX, bodyTop + 8, tailX + 3, bodyTop + 2);
-  ctx.fill();
-  ctx.fillStyle = hsl(18, 85, 66);
-  ctx.fillRect(cx - 9, bodyTop - 2, 18, 1.6);
-  // Straw hat: brim + crown + band.
-  const hatY = hy - 7;
-  dab(ctx, hx, hatY + 2, 19, 7, 0, hsl(36, 50, 46));
-  dab(ctx, hx, hatY, 18.5, 6.5, 0, hsl(46, 70, 70));
-  dab(ctx, hx - 4, hatY - 1.5, 10, 3, 0, hsl(50, 80, 82, 0.7));
-  ctx.fillStyle = hsl(44, 65, 64);
-  ctx.beginPath();
-  ctx.ellipse(hx, hatY - 4, 9.5, 7.5, 0, Math.PI, 0);
-  ctx.lineTo(hx + 9.5, hatY - 1);
-  ctx.ellipse(hx, hatY - 1, 9.5, 3, 0, 0, Math.PI);
-  ctx.fill();
-  ctx.fillStyle = hsl(8, 70, 52);
-  ctx.fillRect(hx - 9.5, hatY - 3.5, 19, 2.6);
-  dab(ctx, hx - 3, hatY - 8, 3.5, 1.8, -0.3, hsl(52, 85, 86, 0.8));
-  // Tiny flower on the hat band.
-  dab(ctx, hx + 6 - facing * 2, hatY - 2.5, 2, 2, 0, hsl(340, 80, 78));
-}
-
-function paintSoft(ctx: Ctx, size: number, inner = 1, falloff = 1) {
+export function paintSoft(ctx: Ctx, size: number, inner = 1, falloff = 1) {
   const r = size / 2;
   const g = ctx.createRadialGradient(r, r, 0, r, r, r);
   g.addColorStop(0, `rgba(255,255,255,${inner})`);
@@ -1427,8 +1117,9 @@ function paintLeafBig(ctx: Ctx, w: number, h: number) {
   ctx.restore();
 }
 
+import { paintAll2 } from './art2';
+
 export function paintAll(scene: Phaser.Scene) {
-  paintGround(scene);
 
   const trees: [TreeKind, number][] = [['oak', 1], ['oak', 2], ['teal', 3], ['blossom', 4], ['amber', 5], ['teal', 6]];
   trees.forEach(([k, seed], i) => canvasTex(scene, `tree${i}`, 170, 210, (c) => paintTree(c, 170, 210, k, seed)));
@@ -1457,7 +1148,6 @@ export function paintAll(scene: Phaser.Scene) {
   canvasTex(scene, 'feather', 30, 44, (c) => paintFeather(c, 30, 44));
   canvasTex(scene, 'sign', 56, 64, (c) => paintSign(c, 56, 64));
   canvasTex(scene, 'fence', 52, 34, (c) => paintFence(c, 52, 34));
-  for (let d = 0; d < 5; d++) for (let s = 0; s < 3; s++) canvasTex(scene, `player_${d}_${s}`, 48, 64, (c) => paintPlayer(c, 48, 64, d, s));
 
   // FX textures.
   canvasTex(scene, 'soft', 64, 64, (c) => paintSoft(c, 64), 1);
@@ -1527,5 +1217,6 @@ export function paintAll(scene: Phaser.Scene) {
   canvasTex(scene, 'heart', 12, 11, (c) => paintHeart(c, 12, 11));
   canvasTex(scene, 'leafw', 14, 9, (c) => paintLeafBig(c, 14, 9), 3);
   canvasTex(scene, 'white', 4, 4, (c) => { c.fillStyle = '#fff'; c.fillRect(0, 0, 4, 4); }, 2);
+  paintAll2(scene);
   buildAtlas(scene);
 }

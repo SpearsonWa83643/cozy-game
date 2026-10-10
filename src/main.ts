@@ -3,6 +3,7 @@ import './style.css';
 import { BootScene } from './scenes/Boot';
 import { WorldScene } from './scenes/World';
 import { UIScene } from './scenes/UI';
+import { MenuScene } from './scenes/Menu';
 
 import { DPR } from './dpr';
 import { sfx } from './audio';
@@ -65,7 +66,7 @@ async function start() {
     audio: { noAudio: true }, // we use our own WebAudio synth
     banner: false,
     physics: { default: 'arcade', arcade: { debug: false } },
-    scene: [BootScene, WorldScene, UIScene],
+    scene: [BootScene, WorldScene, UIScene, MenuScene],
   });
 
   let lastW = w, lastH = h;

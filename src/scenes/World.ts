@@ -1,7 +1,15 @@
 import Phaser from 'phaser';
-import { S, GS, ATLAS, frameScale, mulberry32, pondValue, pondHit, distToPaths, ALL_PATHS } from '../art';
+import { S, ATLAS, frameScale, mulberry32, pondValue, distToPaths, pathDist, ALL_PATHS } from '../art';
+import { GroundStreamer } from '../ground';
+import { waterBlocks, areaAt, waterAt } from '../geo';
+import { save, setPuzzle, addTreasure, hasTreasure, visit } from '../save';
+import { buildHeroSheet } from '../hero';
+import { buildAreas } from '../areas';
+import { Puzzles } from '../puzzles';
+import { Fishing } from '../fishing';
+import { Reacts } from '../react';
 import {
-  WORLD_W, WORLD_H, PLAYER_START, POND, COTTAGE, GARDEN, WALL_Y, GATE, SHRINE, SHRINE_CLEARING, SIGN,
+  WORLD_W, WORLD_H, GLADE_W, GLADE_H, AREA_NAMES, AreaId, PLAYER_START, POND, COTTAGE, GARDEN, WALL_Y, GATE, SHRINE, SHRINE_CLEARING, SIGN,
   LANTERNS, LANTERN_ORDER, LanternId,
 } from '../layout';
 import { sfx } from '../audio';
@@ -15,11 +23,42 @@ export type Interactable = {
   promptY: number;
   /** Where to stand when walking over to use it (offset from x, y). Default: just below. */
   approach?: [number, number];
+  /** Taps within this distance of the player use it directly without walking. */
+  reach?: number;
+  /** Not selectable by tapping (context prompts that follow the player). */
+  noTap?: boolean;
   enabled: () => boolean;
   action: () => void;
 };
 
-type Swayer = { obj: Phaser.GameObjects.Image; amp: number; speed: number; phase: number; base: number; kick: number; gust: number };
+/** soft: scenery (trees, bushes...) that yields to walking when the tap lands on a path. */
+export type Tappable = { x: () => number; y: () => number; r: number; tap: () => void; enabled?: () => boolean; soft?: boolean };
+
+/** Hides static decoration far from the camera (cheap on iPad with thousands of props). */
+class CullGrid {
+  cells = new Map<number, Phaser.GameObjects.Components.Visible[]>();
+  last = '';
+  add(o: any) {
+    const k = Math.floor(o.y / 400) * 100 + Math.floor(o.x / 400);
+    let a = this.cells.get(k);
+    if (!a) this.cells.set(k, (a = []));
+    a.push(o);
+  }
+  update(v: Phaser.Geom.Rectangle) {
+    const x0 = Math.floor((v.x - 260) / 400), x1 = Math.floor((v.right + 260) / 400);
+    const y0 = Math.floor((v.y - 200) / 400), y1 = Math.floor((v.bottom + 420) / 400);
+    const key = `${x0},${x1},${y0},${y1}`;
+    if (key === this.last) return;
+    this.last = key;
+    for (const [k, objs] of this.cells) {
+      const cx = k % 100, cy = Math.floor(k / 100);
+      const on = cx >= x0 && cx <= x1 && cy >= y0 && cy <= y1;
+      for (const o of objs) o.setVisible(on);
+    }
+  }
+}
+
+export type Swayer = { obj: Phaser.GameObjects.Image; amp: number; speed: number; phase: number; base: number; kick: number; gust: number; shake: number };
 
 type Lantern = {
   id: LanternId; x: number; y: number; lit: boolean;
@@ -68,17 +107,33 @@ export class WorldScene extends Phaser.Scene {
   stick: { x: number; y: number } | null = null;
   path: [number, number][] = [];
   pathTarget: Interactable | null = null;
+  pathArrive: (() => void) | null = null;
   pathStuck = 0;
   pathLastD = Infinity;
   tapMarker!: Phaser.GameObjects.Image;
   life!: Life;
   catPets = 0;
+  ground!: GroundStreamer;
+  swayerOf = new Map<Phaser.GameObjects.Image, Swayer>();
+  reacts!: Reacts;
+  cull = new CullGrid();
+  tappables: Tappable[] = [];
+  heroKey = '';
+  area: AreaId = 'glade';
+  areaTimer = 0;
+  puzzles!: Puzzles;
+  fishing!: Fishing;
+  ambient: Phaser.GameObjects.Particles.ParticleEmitter[] = [];
+  mist: Phaser.GameObjects.Image[] = [];
+  windmill: { blades: Phaser.GameObjects.Image; speed: number; boost: number } | null = null;
 
   constructor() { super('world'); }
 
   // ------------------------------------------------------------ helpers
   img(x: number, y: number, key: string, ox = 0.5, oy = 1, scale = 1) {
-    return this.add.image(x, y, ATLAS, key).setOrigin(ox, oy).setScale(scale / S);
+    const o = this.add.image(x, y, ATLAS, key).setOrigin(ox, oy).setScale(scale / (frameScale[key] ?? S));
+    this.cull.add(o);
+    return o;
   }
 
   fx(x: number, y: number, key: string, scale = 1) {
@@ -102,20 +157,25 @@ export class WorldScene extends Phaser.Scene {
   }
 
   sway(obj: Phaser.GameObjects.Image, amp: number, speed: number) {
-    this.swayers.push({ obj, amp, speed, phase: Math.random() * Math.PI * 2, base: obj.rotation, kick: 0, gust: 0 });
+    const sw: Swayer = { obj, amp, speed, phase: Math.random() * Math.PI * 2, base: obj.rotation, kick: 0, gust: 0, shake: 0 };
+    this.swayers.push(sw);
+    this.swayerOf.set(obj, sw);
+    return sw;
   }
 
   shadow(x: number, y: number, w: number, alpha = 1) {
-    return this.fx(x, y, 'shadow', w / 64).setAlpha(alpha).setDepth(-500);
+    const o = this.fx(x, y, 'shadow', w / 64).setAlpha(alpha).setDepth(-500);
+    this.cull.add(o);
+    return o;
   }
 
   // ------------------------------------------------------------ create
   create() {
-    this.swayers = []; this.interactables = []; this.lanterns = []; this.litOrder = [];
+    this.reacts = new Reacts(this);
+    this.swayers = []; this.interactables = []; this.lanterns = []; this.litOrder = []; this.tappables = [];
     this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
     this.solids = this.physics.add.staticGroup();
-
-    this.add.image(0, 0, 'ground').setOrigin(0, 0).setScale(1 / GS).setDepth(-1000);
+    this.ground = new GroundStreamer(this);
 
     this.buildPond();
     this.buildCottage();
@@ -126,7 +186,11 @@ export class WorldScene extends Phaser.Scene {
     this.buildSign();
     this.buildPlayer();
     this.buildAtmosphere();
+    buildAreas(this);
     this.life = new Life(this);
+    this.puzzles = new Puzzles(this);
+    this.fishing = new Fishing(this);
+    this.restoreProgress();
     this.buildNav();
     this.tapMarker = this.fx(0, 0, 'ripple', 0.5).setBlendMode('ADD').setAlpha(0).setDepth(-300);
 
@@ -136,6 +200,8 @@ export class WorldScene extends Phaser.Scene {
     cam.startFollow(this.feet, false, 0.085, 0.085, 0, 18);
     cam.setBackgroundColor('#2b3a2f');
     this.fitCamera();
+    cam.centerOn(this.feet.x, this.feet.y + 18);
+    this.ground.update(cam.worldView, 99); // paint the first view synchronously
     this.scale.on('resize', this.fitCamera, this);
     this.events.once('shutdown', () => this.scale.off('resize', this.fitCamera, this));
 
@@ -147,14 +213,16 @@ export class WorldScene extends Phaser.Scene {
     // Input.
     const kb = this.input.keyboard!;
     this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,E,SPACE,ENTER') as Record<string, Phaser.Input.Keyboard.Key>;
-    kb.on('keydown', () => { sfx.unlock(); this.path = []; this.pathTarget = null; });
+    kb.on('keydown', (e: KeyboardEvent) => { sfx.unlock(); if (!['KeyE', 'Space', 'Enter'].includes(e.code)) { this.path = []; this.pathTarget = null; } });
     const onInteract = () => this.tryInteract();
     this.keys.E.on('down', onInteract);
     this.keys.SPACE.on('down', onInteract);
     this.keys.ENTER.on('down', onInteract);
 
     this.exposeDebug();
-    this.time.delayedCall(500, () => this.game.events.emit('toast', 'Willowmere Glade', 'title'));
+    this.area = areaAt(this.feet.x, this.feet.y);
+    sfx.setArea(this.area);
+    this.time.delayedCall(500, () => this.game.events.emit('toast', AREA_NAMES[this.area], 'title'));
   }
 
   fitCamera() {
@@ -210,7 +278,7 @@ export class WorldScene extends Phaser.Scene {
     // Rocks on the bank.
     const rocks: [number, number, number][] = [[POND.x - POND.rx - 20, POND.y + 40, 1], [POND.x + POND.rx + 12, POND.y - 30, 2], [POND.x + 90, POND.y + POND.ry + 22, 0], [POND.x - 140, POND.y - POND.ry - 10, 0]];
     for (const [x, y, v] of rocks) {
-      this.img(x, y, `rock${v}`).setDepth(y);
+      this.reacts.rock(this.img(x, y, `rock${v}`).setDepth(y));
       this.shadow(x, y - 2, 60 + v * 10, 0.7);
       this.solidCircle(x, y - 8, 14 + v * 4);
     }
@@ -265,7 +333,12 @@ export class WorldScene extends Phaser.Scene {
       this.shadow(bx, by - 3, 80, 0.6);
       this.solidCircle(bx, by - 10, 16);
       this.sway(b, 0.02, 0.9);
+      this.reacts.bush(b);
     }
+    // Wind chime by the door.
+    const chime = this.img(x + 52, y - 92, 'chime', 0.5, 0, 0.9).setDepth(y + 3);
+    this.sway(chime, 0.05, 1.7);
+    this.reacts.chime(chime);
     // Mushrooms + a woodpile hint.
     this.img(x - 165, y - 20, 'mushrooms').setDepth(y - 20);
   }
@@ -275,11 +348,11 @@ export class WorldScene extends Phaser.Scene {
     const gx0 = GATE.x - GATE.gapHalf;
     const gx1 = GATE.x + GATE.gapHalf;
     this.solidRect(0, WALL_Y - 34, gx0 - 6, 40);
-    this.solidRect(gx1 + 6, WALL_Y - 34, WORLD_W - gx1 - 6, 40);
+    this.solidRect(gx1 + 6, WALL_Y - 34, GLADE_W - gx1 - 6, 40);
     // Shrine clearing side walls (trees fill the rest of the north band).
     this.solidRect(0, 0, SHRINE_CLEARING.x0, WALL_Y - 30);
-    this.solidRect(SHRINE_CLEARING.x1, 0, WORLD_W - SHRINE_CLEARING.x1, WALL_Y - 30);
-    this.solidRect(0, 0, WORLD_W, 48);
+    this.solidRect(SHRINE_CLEARING.x1, 0, GLADE_W - SHRINE_CLEARING.x1, WALL_Y - 30);
+    this.solidRect(0, 0, GLADE_W, 48);
 
     // Hedge bushes in front of the clearing so you can peek into the grove.
     const rng = mulberry32(21);
@@ -339,7 +412,7 @@ export class WorldScene extends Phaser.Scene {
     const interior = ['tree0', 'tree1', 'tree3', 'tree4', 'tree2'];
     // North band (behind the wall), skipping the shrine clearing.
     for (let y = 70; y <= WALL_Y + 10; y += 62) {
-      for (let x = 20; x <= WORLD_W; x += 64) {
+      for (let x = 20; x <= GLADE_W; x += 64) {
         const inClearing = x > SHRINE_CLEARING.x0 + 30 && x < SHRINE_CLEARING.x1 - 30 && y > 40;
         if (inClearing) continue;
         spots.push({ x: x + rng() * 40 - 20, y: y + rng() * 24, kinds: border });
@@ -351,16 +424,20 @@ export class WorldScene extends Phaser.Scene {
       spots.push({ x: fx + (fx < 1000 ? 30 : -30), y: 140 + rng() * 20, kinds: ['tree0', 'tree5'] });
     }
     // Left / right / bottom edges.
-    for (let y = WALL_Y + 70; y < WORLD_H + 40; y += 58) {
+    // Left / right / bottom edges, with openings east (to Brookside) and south (to the lake).
+    const eastGap = (y: number) => y > 520 && y < 730;
+    for (let y = WALL_Y + 70; y < GLADE_H + 40; y += 58) {
       spots.push({ x: 30 + rng() * 50, y, kinds: border });
-      spots.push({ x: WORLD_W - 30 - rng() * 50, y: y + 20, kinds: border });
-      if (rng() < 0.6) spots.push({ x: 100 + rng() * 40, y: y + 25, kinds: border });
-      if (rng() < 0.6) spots.push({ x: WORLD_W - 110 - rng() * 40, y: y + 5, kinds: border });
+      const ry = y + 20;
+      const r1 = rng(), r2 = rng(), r3 = rng(), r4 = rng(), r5 = rng();
+      if (!eastGap(ry)) spots.push({ x: GLADE_W - 30 - r1 * 50, y: ry, kinds: border });
+      if (r2 < 0.6) spots.push({ x: 100 + r3 * 40, y: y + 25, kinds: border });
+      if (r4 < 0.6 && !eastGap(y + 5)) spots.push({ x: GLADE_W - 110 - r5 * 40, y: y + 5, kinds: border });
     }
-    for (let x = 120; x < WORLD_W - 100; x += 62) {
+    for (let x = 120; x < GLADE_W - 100; x += 62) {
       if (Math.abs(x - 915) < 80) continue;
-      spots.push({ x: x + rng() * 30, y: WORLD_H + 45 + rng() * 30, kinds: border });
-      if (rng() < 0.35 && Math.abs(x - 915) > 200) spots.push({ x: x + rng() * 30, y: WORLD_H - 20 + rng() * 20, kinds: border });
+      spots.push({ x: x + rng() * 30, y: GLADE_H + 45 + rng() * 30, kinds: border });
+      if (rng() < 0.35 && Math.abs(x - 915) > 200) spots.push({ x: x + rng() * 30, y: GLADE_H - 20 + rng() * 20, kinds: border });
     }
     // Interior groves.
     const groves: [number, number, number][] = [[260, 1020, 4], [300, 1280, 3], [1680, 1170, 4], [1520, 380, 3], [1790, 820, 3], [700, 1080, 2], [1240, 1200, 2], [1290, 420, 2], [640, 420, 2], [180, 760, 2]];
@@ -381,6 +458,7 @@ export class WorldScene extends Phaser.Scene {
       const t = this.img(s.x, s.y, key, 0.5, oy, scale).setDepth(s.y).setFlipX(rng() < 0.5);
       this.shadow(s.x + 14, s.y - 4, (isPine ? 90 : 150) * scale, 0.75);
       this.sway(t, isPine ? 0.008 : 0.014, 0.6 + rng() * 0.4);
+      this.reacts.tree(t, key === 'tree3' || key === 'tree4' ? 'blossom' : key === 'tree0' ? 'fruit' : 'leaf');
       if (s.y > WALL_Y - 10) this.solidCircle(s.x, s.y - 6, 15 * scale);
     }
   }
@@ -388,22 +466,22 @@ export class WorldScene extends Phaser.Scene {
   buildScatter() {
     const rng = mulberry32(314);
     const ok = (x: number, y: number, pathPad = 34) =>
-      y > WALL_Y + 25 && y < WORLD_H - 60 && x > 130 && x < WORLD_W - 130 &&
+      y > WALL_Y + 25 && y < GLADE_H - 60 && x > 130 && x < GLADE_W - 130 &&
       pondValue(x, y, 26) > 1 && distToPaths(x, y, ALL_PATHS) > pathPad &&
       !(Math.abs(x - COTTAGE.x) < 160 && y > COTTAGE.y - 90 && y < COTTAGE.y + 30) &&
       !(x > GARDEN.x - 20 && x < GARDEN.x + GARDEN.w + 20 && y > GARDEN.y - 30 && y < GARDEN.y + GARDEN.h + 30);
     // Grass tufts.
     for (let i = 0; i < 420; i++) {
-      const x = rng() * WORLD_W;
-      const y = rng() * WORLD_H;
+      const x = rng() * GLADE_W;
+      const y = rng() * GLADE_H;
       if (!ok(x, y, 28)) continue;
       const t = this.img(x, y, `tuft${i % 3}`, 0.5, 1, 0.8 + rng() * 0.6).setDepth(y);
       this.sway(t, 0.09, 1.2 + rng() * 0.8);
     }
     // Flower clumps, clustered.
     for (let c = 0; c < 34; c++) {
-      const cx = rng() * WORLD_W;
-      const cy = rng() * WORLD_H;
+      const cx = rng() * GLADE_W;
+      const cy = rng() * GLADE_H;
       const kind = Math.floor(rng() * 5);
       for (let i = 0; i < 6; i++) {
         const x = cx + (rng() * 2 - 1) * 50;
@@ -411,12 +489,13 @@ export class WorldScene extends Phaser.Scene {
         if (!ok(x, y)) continue;
         const f = this.img(x, y, `flower${kind}`, 0.5, 1, 0.85 + rng() * 0.4).setDepth(y);
         this.sway(f, 0.1, 1.4 + rng() * 0.8);
+        this.reacts.flower(f);
       }
     }
     // Bushes + rocks dotted around.
     for (let i = 0; i < 26; i++) {
-      const x = rng() * WORLD_W;
-      const y = rng() * WORLD_H;
+      const x = rng() * GLADE_W;
+      const y = rng() * GLADE_H;
       if (!ok(x, y, 60)) continue;
       if (LANTERNS.some((l) => Math.hypot(l.x - x, l.y - y) < 70)) continue;
       if (rng() < 0.65) {
@@ -424,9 +503,10 @@ export class WorldScene extends Phaser.Scene {
         this.shadow(x + 4, y - 3, 76, 0.6);
         this.solidCircle(x, y - 10, 15);
         this.sway(b, 0.02, 0.8);
+        this.reacts.bush(b);
       } else {
         const v = i % 3;
-        this.img(x, y, `rock${v}`).setDepth(y);
+        this.reacts.rock(this.img(x, y, `rock${v}`).setDepth(y));
         this.shadow(x + 3, y - 2, 56 + v * 10, 0.6);
         this.solidCircle(x, y - 8, 13 + v * 4);
       }
@@ -479,7 +559,8 @@ export class WorldScene extends Phaser.Scene {
     this.body.setCollideWorldBounds(true);
     this.physics.add.collider(this.feet, this.solids);
     this.playerShadow = this.shadow(PLAYER_START.x, PLAYER_START.y, 34, 0.9);
-    this.playerImg = this.img(PLAYER_START.x, PLAYER_START.y, 'player_0_0', 0.5, 1);
+    this.heroKey = buildHeroSheet(this, save.look);
+    this.playerImg = this.add.image(PLAYER_START.x, PLAYER_START.y, this.heroKey, '0_0').setOrigin(0.5, 1).setScale(1 / S);
     this.dust = this.add.particles(0, 0, ATLAS, {
       frame: 'smoke',
       lifespan: 600, speed: { min: 6, max: 22 }, angle: { min: 200, max: 340 },
@@ -489,9 +570,10 @@ export class WorldScene extends Phaser.Scene {
 
   buildAtmosphere() {
     // Drifting pollen across the whole glade.
-    this.add.particles(0, 0, ATLAS, {
+    const viewZone = () => ({ type: 'random', source: new Phaser.Geom.Rectangle(-200, -200, 1500, 1100) as any });
+    this.ambient.push(this.add.particles(0, 0, ATLAS, {
       frame: 'dot',
-      emitZone: { type: 'random', source: new Phaser.Geom.Rectangle(0, 0, WORLD_W, WORLD_H) as any },
+      emitZone: viewZone(),
       lifespan: { min: 5000, max: 9000 },
       frequency: 40,
       speedX: { min: 4, max: 18 },
@@ -500,9 +582,9 @@ export class WorldScene extends Phaser.Scene {
       alpha: { values: [0, 0.75, 0.6, 0] } as any,
       tint: [0xfff3c4, 0xffe8a3, 0xffffff],
       blendMode: 'ADD',
-    } as any).setDepth(8000);
+    } as any).setDepth(8000));
     // Fireflies near the forest edges and the shrine.
-    const fireflyZones = [new Phaser.Geom.Rectangle(700, 60, 600, 260), new Phaser.Geom.Rectangle(120, 380, 260, 1000), new Phaser.Geom.Rectangle(1640, 380, 260, 1000), new Phaser.Geom.Rectangle(1100, 1020, 500, 160)];
+    const fireflyZones = [new Phaser.Geom.Rectangle(2600, 200, 1600, 1000), new Phaser.Geom.Rectangle(700, 60, 600, 260), new Phaser.Geom.Rectangle(120, 380, 260, 1000), new Phaser.Geom.Rectangle(1640, 380, 260, 1000), new Phaser.Geom.Rectangle(1100, 1020, 500, 160)];
     for (const z of fireflyZones) {
       this.add.particles(0, 0, ATLAS, {
       frame: 'glow',
@@ -517,24 +599,24 @@ export class WorldScene extends Phaser.Scene {
       } as any).setDepth(8001);
     }
     // Falling petals from the blossom trees region.
-    this.add.particles(0, 0, ATLAS, {
+    this.ambient.push(this.add.particles(0, 0, ATLAS, {
       frame: 'petal',
-      emitZone: { type: 'random', source: new Phaser.Geom.Rectangle(0, 0, WORLD_W, WORLD_H) as any },
-      lifespan: 6000, frequency: 260,
+      emitZone: viewZone(),
+      lifespan: 6000, frequency: 700,
       speedX: { min: 10, max: 30 }, speedY: { min: 8, max: 20 },
       rotate: { min: 0, max: 360 },
       scale: { min: 0.22, max: 0.34 },
       alpha: { values: [0, 0.9, 0.9, 0] } as any,
-    } as any).setDepth(8002);
+    } as any).setDepth(8002));
     // Sunbeams.
-    const beamSpots: [number, number, number][] = [[600, 300, 1.0], [1150, 650, 1.3], [1000, 160, 0.8], [400, 1000, 1.1], [1600, 900, 1.0], [800, 1300, 0.9]];
+    const beamSpots: [number, number, number][] = [[2900, 500, 1.2], [3600, 900, 1.0], [3300, 2100, 1.1], [1200, 2000, 1.2], [600, 2300, 1.0], [2150, 1200, 0.9], [600, 300, 1.0], [1150, 650, 1.3], [1000, 160, 0.8], [400, 1000, 1.1], [1600, 900, 1.0], [800, 1300, 0.9]];
     for (const [x, y, s] of beamSpots) {
       const r = this.fx(x, y, 'ray', 1).setBlendMode('ADD').setRotation(-0.55).setAlpha(0.12).setDepth(8500);
       r.setScale(3.2 * s, 2.4 * s);
       this.rays.push(r);
     }
     // Drifting cloud shadows.
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 10; i++) {
       const c = this.fx(Math.random() * WORLD_W, 200 + Math.random() * (WORLD_H - 300), 'cloud', 4 + Math.random() * 2)
         .setTint(0x1c2a3a).setAlpha(0.13).setDepth(8400);
       this.clouds.push(c);
@@ -554,7 +636,7 @@ export class WorldScene extends Phaser.Scene {
       sfx.lantern(this.litOrder.length - 1);
       this.cameras.main.shake(140, 0.0015);
       this.game.events.emit('lanterns', [...this.litOrder]);
-      if (this.litOrder.length === LANTERN_ORDER.length) this.solve();
+      if (this.litOrder.length === LANTERN_ORDER.length) { setPuzzle('lanterns'); this.solve(); }
     } else {
       sfx.lantern(this.litOrder.length);
       this.locked = true;
@@ -611,6 +693,7 @@ export class WorldScene extends Phaser.Scene {
 
   openChest() {
     this.chestOpened = true;
+    addTreasure('golden_feather');
     this.chest.setTexture(ATLAS, 'chest_open');
     sfx.sparkle();
     this.cameras.main.shake(200, 0.002);
@@ -624,6 +707,7 @@ export class WorldScene extends Phaser.Scene {
         this.tweens.add({ targets: [feather, glow], y: SHRINE.y - 78, yoyo: true, repeat: -1, duration: 1400, ease: 'Sine.easeInOut' });
         this.tweens.add({ targets: feather, angle: 8, yoyo: true, repeat: -1, duration: 1100, ease: 'Sine.easeInOut' });
         this.game.events.emit('feather');
+        this.game.events.emit('treasure', 'golden_feather');
         this.game.events.emit('dialog', [
           'You found a Golden Feather!',
           'It feels warm, like a sunny afternoon. Maybe it will help you climb higher someday\u2026',
@@ -661,8 +745,10 @@ export class WorldScene extends Phaser.Scene {
 
   // ------------------------------------------------------------ interaction
   tryInteract() {
+    if (this.registry.get('menuOpen')) return;
     if (this.registry.get('dialogOpen')) { this.game.events.emit('dialog-advance'); return; }
     if (this.locked) return;
+    if (this.fishing.active) { this.fishing.tap(); return; }
     const target = this.nearestInteractable();
     if (target) { this.path = []; this.pathTarget = null; target.action(); }
   }
@@ -677,7 +763,7 @@ export class WorldScene extends Phaser.Scene {
       if (b.isCircle) nav.blockCircle(b.center.x, b.center.y, b.halfWidth, PAD);
       else nav.blockRect(b.x, b.y, b.width, b.height, PAD);
     }
-    nav.blockWhere((x, y) => pondHit(x, y) || x < 10 || y < 10 || x > WORLD_W - 10 || y > WORLD_H - 10);
+    nav.blockWhere((x, y) => waterBlocks(x, y) || x < 10 || y < 10 || x > WORLD_W - 10 || y > WORLD_H - 10);
     this.nav = nav;
   }
 
@@ -694,21 +780,43 @@ export class WorldScene extends Phaser.Scene {
   }
 
   tapWorld(wx: number, wy: number) {
-    if (this.locked || this.registry.get('dialogOpen')) return;
+    if (this.locked || this.registry.get('dialogOpen') || this.registry.get('menuOpen')) return;
+    if (this.fishing.active) { this.fishing.tap(); return; }
+    // Creatures and reactive objects respond right away, wherever they are on screen.
+    let tb: Tappable | null = null;
+    let tbD = Infinity;
+    const onPath = pathDist(wx, wy) < 30;
+    for (const t of this.tappables) {
+      if (t.enabled && !t.enabled()) continue;
+      if (t.soft && onPath) continue;
+      const d = Math.hypot(wx - t.x(), wy - t.y());
+      if (d < t.r && d < tbD) { tbD = d; tb = t; }
+    }
     // Objects are drawn above their base, so test against a point partway up the sprite too.
     let target: Interactable | null = null;
     let bestD = 64;
     for (const it of this.interactables) {
-      if (!it.enabled()) continue;
+      if (it.noTap || !it.enabled()) continue;
       const d = Math.min(Math.hypot(wx - it.x, wy - it.y), Math.hypot(wx - it.x, wy - (it.y - it.promptY * 0.55)));
       if (d < bestD) { bestD = d; target = it; }
     }
-    // Already standing next to it: just use it.
-    if (target && this.nearestInteractable() === target) { target.action(); this.path = []; this.pathTarget = null; return; }
+    if (tb && (!target || tbD < bestD * 0.8)) { tb.tap(); return; }
+    // Already standing next to it (or within its reach): just use it.
+    if (target && (this.nearestInteractable() === target || (target.reach && Math.hypot(target.x - this.feet.x, target.y - this.feet.y) < target.reach))) {
+      target.action(); this.path = []; this.pathTarget = null; return;
+    }
+    // Water: cast a line if close enough, otherwise walk to the shore first.
+    if (!target && waterAt(wx, wy)) { this.fishing.tapWater(wx, wy); return; }
     const [ax, ay] = target?.approach ?? [0, 26];
     const gx = target ? target.x + ax : wx;
     const gy = target ? target.y + ay : wy;
+    this.walkTo(gx, gy, target);
+  }
+
+  /** Path to a world point; optionally use an interactable or run a callback on arrival. */
+  walkTo(gx: number, gy: number, target: Interactable | null = null, onArrive: (() => void) | null = null) {
     const path = this.nav.find(this.feet.x, this.feet.y, gx, gy);
+    this.pathArrive = path ? onArrive : null;
     this.pathTarget = target;
     this.path = path ?? [];
     this.pathStuck = 0;
@@ -741,6 +849,9 @@ export class WorldScene extends Phaser.Scene {
       if (!this.path.length) {
         const t = this.pathTarget;
         this.pathTarget = null;
+        const cb = this.pathArrive;
+        this.pathArrive = null;
+        if (cb) cb();
         if (t && Math.hypot(t.x - this.feet.x, (t.y - this.feet.y) * 1.3) < t.r * 1.4) t.action();
       }
       return this.followPath(dt);
@@ -748,7 +859,7 @@ export class WorldScene extends Phaser.Scene {
     // Stuck detection: if we stop closing in, give up gracefully.
     if (d > this.pathLastD - 0.5) this.pathStuck += dt; else this.pathStuck = Math.max(0, this.pathStuck - dt);
     this.pathLastD = d;
-    if (this.pathStuck > 0.9) { this.path = []; this.pathTarget = null; return [0, 0]; }
+    if (this.pathStuck > 0.9) { this.path = []; this.pathTarget = null; this.pathArrive = null; return [0, 0]; }
     const ease = last ? Math.min(1, d / 40 + 0.25) : 1;
     return [(dx / d) * ease, (dy / d) * ease];
   }
@@ -768,7 +879,7 @@ export class WorldScene extends Phaser.Scene {
   update(time: number, delta: number) {
     const dt = Math.min(delta, 50) / 1000;
     const k = this.keys;
-    const frozen = this.locked || !!this.registry.get('dialogOpen');
+    const frozen = this.locked || !!this.registry.get('dialogOpen') || !!this.registry.get('menuOpen') || ['cast', 'reel', 'land'].includes(this.fishing?.state);
     let ix = 0, iy = 0;
     if (!frozen) {
       ix = (k.D.isDown || k.RIGHT.isDown ? 1 : 0) - (k.A.isDown || k.LEFT.isDown ? 1 : 0);
@@ -791,10 +902,10 @@ export class WorldScene extends Phaser.Scene {
     this.body.setVelocity(v.x + (ix * SPEED - v.x) * blend, v.y + (iy * SPEED - v.y) * blend);
 
     // Pond: collide against the painted shoreline shape, sliding along it.
-    if (pondHit(this.feet.x, this.feet.y)) {
+    if (waterBlocks(this.feet.x, this.feet.y)) {
       const [lx, ly] = this.lastSafe;
-      if (!pondHit(this.feet.x, ly)) this.feet.setPosition(this.feet.x, ly);
-      else if (!pondHit(lx, this.feet.y)) this.feet.setPosition(lx, this.feet.y);
+      if (!waterBlocks(this.feet.x, ly)) this.feet.setPosition(this.feet.x, ly);
+      else if (!waterBlocks(lx, this.feet.y)) this.feet.setPosition(lx, this.feet.y);
       else this.feet.setPosition(lx, ly);
     }
     this.lastSafe = [this.feet.x, this.feet.y];
@@ -815,7 +926,7 @@ export class WorldScene extends Phaser.Scene {
       this.dust.emitParticleAt(this.feet.x, this.feet.y + 4, 2);
     }
     this.lastStepFrame = stepFrame;
-    this.playerImg.setTexture(ATLAS, `player_${this.facing}_${stepFrame}`).setFlipX(this.flip);
+    this.playerImg.setTexture(this.heroKey, `${this.facing}_${stepFrame}`).setFlipX(this.flip);
     const bob = speed > 25 ? Math.abs(Math.sin(this.walkPhase * Math.PI / 2)) * 2.4 : 0;
     const breathe = speed > 25 ? 0 : Math.sin(time / 420) * 0.018;
     this.playerImg.setPosition(this.feet.x, this.feet.y + 6 - bob);
@@ -828,6 +939,7 @@ export class WorldScene extends Phaser.Scene {
     const breeze = 0.85 + 0.3 * Math.sin(t * 0.23) + 0.1 * Math.sin(t * 0.71);
     const gx = this.life?.gustX ?? null;
     for (const s of this.swayers) {
+      if (!s.obj.visible) continue;
       if (gx !== null) {
         const d = Math.abs(s.obj.x - gx);
         if (d < 120) s.gust = Math.min(1, s.gust + dt * 5 * (1 - d / 120));
@@ -839,7 +951,9 @@ export class WorldScene extends Phaser.Scene {
         if (dx * dx + dy * dy < 26 * 26) s.kick = Math.min(1, s.kick + dt * 6) * Math.sign(dx || 1);
       }
       s.kick *= Math.exp(-dt * 2.5);
-      s.obj.rotation = s.base + Math.sin(t * s.speed + s.phase + s.obj.x * 0.004) * s.amp * breeze + s.kick * 0.35 + s.gust * Math.min(0.25, s.amp * 3);
+      let sh = 0;
+      if (s.shake > 0.01) { s.shake *= Math.exp(-dt * 3); sh = Math.sin(t * 34 + s.phase) * s.shake * 0.06; }
+      s.obj.rotation = s.base + Math.sin(t * s.speed + s.phase + s.obj.x * 0.004) * s.amp * breeze + s.kick * 0.35 + s.gust * Math.min(0.25, s.amp * 3) + sh;
     }
 
     // Ambient motion.
@@ -847,6 +961,17 @@ export class WorldScene extends Phaser.Scene {
       c.x += dt * 14;
       c.y += dt * 4;
       if (c.x - c.displayWidth / 2 > WORLD_W) { c.x = -c.displayWidth / 2; c.y = 200 + Math.random() * (WORLD_H - 300); }
+      c.setVisible(Math.abs(c.x - this.feet.x) < 1600 && Math.abs(c.y - this.feet.y) < 1200);
+    }
+    for (const m of this.mist) {
+      m.x += dt * 6;
+      if (m.x > WORLD_W - 40) m.x = 2450;
+      m.setVisible(Math.abs(m.x - this.feet.x) < 1100 && Math.abs(m.y - this.feet.y) < 800);
+    }
+    if (this.windmill) {
+      const wm = this.windmill;
+      wm.boost = Math.max(0, wm.boost - dt * 0.8);
+      wm.blades.rotation += dt * (wm.speed + wm.boost * 1.6) * (this.life?.gustX !== null ? 1.4 : 1);
     }
     this.rays.forEach((r, i) => r.setAlpha(0.08 + 0.05 * Math.sin(t * 0.5 + i * 1.7)));
     this.lilies.forEach((l, i) => { l.y += Math.sin(t * 1.1 + i) * 0.03; });
@@ -856,11 +981,66 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.life.update(time, dt);
+    this.puzzles.update(time, dt);
+    this.fishing.update(time, dt);
+    this.reacts.update(time, dt);
+    const view = this.cameras.main.worldView;
+    this.cull.update(view);
+    this.ground.update(view, 1);
+    for (const e of this.ambient) e.setPosition(view.x, view.y);
+    this.areaTimer -= dt;
+    if (this.areaTimer <= 0) {
+      this.areaTimer = 0.5;
+      const a = areaAt(this.feet.x, this.feet.y);
+      if (a !== this.area) {
+        this.area = a;
+        sfx.setArea(a);
+        const first = visit(a);
+        this.game.events.emit('toast', AREA_NAMES[a], 'title');
+        if (first) this.game.events.emit('area-new', a);
+      }
+    }
 
     if (time > this.nextChirp) { sfx.chirp(); this.nextChirp = time + 5000 + Math.random() * 9000; }
 
-    const it = frozen ? null : this.nearestInteractable();
+    const it = frozen || this.fishing.active ? null : this.nearestInteractable();
     this.prompt = it ? { x: it.x, y: it.y - it.promptY, label: it.label } : null;
+  }
+
+  /** Re-apply saved progress (lantern puzzle) when the world is rebuilt. */
+  restoreProgress() {
+    if (save.puzzles.lanterns) {
+      this.solved = true;
+      this.gateOpen = true;
+      for (const L of this.lanterns) {
+        L.lit = true; L.img.setTexture(ATLAS, 'lantern_on'); L.sym.setTint(0xffd36b); L.glow.setAlpha(0.42);
+      }
+      this.litOrder = [...LANTERN_ORDER];
+      this.brambles.setAlpha(0).setScale(this.brambles.scaleX, 0);
+      this.gateGlows.forEach((g) => g.setAlpha(0.7));
+      (this.barrier.body as Phaser.Physics.Arcade.StaticBody).enable = false;
+      this.time.delayedCall(0, () => this.game.events.emit('lanterns', [...this.litOrder]));
+    }
+    if (hasTreasure('golden_feather')) {
+      this.chestOpened = true;
+      this.chest.setTexture(ATLAS, 'chest_open');
+      this.time.delayedCall(0, () => this.game.events.emit('feather'));
+    }
+  }
+
+  /** Repaint the hero after changing cosmetics. */
+  refreshHero() {
+    const old = this.heroKey;
+    this.heroKey = buildHeroSheet(this, save.look);
+    this.playerImg.setTexture(this.heroKey, `${this.facing}_0`);
+    if (old && old !== this.heroKey) this.textures.remove(old);
+  }
+
+  /** A little floating "+1" label in the world. */
+  floatText(x: number, y: number, msg: string, color = '#fff8ea') {
+    const t = this.add.text(x, y, msg, { fontFamily: 'Nunito, sans-serif', fontSize: '15px', color, fontStyle: '800', resolution: Math.max(2, DPR * 1.5) } as any)
+      .setOrigin(0.5).setDepth(9600).setShadow(0, 1, 'rgba(40,30,20,0.7)', 3);
+    this.tweens.add({ targets: t, y: y - 34, alpha: { from: 1, to: 0 }, duration: 1500, ease: 'Sine.easeOut', onComplete: () => t.destroy() });
   }
 
   // ------------------------------------------------------------ test hooks
@@ -874,6 +1054,9 @@ export class WorldScene extends Phaser.Scene {
           litOrder: [...self.litOrder], solved: self.solved, gateOpen: self.gateOpen, chestOpened: self.chestOpened, locked: self.locked,
           prompt: self.prompt?.label ?? null, fps: Math.round(self.game.loop.actualFps),
           pathLen: self.path.length, catPets: self.catPets, ducks: self.life?.ducks.length ?? 0,
+          area: self.area, fishing: self.fishing.state, tiles: self.ground.tiles.size, paintMs: [...self.ground.paintMs], puzzles: { ...save.puzzles },
+          treasures: [...save.treasures], fish: Object.keys(save.fish), look: { ...save.look }, minor: { ...save.minor },
+          reactions: self.life?.reactions ?? 0,
           dialogOpen: !!self.registry.get('dialogOpen'),
         };
       },
@@ -881,9 +1064,39 @@ export class WorldScene extends Phaser.Scene {
         self.feet.setPosition(x, y);
         self.body.reset(x, y);
         self.cameras.main.centerOn(x, y + 18);
+        self.lastSafe = [x, y];
+        self.path = [];
+        self.ground.update(self.cameras.main.worldView, 99);
       },
       lanterns: LANTERNS,
       tapWorld: (x: number, y: number) => self.tapWorld(x, y),
+      critters() {
+        const c = self.life.creatures;
+        const xy = (o: { x: number; y: number }) => [Math.round(o.x), Math.round(o.y)];
+        return {
+          rabbits: c.rabbits.filter((r) => !r.temp).map(xy), deer: c.deer.map(xy), crabs: c.crabs.filter((k) => k.hidden <= 0).map(xy),
+          squirrels: c.squirrels.filter((q) => q.hidden <= 0).map(xy), hedgehogs: c.hedgehogs.map(xy), owl: [c.owl.x, c.owl.y - 14],
+          ducks: self.life.ducks.map((d) => [Math.round(d.img.x), Math.round(d.img.y - 6)]), cat: [Math.round(self.life.cat.x), Math.round(self.life.cat.y - 14)],
+          frog: self.life.frog.visible ? [Math.round(self.life.frog.x), Math.round(self.life.frog.y - 8)] : null,
+        };
+      },
+      pots: () => self.puzzles.pots.map((p) => p.color),
+      fish() {
+        const f = self.fishing;
+        return { state: f.state, catches: f.catches, reel: f.reel ? { hits: f.reel.hits, need: f.reel.need, misses: f.reel.misses } : null };
+      },
+      /** ms until the reel marker crosses the centre of the green zone (for the touch test). */
+      fishMsToZone() {
+        const f = self.fishing;
+        if (!f.reel) return -1;
+        const r = f.reel;
+        const now = performance.now();
+        for (let ms = 60; ms < 4000; ms += 4) {
+          const p = f.markerPos(now + ms);
+          if (Math.abs(p - r.zone) < r.width * 0.2) return ms;
+        }
+        return -1;
+      },
       worldToScreen(x: number, y: number) {
         const cam = self.cameras.main;
         return { x: (x - cam.worldView.x) * cam.zoom / DPR, y: (y - cam.worldView.y) * cam.zoom / DPR };
