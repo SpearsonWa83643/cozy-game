@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { S, ATLAS, frameScale, mulberry32, pondValue, distToPaths, ALL_PATHS } from '../art';
+import { S, ATLAS, frameScale, mulberry32, pondValue, pondHit, distToPaths, ALL_PATHS } from '../art';
 import {
   WORLD_W, WORLD_H, PLAYER_START, POND, COTTAGE, GARDEN, WALL_Y, GATE, SHRINE, SHRINE_CLEARING, SIGN,
   LANTERNS, LANTERN_ORDER, LanternId,
@@ -37,6 +37,8 @@ export class WorldScene extends Phaser.Scene {
   litOrder: LanternId[] = [];
   solved = false;
   chestOpened = false;
+  gateOpen = false;
+  lastSafe: [number, number] = [PLAYER_START.x, PLAYER_START.y];
   locked = false;
   prompt: Prompt = null;
   facing = 0;
@@ -140,7 +142,7 @@ export class WorldScene extends Phaser.Scene {
   fitCamera() {
     const w = this.scale.width / DPR;
     const h = this.scale.height / DPR;
-    const base = Math.min(h / 600, w / 820);
+    const base = Math.min(h / 560, w / 780);
     this.cameras.main.setZoom(Math.max(0.6, base) * DPR);
   }
 
@@ -195,15 +197,15 @@ export class WorldScene extends Phaser.Scene {
   buildCottage() {
     const { x, y } = COTTAGE;
     this.shadow(x + 10, y - 6, 340, 0.9);
-    this.img(x, y, 'cottage').setDepth(y);
-    this.solidRect(x - 118, y - 62, 236, 56);
+    this.img(x, y, 'cottage', 0.5, 1, 1.12).setDepth(y);
+    this.solidRect(x - 132, y - 66, 264, 60);
     // Warm window glow.
-    for (const dx of [-81, 81]) {
-      const g = this.fx(x + dx, y - 63, 'glow', 0.38).setBlendMode('ADD').setTint(0xffb060).setAlpha(0.35).setDepth(y + 1);
+    for (const dx of [-91, 91]) {
+      const g = this.fx(x + dx, y - 71, 'glow', 0.38).setBlendMode('ADD').setTint(0xffb060).setAlpha(0.35).setDepth(y + 1);
       this.windowGlows.push(g);
     }
     // Chimney smoke.
-    this.add.particles(x + 52, y - 232, ATLAS, {
+    this.add.particles(x + 58, y - 258, ATLAS, {
       frame: 'smoke',
       lifespan: 4200,
       frequency: 260,
@@ -235,7 +237,7 @@ export class WorldScene extends Phaser.Scene {
     this.solidRect(gx, gy - 20, gw, 14);
     this.solidRect(gx - 8, gy - 20, 10, gh + 34);
     // Bushes hugging the cottage.
-    const bushes: [number, number, number][] = [[x - 150, y - 4, 1], [x + 150, y - 6, 0], [x + 120, y + 14, 2], [x - 120, y + 16, 0]];
+    const bushes: [number, number, number][] = [[x - 165, y - 4, 1], [x + 165, y - 6, 0], [x + 128, y + 16, 2], [x - 128, y + 18, 0]];
     for (const [bx, by, v] of bushes) {
       const b = this.img(bx, by, `bush${v}`).setDepth(by);
       this.shadow(bx, by - 3, 80, 0.6);
@@ -281,6 +283,12 @@ export class WorldScene extends Phaser.Scene {
     this.tweens.add({ targets: this.brambles, scaleX: this.brambles.scaleX * 1.015, yoyo: true, repeat: -1, duration: 1800, ease: 'Sine.easeInOut' });
     this.barrier = this.solidRect(gx0, GATE.y - 36, gx1 - gx0, 34);
 
+    // Bushes + mushrooms closing the top of the clearing.
+    for (let x = SHRINE_CLEARING.x0 + 20; x <= SHRINE_CLEARING.x1 - 20; x += 38) {
+      const y = 58 + rng() * 14;
+      const b = this.img(x, y, `bush${Math.floor(rng() * 3)}`, 0.5, 1, 1.3 + rng() * 0.3).setDepth(y);
+      this.sway(b, 0.015, 0.8);
+    }
     // Shrine: chest on the flagstones, a sunbeam, flowers.
     const chest = this.img(SHRINE.x, SHRINE.y + 10, 'chest_closed').setDepth(SHRINE.y + 10);
     this.shadow(SHRINE.x, SHRINE.y + 8, 70, 0.7);
@@ -315,8 +323,11 @@ export class WorldScene extends Phaser.Scene {
         spots.push({ x: x + rng() * 40 - 20, y: y + rng() * 24, kinds: border });
       }
     }
-    // Trees framing the top of the clearing.
-    for (let x = SHRINE_CLEARING.x0 + 40; x < SHRINE_CLEARING.x1 - 20; x += 70) spots.push({ x: x + rng() * 20, y: 40 + rng() * 15, kinds: ['tree3', 'tree0', 'tree5'] });
+    // Trees framing the sides of the clearing (the top edge gets bushes, see buildNorth).
+    for (const fx of [SHRINE_CLEARING.x0 + 40, SHRINE_CLEARING.x1 - 40]) {
+      spots.push({ x: fx, y: 230 + rng() * 20, kinds: ['tree3', 'tree4'] });
+      spots.push({ x: fx + (fx < 1000 ? 30 : -30), y: 140 + rng() * 20, kinds: ['tree0', 'tree5'] });
+    }
     // Left / right / bottom edges.
     for (let y = WALL_Y + 70; y < WORLD_H + 40; y += 58) {
       spots.push({ x: 30 + rng() * 50, y, kinds: border });
@@ -402,7 +413,7 @@ export class WorldScene extends Phaser.Scene {
 
   buildLanterns() {
     for (const L of LANTERNS) {
-      const glow = this.fx(L.x, L.y - 62, 'glow', 0.9).setBlendMode('ADD').setTint(0xffb35c).setAlpha(0).setDepth(L.y + 2);
+      const glow = this.fx(L.x, L.y - 58, 'glow', 0.9).setBlendMode('ADD').setTint(0xff9636).setAlpha(0).setDepth(L.y + 2);
       this.shadow(L.x + 4, L.y - 3, 50, 0.8);
       const img = this.img(L.x, L.y, 'lantern_off').setDepth(L.y);
       const sym = this.img(L.x, L.y - 26, `sym_${L.id}`, 0.5, 0.5, 0.42).setDepth(L.y + 1).setTint(0x5d6670).setAlpha(0.9);
@@ -514,7 +525,7 @@ export class WorldScene extends Phaser.Scene {
     L.lit = true;
     L.img.setTexture(ATLAS, 'lantern_on');
     L.sym.setTint(0xffd36b);
-    this.tweens.add({ targets: L.glow, alpha: 0.6, duration: 500, ease: 'Sine.easeOut' });
+    this.tweens.add({ targets: L.glow, alpha: 0.42, duration: 500, ease: 'Sine.easeOut' });
     this.burst(L.x, L.y - 62, 0xffd27a, 18);
     if (L.id === expected) {
       this.litOrder.push(L.id);
@@ -567,6 +578,7 @@ export class WorldScene extends Phaser.Scene {
             if (p2 < 1) return;
             cam.startFollow(this.feet, false, 0.085, 0.085, 0, 18);
             this.locked = false;
+            this.gateOpen = true;
             this.game.events.emit('toast', 'The brambles part. Something glimmers beyond the gate\u2026');
           });
         });
@@ -659,12 +671,14 @@ export class WorldScene extends Phaser.Scene {
     const blend = 1 - Math.exp(-dt * (len ? 12 : 16));
     this.body.setVelocity(v.x + (ix * SPEED - v.x) * blend, v.y + (iy * SPEED - v.y) * blend);
 
-    // Pond: soft elliptical collision.
-    const pv = pondValue(this.feet.x, this.feet.y, -10);
-    if (pv < 1) {
-      const f = 1 / Math.sqrt(Math.max(pv, 0.0001));
-      this.feet.setPosition(POND.x + (this.feet.x - POND.x) * f, POND.y + (this.feet.y - POND.y) * f);
+    // Pond: collide against the painted shoreline shape, sliding along it.
+    if (pondHit(this.feet.x, this.feet.y)) {
+      const [lx, ly] = this.lastSafe;
+      if (!pondHit(this.feet.x, ly)) this.feet.setPosition(this.feet.x, ly);
+      else if (!pondHit(lx, this.feet.y)) this.feet.setPosition(lx, this.feet.y);
+      else this.feet.setPosition(lx, ly);
     }
+    this.lastSafe = [this.feet.x, this.feet.y];
 
     // Facing + animation.
     const speed = Math.hypot(v.x, v.y);
@@ -712,7 +726,7 @@ export class WorldScene extends Phaser.Scene {
     this.lilies.forEach((l, i) => { l.y += Math.sin(t * 1.1 + i) * 0.03; });
     this.windowGlows.forEach((g, i) => g.setAlpha(0.3 + 0.06 * Math.sin(t * 3 + i * 2) + 0.03 * Math.sin(t * 11 + i)));
     for (const L of this.lanterns) {
-      if (L.lit) L.glow.setScale(L.glow.scaleX * 0 + (0.9 + 0.03 * Math.sin(t * 9 + L.x) + 0.02 * Math.sin(t * 23 + L.y)));
+      if (L.lit) L.glow.setScale(0.9 + 0.03 * Math.sin(t * 9 + L.x) + 0.02 * Math.sin(t * 23 + L.y));
     }
 
     if (time > this.nextChirp) { sfx.chirp(); this.nextChirp = time + 5000 + Math.random() * 9000; }
@@ -729,7 +743,7 @@ export class WorldScene extends Phaser.Scene {
       get state() {
         return {
           x: Math.round(self.feet.x), y: Math.round(self.feet.y),
-          litOrder: [...self.litOrder], solved: self.solved, chestOpened: self.chestOpened,
+          litOrder: [...self.litOrder], solved: self.solved, gateOpen: self.gateOpen, chestOpened: self.chestOpened, locked: self.locked,
           prompt: self.prompt?.label ?? null, fps: Math.round(self.game.loop.actualFps),
           dialogOpen: !!self.registry.get('dialogOpen'),
         };

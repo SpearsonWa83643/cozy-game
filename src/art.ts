@@ -103,7 +103,7 @@ export function buildAtlas(scene: Phaser.Scene) {
 }
 
 /** Organic, slightly wobbly closed blob path. */
-function blobPath(ctx: Ctx, cx: number, cy: number, rx: number, ry: number, rng: Rng, wobble = 0.12, n = 14) {
+function blobPath(ctx: Ctx | Path2D, cx: number, cy: number, rx: number, ry: number, rng: Rng, wobble = 0.12, n = 14) {
   const pts: [number, number][] = [];
   const phase = rng() * Math.PI * 2;
   for (let i = 0; i < n; i++) {
@@ -111,7 +111,7 @@ function blobPath(ctx: Ctx, cx: number, cy: number, rx: number, ry: number, rng:
     const k = 1 + (rng() * 2 - 1) * wobble;
     pts.push([cx + Math.cos(a) * rx * k, cy + Math.sin(a) * ry * k]);
   }
-  ctx.beginPath();
+  if ('beginPath' in ctx) ctx.beginPath();
   for (let i = 0; i < n; i++) {
     const p0 = pts[i];
     const p1 = pts[(i + 1) % n];
@@ -183,6 +183,18 @@ export function pondValue(x: number, y: number, pad = 0) {
   const dx = (x - POND.x) / (POND.rx + pad);
   const dy = (y - POND.y) / (POND.ry + pad);
   return dx * dx + dy * dy;
+}
+
+let pondHitCtx: Ctx | null = null;
+let pondHitPath: Path2D | null = null;
+/** True if (x, y) is in the pond's walkable-limit shape (the painted shoreline, inset a little). */
+export function pondHit(x: number, y: number) {
+  if (!pondHitCtx) {
+    pondHitCtx = document.createElement('canvas').getContext('2d')!;
+    pondHitPath = new Path2D();
+    blobPath(pondHitPath, POND.x, POND.y, POND.rx - 12, POND.ry - 10, mulberry32(77), 0.08);
+  }
+  return pondHitCtx.isPointInPath(pondHitPath!, x, y);
 }
 
 // ---------------------------------------------------------------- ground
@@ -301,15 +313,22 @@ export function paintGround(scene: Phaser.Scene) {
         }
       }
     }
-    // Grass creeping over path edges.
+    // Grass creeping over path edges (offset along the path normal so it stays on the verge).
     ctx.lineWidth = 1.3;
     for (const p of ALL_PATHS) {
-      for (const [px, py] of p) {
+      for (let i = 0; i < p.length; i++) {
+        const a0 = p[Math.max(0, i - 1)];
+        const a1 = p[Math.min(p.length - 1, i + 1)];
+        const tl = Math.hypot(a1[0] - a0[0], a1[1] - a0[1]) || 1;
+        const nx = -(a1[1] - a0[1]) / tl;
+        const ny = (a1[0] - a0[0]) / tl;
         for (let k = 0; k < 6; k++) {
-          const a = rng() * Math.PI * 2;
-          const d = rr(rng, 22, 32);
-          const x = px + Math.cos(a) * d;
-          const y = py + Math.sin(a) * d;
+          const side = rng() < 0.5 ? -1 : 1;
+          const d = rr(rng, 20, 30) * side;
+          const along = rr(rng, -5, 5);
+          const x = p[i][0] + nx * d + (ny * along);
+          const y = p[i][1] + ny * d - (nx * along);
+          if (distToPaths(x, y, ALL_PATHS) < 19) continue;
           ctx.strokeStyle = hsl(rr(rng, 80, 110), 50, rr(rng, 38, 60), 0.8);
           ctx.beginPath();
           ctx.moveTo(x, y);
@@ -355,12 +374,12 @@ export function paintGround(scene: Phaser.Scene) {
       ctx.save();
       ctx.shadowColor = hsl(100, 40, 20, 0.6);
       ctx.shadowBlur = 20;
-      blob(ctx, x, y + 6, rx + 22, ry + 18, hsl(80, 35, 38), prng, 0.04);
+      blob(ctx, x, y + 6, rx + 22, ry + 18, hsl(80, 35, 38), prng, 0.08);
       ctx.restore();
-      blob(ctx, x, y + 2, rx + 12, ry + 10, hsl(42, 40, 66), mulberry32(77), 0.04);
-      blob(ctx, x, y + 2, rx + 4, ry + 4, hsl(35, 32, 46), mulberry32(77), 0.04);
+      blob(ctx, x, y + 2, rx + 9, ry + 7, hsl(42, 40, 66), mulberry32(77), 0.08);
+      blob(ctx, x, y + 2, rx + 4, ry + 4, hsl(35, 32, 46), mulberry32(77), 0.08);
       ctx.save();
-      blobPath(ctx, x, y, rx, ry, mulberry32(77), 0.04);
+      blobPath(ctx, x, y, rx, ry, mulberry32(77), 0.08);
       ctx.clip();
       const wg = ctx.createRadialGradient(x + 20, y + 20, 10, x, y, rx);
       wg.addColorStop(0, hsl(205, 58, 34));
@@ -375,7 +394,7 @@ export function paintGround(scene: Phaser.Scene) {
       ctx.lineWidth = 26;
       ctx.strokeStyle = hsl(200, 50, 20, 0.35);
       ctx.filter = 'blur(6px)';
-      blobPath(ctx, x, y + 12, rx, ry, mulberry32(77), 0.04);
+      blobPath(ctx, x, y + 12, rx, ry, mulberry32(77), 0.08);
       ctx.stroke();
       ctx.filter = 'none';
       // Painted ripple strokes.
@@ -395,8 +414,26 @@ export function paintGround(scene: Phaser.Scene) {
       // Shoreline highlight.
       ctx.lineWidth = 2;
       ctx.strokeStyle = hsl(50, 60, 88, 0.55);
-      blobPath(ctx, x, y, rx, ry, mulberry32(77), 0.04);
+      blobPath(ctx, x, y, rx, ry, mulberry32(77), 0.08);
       ctx.stroke();
+      // Grass and moss spilling over the bank so the rim isn't a clean ring.
+      for (let i = 0; i < 900; i++) {
+        const a = prng() * Math.PI * 2;
+        const k = 1.02 + prng() * 0.1;
+        const wob = 1 + Math.sin(a * 3 + 1.3) * 0.05 + Math.sin(a * 5 + 0.4) * 0.03;
+        const gx = x + Math.cos(a) * (rx + 4) * k * wob;
+        const gy = y + 3 + Math.sin(a) * (ry + 4) * k * wob;
+        if (prng() < 0.35) {
+          dab(ctx, gx, gy, rr(prng, 2, 6), rr(prng, 1.2, 3), prng() * 3, hsl(rr(prng, 85, 120), 45, rr(prng, 32, 52), 0.85));
+        } else {
+          ctx.strokeStyle = hsl(rr(prng, 80, 115), 50, rr(prng, 36, 62), 0.9);
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.moveTo(gx, gy);
+          ctx.lineTo(gx + rr(prng, -2, 2), gy - rr(prng, 3, 8));
+          ctx.stroke();
+        }
+      }
     }
 
     // Tiny painted flowers in meadow clusters.
