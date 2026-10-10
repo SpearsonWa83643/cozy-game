@@ -106,3 +106,18 @@ Ambient: generative WebAudio score (Fmaj9–Dm9–Bbmaj7–C6/9–Am7–Bbmaj9�
 kalimba), plus butterflies, a passing flock, a duck family, fish and splash rings, a shy frog, a cat on the
 cottage step (pet it), wind gusts that ripple through grass and trees with drifting leaves, falling leaves,
 and a slow light-colour drift. Touch test: `npm run test:touch` (iPad 1180x820 @2x, hasTouch, file://).
+
+## Hosting (GitHub Pages)
+
+Live: https://spearsonwa83643.github.io/cozy-game/ — repo: https://github.com/SpearsonWa83643/cozy-game
+
+- `.github/workflows/deploy.yml` builds on every push to `main` (or manual dispatch): Node 20, `npm ci`,
+  `npm run build`, then uploads `dist/` with `configure-pages@v5` / `upload-pages-artifact@v3` / `deploy-pages@v4`.
+  Pages is set to `build_type=workflow`.
+- `vite.config.ts` uses `base: './'`, so the build works under the `/cozy-game/` subpath.
+- `dist/` ships `manifest.webmanifest` + `icon-180.png` (relative `start_url`/`scope`) alongside the
+  apple-mobile-web-app meta, so **on iPad: open the live URL in Safari → Share → Add to Home Screen** for a
+  full-screen app icon.
+- `npm run test:subpath` serves `dist/` under `/cozy-game/` (`tests/subpath-server.mjs`) and checks boot,
+  install metadata, touch and console. Point it at the live site with
+  `BASE_URL=https://spearsonwa83643.github.io/cozy-game/ npx playwright test -c playwright.subpath.config.ts`.

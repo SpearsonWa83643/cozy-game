@@ -10,7 +10,9 @@
     "typecheck": "tsc --noEmit",
     "test": "playwright test",
     "build:single": "tsc --noEmit && vite build --mode single",
-    "test:touch": "npm run build:single && playwright test -c playwright.touch.config.ts"
+    "test:touch": "npm run build:single && playwright test -c playwright.touch.config.ts",
+    "serve:subpath": "node tests/subpath-server.mjs",
+    "test:subpath": "npm run build && playwright test -c playwright.subpath.config.ts"
   },
   "dependencies": {
     "phaser": "4.2.1"
