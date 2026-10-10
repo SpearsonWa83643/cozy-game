@@ -873,7 +873,9 @@ export class WorldScene extends Phaser.Scene {
     for (const it of this.interactables) {
       if (!it.enabled()) continue;
       const d = Math.hypot(it.x - this.feet.x, (it.y - this.feet.y) * 1.3);
-      if (d < it.r && d < bestD) { best = it; bestD = d; }
+      // The roaming "Fish" prompt always yields to a real object nearby.
+      const rank = it === this.fishing?.prompt ? d + 1000 : d;
+      if (d < it.r && rank < bestD) { best = it; bestD = rank; }
     }
     return best;
   }

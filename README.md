@@ -92,7 +92,7 @@ wait on game state rather than on time.
 - **Use things:** tap an object (sign, lantern, chest, cat) to walk over and use it, or press the big
   contextual button (bottom-right, 96 px) that appears with the action name ("Light", "Read", "Pet", "Next").
   Tap anywhere to advance dialog.
-- **Sound:** the speaker button (top-right) cycles on / quiet / off (also `M`); the choice is remembered.
+- **Sound:** the speaker button (top-right) cycles on / quiet / off (also `V`); the choice is remembered.
 - Safe-area insets respected; landscape-first, portrait reframes the camera. Page scroll, pinch/double-tap
   zoom, selection and callouts are suppressed. Audio unlocks on the first touch (iOS-safe, plays through the
   mute switch on Safari 17+).
@@ -121,3 +121,47 @@ Live: https://spearsonwa83643.github.io/cozy-game/ — repo: https://github.com/
 - `npm run test:subpath` serves `dist/` under `/cozy-game/` (`tests/subpath-server.mjs`) and checks boot,
   install metadata, touch and console. Point it at the live site with
   `BASE_URL=https://spearsonwa83643.github.io/cozy-game/ npx playwright test -c playwright.subpath.config.ts`.
+
+## The wider world (v0.4)
+
+**Areas:** Willowmere Glade, **Brookside** (river, two bridges), **Mistbirch Wood** (misty birches, owl,
+deer; behind the locked gate on the north bridge), **Windmill Orchard** (apple and pear rows, windmill,
+bells) and **Shellwater Shore** (lake, sand, pier, crabs, shells). The ground is painted in 512 px tiles
+streamed around the camera, so no single giant texture is needed. Each area has its own palette and a
+subtle music mood, and a title card appears the first time you arrive.
+
+**Puzzles and treasures** (each has a sign or clue):
+| Puzzle | Where | Treasure |
+|---|---|---|
+| Light the lanterns dawn, then noon, then dusk | glade | Golden Feather |
+| Match the flower pots to Grandmother's rhyme | cottage garden | Flower Crown |
+| Ring the bells in the songbird's order | windmill | Rusty Key (opens the north bridge gate) |
+| Rotate the moon tiles to complete the picture | Mistbirch Wood | Fox-ear Hood |
+| Solve the riddle sign and dig in the right spot | lake shore | Seashell Necklace |
+
+**Fishing:** tap water near you, or press "Fish". Wait for the bobber to dip (you get a sound and,
+where supported, a vibration), then tap "Hook!". In the timing bar, tap whenever the line is in the
+green zone. Pond, river and lake each have their own species, rated common, uncommon or rare (plus
+junk). The journal records how many of each you caught and your best size. Taps are judged at the
+moment of the touch event, so a dropped frame never costs you a fish.
+
+**Satchel** (bag/map buttons at top right; keyboard `B` wardrobe, `M` map, `I` treasures, `V` sound):
+- **Map:** areas you haven't visited are hidden in mist. It shows puzzle markers (orange = unsolved,
+  green = solved) and your position.
+- **Wardrobe:** large tiles for hats, scarves, outfits, and back items or extras. Each tile previews
+  the hero wearing that item. Locked tiles show how to unlock them: treasures, rare fish (Koi coat,
+  Silver scarf, Lantern staff) or little finds (10 petals for the Petal scarf, 6 shells for the
+  Backpack).
+- **Treasures:** what you've found, with hints for the rest, and counts of little finds. "Reset
+  progress" needs a second tap to confirm.
+- Progress (treasures, puzzles, fish, look, visited areas, little finds) is saved in `localStorage`.
+
+**Tap anything:** cat (purrs, rolls over, or follows you), ducks (quack, scatter, regroup), frog, fish,
+butterflies (they land on you), birds, trees (shake, leaves, fruit or acorn drops), flowers (pop,
+petals), bushes (rustle, sometimes a rabbit or sparrows), rocks (beetles), chimes, windmill (spins
+faster), rabbits, squirrels, hedgehogs, deer, crabs and the owl. When you walk behind a tree, its
+canopy fades so you can still see the hero.
+
+Tests: `tests/world.spec.ts` runs on an iPad 1180x820 @2x with touch. It walks between areas, solves
+the pots, equips the crown, catches a fish, taps six creatures and checks the console. Screenshots go
+to `screenshots/hd-ipad-v4-*.png`.

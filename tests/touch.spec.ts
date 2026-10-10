@@ -73,7 +73,7 @@ test('iPad touch: joystick, tap-to-move, tap objects, action button, volume', as
   const L = await page.evaluate(() => (window as any).__cozy.lanterns.find((l: any) => l.id === 'dawn'));
   await page.evaluate(([x, y]) => (window as any).__cozy.teleport(x + 30, y + 26), [L.x, L.y]);
   await expect.poll(async () => (await ui(page)).actionShown, { timeout: 60_000, intervals: [300] }).toBe(true);
-  expect((await ui(page)).action).toBe('Light');
+  await expect.poll(async () => (await ui(page)).action, { timeout: 60_000, intervals: [300] }).toBe('Light');
   const btn = (await ui(page)).btn;
   await page.touchscreen.tap(btn.x, btn.y);
   await expect.poll(async () => (await state(page)).litOrder.length, { timeout: 60_000, intervals: [300] }).toBe(1);

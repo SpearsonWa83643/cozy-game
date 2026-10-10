@@ -87,8 +87,11 @@ test('bigger world: areas, puzzle, fishing, wardrobe, creatures', async ({ page 
   };
   let shotTaken = false;
   for (let attempt = 0; attempt < 8 && (await cozy(page, 'fish()')).catches === 0; attempt++) {
-    if ((await cozy(page, 'fish()')).state === 'idle') await tapWorld(page, 1330, 2390);
-    await expect.poll(async () => (await cozy(page, 'fish()')).state, { timeout: 60_000, intervals: [150] }).toMatch(/bite|idle/);
+    if ((await cozy(page, 'fish()')).state === 'idle') {
+      await tapWorld(page, 1330, 2390);
+      await expect.poll(async () => (await cozy(page, 'fish()')).state, { timeout: 30_000, intervals: [150] }).not.toBe('idle');
+    }
+    await expect.poll(async () => (await cozy(page, 'fish()')).state, { timeout: 90_000, intervals: [150] }).toMatch(/bite|idle/);
     if ((await cozy(page, 'fish()')).state !== 'bite') continue;
     await touch(590, 300);
     await expect.poll(async () => (await cozy(page, 'fish()')).state, { timeout: 20_000, intervals: [100] }).toMatch(/reel|idle/);
