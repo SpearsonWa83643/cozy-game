@@ -43,9 +43,9 @@ export const PATH_SOUTH: [number, number][] = [
 ];
 
 // ------------------------------------------------------------------ the wider world
-export type AreaId = 'glade' | 'river' | 'forest' | 'orchard' | 'lake';
+export type AreaId = 'glade' | 'river' | 'forest' | 'orchard' | 'lake' | 'village';
 export const AREA_NAMES: Record<AreaId, string> = {
-  glade: 'Willowmere Glade', river: 'Brookside', forest: 'Mistbirch Wood', orchard: 'Windmill Orchard', lake: 'Shellwater Shore',
+  glade: 'Willowmere Glade', river: 'Brookside', forest: 'Mistbirch Wood', orchard: 'Windmill Orchard', lake: 'Shellwater Shore', village: 'Willow Village',
 };
 
 /** River centre line, north to south, flowing into the lake. */
@@ -93,4 +93,9 @@ export const PATH_ORCHARD: [number, number][] = [[2412, 1720], [2650, 1770], [29
 export const PATH_ORCHARD_S: [number, number][] = [[3250, 1900], [3280, 2200], [3380, 2500], [3650, 2700], [4000, 2760]];
 export const PATH_LAKE: [number, number][] = [[2140, 1720], [2000, 1850], [1750, 1950], [1500, 2030], [1250, 2090], [1000, 2020], [930, 1800], [915, 1560]];
 
+/** The village meadow south of the glade: an 11x5 snap grid of 64-unit cells. */
+export const VILLAGE = { x: 130, y: 1600, cols: 11, rows: 5, cell: 64 };
+export const VILLAGE_SIGN = { x: 870, y: 1640 };
+export const VILLAGE_ENTRY = { x: 880, y: 1760 };
+export const MERCHANT_SPOT = { x: 860, y: 1880 };
 export const START_AREAS: AreaId[] = ['glade'];

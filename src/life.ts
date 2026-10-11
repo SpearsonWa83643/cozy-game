@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { ATLAS, frameScale, S, pondValue } from './art';
+import { ATLAS, atlasOf, frameScale, S, pondValue } from './art';
+import { theme } from './theme';
 import { POND, COTTAGE, WORLD_W, WORLD_H } from './layout';
 import { sfx } from './audio';
 import type { WorldScene } from './scenes/World';
@@ -11,7 +12,7 @@ type Fly = {
   hx: number; hy: number; x: number; y: number; vx: number; vy: number;
   tx: number; ty: number; retarget: number; phase: number; base: number;
 };
-type Bird = { img: Phaser.GameObjects.Image; shadow: Phaser.GameObjects.Image; vx: number; vy: number; phase: number };
+type Bird = { img: Phaser.GameObjects.Image; shadow: Phaser.GameObjects.Image; vx: number; vy: number; phase: number; bat?: boolean };
 type Fish = { img: Phaser.GameObjects.Image; x: number; y: number; tx: number; ty: number; heading: number; dart?: number };
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
@@ -154,7 +155,7 @@ export class Life {
   }
 
   img(x: number, y: number, key: string, scale = 1) {
-    return this.w.add.image(x, y, ATLAS, key).setScale(scale / (frameScale[key] ?? S));
+    return this.w.add.image(x, y, atlasOf(key), key).setScale(scale / (frameScale[key] ?? S));
   }
 
   // ------------------------------------------------------------ butterflies
@@ -224,6 +225,13 @@ export class Life {
     for (let i = 0; i < n; i++) {
       const x = dir > 0 ? v.x - 60 - i * 34 : v.right + 60 + i * 34;
       const y = y0 + (i % 2 ? 22 : -10) * i;
+      if (theme.critters.bats && i !== 1) {
+        // Halloween: little bats flutter past instead of most birds.
+        const img = this.img(x, y, 'h_bat0', 0.85).setDepth(9500).setFlipX(dir < 0);
+        const shadow = this.img(x + 60, y + 120, 'h_bat0', 0.85).setTint(0x000000).setAlpha(0.12).setDepth(-450);
+        this.birds.push({ img, shadow, vx: dir * rand(90, 120), vy: rand(-12, 12), phase: Math.random() * 6, bat: true });
+        continue;
+      }
       const img = this.img(x, y, 'bird', 1).setDepth(9500).setFlipY(false).setRotation(dir > 0 ? Math.PI / 2 : -Math.PI / 2);
       const shadow = this.img(x + 60, y + 120, 'bird', 1).setTint(0x000000).setAlpha(0.12).setDepth(-450).setRotation(img.rotation);
       this.birds.push({ img, shadow, vx: dir * rand(120, 150), vy: rand(-12, 12), phase: Math.random() * 6 });
@@ -237,8 +245,14 @@ export class Life {
       const b = this.birds[i];
       b.img.x += b.vx * dt;
       b.img.y += (b.vy + Math.sin(t * 2 + b.phase) * 10) * dt;
-      const flap = 0.35 + 0.65 * Math.abs(Math.sin(t * 9 + b.phase));
-      b.img.scaleX = flap / frameScale.bird;
+      if (b.bat) {
+        const f = Math.sin(t * 16 + b.phase) > 0 ? 'h_bat0' : 'h_bat1';
+        if (b.img.frame.name !== f) { b.img.setFrame(f); b.shadow.setFrame(f); }
+        b.img.y += Math.sin(t * 5 + b.phase) * 20 * dt;
+      } else {
+        const flap = 0.35 + 0.65 * Math.abs(Math.sin(t * 9 + b.phase));
+        b.img.scaleX = flap / frameScale.bird;
+      }
       b.shadow.setPosition(b.img.x + 60, b.img.y + 120);
       b.shadow.scaleX = b.img.scaleX;
       if (b.img.x < v.x - 300 || b.img.x > v.right + 300) {

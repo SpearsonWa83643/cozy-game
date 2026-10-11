@@ -15,6 +15,7 @@ export class BootScene extends Phaser.Scene {
     }
     this.scene.start('world');
     this.scene.launch('ui');
+    this.scene.launch('vui');
     this.scene.launch('menu');
   }
 }

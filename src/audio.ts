@@ -112,11 +112,26 @@ class Synth {
     { bass: 43, pad: [50, 55, 58, 62, 65], mel: [74, 77, 79, 82] },                  // Gm9
     { bass: 36, pad: [48, 53, 55, 58, 62], mel: [72, 74, 77, 79] },                  // C9sus
   ];
+  /** Halloween: playful D minor with a wink of chromatic colour (spooky-cute, not scary). */
+  private static SPOOKY = [
+    { bass: 38, pad: [50, 53, 57, 64], mel: [74, 77, 81, 76, 69] },                 // Dm(add9)
+    { bass: 46, pad: [50, 53, 58, 62], mel: [74, 77, 82, 81] },                     // Bb
+    { bass: 43, pad: [50, 55, 58, 64], mel: [74, 76, 79, 82] },                     // Gm6
+    { bass: 45, pad: [49, 52, 55, 57, 61], mel: [73, 76, 79, 81] },                 // A7
+    { bass: 38, pad: [50, 53, 57, 60], mel: [72, 74, 77, 81] },                     // Dm7
+    { bass: 44, pad: [48, 51, 56, 60], mel: [72, 75, 80, 79] },                     // Ab (a cheeky twist)
+    { bass: 43, pad: [50, 55, 58, 62], mel: [74, 79, 82, 77] },                     // Gm
+    { bass: 45, pad: [52, 55, 57, 61], mel: [76, 73, 79, 81] },                     // A7sus->A
+  ];
+  private spooky = false;
+  festival = false;
+  setTheme(t: 'classic' | 'spooky') { this.spooky = t === 'spooky'; }
   private static CHORD_LEN = 8.5;
   /** Per-area mood: transposition (semitones), melody density and pad brightness. */
   private static MOODS: Record<string, { tr: number; dens: number; cut: number }> = {
     glade: { tr: 0, dens: 0.3, cut: 950 }, river: { tr: 0, dens: 0.36, cut: 1200 },
     forest: { tr: -3, dens: 0.2, cut: 700 }, orchard: { tr: 2, dens: 0.42, cut: 1350 }, lake: { tr: -1, dens: 0.26, cut: 850 },
+    village: { tr: 2, dens: 0.4, cut: 1250 },
   };
   private mood = Synth.MOODS.glade;
   area = 'glade';
@@ -144,8 +159,9 @@ class Synth {
 
   private scheduleChord(t: number) {
     const ctx = this.ctx!;
-    const base = Synth.CHORDS[this.chordIdx % Synth.CHORDS.length];
-    const tr = this.mood.tr;
+    const set = this.spooky ? Synth.SPOOKY : Synth.CHORDS;
+    const base = set[this.chordIdx % set.length];
+    const tr = this.mood.tr + (this.festival ? 2 : 0);
     const chord = { bass: base.bass + tr, pad: base.pad.map((n) => n + tr), mel: base.mel.map((n) => n + tr) };
     this.chordIdx++;
     const L = Synth.CHORD_LEN;
@@ -180,7 +196,7 @@ class Synth {
     // Sparse kalimba melody on a 0.71 s grid, mostly stepwise.
     const beat = L / 12;
     for (let i = 1; i < 12; i++) {
-      if (Math.random() > this.mood.dens) continue;
+      if (Math.random() > (this.festival ? 0.75 : this.mood.dens)) continue;
       const pool = chord.mel;
       const near = pool.filter((p) => Math.abs(p - this.lastMelody) <= 5);
       const src = near.length && Math.random() < 0.8 ? near : pool;

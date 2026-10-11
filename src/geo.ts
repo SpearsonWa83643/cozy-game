@@ -94,6 +94,7 @@ export function waterBlocks(x: number, y: number) {
 }
 
 export function areaAt(x: number, y: number): AreaId {
+  if (x > 60 && x < 900 && y > 1545 && y < 1990) return 'village';
   if (x < GLADE_W && y < GLADE_H) return 'glade';
   if (y >= RIVER_END_Y) return x < RIDGE_X ? 'lake' : 'orchard';
   const rx = riverXAt(y);

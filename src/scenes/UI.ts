@@ -469,13 +469,21 @@ export class UIScene extends Phaser.Scene {
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (p.wasTouch && !this.touchMode) { this.touchMode = true; this.applyTouchMode(); }
-      if (this.registry.get('menuOpen')) return;
+      if (this.registry.get('menuOpen') || this.registry.get('vcard')) return;
       if (over.some((o) => o === this.volZone || o === this.mapZone || o === this.bagZone || (o === this.actionZone && this.actionShown))) return;
       if (this.cardOpen) { this.closeCard(); return; }
       if (this.registry.get('dialogOpen')) { this.world.tryInteract(); return; }
       const fs = this.world.fishing?.state;
       if (fs === 'bite' || fs === 'reel') { this.world.fishing.tap(p.downTime); return; }
-      if (this.stickPointer) return;
+      if (this.stickPointer || this.dragP) return;
+      // Press on a villager: drag them onto a building (or just tap for their card).
+      const vg = this.world.village;
+      if (vg && !vg.building && !this.world.fishing.active) {
+        const wp = this.world.cameras.main.getWorldPoint(p.x, p.y);
+        const v = vg.villagerAt(wp.x, wp.y);
+        if (v) { this.dragP = p; this.dragV = v; this.dragOn = false; this.stickStart = { x: p.x / DPR, y: p.y / DPR }; this.stickDownAt = this.time.now; return; }
+      }
+      if (vg?.building) { this.dragP = p; this.dragV = null; this.dragOn = false; this.stickStart = { x: p.x / DPR, y: p.y / DPR }; this.stickDownAt = this.time.now; return; }
       this.stickPointer = p;
       this.stickStart = { x: p.x / DPR, y: p.y / DPR };
       this.stickOrigin = { ...this.stickStart };
@@ -483,6 +491,16 @@ export class UIScene extends Phaser.Scene {
       this.stickActive = false;
     });
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      if (p === this.dragP && p.isDown) {
+        const vg = this.world.village;
+        const wp = this.world.cameras.main.getWorldPoint(p.x, p.y);
+        if (!this.dragOn && Math.hypot(p.x / DPR - this.stickStart.x, p.y / DPR - this.stickStart.y) > 12) {
+          this.dragOn = true;
+          if (this.dragV) vg.startDrag(this.dragV);
+        }
+        if (this.dragOn) { if (this.dragV) vg.dragTo(this.dragV, wp.x, wp.y); else vg.dragGhost(wp.x, wp.y); }
+        return;
+      }
       if (p !== this.stickPointer || !p.isDown) return;
       const x = p.x / DPR;
       const y = p.y / DPR;
@@ -508,6 +526,13 @@ export class UIScene extends Phaser.Scene {
       this.world.setStick({ x: dx / R, y: dy / R });
     });
     const release = (p: Phaser.Input.Pointer) => {
+      if (p === this.dragP) {
+        const vg = this.world.village;
+        if (this.dragOn && this.dragV) { const wp = this.world.cameras.main.getWorldPoint(p.x, p.y); vg.drop(this.dragV, wp.x, wp.y); }
+        else if (!this.dragOn) this.world.tapScreen(p.x, p.y);
+        this.dragP = null; this.dragV = null; this.dragOn = false;
+        return;
+      }
       if (p !== this.stickPointer) return;
       if (!this.stickActive && this.time.now - this.stickDownAt < 400) this.world.tapScreen(p.x, p.y);
       this.stickPointer = null;
@@ -627,7 +652,13 @@ export class UIScene extends Phaser.Scene {
     }
   }
 
+  dragP: Phaser.Input.Pointer | null = null;
+  dragV: import('../village/village').Villager | null = null;
+  dragOn = false;
   update(time: number, delta: number) {
+    // A release can be swallowed by an overlay scene; never leave the stick or a drag stuck.
+    if (this.stickPointer && !this.stickPointer.isDown) this.input.emit('pointerup', this.stickPointer);
+    if (this.dragP && !this.dragP.isDown) this.input.emit('pointerup', this.dragP);
     this.updateFps(time);
     this.updateFishUI(time);
     this.updateTouchUI(time);

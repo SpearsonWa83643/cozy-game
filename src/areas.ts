@@ -4,7 +4,7 @@ import Phaser from 'phaser';
 import { mulberry32, pondValue, pathDist, ATLAS } from './art';
 import {
   WORLD_W, WORLD_H, GLADE_W, GLADE_H, LAKE, BRIDGES, BRIDGE_GATE, PIER, WINDMILL, FOREST_EDGE_Y, RIDGE_X,
-  TILES, OWL, BELLS, DIG, DIG_STONES, DIG_SIGN, BELL_SIGN, TILE_SIGN, POTS, POT_SIGN, SONGBIRD,
+  TILES, OWL, BELLS, DIG, DIG_STONES, DIG_SIGN, BELL_SIGN, TILE_SIGN, POTS, POT_SIGN, SONGBIRD, VILLAGE, VILLAGE_SIGN, MERCHANT_SPOT,
 } from './layout';
 import { riverXAt, riverDist, riverHalfAt, lakeValue, waterAt, RIVER } from './geo';
 import { sfx } from './audio';
@@ -25,6 +25,9 @@ export function buildAreas(w: WorldScene) {
   const free = (x: number, y: number, pad: number) => {
     if (x < 20 || y < 20 || x > WORLD_W - 20 || y > WORLD_H - 10) return false;
     if (x < GLADE_W && y < GLADE_H + 20) return false; // the glade builds itself
+    // The village meadow stays open for building.
+    if (x > VILLAGE.x - 60 && x < VILLAGE.x + VILLAGE.cols * VILLAGE.cell + 60 && y > VILLAGE.y - 70 && y < VILLAGE.y + VILLAGE.rows * VILLAGE.cell + 50) return false;
+    if (Math.hypot(x - VILLAGE_SIGN.x, y - VILLAGE_SIGN.y) < 60 || Math.hypot(x - MERCHANT_SPOT.x, y - MERCHANT_SPOT.y) < 90) return false;
     if (pathDist(x, y) < pad + 22) return false;
     if (riverDist(x, y) < riverHalfAt(y) + pad + 10) return false;
     if (lakeValue(x, y, pad) < 1.02) return false;
@@ -263,7 +266,7 @@ export function buildAreas(w: WorldScene) {
     scatter(rng, 150, GLADE_H + 90, RIDGE_X, 2150, 16, 150, 50, (x, y) => { if (lakeValue(x, y) > 1.45) tree(x, y, ['tree0', 'tree3', 'tree1'][Math.floor(rng() * 3)], 0.85 + rng() * 0.3, rng, rng() < 0.5 ? 'blossom' : 'fruit'); });
     scatter(rng, 150, GLADE_H + 80, RIDGE_X, WORLD_H - 60, 14, 120, 30, (x, y) => { if (lakeValue(x, y) > 1.45) (rng() < 0.6 ? bush(x, y, rng) : rock(x, y, Math.floor(rng() * 3))); });
     scatter(rng, 150, GLADE_H + 60, RIDGE_X + 300, WORLD_H - 40, 200, 16, 4, (x, y) => { if (lakeValue(x, y) > 1.38) tuft(x, y, `tuft${Math.floor(rng() * 3)}`, rng); });
-    for (let i = 0; i < 16; i++) { const fx = 200 + rng() * 1700, fy = 1620 + rng() * 500; if (lakeValue(fx, fy) > 1.5) flowerClump(fx, fy, rng); }
+    for (let i = 0; i < 16; i++) { const fx = 200 + rng() * 1700, fy = 1620 + rng() * 500; if (lakeValue(fx, fy) > 1.5 && free(fx, fy, 10)) flowerClump(fx, fy, rng); }
     // Beach dressing: dune grass, driftwood, starfish.
     for (let i = 0; i < 70; i++) {
       const a = rng() * Math.PI * 2, k = 1.1 + rng() * 0.22;

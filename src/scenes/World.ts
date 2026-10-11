@@ -1,15 +1,17 @@
 import Phaser from 'phaser';
-import { S, ATLAS, frameScale, mulberry32, pondValue, distToPaths, pathDist, ALL_PATHS } from '../art';
+import { S, ATLAS, atlasOf, frameScale, mulberry32, pondValue, distToPaths, pathDist, ALL_PATHS } from '../art';
 import { GroundStreamer } from '../ground';
 import { waterBlocks, areaAt, waterAt } from '../geo';
 import { save, setPuzzle, addTreasure, hasTreasure, visit } from '../save';
 import { buildHeroSheet } from '../hero';
 import { buildAreas } from '../areas';
+import { Village } from '../village/village';
+import { ThemeDresser } from '../themeDress';
 import { Puzzles } from '../puzzles';
 import { Fishing } from '../fishing';
 import { Reacts } from '../react';
 import {
-  WORLD_W, WORLD_H, GLADE_W, GLADE_H, AREA_NAMES, AreaId, PLAYER_START, POND, COTTAGE, GARDEN, WALL_Y, GATE, SHRINE, SHRINE_CLEARING, SIGN,
+  WORLD_W, WORLD_H, GLADE_W, GLADE_H, AREA_NAMES, AreaId, VILLAGE, PLAYER_START, POND, COTTAGE, GARDEN, WALL_Y, GATE, SHRINE, SHRINE_CLEARING, SIGN,
   LANTERNS, LANTERN_ORDER, LanternId,
 } from '../layout';
 import { sfx } from '../audio';
@@ -128,20 +130,24 @@ export class WorldScene extends Phaser.Scene {
   fishing!: Fishing;
   ambient: Phaser.GameObjects.Particles.ParticleEmitter[] = [];
   mist: Phaser.GameObjects.Image[] = [];
+  fireflies: Phaser.GameObjects.Particles.ParticleEmitter[] = [];
+  village!: Village;
+  dresser!: ThemeDresser;
+  buildView = false;
   windmill: { blades: Phaser.GameObjects.Image; speed: number; boost: number } | null = null;
 
   constructor() { super('world'); }
 
   // ------------------------------------------------------------ helpers
   img(x: number, y: number, key: string, ox = 0.5, oy = 1, scale = 1) {
-    const o = this.add.image(x, y, ATLAS, key).setOrigin(ox, oy).setScale(scale / (frameScale[key] ?? S));
+    const o = this.add.image(x, y, atlasOf(key), key).setOrigin(ox, oy).setScale(scale / (frameScale[key] ?? S));
     this.cull.add(o);
     return o;
   }
 
   fx(x: number, y: number, key: string, scale = 1) {
     // FX frames are painted at their own px-per-unit; normalise to world units.
-    return this.add.image(x, y, ATLAS, key).setScale(scale / (frameScale[key] ?? 1));
+    return this.add.image(x, y, atlasOf(key), key).setScale(scale / (frameScale[key] ?? 1));
   }
 
   solidRect(x: number, y: number, w: number, h: number) {
@@ -195,6 +201,8 @@ export class WorldScene extends Phaser.Scene {
     this.fishing = new Fishing(this);
     this.restoreProgress();
     this.buildNav();
+    this.village = new Village(this);
+    this.dresser = new ThemeDresser(this);
     this.tapMarker = this.fx(0, 0, 'ripple', 0.5).setBlendMode('ADD').setAlpha(0).setDepth(-300);
 
     // Camera.
@@ -228,13 +236,45 @@ export class WorldScene extends Phaser.Scene {
     this.time.delayedCall(500, () => this.game.events.emit('toast', AREA_NAMES[this.area], 'title'));
   }
 
-  fitCamera() {
+  baseZoom() {
     const w = this.scale.width / DPR;
     const h = this.scale.height / DPR;
     // Landscape: frame ~560 world units tall. Portrait: frame ~560 units wide, so the
     // character stays a comfortable size instead of shrinking to fit the long axis.
     const base = w >= h ? Math.min(h / 560, w / 780) : Math.min(w / 560, h / 640);
-    this.cameras.main.setZoom(Math.max(0.6, base) * DPR);
+    return Math.max(0.6, base) * DPR;
+  }
+
+  /** Build mode: frame the whole village above the build tray. */
+  buildViewTarget() {
+    const w = this.scale.width / DPR, h = this.scale.height / DPR;
+    const tray = h > w ? 230 : 190;
+    const z = Math.max(0.45, Math.min(w / 800, (h - tray - 70) / 420));
+    const cx = VILLAGE.x + VILLAGE.cols * VILLAGE.cell / 2;
+    const cy = VILLAGE.y + VILLAGE.rows * VILLAGE.cell / 2 - 30 + (tray - 70) / 2 / z;
+    return { z: z * DPR, cx, cy };
+  }
+  enterBuildView() {
+    this.buildView = true;
+    this.path = []; this.pathTarget = null; this.stick = null;
+    const cam = this.cameras.main;
+    cam.stopFollow();
+    const t = this.buildViewTarget();
+    cam.pan(t.cx, t.cy, 650, 'Sine.easeInOut', true);
+    cam.zoomTo(t.z, 650, 'Sine.easeInOut', true);
+  }
+  exitBuildView() {
+    this.buildView = false;
+    const cam = this.cameras.main;
+    cam.zoomTo(this.baseZoom(), 550, 'Sine.easeInOut', true);
+    cam.pan(this.feet.x, this.feet.y + 18, 550, 'Sine.easeInOut', true, (_c: unknown, p: number) => {
+      if (p === 1 && !this.buildView) cam.startFollow(this.feet, false, 0.085, 0.085, 0, 18);
+    });
+  }
+
+  fitCamera() {
+    if (this.buildView) { const t = this.buildViewTarget(); this.cameras.main.setZoom(t.z).centerOn(t.cx, t.cy); return; }
+    this.cameras.main.setZoom(this.baseZoom());
     // Snap to the player after a resize/rotation instead of lerping in from far away.
     if (this.feet) this.cameras.main.centerOn(this.feet.x, this.feet.y + 18);
   }
@@ -589,7 +629,7 @@ export class WorldScene extends Phaser.Scene {
     // Fireflies near the forest edges and the shrine.
     const fireflyZones = [new Phaser.Geom.Rectangle(2600, 200, 1600, 1000), new Phaser.Geom.Rectangle(700, 60, 600, 260), new Phaser.Geom.Rectangle(120, 380, 260, 1000), new Phaser.Geom.Rectangle(1640, 380, 260, 1000), new Phaser.Geom.Rectangle(1100, 1020, 500, 160)];
     for (const z of fireflyZones) {
-      this.add.particles(0, 0, ATLAS, {
+      this.fireflies.push(this.add.particles(0, 0, ATLAS, {
       frame: 'glow',
         emitZone: { type: 'random', source: z as any },
         lifespan: { min: 3000, max: 6000 },
@@ -599,7 +639,7 @@ export class WorldScene extends Phaser.Scene {
         alpha: { values: [0, 0.9, 0.2, 0.95, 0] } as any,
         tint: [0xe6ff8a, 0xfff07a],
         blendMode: 'ADD',
-      } as any).setDepth(8001);
+      } as any).setDepth(8001));
     }
     // Falling petals from the blossom trees region.
     this.ambient.push(this.add.particles(0, 0, ATLAS, {
@@ -784,6 +824,7 @@ export class WorldScene extends Phaser.Scene {
 
   tapWorld(wx: number, wy: number) {
     if (this.locked || this.registry.get('dialogOpen') || this.registry.get('menuOpen')) return;
+    if (this.village.building) { this.village.buildTap(wx, wy); return; }
     if (this.fishing.active) { this.fishing.tap(); return; }
     // Creatures and reactive objects respond right away, wherever they are on screen.
     let tb: Tappable | null = null;
@@ -896,7 +937,7 @@ export class WorldScene extends Phaser.Scene {
   update(time: number, delta: number) {
     const dt = Math.min(delta, 50) / 1000;
     const k = this.keys;
-    const frozen = this.locked || !!this.registry.get('dialogOpen') || !!this.registry.get('menuOpen') || ['cast', 'reel', 'land'].includes(this.fishing?.state);
+    const frozen = this.buildView || this.locked || !!this.registry.get('dialogOpen') || !!this.registry.get('menuOpen') || ['cast', 'reel', 'land'].includes(this.fishing?.state);
     let ix = 0, iy = 0;
     if (!frozen) {
       ix = (k.D.isDown || k.RIGHT.isDown ? 1 : 0) - (k.A.isDown || k.LEFT.isDown ? 1 : 0);
@@ -1001,6 +1042,8 @@ export class WorldScene extends Phaser.Scene {
     this.puzzles.update(time, dt);
     this.fishing.update(time, dt);
     this.reacts.update(time, dt);
+    this.village.update(dt, time);
+    this.dresser.update(time, dt);
     const view = this.cameras.main.worldView;
     this.cull.update(view);
     if ((this.canopyTick = (this.canopyTick + 1) % 4) === 0) this.fadeCanopies();
@@ -1126,6 +1169,18 @@ export class WorldScene extends Phaser.Scene {
         }
         return -1;
       },
+      village() {
+        const v = self.village;
+        const xy = (o: { x: number; y: number }) => [Math.round(o.x), Math.round(o.y)];
+        return {
+          res: { ...save.village.res }, building: v.building, selected: v.selected, ghost: v.ghost ? { gx: v.ghost.gx, gy: v.ghost.gy, ok: v.ghost.ok, check: xy(v.ghost.check) } : null,
+          buildings: v.buildings.map((b) => ({ id: b.data.id, type: b.data.type, x: Math.round(b.cx), y: Math.round(b.y - b.img.displayHeight * 0.45), worker: b.worker?.data.id ?? null })),
+          villagers: v.villagers.map((q) => ({ id: q.data.id, name: q.data.name, x: Math.round(q.x), y: Math.round(q.y - 26), job: q.data.job, task: q.task })),
+          guest: v.wanderer ? { name: v.wanderer.data.name, x: Math.round(v.wanderer.x), y: Math.round(v.wanderer.y - 26) } : null,
+          produced: v.produced, rain: v.rain > 0, festival: v.festival > 0, merchant: !!v.cart, theme: save.theme,
+        };
+      },
+      villageEvent: (e: 'merchant' | 'rain' | 'festival') => self.village.start(e),
       worldToScreen(x: number, y: number) {
         const cam = self.cameras.main;
         return { x: (x - cam.worldView.x) * cam.zoom / DPR, y: (y - cam.worldView.y) * cam.zoom / DPR };

@@ -1,0 +1,580 @@
+// Willow Village: friendly villagers, snap-grid building, simple jobs and gentle events.
+// Rules for a young audience: no fail states, few numbers, big obvious feedback.
+import Phaser from 'phaser';
+import { atlasOf, frameScale, mulberry32 } from '../art';
+import { VILLAGE, VILLAGE_SIGN, VILLAGE_ENTRY, MERCHANT_SPOT, COTTAGE } from '../layout';
+import { save, persist, hasTreasure, BuildingType, BuildingSave, VillagerSave, Res } from '../save';
+import { sfx } from '../audio';
+import { theme, themeEvents } from '../theme';
+import { KINDS } from './vart';
+import type { WorldScene } from '../scenes/World';
+
+export type ResId = keyof Res;
+export type BuildDef = {
+  name: string; frame: string; w: number; h: number; cost: Partial<Res>;
+  job: string | null; makes: ResId | 'woodstone' | null; every: number; amount: number;
+  beds: number; fun: boolean; unlock: { treasure?: string; fish?: boolean } | null; blurb: string; hint: string;
+};
+export const BUILD: Record<BuildingType, BuildDef> = {
+  home: { name: 'Home', frame: 'b_home', w: 2, h: 2, cost: { wood: 4 }, job: null, makes: null, every: 0, amount: 0, beds: 2, fun: false, unlock: null, blurb: 'A cozy home. Room for 2 friends.', hint: '' },
+  garden: { name: 'Garden', frame: 'b_garden', w: 2, h: 2, cost: { wood: 2 }, job: 'Gardener', makes: 'food', every: 9, amount: 1, beds: 0, fun: false, unlock: null, blurb: 'Grows yummy veggies.', hint: '' },
+  kitchen: { name: 'Kitchen', frame: 'b_kitchen', w: 2, h: 2, cost: { wood: 3, stone: 2 }, job: 'Cook', makes: 'food', every: 12, amount: 2, beds: 0, fun: false, unlock: null, blurb: 'Friends eat here. A cook makes food.', hint: '' },
+  workshop: { name: 'Workshop', frame: 'b_workshop', w: 2, h: 2, cost: { wood: 3, stone: 1 }, job: 'Builder', makes: 'woodstone', every: 10, amount: 1, beds: 0, fun: false, unlock: null, blurb: 'Makes wood and stone.', hint: '' },
+  fishhut: { name: 'Fishing Hut', frame: 'b_fishhut', w: 2, h: 2, cost: { wood: 4 }, job: 'Fisher', makes: 'food', every: 11, amount: 1, beds: 0, fun: false, unlock: { fish: true }, blurb: 'Catches fish for food.', hint: 'Catch your first fish.' },
+  flowerbed: { name: 'Flowers', frame: 'd_flowerbed', w: 1, h: 1, cost: { wood: 1 }, job: null, makes: null, every: 0, amount: 0, beds: 0, fun: true, unlock: { treasure: 'flower_crown' }, blurb: 'Pretty! Friends love it.', hint: 'Find the Flower Crown.' },
+  lamp: { name: 'Lamp', frame: 'd_lamp', w: 1, h: 1, cost: { stone: 1 }, job: null, makes: null, every: 0, amount: 0, beds: 0, fun: true, unlock: { treasure: 'golden_feather' }, blurb: 'A warm, happy light.', hint: 'Find the Golden Feather.' },
+  well: { name: 'Well', frame: 'd_well', w: 1, h: 1, cost: { stone: 3 }, job: null, makes: null, every: 0, amount: 0, beds: 0, fun: true, unlock: { treasure: 'rusty_key' }, blurb: 'Make a wish!', hint: 'Find the Rusty Key.' },
+  bench: { name: 'Bench', frame: 'd_bench', w: 1, h: 1, cost: { wood: 2 }, job: null, makes: null, every: 0, amount: 0, beds: 0, fun: true, unlock: { treasure: 'shell_necklace' }, blurb: 'A comfy seat.', hint: 'Find the Shell Necklace.' },
+  statue: { name: 'Fox Statue', frame: 'd_statue', w: 1, h: 1, cost: { stone: 2 }, job: null, makes: null, every: 0, amount: 0, beds: 0, fun: true, unlock: { treasure: 'fox_hood' }, blurb: 'A brave little fox.', hint: 'Find the Fox-ear Hood.' },
+};
+export const BUILD_ORDER: BuildingType[] = ['home', 'garden', 'kitchen', 'workshop', 'fishhut', 'flowerbed', 'lamp', 'well', 'bench', 'statue'];
+
+const NAMES = ['Pip', 'Mo', 'Bea', 'Juniper', 'Tuck', 'Hazel', 'Olive', 'Bram', 'Poppy', 'Wren', 'Fig', 'Clover', 'Moss', 'Tilly', 'Basil', 'Daisy', 'Pebble', 'Sunny'];
+const TRAITS = ['Loves naps', 'Always humming', 'Tells silly jokes', 'Loves flowers', 'Super speedy', 'Bakes the best pie', 'Collects shiny pebbles', 'Counts the stars', 'Gives big hugs', 'Brave explorer'];
+
+export const isUnlockedB = (t: BuildingType) => {
+  const u = BUILD[t].unlock;
+  if (!u) return true;
+  if (u.treasure) return hasTreasure(u.treasure);
+  if (u.fish) return Object.keys(save.fish).some((k) => k !== 'old_boot');
+  return true;
+};
+export const canAfford = (cost: Partial<Res>) => (Object.keys(cost) as ResId[]).every((k) => save.village.res[k] >= (cost[k] ?? 0));
+
+type Task = 'idle' | 'walk' | 'work' | 'eat' | 'sleep' | 'play' | 'drag' | 'wander';
+export class Villager {
+  img: Phaser.GameObjects.Image;
+  shadow: Phaser.GameObjects.Image;
+  face: Phaser.GameObjects.Image;
+  x: number; y: number;
+  task: Task = 'idle';
+  next: Task = 'idle';
+  path: [number, number][] = [];
+  timer = 0;
+  think = 0;
+  progress = 0;
+  stepT = 0;
+  frame = 0;
+  hop = 0;
+  constructor(public v: Village, public data: VillagerSave, x: number, y: number, public guest = false) {
+    const w = v.w;
+    this.x = x; this.y = y;
+    this.shadow = w.fx(x, y, 'shadow', 0.45).setAlpha(0.5).setDepth(-480);
+    this.img = w.add.image(x, y, atlasOf(this.key()), this.key()).setOrigin(0.5, 1).setScale(0.62 / (frameScale[this.key()] ?? 3)).setDepth(y);
+    this.face = w.add.image(x, y - 54, atlasOf('f_happy'), 'f_happy').setScale(0.42 / (frameScale.f_happy ?? 2.5)).setDepth(9000);
+    if (guest) this.face.setTexture(atlasOf('i_heart'), 'i_heart');
+  }
+  key() { return `vil${this.data.kind}_${this.frame}`; }
+  mood(): 'f_happy' | 'f_ok' | 'f_meh' {
+    const m = Math.min(this.data.food, this.data.sleep, this.data.fun);
+    return m > 0.55 ? 'f_happy' : m > 0.25 ? 'f_ok' : 'f_meh';
+  }
+  speed() { return this.data.trait === 'Super speedy' ? 78 : 56; }
+  goTo(x: number, y: number, then: Task) {
+    const p = this.v.w.nav.find(this.x, this.y, x, y);
+    this.path = p && p.length ? p : [[x, y]];
+    this.task = 'walk'; this.next = then;
+  }
+  destroy() { this.img.destroy(); this.shadow.destroy(); this.face.destroy(); }
+}
+
+export type Building = { data: BuildingSave; img: Phaser.GameObjects.Image; x: number; y: number; cx: number; cy: number; worker: Villager | null; prog: number; alt: number; bar: Phaser.GameObjects.Graphics };
+
+export class Village {
+  villagers: Villager[] = [];
+  buildings: Building[] = [];
+  wanderer: Villager | null = null;
+  wanderTimer = 3;
+  building = false;           // build mode
+  selected: BuildingType | null = null;
+  ghost: { img: Phaser.GameObjects.Image; gx: number; gy: number; ok: boolean; check: Phaser.GameObjects.Image; cross: Phaser.GameObjects.Image } | null = null;
+  grid: Phaser.GameObjects.Graphics;
+  rain = 0; festival = 0; merchant = 0;
+  eventTimer = 75;
+  cart: Phaser.GameObjects.Image | null = null;
+  bunting: Phaser.GameObjects.Image[] = [];
+  rainFx: Phaser.GameObjects.Particles.ParticleEmitter;
+  rainTint: Phaser.GameObjects.Rectangle;
+  produced = 0;
+  speed = 1; // test hook only
+
+  constructor(public w: WorldScene) {
+    this.grid = w.add.graphics().setDepth(-340).setVisible(false);
+    // Village sign + a picnic blanket where friends eat and nap before there are buildings.
+    w.img(VILLAGE_SIGN.x, VILLAGE_SIGN.y, 'v_sign', 0.5, 1, 1).setDepth(VILLAGE_SIGN.y);
+    w.solidCircle(VILLAGE_SIGN.x, VILLAGE_SIGN.y - 4, 8);
+    w.interactables.push({ x: VILLAGE_SIGN.x, y: VILLAGE_SIGN.y, r: 56, label: 'Read', promptY: 80, enabled: () => true,
+      action: () => w.game.events.emit('dialog', ['Willow Village!', 'Tap the hammer to build.', 'Tap new friends to invite them.', 'Drag a friend onto a building to give them a job.']) });
+    this.rainFx = w.add.particles(0, 0, atlasOf('p_drop'), {
+      frame: 'p_drop', emitZone: { type: 'random', source: new Phaser.Geom.Rectangle(0, 0, 10, 10) as any },
+      lifespan: 900, speedY: { min: 520, max: 640 }, speedX: { min: -60, max: -30 }, quantity: 6, frequency: 30,
+      scale: { min: 0.5, max: 0.8 }, alpha: { min: 0.4, max: 0.75 }, emitting: false,
+    } as any).setDepth(8900);
+    this.rainTint = w.add.rectangle(0, 0, 10, 10, 0x6d7f9e, 0).setOrigin(0).setScrollFactor(0).setDepth(8800);
+    for (const b of save.village.buildings) this.spawnBuilding(b, false);
+    for (const d of save.village.villagers) {
+      const [x, y] = this.homeSpot(d.id);
+      this.villagers.push(new Villager(this, d, x, y));
+    }
+    for (const b of this.buildings) {
+      const id = save.village.villagers.find((v) => v.job === b.data.id);
+      if (id) b.worker = this.villagers.find((v) => v.data.id === id.id) ?? null;
+    }
+    w.game.events.on('fish-caught', (d: { species: { rarity: string } }) => {
+      const n = { junk: 0, common: 1, uncommon: 2, rare: 3 }[d.species.rarity as 'common'] ?? 1;
+      if (n) this.add('food', n, w.feet.x, w.feet.y - 60);
+    });
+    themeEvents.on('change', () => this.restyle());
+  }
+
+  // ------------------------------------------------------------ grid helpers
+  cellXY(gx: number, gy: number) { return [VILLAGE.x + gx * VILLAGE.cell, VILLAGE.y + gy * VILLAGE.cell] as const; }
+  footprint(t: BuildingType, gx: number, gy: number) {
+    const d = BUILD[t]; const [x, y] = this.cellXY(gx, gy);
+    return { x, y, w: d.w * VILLAGE.cell, h: d.h * VILLAGE.cell, cx: x + d.w * VILLAGE.cell / 2, by: y + d.h * VILLAGE.cell - 4 };
+  }
+  occupied(gx: number, gy: number) {
+    return this.buildings.some((b) => { const d = BUILD[b.data.type]; return gx >= b.data.gx && gx < b.data.gx + d.w && gy >= b.data.gy && gy < b.data.gy + d.h; });
+  }
+  canPlace(t: BuildingType, gx: number, gy: number) {
+    const d = BUILD[t];
+    if (gx < 0 || gy < 0 || gx + d.w > VILLAGE.cols || gy + d.h > VILLAGE.rows) return false;
+    for (let y = gy; y < gy + d.h; y++) for (let x = gx; x < gx + d.w; x++) if (this.occupied(x, y)) return false;
+    // Keep friends and the player out from under new walls.
+    const f = this.footprint(t, gx, gy);
+    if (this.w.feet.x > f.x - 8 && this.w.feet.x < f.x + f.w + 8 && this.w.feet.y > f.y + f.h * 0.35 && this.w.feet.y < f.y + f.h + 10) return false;
+    return true;
+  }
+  firstFree(t: BuildingType): [number, number] | null {
+    const d = BUILD[t];
+    for (let gy = 0; gy <= VILLAGE.rows - d.h; gy++) for (let gx = 0; gx <= VILLAGE.cols - d.w; gx++) if (this.canPlace(t, gx, gy)) return [gx, gy];
+    return null;
+  }
+  beds() { return 2 + this.buildings.reduce((n, b) => n + BUILD[b.data.type].beds, 0); }
+  homeSpot(id: number): [number, number] {
+    const homes = this.buildings.filter((b) => b.data.type === 'home');
+    const h = homes[id % Math.max(1, homes.length)];
+    if (h) return [h.cx + ((id % 3) - 1) * 18, h.y + 16];
+    const r = mulberry32(id * 31)();
+    return [VILLAGE.x + 120 + r * 420, VILLAGE.y + VILLAGE.rows * VILLAGE.cell + 20];
+  }
+
+  // ------------------------------------------------------------ resources
+  add(id: ResId, n: number, x?: number, y?: number) {
+    save.village.res[id] += n;
+    persist();
+    this.w.game.events.emit('res', id, n, x, y);
+  }
+  pay(cost: Partial<Res>) {
+    for (const k of Object.keys(cost) as ResId[]) save.village.res[k] -= cost[k] ?? 0;
+    persist();
+    this.w.game.events.emit('res', null, 0);
+  }
+
+  // ------------------------------------------------------------ buildings
+  spawnBuilding(b: BuildingSave, fresh: boolean) {
+    const d = BUILD[b.type];
+    const f = this.footprint(b.type, b.gx, b.gy);
+    const frame = b.type === 'garden' && fresh ? 'b_garden0' : d.frame;
+    const img = this.w.add.image(f.cx, f.by, atlasOf(frame), frame).setOrigin(0.5, 1).setDepth(f.by);
+    const fw = this.w.textures.getFrame(atlasOf(frame), frame).width;
+    img.setScale((f.w * (d.w === 1 ? 1.1 : 1.08)) / fw);
+    const bar = this.w.add.graphics().setDepth(9001);
+    const bld: Building = { data: b, img, x: f.x, y: f.y + f.h, cx: f.cx, cy: f.y + f.h / 2, worker: null, prog: 0, alt: 0, bar };
+    this.buildings.push(bld);
+    // Solid lower part (the roof overhangs), blocked for walking.
+    const sh = f.h * (d.w === 1 ? 0.45 : 0.55);
+    this.w.solidRect(f.x + 6, f.y + f.h - sh - 4, f.w - 12, sh);
+    this.w.nav.blockRect(f.x + 6, f.y + f.h - sh - 4, f.w - 12, sh, 6);
+    this.w.tappables.push({ x: () => f.cx, y: () => f.y + f.h * 0.5, r: f.w * 0.45, enabled: () => !this.building, tap: () => this.w.game.events.emit('card', { kind: 'building', b: bld }) });
+    if (fresh) {
+      const s = img.scaleX;
+      img.setScale(s * 0.2, s * 0.2);
+      this.w.tweens.add({ targets: img, scaleX: s, scaleY: s, duration: 520, ease: 'Back.easeOut' });
+      this.w.burst(f.cx, f.by - 20, 0xfff1c4, 26, 'spark');
+      this.w.burst(f.cx, f.by - 6, 0xd9b48a, 14, 'leaf');
+      this.w.cameras.main.shake(160, 0.002);
+      sfx.solve();
+      if (b.type === 'garden') this.w.time.delayedCall(2500, () => img.setTexture(atlasOf('b_garden'), 'b_garden'));
+    }
+    this.dress(bld);
+    return bld;
+  }
+  /** Seasonal dressing on buildings (pumpkins + candles for Halloween). */
+  dressings: Phaser.GameObjects.Image[] = [];
+  dress(b: Building) {
+    if (!theme.props || BUILD[b.data.type].w === 1) return;
+    const d1 = this.w.add.image(b.cx - 44, b.y - 2, atlasOf('h_jack'), 'h_jack').setOrigin(0.5, 1).setScale(0.55 / 2.5).setDepth(b.y + 1);
+    const d2 = this.w.add.image(b.cx + 46, b.y - 4, atlasOf('h_candle'), 'h_candle').setOrigin(0.5, 1).setScale(0.6 / 2.5).setDepth(b.y + 1);
+    this.dressings.push(d1, d2);
+  }
+  restyle() {
+    for (const d of this.dressings) d.destroy();
+    this.dressings = [];
+    for (const b of this.buildings) this.dress(b);
+  }
+
+  // ------------------------------------------------------------ build mode
+  enterBuild() {
+    if (this.building) return;
+    this.building = true;
+    this.grid.setVisible(true);
+    this.drawGrid();
+    this.w.enterBuildView();
+    this.w.game.events.emit('build-mode', true);
+  }
+  exitBuild() {
+    if (!this.building) return;
+    this.building = false;
+    this.select(null);
+    this.grid.setVisible(false);
+    this.w.exitBuildView();
+    this.w.game.events.emit('build-mode', false);
+  }
+  drawGrid() {
+    const g = this.grid; g.clear();
+    const c = VILLAGE.cell;
+    g.fillStyle(0xffffff, 0.12); g.fillRoundedRect(VILLAGE.x - 6, VILLAGE.y - 6, VILLAGE.cols * c + 12, VILLAGE.rows * c + 12, 16);
+    for (let y = 0; y < VILLAGE.rows; y++) for (let x = 0; x < VILLAGE.cols; x++) {
+      const [px, py] = this.cellXY(x, y);
+      if (this.occupied(x, y)) continue;
+      g.lineStyle(2, 0xffffff, 0.55); g.strokeRoundedRect(px + 4, py + 4, c - 8, c - 8, 10);
+    }
+  }
+  select(t: BuildingType | null) {
+    this.selected = t;
+    if (this.ghost) { this.ghost.img.destroy(); this.ghost.check.destroy(); this.ghost.cross.destroy(); this.ghost = null; }
+    if (!t) return;
+    const spot = this.firstFree(t);
+    if (!spot) { this.w.game.events.emit('toast', 'No room left! The village is full.'); this.selected = null; return; }
+    const d = BUILD[t];
+    const img = this.w.add.image(0, 0, atlasOf(d.frame), d.frame).setOrigin(0.5, 1).setAlpha(0.8).setDepth(9100);
+    const check = this.w.add.image(0, 0, atlasOf('i_check'), 'i_check').setScale(1.15 / 2.5).setDepth(9102);
+    const cross = this.w.add.image(0, 0, atlasOf('i_cross'), 'i_cross').setScale(0.95 / 2.5).setDepth(9102);
+    this.ghost = { img, gx: spot[0], gy: spot[1], ok: true, check, cross };
+    this.moveGhost(spot[0], spot[1]);
+  }
+  moveGhost(gx: number, gy: number) {
+    const g = this.ghost; if (!g || !this.selected) return;
+    const t = this.selected, d = BUILD[t];
+    gx = Phaser.Math.Clamp(gx, 0, VILLAGE.cols - d.w); gy = Phaser.Math.Clamp(gy, 0, VILLAGE.rows - d.h);
+    g.gx = gx; g.gy = gy; g.ok = this.canPlace(t, gx, gy);
+    const f = this.footprint(t, gx, gy);
+    const fw = this.w.textures.getFrame(atlasOf(d.frame), d.frame).width;
+    g.img.setPosition(f.cx, f.by).setScale((f.w * (d.w === 1 ? 1.1 : 1.08)) / fw).setTint(g.ok ? 0xffffff : 0xff9a9a);
+    const top = f.by - g.img.displayHeight;
+    g.check.setPosition(f.cx + 30, top - 24).setVisible(g.ok);
+    g.cross.setPosition(f.cx - 30, top - 24);
+    this.drawGrid();
+    this.grid.fillStyle(g.ok ? 0x7cc463 : 0xf08a7a, 0.35); this.grid.fillRoundedRect(f.x + 3, f.y + 3, f.w - 6, f.h - 6, 12);
+  }
+  /** Dragging a finger in build mode slides the ghost along the grid. */
+  dragGhost(wx: number, wy: number) {
+    if (!this.ghost || !this.selected) return;
+    const d = BUILD[this.selected];
+    const gx = Math.floor((wx - VILLAGE.x) / VILLAGE.cell - (d.w - 1) / 2), gy = Math.floor((wy - VILLAGE.y) / VILLAGE.cell - (d.h - 1) / 2);
+    if (gx !== this.ghost.gx || gy !== this.ghost.gy) { this.moveGhost(gx, gy); sfx.tock(); }
+  }
+  /** A tap in build mode: buttons first, then move the ghost to the tapped cell. */
+  buildTap(wx: number, wy: number) {
+    const g = this.ghost;
+    if (g) {
+      if (g.check.visible && Math.hypot(wx - g.check.x, wy - g.check.y) < 34) { this.confirm(); return; }
+      if (Math.hypot(wx - g.cross.x, wy - g.cross.y) < 30) { this.select(null); sfx.blip(); this.drawGrid(); return; }
+      const d = BUILD[this.selected!];
+      const gx = Math.floor((wx - VILLAGE.x) / VILLAGE.cell - (d.w - 1) / 2), gy = Math.floor((wy - VILLAGE.y) / VILLAGE.cell - (d.h - 1) / 2);
+      if (wx > VILLAGE.x - 40 && wx < VILLAGE.x + VILLAGE.cols * VILLAGE.cell + 40 && wy > VILLAGE.y - 60 && wy < VILLAGE.y + VILLAGE.rows * VILLAGE.cell + 40) { this.moveGhost(gx, gy); sfx.tock(); }
+    }
+  }
+  confirm() {
+    const g = this.ghost, t = this.selected;
+    if (!g || !t || !g.ok) return;
+    const d = BUILD[t];
+    if (!canAfford(d.cost)) { this.w.game.events.emit('toast', 'Not enough yet. Gather more!'); sfx.softFail(); return; }
+    this.pay(d.cost);
+    const b: BuildingSave = { id: save.village.nextId++, type: t, gx: g.gx, gy: g.gy };
+    save.village.buildings.push(b);
+    persist();
+    this.spawnBuilding(b, true);
+    this.select(null);
+    this.drawGrid();
+    this.w.game.events.emit('built', t);
+    this.w.game.events.emit('toast', `You built a ${d.name}!`);
+  }
+
+  // ------------------------------------------------------------ villagers
+  newGuest() {
+    const r = Math.random;
+    const used = new Set(save.village.villagers.map((v) => v.name));
+    const names = NAMES.filter((n) => !used.has(n));
+    const d: VillagerSave = { id: 0, name: names[Math.floor(r() * names.length)] ?? 'Pip', trait: TRAITS[Math.floor(r() * TRAITS.length)], kind: Math.floor(r() * KINDS.length), job: null, food: 1, sleep: 1, fun: 1 };
+    const g = new Villager(this, d, VILLAGE_ENTRY.x + 60, VILLAGE_ENTRY.y + 30, true);
+    g.task = 'wander';
+    this.wanderer = g;
+    this.w.tappables.push({ x: () => g.x, y: () => g.y - 26, r: 34, enabled: () => this.wanderer === g && !this.building, tap: () => this.w.game.events.emit('card', { kind: 'guest', v: g }) });
+    this.w.game.events.emit('toast', `${d.name} is visiting! Tap to say hi.`);
+    sfx.chirp();
+  }
+  invite(): boolean {
+    const g = this.wanderer;
+    if (!g) return false;
+    if (save.village.villagers.length >= this.beds()) return false;
+    g.data.id = save.village.nextId++;
+    save.village.villagers.push(g.data);
+    persist();
+    g.guest = false;
+    this.wanderer = null;
+    this.wanderTimer = 30;
+    this.villagers.push(g);
+    this.addTap(g);
+    g.task = 'idle'; g.think = 0.5;
+    g.face.setTexture(atlasOf('f_happy'), 'f_happy');
+    this.w.burst(g.x, g.y - 30, 0xff9ccf, 18, 'spark');
+    this.w.life.hearts.emitParticleAt(g.x, g.y - 50, 5);
+    sfx.sparkle();
+    this.w.game.events.emit('invited', g.data.name);
+    return true;
+  }
+  addTap(v: Villager) {
+    this.w.tappables.push({ x: () => v.x, y: () => v.y - 26, r: 32, enabled: () => this.villagers.includes(v) && !this.building, tap: () => this.w.game.events.emit('card', { kind: 'villager', v }) });
+  }
+  villagerAt(wx: number, wy: number): Villager | null {
+    let best: Villager | null = null, bd = 38;
+    for (const v of this.villagers) { const d = Math.hypot(wx - v.x, wy - (v.y - 26)); if (d < bd) { bd = d; best = v; } }
+    return best;
+  }
+  buildingAt(wx: number, wy: number): Building | null {
+    for (const b of this.buildings) {
+      const d = BUILD[b.data.type];
+      const top = b.y - b.img.displayHeight;
+      if (wx > b.cx - d.w * VILLAGE.cell / 2 && wx < b.cx + d.w * VILLAGE.cell / 2 && wy > top && wy < b.y + 10) return b;
+    }
+    return null;
+  }
+  startDrag(v: Villager) { v.task = 'drag'; v.path = []; v.hop = 0; sfx.blip(); }
+  dragTo(v: Villager, wx: number, wy: number) {
+    v.x = wx; v.y = wy + 34;
+    const b = this.buildingAt(wx, wy);
+    for (const o of this.buildings) o.img.setTint(o === b && BUILD[o.data.type].job ? 0xfff2b0 : 0xffffff);
+  }
+  drop(v: Villager, wx: number, wy: number) {
+    for (const o of this.buildings) o.img.setTint(0xffffff);
+    const b = this.buildingAt(wx, wy);
+    v.task = 'idle'; v.think = 0.3;
+    if (!b) { const [x, y] = this.w.nav.isBlocked(...this.w.nav.cellOf(v.x, v.y)) ? this.homeSpot(v.data.id) : [v.x, v.y]; v.x = x; v.y = y; return false; }
+    const d = BUILD[b.data.type];
+    if (!d.job) { this.w.game.events.emit('toast', d.beds ? `${v.data.name} likes this home!` : `${v.data.name} loves it here!`); v.x = b.cx; v.y = b.y + 18; return false; }
+    this.assign(v, b);
+    return true;
+  }
+  assign(v: Villager, b: Building) {
+    const d = BUILD[b.data.type];
+    if (b.worker && b.worker !== v) { b.worker.data.job = null; }
+    for (const o of this.buildings) if (o.worker === v) o.worker = null;
+    b.worker = v; v.data.job = b.data.id;
+    persist();
+    v.x = b.cx; v.y = b.y + 18;
+    v.task = 'idle'; v.think = 0;
+    this.w.burst(b.cx, b.y - 40, 0xfff1c4, 16, 'spark');
+    sfx.pickup();
+    this.w.game.events.emit('toast', `${v.data.name} is now a ${d.job}!`);
+    this.w.game.events.emit('assigned', v.data.id, b.data.type);
+  }
+
+  // ------------------------------------------------------------ simulation
+  update(dt: number, time: number) {
+    dt *= this.speed;
+    // Guests.
+    if (!this.wanderer && save.village.villagers.length < 8) {
+      this.wanderTimer -= dt;
+      if (this.wanderTimer <= 0) this.newGuest();
+    }
+    if (this.wanderer) this.tick(this.wanderer, dt, time);
+    for (const v of this.villagers) this.tick(v, dt, time);
+    for (const b of this.buildings) this.work(b, dt);
+    this.events(dt, time);
+  }
+
+  private tick(v: Villager, dt: number, time: number) {
+    const d = v.data;
+    if (!v.guest) {
+      const nap = d.trait === 'Loves naps' ? 1.4 : 1;
+      d.food = Math.max(0, d.food - dt / 160);
+      d.sleep = Math.max(0, d.sleep - dt * nap / 220);
+      d.fun = this.festival > 0 ? 1 : Math.max(0, d.fun - dt / 180);
+    }
+    let moving = false;
+    if (v.task === 'walk' && v.path.length) {
+      const [tx, ty] = v.path[0];
+      const dx = tx - v.x, dy = ty - v.y, dist = Math.hypot(dx, dy);
+      const step = v.speed() * dt;
+      if (dist <= step) { v.x = tx; v.y = ty; v.path.shift(); }
+      else { v.x += dx / dist * step; v.y += dy / dist * step; v.img.setFlipX(dx < 0); }
+      moving = true;
+      if (!v.path.length) { v.task = v.next; v.timer = v.task === 'sleep' ? 7 : v.task === 'eat' ? 4 : v.task === 'play' ? 5 : 0; this.arrive(v); }
+    } else if (v.task === 'wander') {
+      v.think -= dt;
+      if (v.think <= 0) { v.think = 2 + Math.random() * 3; v.path = [[VILLAGE_ENTRY.x + (Math.random() - 0.3) * 120, VILLAGE_ENTRY.y + (Math.random() - 0.5) * 160]]; }
+      if (v.path.length) {
+        const [tx, ty] = v.path[0]; const dx = tx - v.x, dy = ty - v.y, dist = Math.hypot(dx, dy);
+        if (dist < 2) v.path = []; else { v.x += dx / dist * 30 * dt; v.y += dy / dist * 30 * dt; v.img.setFlipX(dx < 0); moving = true; }
+      }
+    } else if (v.task === 'eat' || v.task === 'sleep' || v.task === 'play') {
+      v.timer -= dt;
+      if (v.task === 'play') v.hop += dt * 9;
+      if (v.timer <= 0) {
+        if (v.task === 'eat') { if (save.village.res.food > 0) { save.village.res.food--; d.food = 1; this.w.game.events.emit('res', null, 0); } else d.food = 0.7; }
+        if (v.task === 'sleep') d.sleep = 1;
+        if (v.task === 'play') d.fun = 1;
+        persist();
+        v.task = 'idle'; v.think = 0.4; v.hop = 0;
+      }
+    } else if (v.task === 'idle' || v.task === 'work') {
+      v.think -= dt;
+      if (v.think <= 0) { v.think = 1.5; this.decide(v); }
+    }
+    // Draw.
+    if (v.task === 'drag') { v.hop += dt * 14; }
+    if (moving) { v.stepT += dt; if (v.stepT > 0.17) { v.stepT = 0; v.frame ^= 1; v.img.setFrame(v.key()); } }
+    else if (v.frame) { v.frame = 0; v.img.setFrame(v.key()); }
+    const festive = this.festival > 0 && v.task !== 'drag' && !v.guest;
+    const bob = v.task === 'drag' ? -10 + Math.sin(v.hop) * 3 : v.task === 'work' ? -Math.abs(Math.sin(time / 180 + d.id)) * 4 : (v.task === 'play' || festive) ? -Math.abs(Math.sin(v.hop + time / 160 + d.id)) * 9 : moving ? -Math.abs(Math.sin(v.stepT * 18)) * 2 : 0;
+    v.img.setPosition(v.x, v.y + bob).setDepth(v.task === 'drag' ? 9200 : v.y);
+    v.img.setAngle(v.task === 'sleep' ? (v.img.flipX ? -80 : 80) : v.task === 'drag' ? Math.sin(v.hop * 0.7) * 10 : 0);
+    v.shadow.setPosition(v.x, v.y - 2).setVisible(v.task !== 'sleep');
+    if (!v.guest) { const m = v.task === 'sleep' ? 'i_sleep' : v.mood(); if (v.face.frame.name !== m) v.face.setTexture(atlasOf(m), m); }
+    v.face.setPosition(v.x, v.y + bob - 58 + Math.sin(time / 300 + d.id) * 1.5).setVisible(v.task !== 'drag');
+  }
+
+  private arrive(v: Villager) {
+    if (v.task === 'eat') this.w.floatText(v.x, v.y - 70, 'Yum!');
+    if (v.task === 'sleep') this.w.floatText(v.x, v.y - 60, 'Zzz');
+    if (v.task === 'play') this.w.floatText(v.x, v.y - 70, 'Wheee!');
+  }
+
+  private decide(v: Villager) {
+    const d = v.data;
+    const low = Math.min(d.food, d.sleep, d.fun);
+    if (low < 0.3) {
+      if (d.food === low) {
+        const k = this.buildings.find((b) => b.data.type === 'kitchen');
+        const [x, y] = k ? [k.cx + (Math.random() - 0.5) * 40, k.y + 16] : [VILLAGE_SIGN.x - 50, VILLAGE_SIGN.y + 30];
+        v.goTo(x, y, 'eat'); return;
+      }
+      if (d.sleep === low) { const [x, y] = this.homeSpot(d.id); v.goTo(x, y, 'sleep'); return; }
+      const decor = this.buildings.filter((b) => BUILD[b.data.type].fun);
+      const p = decor.length ? decor[Math.floor(Math.random() * decor.length)] : null;
+      const [x, y] = p ? [p.cx + (Math.random() - 0.5) * 40, p.y + 14] : [VILLAGE.x + Math.random() * VILLAGE.cols * VILLAGE.cell, VILLAGE.y + VILLAGE.rows * VILLAGE.cell + 24];
+      v.goTo(x, y, 'play'); return;
+    }
+    const job = d.job !== null ? this.buildings.find((b) => b.data.id === d.job) : null;
+    if (job) {
+      const wx = job.cx + ((d.id % 3) - 1) * 14, wy = job.y + 16;
+      if (Math.hypot(v.x - wx, v.y - wy) > 10) { v.goTo(wx, wy, 'work'); return; }
+      v.task = 'work'; return;
+    }
+    // Free time: wander a little around the village.
+    if (Math.random() < 0.5) {
+      const x = VILLAGE.x + 20 + Math.random() * (VILLAGE.cols * VILLAGE.cell - 40);
+      const y = VILLAGE.y + VILLAGE.rows * VILLAGE.cell + 12 + Math.random() * 40;
+      v.goTo(x, y, 'idle');
+    }
+  }
+
+  private work(b: Building, dt: number) {
+    const d = BUILD[b.data.type];
+    const v = b.worker;
+    b.bar.clear();
+    if (!d.makes || !v || v.task !== 'work') return;
+    const boost = this.rain > 0 && b.data.type === 'garden' ? 2 : 1;
+    b.prog += dt * boost / d.every;
+    // A tiny progress ring over the door.
+    const x = b.cx, y = b.y - b.img.displayHeight - 8;
+    b.bar.fillStyle(0xffffff, 0.85); b.bar.fillCircle(x, y, 9);
+    b.bar.lineStyle(4, 0x7cc463, 1); b.bar.beginPath(); b.bar.arc(x, y, 9, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, b.prog), false); b.bar.strokePath();
+    if (b.prog >= 1) {
+      b.prog = 0;
+      const id: ResId = d.makes === 'woodstone' ? (b.alt++ % 2 ? 'stone' : 'wood') : d.makes;
+      this.add(id, d.amount, b.cx, y - 10);
+      this.produced++;
+      sfx.pickup();
+    }
+  }
+
+  // ------------------------------------------------------------ gentle events
+  private events(dt: number, time: number) {
+    const w = this.w;
+    if (this.rain > 0) {
+      this.rain -= dt;
+      const v = w.cameras.main.worldView;
+      (this.rainFx as any).emitZone?.length; // keep type quiet
+      this.rainFx.setPosition(v.x, v.y - 40);
+      (this.rainFx.emitZones[0] as any).source.setTo(0, 0, v.width + 200, 20);
+      this.rainTint.setSize(this.w.scale.width, this.w.scale.height).setFillStyle(0x6d7f9e, Math.min(0.22, this.rain * 0.1));
+      if (this.rain <= 0) { this.rainFx.stop(); this.rainTint.setFillStyle(0x6d7f9e, 0); w.game.events.emit('toast', 'The rain stopped. Hello, sun!'); }
+    }
+    if (this.festival > 0) {
+      this.festival -= dt;
+      if (Math.random() < dt * 3) { const b = this.bunting[Math.floor(Math.random() * this.bunting.length)]; if (b) w.burst(b.x + (Math.random() - 0.5) * 160, b.y + 10, [0xff7fa8, 0xffd84d, 0x7fd0ff, 0x7cc463][Math.floor(Math.random() * 4)], 3, 'petal'); }
+      if (this.festival <= 0) { sfx.festival = false; for (const b of this.bunting) w.tweens.add({ targets: b, alpha: 0, duration: 800, onComplete: () => b.destroy() }); this.bunting = []; w.game.events.emit('toast', 'What a fun festival!'); }
+    }
+    if (this.merchant > 0) {
+      this.merchant -= dt;
+      if (this.merchant <= 0 && this.cart) { const c = this.cart; this.cart = null; w.tweens.add({ targets: c, x: c.x + 300, alpha: 0, duration: 1500, onComplete: () => c.destroy() }); w.game.events.emit('toast', 'The merchant waves goodbye!'); }
+    }
+    this.eventTimer -= dt;
+    if (this.eventTimer <= 0) {
+      this.eventTimer = 150 + Math.random() * 90;
+      const opts: ('merchant' | 'rain' | 'festival')[] = ['merchant', 'rain'];
+      if (save.village.villagers.length >= 2) opts.push('festival');
+      this.start(opts[Math.floor(Math.random() * opts.length)]);
+    }
+    void time;
+  }
+
+  start(e: 'merchant' | 'rain' | 'festival') {
+    const w = this.w;
+    save.village.events++;
+    if (e === 'rain' && this.rain <= 0) {
+      this.rain = 70;
+      this.rainFx.start();
+      w.game.events.emit('toast', 'Rainy day! Plants love rain.');
+    } else if (e === 'festival' && this.festival <= 0) {
+      this.festival = 50;
+      sfx.festival = true;
+      for (let i = 0; i < 3; i++) {
+        const b = w.add.image(VILLAGE.x + 120 + i * 230, VILLAGE.y - 10 + (i % 2) * 14, atlasOf('f_bunting'), 'f_bunting').setScale(1.1 / 2).setDepth(VILLAGE.y + 400).setAlpha(0);
+        w.tweens.add({ targets: b, alpha: 1, duration: 600 });
+        this.bunting.push(b);
+      }
+      for (const v of this.villagers) v.data.fun = 1;
+      sfx.chimes();
+      w.game.events.emit('toast', 'Festival time! Everyone dances!');
+    } else if (e === 'merchant' && !this.cart) {
+      this.merchant = 120;
+      const c = w.add.image(MERCHANT_SPOT.x + 300, MERCHANT_SPOT.y, atlasOf('v_cart'), 'v_cart').setOrigin(0.5, 1).setScale(1 / 2.4).setDepth(MERCHANT_SPOT.y).setAlpha(0);
+      w.tweens.add({ targets: c, x: MERCHANT_SPOT.x, alpha: 1, duration: 1600, ease: 'Sine.easeOut' });
+      this.cart = c;
+      w.tappables.push({ x: () => c.x, y: () => c.y - 40, r: 60, enabled: () => this.cart === c && !this.building, tap: () => w.game.events.emit('card', { kind: 'merchant' }) });
+      sfx.chimes();
+      w.game.events.emit('toast', 'A merchant came to trade!');
+    }
+    persist();
+  }
+  /** Merchant trades: give some of one thing, get more of another. */
+  static TRADES: { give: Partial<Res>; get: Partial<Res> }[] = [
+    { give: { food: 3 }, get: { wood: 4 } },
+    { give: { food: 3 }, get: { stone: 3 } },
+    { give: { wood: 3 }, get: { food: 4 } },
+  ];
+  trade(i: number) {
+    const t = Village.TRADES[i];
+    if (!t || !canAfford(t.give)) return false;
+    this.pay(t.give);
+    for (const k of Object.keys(t.get) as ResId[]) this.add(k, t.get[k] ?? 0, MERCHANT_SPOT.x, MERCHANT_SPOT.y - 80);
+    sfx.sparkle();
+    return true;
+  }
+  /** Cottage coordinates are re-exported for the picnic fallback when Grandma's home is used. */
+  static COTTAGE = COTTAGE;
+}

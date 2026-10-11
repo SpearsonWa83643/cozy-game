@@ -19,6 +19,14 @@ export class Reacts {
     this.cool.set(o, now + ms);
     return true;
   }
+  matCool = new WeakMap<object, number>();
+  /** Trees and rocks out in the world sometimes give building materials. */
+  private material(o: object, id: 'wood' | 'stone', x: number, y: number) {
+    const now = this.w.time.now;
+    if ((this.matCool.get(o) ?? 0) > now || !this.w.village) return;
+    this.matCool.set(o, now + 25000);
+    if (Math.random() < 0.55) this.w.village.add(id, 1, x, y);
+  }
   private count() { if (this.w.life) this.w.life.reactions++; }
 
   tree(t: Phaser.GameObjects.Image, kind: 'fruit' | 'blossom' | 'leaf' | 'pear' | 'apple' | 'birch') {
@@ -33,6 +41,7 @@ export class Reacts {
         const cy = t.y - t.displayHeight * 0.55;
         const tint = kind === 'blossom' ? 0xffc6dc : kind === 'birch' ? 0xf0d36a : 0x8fcf6a;
         this.w.burst(t.x, cy, tint, 10, kind === 'blossom' ? 'petal' : 'leaf');
+        this.material(t, 'wood', t.x, cy);
         if (!this.ready(t, 12000)) return;
         if (kind === 'apple' || kind === 'pear' || (kind === 'fruit' && Math.random() < 0.6)) {
           const n = 1 + (Math.random() < 0.4 ? 1 : 0);
@@ -60,7 +69,9 @@ export class Reacts {
     });
   }
 
+  foliage: Phaser.GameObjects.Image[] = [];
   bush(b: Phaser.GameObjects.Image) {
+    this.foliage.push(b);
     this.w.tappables.push({
       x: () => b.x, y: () => b.y - b.displayHeight * 0.45, r: Math.max(26, b.displayWidth * 0.42), soft: true,
       tap: () => {
@@ -86,6 +97,7 @@ export class Reacts {
         this.w.tweens.add({ targets: r, x: x0 + 2.5, duration: 50, yoyo: true, repeat: 3, onComplete: () => r.setX(x0) });
         sfx.tock();
         this.count();
+        this.material(r, 'stone', r.x, r.y - 30);
         if (this.ready(r, 8000) && Math.random() < 0.55) {
           this.w.life.beetleFrom(r.x, r.y + 2);
           this.give(r.x, r.y - 24, 'beetle', false);

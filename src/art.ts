@@ -32,8 +32,15 @@ export const rr = (rng: Rng, a: number, b: number) => a + (b - a) * rng();
 /** Key of the single texture atlas every prop/sprite/FX frame is packed into. */
 export const ATLAS = 'atlas';
 
-type Pending = { key: string; canvas: HTMLCanvasElement; w: number; h: number; scale: number };
+type Pending = { key: string; canvas: HTMLCanvasElement; w: number; h: number; scale: number; atlas: string };
 let pending: Pending[] = [];
+/** Which atlas new frames go into. Village + theme art lives in a second, smaller atlas. */
+let target = 'atlas';
+export const ATLAS2 = 'atlas2';
+export const frameAtlas: Record<string, string> = {};
+export function atlasTarget(key: string) { target = key; }
+/** The atlas texture holding a frame. */
+export const atlasOf = (frame: string) => frameAtlas[frame] ?? ATLAS;
 /** Texture px per world unit for each atlas frame (so sprites can be normalised to world units). */
 export const frameScale: Record<string, number> = {};
 
@@ -59,7 +66,7 @@ export function canvasTex(
   draw(ctx);
   ctx.restore();
   if (standalone) uploadCanvas(scene, key, canvas);
-  else pending.push({ key, canvas, w: cw, h: ch, scale });
+  else { pending.push({ key, canvas, w: cw, h: ch, scale, atlas: target }); frameAtlas[key] = target; }
   frameScale[key] = scale;
 }
 
@@ -77,9 +84,9 @@ function uploadCanvas(scene: Phaser.Scene, key: string, canvas: HTMLCanvasElemen
 }
 
 /** Shelf-packs every queued canvas into one power-of-two atlas texture. */
-export function buildAtlas(scene: Phaser.Scene) {
+export function buildAtlas(scene: Phaser.Scene, key = ATLAS) {
   const PAD = 8;
-  const items = [...pending].sort((a, b) => b.h - a.h);
+  const items = pending.filter((p) => p.atlas === key).sort((a, b) => b.h - a.h);
   const tryPack = (W: number) => {
     const pos: Record<string, [number, number]> = {};
     let x = PAD, y = PAD, rowH = 0;
@@ -105,13 +112,13 @@ export function buildAtlas(scene: Phaser.Scene) {
     it.canvas.width = 1; // free each piece right away (Safari counts canvas memory)
     it.canvas.height = 1;
   }
-  const tex = uploadCanvas(scene, ATLAS, atlas);
+  const tex = uploadCanvas(scene, key, atlas);
   for (const it of items) {
     const [x, y] = packed.pos[it.key];
     tex.add(it.key, 0, x, y, it.w, it.h);
   }
-  pending = [];
-  console.info(`[cozy] atlas ${W}x${H}, ${items.length} frames`);
+  pending = pending.filter((p) => p.atlas !== key);
+  console.info(`[cozy] ${key} ${W}x${H}, ${items.length} frames`);
 }
 
 /** Organic, slightly wobbly closed blob path. */
@@ -1118,6 +1125,7 @@ function paintLeafBig(ctx: Ctx, w: number, h: number) {
 }
 
 import { paintAll2 } from './art2';
+import { paintVillageArt } from './village/vart';
 
 export function paintAll(scene: Phaser.Scene) {
 
@@ -1219,4 +1227,5 @@ export function paintAll(scene: Phaser.Scene) {
   canvasTex(scene, 'white', 4, 4, (c) => { c.fillStyle = '#fff'; c.fillRect(0, 0, 4, 4); }, 2);
   paintAll2(scene);
   buildAtlas(scene);
+  paintVillageArt(scene);
 }

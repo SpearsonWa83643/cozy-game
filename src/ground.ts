@@ -3,8 +3,13 @@
 // released. Keeps texture memory to roughly a dozen tiles instead of one giant canvas.
 import Phaser from 'phaser';
 import {
-  Ctx, Rng, mulberry32, hsl, rr, dab, softCircle, blob, blobPath, pondValue, ALL_PATHS, pathDist, GS,
+  Ctx, Rng, mulberry32, hsl as hslRaw, rr, dab, softCircle as softRaw, blob, blobPath, pondValue, ALL_PATHS, pathDist, GS,
 } from './art';
+import { theme } from './theme';
+
+// Every ground colour goes through the active theme's transform.
+const hsl = (h: number, s: number, l: number, a = 1) => { const [H, S, L] = theme.ground(h, s, l); return hslRaw(H, S, L, a); };
+const softCircle = (ctx: Ctx, x: number, y: number, r: number, c: [number, number, number], a: number) => softRaw(ctx, x, y, r, theme.ground(c[0], c[1], c[2]), a);
 import {
   WORLD_W, WORLD_H, GLADE_W, GLADE_H, POND, SHRINE, GARDEN, COTTAGE, LAKE, AreaId, PIER,
 } from './layout';
@@ -19,6 +24,7 @@ const PAL: Record<AreaId, Pal> = {
   river: { base: [105, 48, 46], dabH: [85, 135], dabS: [38, 60], dabL: [34, 56], lightH: [80, 105], darkH: [115, 145], lightL: [58, 70], darkL: [22, 32], blades: 130, dabs: 88 },
   forest: { base: [138, 26, 36], dabH: [110, 175], dabS: [18, 38], dabL: [26, 46], lightH: [90, 130], darkH: [150, 180], lightL: [48, 62], darkL: [18, 28], blades: 90, dabs: 100 },
   orchard: { base: [70, 52, 56], dabH: [48, 95], dabS: [40, 62], dabL: [44, 66], lightH: [50, 75], darkH: [90, 115], lightL: [66, 78], darkL: [30, 40], blades: 120, dabs: 88 },
+  village: { base: [86, 50, 55], dabH: [65, 115], dabS: [38, 62], dabL: [42, 64], lightH: [60, 90], darkH: [100, 130], lightL: [64, 76], darkL: [28, 38], blades: 90, dabs: 80 },
   lake: { base: [96, 42, 54], dabH: [70, 120], dabS: [32, 55], dabL: [40, 62], lightH: [65, 95], darkH: [105, 135], lightL: [62, 74], darkL: [26, 36], blades: 110, dabs: 80 },
 };
 
@@ -411,14 +417,18 @@ function paintRiver(ctx: Ctx, x0: number, y0: number, x1: number, y1: number) {
 
 // ------------------------------------------------------------------ streaming manager
 export class GroundStreamer {
-  tiles = new Map<string, { img: Phaser.GameObjects.Image; key: string }>();
+  tiles = new Map<string, { img: Phaser.GameObjects.Image; key: string; stale?: boolean }>();
   painted = 0;
+  gen = 0;
+  /** Theme changed: repaint every live tile, nearest first, swapping each in place. */
+  restyle() { this.gen++; for (const t of this.tiles.values()) t.stale = true; }
   constructor(private scene: Phaser.Scene) {}
 
   paintMs: number[] = [];
   private paint(tx: number, ty: number) {
     const t0 = performance.now();
-    const key = `ground_${tx}_${ty}`;
+    const key = `ground_${tx}_${ty}_${this.gen}`;
+    const old = this.tiles.get(`${tx},${ty}`);
     const px = Math.ceil(TILE * GS) + 2; // 1px overlap on each side hides seams
     const canvas = document.createElement('canvas');
     canvas.width = px; canvas.height = px;
@@ -433,6 +443,11 @@ export class GroundStreamer {
     this.scene.textures.addImage(key, canvas as unknown as HTMLImageElement);
     canvas.width = 1; canvas.height = 1; // release the CPU copy (Safari counts canvas memory)
     const img = this.scene.add.image(tx * TILE - 1 / GS, ty * TILE - 1 / GS, key).setOrigin(0, 0).setScale(1 / GS).setDepth(-1000);
+    if (old) {
+      // Cross-fade the restyled tile over the old one, then free the old texture.
+      img.setAlpha(0).setDepth(-999);
+      this.scene.tweens.add({ targets: img, alpha: 1, duration: 450, onComplete: () => { img.setDepth(-1000); old.img.destroy(); if (this.scene.textures.exists(old.key)) this.scene.textures.remove(old.key); } });
+    }
     this.tiles.set(`${tx},${ty}`, { img, key });
     this.painted++;
     this.paintMs.push(Math.round(performance.now() - t0));
@@ -447,16 +462,17 @@ export class GroundStreamer {
     const cx = view.centerX / TILE, cy = view.centerY / TILE;
     const need: [number, number, number][] = [];
     for (let ty = ty0; ty <= ty1; ty++) for (let tx = tx0; tx <= tx1; tx++) {
-      if (!this.tiles.has(`${tx},${ty}`)) need.push([tx, ty, (tx + 0.5 - cx) ** 2 + (ty + 0.5 - cy) ** 2]);
+      const t = this.tiles.get(`${tx},${ty}`);
+      if (!t || t.stale) need.push([tx, ty, (tx + 0.5 - cx) ** 2 + (ty + 0.5 - cy) ** 2 + (t ? 0.5 : 0)]);
     }
     need.sort((a, b) => a[2] - b[2]);
     for (let i = 0; i < Math.min(budget, need.length); i++) this.paint(need[i][0], need[i][1]);
     // Free tiles well outside the view (hysteresis of one extra tile).
     for (const [k, t] of this.tiles) {
       const [tx, ty] = k.split(',').map(Number);
-      if (tx < tx0 - 1 || tx > tx1 + 1 || ty < ty0 - 1 || ty > ty1 + 1) {
+      if ((tx < tx0 - 1 || tx > tx1 + 1 || ty < ty0 - 1 || ty > ty1 + 1) || (t.stale && (tx < tx0 || tx > tx1 || ty < ty0 || ty > ty1))) {
         t.img.destroy();
-        this.scene.textures.remove(t.key);
+        if (this.scene.textures.exists(t.key)) this.scene.textures.remove(t.key);
         this.tiles.delete(k);
       }
     }

@@ -1,6 +1,7 @@
 // The satchel: map, wardrobe (cosmetics), treasures and the fish journal. Touch-first, big tiles.
 import Phaser from 'phaser';
-import { ATLAS, frameScale, S, ALL_PATHS } from '../art';
+import { ATLAS, atlasOf, frameScale, S, ALL_PATHS } from '../art';
+import { theme, setTheme, THEMES, THEME_ORDER } from '../theme';
 import { DPR } from '../dpr';
 import { safeInsets } from '../device';
 import { sfx } from '../audio';
@@ -100,15 +101,29 @@ export class MenuScene extends Phaser.Scene {
     g.lineStyle(3, 0xd9b98f, 1); g.strokeRoundedRect(bx + 8, by + 8, bw - 16, bh - 16, 20);
     this.root.add([dim, g]);
     // Tabs.
-    const tabW = Math.min(170, (bw - 120) / 4 - 8), tabH = 54;
+    const tabW = Math.min(170, (bw - 120 - 170) / 4 - 8), tabH = 54;
     TABS.forEach(([id, label], i) => {
       const tx = bx + 22 + i * (tabW + 8), ty = by + 16;
       const on = id === this.tab;
-      const [bg, z] = this.btn(tx, ty, tabW, tabH, () => { if (this.tab !== id) { this.tab = id; sfx.blip(); this.render(); } }, on ? 0xf2a93b : 0xf3e6cc, on ? 0xc9802a : 0xd9b98f);
+      const [bg, z] = this.btn(tx, ty, tabW, tabH, () => { if (this.tab !== id) { this.tab = id; sfx.blip(); this.render(); } }, on ? theme.ui.tabOn : theme.ui.tab, on ? theme.ui.accentDark : 0xd9b98f);
       this.rects[`tab:${id}`] = this.lastRect;
       const t = this.text(tx + tabW / 2, ty + tabH / 2, label, tabW < 120 ? 17 : 20, on ? '#fffaf0' : INK, 800).setOrigin(0.5);
       this.root.add([bg, z, t]);
     });
+    // Theme toggle: one big icon per theme, the active one lit up.
+    {
+      const n = THEME_ORDER.length, tw = 64, ty = by + 15;
+      const tx0 = bx + bw - 22 - 56 - 18 - n * (tw + 8);
+      THEME_ORDER.forEach((id, i) => {
+        const on = theme.id === id;
+        const x = tx0 + i * (tw + 8);
+        const [bg, z] = this.btn(x, ty, tw, 56, () => { if (theme.id !== id) { setTheme(id); sfx.sparkle(); this.render(); } }, on ? THEMES[id].ui.tabOn : 0xf3e6cc, on ? THEMES[id].ui.accentDark : 0xd9b98f, 18);
+        this.rects[`theme:${id}`] = this.lastRect;
+        const ic = this.add.image(x + tw / 2, ty + 28, atlasOf(THEMES[id].icon), THEMES[id].icon).setScale(40 / 48 / 2.5 * 2.5 / 2.5);
+        ic.setDisplaySize(40, 40).setAlpha(on ? 1 : 0.75);
+        this.root.add([bg, z, ic]);
+      });
+    }
     // Close.
     const cx = bx + bw - 22 - 56, cy = by + 15;
     const [cbg, cz] = this.btn(cx, cy, 56, 56, () => this.close(), 0xf3e6cc, 0xd9b98f, 28);
@@ -146,7 +161,7 @@ export class MenuScene extends Phaser.Scene {
     canvas.width = px; canvas.height = ph;
     const c = canvas.getContext('2d')!;
     const k = px / WORLD_W;
-    const cols: Record<AreaId, string> = { glade: '#8fbf63', river: '#86c27a', forest: '#6f9e7a', orchard: '#c2c46a', lake: '#98c574' };
+    const cols: Record<AreaId, string> = { glade: '#8fbf63', river: '#86c27a', forest: '#6f9e7a', orchard: '#c2c46a', lake: '#98c574', village: '#a6cf72' };
     // Sample the world coarsely into a tiny canvas, then upscale with smoothing for soft painted edges.
     const cell = 25;
     const cw = Math.ceil(WORLD_W / cell), chh = Math.ceil(WORLD_H / cell);
@@ -184,7 +199,7 @@ export class MenuScene extends Phaser.Scene {
     this.content.add([img, frame]);
     // Labels + landmarks.
     const label = (wx: number, wy: number, t: string, size = 15) => this.content.add(this.text(mx + wx * s, my + wy * s, t, size, '#4a3626', 800).setOrigin(0.5).setShadow(0, 0, 'rgba(255,248,230,0.9)', 4, true, true));
-    const centers: Record<AreaId, [number, number]> = { glade: [900, 760], river: [2120, 1150], forest: [3400, 380], orchard: [3200, 2250], lake: [700, 2050] };
+    const centers: Record<AreaId, [number, number]> = { glade: [900, 760], river: [2120, 1150], forest: [3400, 380], orchard: [3200, 2250], lake: [700, 2250], village: [470, 1760] };
     for (const [id, [x, y]] of Object.entries(centers) as [AreaId, [number, number]][]) {
       label(x, y, save.visited.includes(id) ? AREA_NAMES[id] : '? ? ?', 15);
     }

@@ -5,8 +5,17 @@ export type OutfitId = 'teal' | 'moss' | 'sea' | 'koi';
 export type BackId = 'none' | 'backpack' | 'staff';
 export type Look = { hat: HatId; scarf: ScarfId; outfit: OutfitId; back: BackId; feather: boolean; shells: boolean };
 
+export type ThemeId = 'classic' | 'halloween';
+export type Res = { food: number; wood: number; stone: number };
+export type BuildingType = 'home' | 'garden' | 'kitchen' | 'workshop' | 'fishhut' | 'flowerbed' | 'lamp' | 'well' | 'bench' | 'statue';
+export type BuildingSave = { id: number; type: BuildingType; gx: number; gy: number };
+export type VillagerSave = { id: number; name: string; trait: string; kind: number; job: number | null; food: number; sleep: number; fun: number };
+export type VillageSave = { res: Res; buildings: BuildingSave[]; villagers: VillagerSave[]; nextId: number; wanderer: number; events: number };
+
 export type SaveData = {
-  v: 1;
+  v: 2;
+  theme: ThemeId;
+  village: VillageSave;
   puzzles: Record<string, boolean>;
   treasures: string[];
   fish: Record<string, { n: number; best: number }>;
@@ -16,19 +25,31 @@ export type SaveData = {
   chests: string[];
 };
 
-const KEY = 'cozy.save.v1';
+const KEY = 'cozy.save.v2';
+const OLD_KEYS = ['cozy.save.v1'];
 export const DEFAULT_LOOK: Look = { hat: 'straw', scarf: 'red', outfit: 'teal', back: 'none', feather: false, shells: false };
 
+export function freshVillage(): VillageSave {
+  return { res: { food: 3, wood: 8, stone: 4 }, buildings: [], villagers: [], nextId: 1, wanderer: 0, events: 0 };
+}
+
 function fresh(): SaveData {
-  return { v: 1, puzzles: {}, treasures: [], fish: {}, minor: {}, look: { ...DEFAULT_LOOK }, visited: ['glade'], chests: [] };
+  return { v: 2, theme: 'classic', village: freshVillage(), puzzles: {}, treasures: [], fish: {}, minor: {}, look: { ...DEFAULT_LOOK }, visited: ['glade'], chests: [] };
 }
 
 export const save: SaveData = (() => {
   try {
-    const raw = localStorage.getItem(KEY);
+    let raw = localStorage.getItem(KEY);
+    // Older saves (v1: exploration only) carry over; the village simply starts fresh beside them.
+    for (const k of OLD_KEYS) if (!raw) raw = localStorage.getItem(k);
     if (raw) {
       const d = JSON.parse(raw);
-      if (d && d.v === 1) return { ...fresh(), ...d, look: { ...DEFAULT_LOOK, ...(d.look ?? {}) } };
+      if (d && (d.v === 1 || d.v === 2)) {
+        const f = fresh();
+        const v = { ...f.village, ...(d.village ?? {}) };
+        v.res = { ...f.village.res, ...(v.res ?? {}) };
+        return { ...f, ...d, v: 2, theme: d.theme === 'halloween' ? 'halloween' : 'classic', village: v, look: { ...DEFAULT_LOOK, ...(d.look ?? {}) } };
+      }
     }
   } catch { /* storage unavailable or corrupt */ }
   return fresh();
@@ -44,8 +65,10 @@ export function persist() {
 }
 
 export function resetSave() {
-  try { localStorage.removeItem(KEY); } catch { /* ignore */ }
-  Object.assign(save, fresh());
+  const theme = save.theme;
+  try { localStorage.removeItem(KEY); for (const k of OLD_KEYS) localStorage.removeItem(k); } catch { /* ignore */ }
+  Object.assign(save, fresh(), { theme });
+  try { localStorage.setItem(KEY, JSON.stringify(save)); } catch { /* ignore */ }
 }
 
 export const hasTreasure = (id: string) => save.treasures.includes(id);
