@@ -1,12 +1,18 @@
 # Willowmere Glade backlog
 
-## From Walker
-- Collect food and feed animals: tapping fruit trees drops fruit (apples, pears, berries) you can pick up; feed animals by tapping them while holding food (happy hearts, they follow you / make friends).
+## Done in v0.5
+- Fruit trees drop fruit; pick it up into your basket; tap an animal while you have fruit to feed it (hearts, it follows you).
+- Idle friend bubble suggests a job that fits their trait; one tap takes it (Undo) or opens build mode on the right building.
+- Alerts only when a friend can't help themselves, each with a one-tap fix (Snack / Nap / Play / Build / Get some).
+- Never soft-lock: friends always recover (eat with an empty pantry still helps, long walks finish), and friends bring wood + stone when nothing is buildable.
 
-## From Gamer (RimWorld lessons, adapted kid-friendly; no combat)
-- Idle villager hint: a bubble on an idle villager suggests a job that fits their trait; one tap places the matching building or assigns them. Optional and undoable.
-- Problems come with a fix attached: any alert (hungry, tired, sad) offers a one-tap remedy right on the alert.
-- Bring care close: when a villager is tired or hungry, offer "bring food here" / nearby beds; keep food storage near homes.
-- Gentle priority: only show attention-grabbing alerts when something truly needs the player; color/icon intensity for urgency.
-- Never soft-lock: villagers always recover (nap, snack) so the village can't collapse.
+## Next
+- Bring care close (Gamer): "bring food here" / nearest bed hints; food storage near homes.
+- Urgency colours on mood faces over villagers (soft pulse when needed).
+- More themes (e.g. Winter, Spring Bloom): add an entry to `src/theme.ts`.
+- Puzzle ideas not built yet: footprint trail, pressure stones.
+- Feed villagers fruit from the basket too; more fruit kinds (berries from bushes).
+- Moving / removing buildings in build mode.
+
+## Parked
 - (Combat ideas, e.g. weapon range stances, parked: no combat planned.)
