@@ -3,7 +3,7 @@ import { defineConfig } from '@playwright/test';
 // iPad touch run against the single-file build over file:// (no server needed).
 export default defineConfig({
   testDir: './tests',
-  testMatch: /(touch|world)\.spec\.ts/,
+  testMatch: /(touch|world|village)\.spec\.ts/,
   timeout: 900_000,
   retries: 0,
   workers: 1,

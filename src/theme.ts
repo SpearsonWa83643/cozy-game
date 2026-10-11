@@ -43,9 +43,9 @@ const classic: Theme = {
 const halloween: Theme = {
   id: 'halloween', name: 'Halloween', icon: 'i_pumpkin',
   // Greens drift to a cool dusky teal; everything a touch darker so orange glows pop.
-  ground: (h, s, l) => (h > 48 && h < 190 ? [h + 38, s * 0.78, l * 0.8] : [h - 4, s * 0.9, l * 0.86]),
+  ground: (h, s, l) => (h > 48 && h < 190 ? [h + 58, s * 0.62, l * 0.84] : [h - 6, s * 0.9, l * 0.86]),
   foliage: 0xd9b8e8, trees: ['h_tree0', 'h_tree1', 'h_tree2'],
-  sky: { frame: 'sky_halloween', alpha: 0.32 },
+  sky: { frame: 'sky_halloween', alpha: 0.42 },
   fog: { tint: 0xd8c8ff, alpha: 0.22 },
   particles: { pollen: [0xffb347, 0xff8c2e, 0xffe08a], firefly: [0xffb347, 0xffd36b], petal: 'p_leafo', petalTint: [0xffffff, 0xffc89a, 0xe0a0ff] },
   critters: { cat: 0x4a4058, bats: true, ghosts: true, butterflies: 0xffa64d },

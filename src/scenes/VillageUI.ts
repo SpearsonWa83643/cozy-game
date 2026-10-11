@@ -75,7 +75,7 @@ export class VillageUIScene extends Phaser.Scene {
     this.buildIcon = this.icon(0, -4, 'i_hammer', 46);
     this.buildLabel = this.text(0, 30, 'Build', 15, '#fffaf0', 900).setOrigin(0.5).setStroke('#5a3d28', 4);
     this.buildC = this.add.container(0, 0, [this.buildBg, this.buildIcon, this.buildLabel]);
-    const zb = this.add.zone(0, 0, 92, 92).setInteractive(new Phaser.Geom.Circle(46, 46, 46), Phaser.Geom.Circle.Contains);
+    const zb = this.add.zone(0, 0, 92, 92).setOrigin(0, 0).setInteractive(new Phaser.Geom.Circle(46, 46, 46), Phaser.Geom.Circle.Contains);
     zb.on('pointerdown', () => {
       if (this.registry.get('menuOpen') || this.card) return;
       sfx.unlock(); sfx.blip();

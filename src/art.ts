@@ -98,7 +98,7 @@ export function buildAtlas(scene: Phaser.Scene, key = ATLAS) {
     }
     return { pos, H: y + rowH + PAD };
   };
-  let W = 2048;
+  let W = key === ATLAS ? 2048 : 1024;
   let packed = tryPack(W);
   while (packed.H > W * 2 && W < 8192) { W *= 2; packed = tryPack(W); }
   const H = pot(packed.H);

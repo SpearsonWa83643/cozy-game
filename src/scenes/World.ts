@@ -7,6 +7,7 @@ import { buildHeroSheet } from '../hero';
 import { buildAreas } from '../areas';
 import { Village } from '../village/village';
 import { ThemeDresser } from '../themeDress';
+import { setTheme } from '../theme';
 import { Puzzles } from '../puzzles';
 import { Fishing } from '../fishing';
 import { Reacts } from '../react';
@@ -1180,6 +1181,8 @@ export class WorldScene extends Phaser.Scene {
           produced: v.produced, rain: v.rain > 0, festival: v.festival > 0, merchant: !!v.cart, theme: save.theme,
         };
       },
+      villageSpeed: (n: number) => { self.village.speed = n; },
+      setTheme: (id: 'classic' | 'halloween') => setTheme(id),
       villageEvent: (e: 'merchant' | 'rain' | 'festival') => self.village.start(e),
       worldToScreen(x: number, y: number) {
         const cam = self.cameras.main;
