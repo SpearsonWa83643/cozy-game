@@ -102,7 +102,7 @@ export class Fishing {
   tap(at?: number) {
     if (this.state === 'bite') { this.startReel(); return; }
     if (this.state === 'reel') { this.reelTap(at); return; }
-    if (this.state === 'wait' || this.state === 'cast') { this.cancel('You reel the line back in.'); return; }
+    if (this.state === 'wait' || this.state === 'cast') { this.cancel('Line back in.'); return; }
   }
 
   cancel(msg?: string) {
@@ -158,7 +158,7 @@ export class Fishing {
       r.speed *= 1.08;
     } else {
       r.misses++;
-      if (r.misses >= 3) { this.cancel('The fish slipped away with a splash. Next time!'); sfx.splash(); return; }
+      if (r.misses >= 3) { this.cancel('Splash! It got away. Try again!'); sfx.splash(); return; }
     }
   }
 
@@ -232,7 +232,7 @@ export class Fishing {
     } else if (this.state === 'bite') {
       this.timer -= dt;
       this.bobber.setPosition(this.bx, this.by + 5 + Math.sin(t * 30) * 1.5);
-      if (this.timer <= 0) this.cancel('Too slow \u2014 the fish nibbled the bait and swam off.');
+      if (this.timer <= 0) this.cancel('Too slow! Try again.');
     } else if (this.state === 'reel') {
       const r = this.reel!;
       r.flash = Math.max(0, r.flash - dt);

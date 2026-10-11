@@ -400,7 +400,7 @@ export class UIScene extends Phaser.Scene {
       g.fillStyle(i < r.misses ? 0xc0563a : 0xe6dccb, 1);
       g.fillCircle(x + w - 14 - i * 16, y - 16, 5);
     }
-    this.reelText.setPosition(x + w / 2, y - 10).setText(r.flash > 0 ? (r.flashOk ? 'Nice!' : 'Oops!') : 'Tap when the line is in the green!');
+    this.reelText.setPosition(x + w / 2, y - 10).setText(r.flash > 0 ? (r.flashOk ? 'Nice!' : 'Oops!') : 'Tap in the green!');
     void time;
   }
   showCard(d: { species: Species; size: number; isNew: boolean; unlocked: string[] }) {
@@ -589,7 +589,7 @@ export class UIScene extends Phaser.Scene {
   applyTouchMode() {
     this.registry.set('touchMode', this.touchMode);
     this.controls.setText(this.touchMode
-      ? 'Drag anywhere to walk   \u00B7   Tap a spot to go there   \u00B7   Tap animals, things & water'
+      ? 'Drag to walk   \u00B7   Tap to go   \u00B7   Tap animals and water'
       : 'WASD / Arrows   \u00B7   E / Space: interact & fish   \u00B7   B: bag   \u00B7   M: map   \u00B7   V: sound   \u00B7   F: FPS');
     this.dialogHint.setText(this.touchMode ? 'tap \u25B8' : 'E \u25B8');
     this.promptLabelText = '';

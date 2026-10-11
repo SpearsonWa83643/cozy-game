@@ -64,7 +64,7 @@ class Chest {
       onComplete: () => {
         w.tweens.add({ targets: [icon, glow], alpha: 0, delay: 2600, duration: 800, onComplete: () => { icon.destroy(); glow.destroy(); } });
         w.game.events.emit('treasure', this.treasure);
-        w.game.events.emit('dialog', [`You found the ${t.name}!`, t.blurb, 'It is in your bag now \u2014 tap the satchel to try things on.']);
+        w.game.events.emit('dialog', [`You found the ${t.name}!`, t.blurb, 'Tap your bag to try it on!']);
         this.onOpened?.();
       },
     });
@@ -88,7 +88,7 @@ export class Puzzles {
 
   constructor(private w: WorldScene) {
     this.potChest = new Chest(w, POT_CHEST.x, POT_CHEST.y, 'flower_crown');
-    this.bellChest = new Chest(w, BELL_CHEST.x, BELL_CHEST.y, 'rusty_key', () => w.game.events.emit('toast', 'A rusty key\u2026 the old gate on the north bridge!'));
+    this.bellChest = new Chest(w, BELL_CHEST.x, BELL_CHEST.y, 'rusty_key', () => w.game.events.emit('toast', 'A key! It opens the north gate.'));
     this.tileChest = new Chest(w, TILE_CHEST.x, TILE_CHEST.y, 'fox_hood');
     this.digChest = new Chest(w, DIG.x, DIG.y + 6, 'shell_necklace');
     this.buildPots();
@@ -126,9 +126,9 @@ export class Puzzles {
       });
     });
     this.sign(POT_SIGN.x, POT_SIGN.y, [
-      'A little painted sign by the garden, in Grandmother\u2019s curly writing:',
-      '\u201cRose for the morning, sky for the day,\nsun for the evening, snow for the moon\u2019s way.\u201d',
-      '(Tap a pot to change its flower. Left to right.)',
+      'Tap a pot to change its flower.',
+      'Left to right: pink, then blue,',
+      'then yellow, then white.',
     ]);
     this.potChest.set(solved, hasTreasure('flower_crown'));
   }
@@ -145,7 +145,7 @@ export class Puzzles {
       this.w.time.delayedCall(450, () => {
         this.pots.forEach((q, k) => this.w.time.delayedCall(k * 120, () => this.w.burst(q.img.x, q.img.y - 30, POT_COLORS[q.color], 12, 'spark')));
         this.potChest.reveal();
-        this.w.game.events.emit('toast', 'The garden blooms all at once \u2014 something appears!');
+        this.w.game.events.emit('toast', 'The garden blooms! Look!');
       });
     }
   }
@@ -176,9 +176,9 @@ export class Puzzles {
       action: () => this.sing(),
     });
     this.sign(BELL_SIGN.x, BELL_SIGN.y, [
-      'A note pinned to the post, signed \u201cthe windmill keeper\u201d:',
-      '\u201cMy little songbird knows the tune that opens my strongbox. Ask her to sing, then ring the bells to match.\u201d',
-      '\u201cListen for the high and low notes \u2014 and watch the ribbon colours!\u201d',
+      'Tap the songbird. She sings a song.',
+      'Ring the bells in the same order.',
+      'Watch the ribbon colors!',
     ]);
     this.bellChest.set(solved, hasTreasure('rusty_key'));
   }
@@ -214,7 +214,7 @@ export class Puzzles {
       this.bellInput = [];
       this.w.time.delayedCall(350, () => {
         sfx.softFail();
-        this.w.game.events.emit('toast', this.birdSang ? 'The songbird tilts her head. That wasn\u2019t quite her tune\u2026' : 'Maybe the songbird knows the right tune?');
+        this.w.game.events.emit('toast', this.birdSang ? 'Not quite. Try again!' : 'Tap the songbird first!');
       });
       return;
     }
@@ -222,7 +222,7 @@ export class Puzzles {
       setPuzzle('bells');
       this.w.time.delayedCall(500, () => {
         this.bells.forEach((q, j) => this.w.time.delayedCall(j * 140, () => { sfx.bellNote(j); this.w.tweens.add({ targets: q.bell, angle: { from: -20, to: 20 }, duration: 150, yoyo: true, repeat: 2, onComplete: () => q.bell.setAngle(0) }); }));
-        this.w.time.delayedCall(800, () => { this.bellChest.reveal(); this.w.game.events.emit('toast', 'The songbird trills happily. The strongbox rises from the grass!'); });
+        this.w.time.delayedCall(800, () => { this.bellChest.reveal(); this.w.game.events.emit('toast', 'Yay! A chest pops up!'); });
       });
     }
   }
@@ -247,9 +247,9 @@ export class Puzzles {
       });
     }
     this.sign(TILE_SIGN.x, TILE_SIGN.y, [
-      'Words carved into a mossy stone, beside a faded picture of a moon among stars:',
-      '\u201cTurn the four stones until the moon sits high, the stars shine right, and the leaf rests low.\u201d',
-      '(Tap a stone to turn it.)',
+      'Tap a stone to turn it.',
+      'Moon on top. Stars on the right.',
+      'Leaf on the bottom.',
     ]);
     const ref = w.add.image(TILE_SIGN.x, TILE_SIGN.y - 62, ATLAS, 'emblem').setScale(0.26).setDepth(TILE_SIGN.y + 1).setAlpha(0.95);
     void ref;
@@ -267,7 +267,7 @@ export class Puzzles {
         this.w.tweens.add({ targets: this.tileGlow, alpha: 0.5, duration: 800, yoyo: true, hold: 400, onComplete: () => this.tileGlow.setAlpha(0.35) });
         this.w.burst(TILES.x, TILES.y, 0xfff0a8, 36, 'spark');
         sfx.hoot();
-        this.w.time.delayedCall(600, () => { this.tileChest.reveal(); this.w.game.events.emit('toast', 'The moon picture glows. Somewhere, an owl hoots approvingly.'); });
+        this.w.time.delayedCall(600, () => { this.tileChest.reveal(); this.w.game.events.emit('toast', 'It glows! A chest appears!'); });
       });
     }
   }
@@ -283,8 +283,9 @@ export class Puzzles {
       action: () => this.dig(),
     });
     this.sign(DIG_SIGN.x, DIG_SIGN.y, [
-      'A driftwood sign, half-buried in the sand. A riddle is scratched into it:',
-      '\u201cThree white stones keep watch by the water,\nand what they guard sleeps in the sand between them.\nStand right in the middle, and dig.\u201d',
+      'Find the three white stones.',
+      'Stand in the middle of them.',
+      'Then dig!',
     ]);
     this.digChest.set(dug, hasTreasure('shell_necklace'));
     if (!dug) {
@@ -311,7 +312,7 @@ export class Puzzles {
       this.digImg.setTexture(ATLAS, 'hole');
       w.locked = false;
       this.digChest.reveal();
-      w.game.events.emit('toast', 'Clunk! Your hands find something under the sand\u2026');
+      w.game.events.emit('toast', 'Clunk! You found something!');
     });
   }
 

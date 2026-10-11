@@ -589,8 +589,9 @@ export class WorldScene extends Phaser.Scene {
     this.interactables.push({
       x: SIGN.x, y: SIGN.y, r: 56, label: 'Read', promptY: 70, enabled: () => true,
       action: () => this.game.events.emit('dialog', [
-        'An old sign, its letters worn soft by the rain:',
-        '"When the sun first wakes, then climbs to its height, then sinks to sleep \u2014 light the stone lanterns so, and the old gate will listen."',
+        'Light the lanterns in order.',
+        'First dawn. Then noon. Then dusk.',
+        'Then the gate will open!',
       ]),
     });
   }
@@ -696,7 +697,7 @@ export class WorldScene extends Phaser.Scene {
         }
         this.litOrder = [];
         this.game.events.emit('lanterns', []);
-        this.game.events.emit('toast', 'The flames gutter out\u2026 perhaps there is an order to it.');
+        this.game.events.emit('toast', 'Oops! Try a new order.');
         this.locked = false;
       });
     }
@@ -728,7 +729,7 @@ export class WorldScene extends Phaser.Scene {
             cam.startFollow(this.feet, false, 0.085, 0.085, 0, 18);
             this.locked = false;
             this.gateOpen = true;
-            this.game.events.emit('toast', 'The brambles part. Something glimmers beyond the gate\u2026');
+            this.game.events.emit('toast', 'The gate is open! Go look!');
           });
         });
       });
@@ -754,7 +755,7 @@ export class WorldScene extends Phaser.Scene {
         this.game.events.emit('treasure', 'golden_feather');
         this.game.events.emit('dialog', [
           'You found a Golden Feather!',
-          'It feels warm, like a sunny afternoon. Maybe it will help you climb higher someday\u2026',
+          'It is warm and shiny!',
         ]);
       },
     });

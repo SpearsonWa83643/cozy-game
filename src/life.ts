@@ -143,14 +143,14 @@ export class Life {
     if (mood === 0) {
       const sy = this.cat.scaleY;
       w.tweens.add({ targets: this.cat, scaleY: sy * 0.9, duration: 160, yoyo: true, repeat: 1, ease: 'Sine.easeInOut' });
-      w.game.events.emit('toast', 'The cat purrs and leans into your hand.');
+      w.game.events.emit('toast', 'Purr! The cat is happy.');
     } else if (mood === 1 && !this.catRolling) {
       this.catRolling = true;
       w.tweens.add({ targets: [this.cat], angle: this.cat.flipX ? -85 : 85, duration: 380, ease: 'Back.easeOut', yoyo: true, hold: 1600, onComplete: () => { this.catRolling = false; this.cat.setAngle(0); } });
-      w.game.events.emit('toast', 'The cat flops over for belly rubs!');
+      w.game.events.emit('toast', 'Belly rubs!');
     } else {
       this.catFollow = 10;
-      w.game.events.emit('toast', 'Mrrp! The cat decides to tag along for a bit.');
+      w.game.events.emit('toast', 'Mrrp! The cat follows you.');
     }
   }
 

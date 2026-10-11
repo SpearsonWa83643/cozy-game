@@ -138,8 +138,8 @@ export function buildAreas(w: WorldScene) {
         if (!hasTreasure('rusty_key')) {
           sfx.tock();
           w.game.events.emit('dialog', [
-            'An old garden gate, ivy-wrapped and locked tight.',
-            'The keyhole is rusty and orange. Someone near the windmill might have kept the key\u2026',
+            'This gate is locked.',
+            'Find the key by the windmill!',
           ]);
           return;
         }
@@ -151,7 +151,7 @@ export function buildAreas(w: WorldScene) {
         w.burst(g.x, g.y, 0x7cc463, 14, 'leaf');
         w.cameras.main.shake(180, 0.002);
         w.buildNav();
-        w.game.events.emit('toast', 'The rusty key turns with a happy clunk. Mistbirch Wood awaits!');
+        w.game.events.emit('toast', 'Click! The gate is open!');
       },
     });
   }

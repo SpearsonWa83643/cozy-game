@@ -3,11 +3,11 @@ import { save, Look, hasTreasure } from './save';
 
 export type Treasure = { id: string; name: string; icon: string; blurb: string; hint: string };
 export const TREASURES: Treasure[] = [
-  { id: 'golden_feather', name: 'Golden Feather', icon: 'feather', blurb: 'Warm as a sunny afternoon. Tuck it in your hat!', hint: 'The shrine beyond the bramble gate.' },
-  { id: 'flower_crown', name: 'Flower Crown', icon: 'ic_crown', blurb: "Grandmother's garden, woven into a crown.", hint: 'The flower pots by the cottage garden.' },
-  { id: 'rusty_key', name: 'Rusty Key', icon: 'ic_key', blurb: 'Opens the old gate on the north bridge.', hint: 'The bells by the windmill.' },
-  { id: 'shell_necklace', name: 'Seashell Necklace', icon: 'ic_shells', blurb: 'The lake kept it safe under the sand.', hint: 'A riddle on the lake shore.' },
-  { id: 'fox_hood', name: 'Fox-ear Hood', icon: 'ic_hood', blurb: 'Snug, orange and very sneaky.', hint: 'Stone tiles deep in Mistbirch Wood.' },
+  { id: 'golden_feather', name: 'Golden Feather', icon: 'feather', blurb: 'Warm and shiny. Put it in your hat!', hint: 'Past the bramble gate.' },
+  { id: 'flower_crown', name: 'Flower Crown', icon: 'ic_crown', blurb: 'A crown made of flowers.', hint: 'The flower pots.' },
+  { id: 'rusty_key', name: 'Rusty Key', icon: 'ic_key', blurb: 'It opens the north gate.', hint: 'The windmill bells.' },
+  { id: 'shell_necklace', name: 'Seashell Necklace', icon: 'ic_shells', blurb: 'Found under the sand.', hint: 'The lake shore.' },
+  { id: 'fox_hood', name: 'Fox-ear Hood', icon: 'ic_hood', blurb: 'Cozy and orange. Sneaky!', hint: 'Deep in the wood.' },
 ];
 
 export type MinorId = 'petal' | 'shell' | 'apple' | 'acorn' | 'beetle';
@@ -61,17 +61,17 @@ export function equip(c: Cosmetic, look: Look) {
 export type Rarity = 'common' | 'uncommon' | 'rare' | 'junk';
 export type Species = { id: string; name: string; where: 'pond' | 'river' | 'lake'; rarity: Rarity; tint: number; size: [number, number]; blurb: string };
 export const SPECIES: Species[] = [
-  { id: 'bluegill', name: 'Bluegill', where: 'pond', rarity: 'common', tint: 0x7fb6d8, size: [10, 22], blurb: 'A friendly little pond regular.' },
-  { id: 'golden_carp', name: 'Golden Carp', where: 'pond', rarity: 'uncommon', tint: 0xf2b13b, size: [25, 48], blurb: 'Glints like a dropped coin.' },
-  { id: 'lily_koi', name: 'Lily Koi', where: 'pond', rarity: 'rare', tint: 0xff8a5c, size: [35, 60], blurb: 'Naps under lily pads. Unlocks the Koi coat!' },
-  { id: 'minnow', name: 'River Minnow', where: 'river', rarity: 'common', tint: 0xc6d8df, size: [5, 11], blurb: 'Tiny, quick, and very shiny.' },
-  { id: 'brook_trout', name: 'Brook Trout', where: 'river', rarity: 'common', tint: 0x9bbf7a, size: [20, 38], blurb: 'Speckled like a mossy stone.' },
-  { id: 'salmon', name: 'Speckled Salmon', where: 'river', rarity: 'uncommon', tint: 0xe88c74, size: [45, 80], blurb: 'Swims upstream with great determination.' },
-  { id: 'silver_eel', name: 'Silver Eel', where: 'river', rarity: 'rare', tint: 0xe2ecf4, size: [60, 110], blurb: 'Slips like moonlight. Unlocks the Silver scarf!' },
-  { id: 'perch', name: 'Yellow Perch', where: 'lake', rarity: 'common', tint: 0xc9c45a, size: [15, 30], blurb: 'Striped and cheerful.' },
-  { id: 'sunfish', name: 'Sunfish', where: 'lake', rarity: 'common', tint: 0xf6c65b, size: [10, 24], blurb: 'Basks near the warm shallows.' },
-  { id: 'pike', name: 'Lake Pike', where: 'lake', rarity: 'uncommon', tint: 0x7f9a6a, size: [50, 95], blurb: 'Long, toothy, secretly shy.' },
-  { id: 'moonfish', name: 'Moonfish', where: 'lake', rarity: 'rare', tint: 0xcbc4ff, size: [30, 55], blurb: 'Glows faintly. Unlocks the Lantern staff!' },
-  { id: 'old_boot', name: 'Old Boot', where: 'lake', rarity: 'junk', tint: 0x8a6a50, size: [26, 30], blurb: 'Someone lost this. Still comfy?' },
+  { id: 'bluegill', name: 'Bluegill', where: 'pond', rarity: 'common', tint: 0x7fb6d8, size: [10, 22], blurb: 'A friendly pond fish.' },
+  { id: 'golden_carp', name: 'Golden Carp', where: 'pond', rarity: 'uncommon', tint: 0xf2b13b, size: [25, 48], blurb: 'Shiny like gold!' },
+  { id: 'lily_koi', name: 'Lily Koi', where: 'pond', rarity: 'rare', tint: 0xff8a5c, size: [35, 60], blurb: 'So rare! You get the Koi coat!' },
+  { id: 'minnow', name: 'River Minnow', where: 'river', rarity: 'common', tint: 0xc6d8df, size: [5, 11], blurb: 'Tiny and quick.' },
+  { id: 'brook_trout', name: 'Brook Trout', where: 'river', rarity: 'common', tint: 0x9bbf7a, size: [20, 38], blurb: 'It has spots!' },
+  { id: 'salmon', name: 'Speckled Salmon', where: 'river', rarity: 'uncommon', tint: 0xe88c74, size: [45, 80], blurb: 'A big, strong fish!' },
+  { id: 'silver_eel', name: 'Silver Eel', where: 'river', rarity: 'rare', tint: 0xe2ecf4, size: [60, 110], blurb: 'So rare! You get the Silver scarf!' },
+  { id: 'perch', name: 'Yellow Perch', where: 'lake', rarity: 'common', tint: 0xc9c45a, size: [15, 30], blurb: 'It has stripes!' },
+  { id: 'sunfish', name: 'Sunfish', where: 'lake', rarity: 'common', tint: 0xf6c65b, size: [10, 24], blurb: 'It loves the sun.' },
+  { id: 'pike', name: 'Lake Pike', where: 'lake', rarity: 'uncommon', tint: 0x7f9a6a, size: [50, 95], blurb: 'Long and a bit shy.' },
+  { id: 'moonfish', name: 'Moonfish', where: 'lake', rarity: 'rare', tint: 0xcbc4ff, size: [30, 55], blurb: 'It glows! You get the Lantern staff!' },
+  { id: 'old_boot', name: 'Old Boot', where: 'lake', rarity: 'junk', tint: 0x8a6a50, size: [26, 30], blurb: 'An old boot! Silly!' },
 ];
 export const RARITY_STARS: Record<Rarity, number> = { junk: 0, common: 1, uncommon: 2, rare: 3 };

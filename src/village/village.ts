@@ -104,7 +104,7 @@ export class Village {
     w.img(VILLAGE_SIGN.x, VILLAGE_SIGN.y, 'v_sign', 0.5, 1, 1).setDepth(VILLAGE_SIGN.y);
     w.solidCircle(VILLAGE_SIGN.x, VILLAGE_SIGN.y - 4, 8);
     w.interactables.push({ x: VILLAGE_SIGN.x, y: VILLAGE_SIGN.y, r: 56, label: 'Read', promptY: 80, enabled: () => true,
-      action: () => w.game.events.emit('dialog', ['Willow Village!', 'Tap the hammer to build.', 'Tap new friends to invite them.', 'Drag a friend onto a building to give them a job.']) });
+      action: () => w.game.events.emit('dialog', ['Willow Village!', 'Tap the hammer to build.', 'Tap a new friend to invite them.', 'Drag a friend to a building.', 'Now they have a job!']) });
     this.rainFx = w.add.particles(0, 0, atlasOf('p_drop'), {
       frame: 'p_drop', emitZone: { type: 'random', source: new Phaser.Geom.Rectangle(0, 0, 10, 10) as any },
       lifespan: 900, speedY: { min: 520, max: 640 }, speedX: { min: -60, max: -30 }, quantity: 6, frequency: 30,

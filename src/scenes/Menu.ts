@@ -222,7 +222,7 @@ export class MenuScene extends Phaser.Scene {
     icon(POND.x, POND.y, 'pond');
     this.playerDot = this.add.graphics();
     this.content.add(this.playerDot);
-    const legend = this.text(a.x + 4, a.y + a.h, 'Orange: puzzle to solve   \u00B7   Green: solved   \u00B7   Tap a tab to see your treasures', 14, '#8a6a50', 700).setOrigin(0, 1);
+    const legend = this.text(a.x + 4, a.y + a.h, 'Orange: puzzle   \u00B7   Green: done!', 14, '#8a6a50', 700).setOrigin(0, 1);
     this.content.add(legend);
   }
 
@@ -356,7 +356,7 @@ export class MenuScene extends Phaser.Scene {
   renderFish(a: { x: number; y: number; w: number; h: number }) {
     const caught = SPECIES.filter((s) => save.fish[s.id]).length;
     this.content.add(this.text(a.x, a.y, `Fish journal: ${caught} / ${SPECIES.length}`, 20, INK, 800));
-    this.content.add(this.text(a.x + a.w, a.y + 4, 'Tap water near you to cast. Pond, river and lake each hide different fish.', 14, '#8a6a50', 700).setOrigin(1, 0));
+    this.content.add(this.text(a.x + a.w, a.y + 4, 'Tap water to fish. Each place has new fish.', 14, '#8a6a50', 700).setOrigin(1, 0));
     const cols = 6, rowsN = 2;
     const tw = (a.w - (cols - 1) * 12) / cols, th = Math.min(200, (a.h - 50 - (rowsN - 1) * 12) / rowsN);
     SPECIES.forEach((sp, i) => {
