@@ -269,7 +269,7 @@ export class UIScene extends Phaser.Scene {
       this.toastBg.fillStyle(0x2f2219, 0.55);
       this.toastBg.fillRoundedRect(-tw / 2, -th / 2, tw, th, th / 2);
     }
-    this.toastC.setPosition(this.w / 2, title ? this.h * 0.24 : 64);
+    this.toastC.setPosition(this.w / 2, title ? this.h * 0.24 : 172);
     this.toastTween?.stop();
     this.toastC.setAlpha(0);
     this.toastTween = this.tweens.chain({

@@ -7,7 +7,7 @@ import { safeInsets } from '../device';
 import { sfx } from '../audio';
 import { save, BuildingType, Res } from '../save';
 import { theme, themeEvents } from '../theme';
-import { BUILD, BUILD_ORDER, isUnlockedB, canAfford, Village, Villager, Building, ResId } from '../village/village';
+import { BUILD, BUILD_ORDER, isUnlockedB, canAfford, Village, Villager, Building, ResId, Alert } from '../village/village';
 import type { WorldScene } from './World';
 
 const INK = '#3d2c20';
@@ -92,6 +92,11 @@ export class VillageUIScene extends Phaser.Scene {
     ev.on('build-mode', (on: boolean) => { this.drawBuildBtn(); if (on) this.openTray(); else this.closeTray(); });
     ev.on('built', () => this.openTray());
     ev.on('card', this.openCard, this);
+    ev.on('build-pick', (t: BuildingType) => { if (this.village.building) this.pick(t); });
+    ev.on('alert', (a: Alert | null) => this.showAlert(a));
+    ev.on('undo', (u: { label: string; run: () => void }) => this.showUndo(u));
+    ev.on('snacks', () => this.drawSnacks(true));
+    ev.on('build-mode', () => this.showAlert(this.village.alert));
     themeEvents.on('change', () => { this.drawBar(); this.drawBuildBtn(); if (this.tray) this.openTray(); });
     this.refresh();
     (window as any).__vui = this;
@@ -111,6 +116,70 @@ export class VillageUIScene extends Phaser.Scene {
     this.rects.bar = { x: this.bar.x, y: this.bar.y, w: 312, h: 52 };
     if (this.tray) this.openTray();
     if (this.card) this.openCard(this.cardData);
+    this.drawSnacks(false);
+    if (this.alertC) this.showAlert(this.alertData);
+  }
+
+  // ------------------------------------------------------------ fruit basket, alerts, undo
+  snackC: Phaser.GameObjects.Container | null = null;
+  drawSnacks(bump: boolean) {
+    this.snackC?.destroy(); this.snackC = null; delete this.rects.snacks;
+    if (save.snacks <= 0) return;
+    const x = this.bar.x + 312 + 12, y = this.bar.y;
+    const g = this.add.graphics();
+    g.fillStyle(0x2a1d14, 0.25); g.fillRoundedRect(2, 5, 92, 52, 26);
+    g.fillStyle(0xfbf1dc, 0.95); g.fillRoundedRect(0, 0, 92, 52, 26);
+    g.lineStyle(3, 0xe8604c, 1); g.strokeRoundedRect(1.5, 1.5, 89, 49, 25);
+    const ic = this.add.image(28, 26, atlasOf('apple'), 'apple'); ic.setScale(34 / Math.max(ic.width, ic.height));
+    const t = this.text(52, 26, `${save.snacks}`, 24).setOrigin(0, 0.5);
+    const z = this.add.zone(0, 0, 92, 52).setOrigin(0, 0).setInteractive();
+    z.on('pointerup', () => this.game.events.emit('toast', 'Fruit! Tap an animal to feed it.'));
+    this.snackC = this.add.container(x, y, [g, ic, t, z]);
+    this.rects.snacks = { x, y, w: 92, h: 52 };
+    if (bump) this.tweens.add({ targets: this.snackC, scale: { from: 1.2, to: 1 }, duration: 300, ease: 'Back.easeOut' });
+  }
+  alertC: Phaser.GameObjects.Container | null = null;
+  alertData: Alert | null = null;
+  showAlert(a: Alert | null) {
+    this.alertC?.destroy(); this.alertC = null; this.alertData = a;
+    delete this.rects.alert; delete this.rects['alert:fix'];
+    if (!a || this.village?.building) return;
+    const si = safeInsets();
+    const msg = this.text(0, 0, a.text, 20, INK, 900);
+    const bw = 132, W = 70 + msg.width + 16 + bw + 12, H = 58;
+    const x0 = this.w / 2 - W / 2, y0 = this.bar.y + 66;
+    const g = this.add.graphics();
+    g.fillStyle(0x2a1d14, 0.25); g.fillRoundedRect(2, 5, W, H, 29);
+    g.fillStyle(a.urgent ? 0xfff0e6 : 0xfbf1dc, 0.97); g.fillRoundedRect(0, 0, W, H, 29);
+    g.lineStyle(3, a.urgent ? 0xe8604c : theme.ui.accent, 1); g.strokeRoundedRect(1.5, 1.5, W - 3, H - 3, 28);
+    const ic = this.add.image(34, H / 2, atlasOf(a.icon), a.icon); ic.setScale(38 / Math.max(ic.width, ic.height));
+    msg.setPosition(62, H / 2).setOrigin(0, 0.5);
+    const c = this.add.container(x0, y0, [g, ic, msg]);
+    const bx = W - bw - 8;
+    const [bg, z] = this.button(x0 + bx, y0 + 7, bw, H - 14, 0x7cc463, 0x4f9a3c, () => { a.run(); this.showAlert(null); }, 22, 'alert:fix');
+    const fic = this.icon(x0 + bx + 26, y0 + H / 2, a.fixIcon, 28);
+    const ft = this.text(x0 + bx + 46, y0 + H / 2, a.fix, 19, '#fffaf0', 900).setOrigin(0, 0.5).setStroke('#2f6b24', 4);
+    const btn = this.add.container(0, 0, [bg, z, fic, ft]);
+    const all = this.add.container(0, 0, [c, btn]);
+    this.alertC = all;
+    this.rects.alert = { x: x0, y: y0, w: W, h: H };
+    all.setAlpha(0); this.tweens.add({ targets: all, alpha: 1, duration: 220 });
+    if (a.urgent) this.tweens.add({ targets: ic, angle: { from: -10, to: 10 }, duration: 260, yoyo: true, repeat: 3 });
+  }
+  undoC: Phaser.GameObjects.Container | null = null;
+  undoTimer: Phaser.Time.TimerEvent | null = null;
+  showUndo(u: { label: string; run: () => void } | null) {
+    this.undoC?.destroy(); this.undoC = null; this.undoTimer?.remove(); this.undoTimer = null; delete this.rects.undo;
+    if (!u) return;
+    const si = safeInsets();
+    const W = 150, H = 56, x0 = this.w / 2 - W / 2, y0 = this.h - H - 28 - si.bottom;
+    const [bg, z] = this.button(x0, y0, W, H, 0xfbf1dc, theme.ui.accent, () => { u.run(); this.showUndo(null); }, 28, 'undo');
+    const g = this.add.graphics();
+    g.lineStyle(4, 0x6b4a33, 1); g.beginPath(); g.arc(x0 + 36, y0 + H / 2 + 2, 11, Math.PI * 1.1, Math.PI * 2.4); g.strokePath();
+    g.fillStyle(0x6b4a33, 1); g.fillTriangle(x0 + 20, y0 + H / 2 - 9, x0 + 30, y0 + H / 2 - 2, x0 + 20, y0 + H / 2 + 3);
+    const t = this.text(x0 + 58, y0 + H / 2, u.label, 22, INK, 900).setOrigin(0, 0.5);
+    this.undoC = this.add.container(0, 0, [bg, z, g, t]);
+    this.undoTimer = this.time.delayedCall(7000, () => this.showUndo(null));
   }
   drawBar() {
     const g = this.barBg; g.clear();
@@ -143,8 +212,13 @@ export class VillageUIScene extends Phaser.Scene {
       targets: fly, x: tx, y: ty, duration: 700, delay: 150, ease: 'Sine.easeIn', onComplete: () => {
         fly.destroy();
         this.refresh();
-        this.tweens.add({ targets: [this.counts[id], target], scale: { from: 1.4, to: 1 }, duration: 300, ease: 'Back.easeOut', onStart: () => target.setDisplaySize(38, 38) });
+        // Bump the count and the icon (the icon keeps its own base scale so it never balloons).
         target.setDisplaySize(38, 38);
+        const base = target.scaleX;
+        this.tweens.killTweensOf([this.counts[id], target]);
+        this.counts[id].setScale(1);
+        this.tweens.add({ targets: this.counts[id], scale: { from: 1.4, to: 1 }, duration: 300, ease: 'Back.easeOut' });
+        this.tweens.add({ targets: target, scale: { from: base * 1.4, to: base }, duration: 300, ease: 'Back.easeOut', onComplete: () => target.setDisplaySize(38, 38) });
       },
     });
   }
@@ -325,6 +399,7 @@ export class VillageUIScene extends Phaser.Scene {
     // Keep the build button out of the way while the satchel is open.
     const hide = !!this.registry.get('menuOpen');
     this.buildC.setVisible(!hide); this.bar.setVisible(!hide);
+    this.snackC?.setVisible(!hide); this.alertC?.setVisible(!hide && !this.card); this.undoC?.setVisible(!hide);
     (this.buildC.getData('zone') as Phaser.GameObjects.Zone).input!.enabled = !hide;
   }
 }

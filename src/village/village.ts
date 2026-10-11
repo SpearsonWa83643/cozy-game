@@ -41,6 +41,14 @@ export const isUnlockedB = (t: BuildingType) => {
 };
 export const canAfford = (cost: Partial<Res>) => (Object.keys(cost) as ResId[]).every((k) => save.village.res[k] >= (cost[k] ?? 0));
 
+/** A job that fits each trait (used by the idle-friend bubble). */
+const TRAIT_JOB: Record<string, BuildingType> = {
+  'Loves naps': 'garden', 'Always humming': 'kitchen', 'Tells silly jokes': 'kitchen', 'Loves flowers': 'garden', 'Super speedy': 'workshop',
+  'Bakes the best pie': 'kitchen', 'Collects shiny pebbles': 'workshop', 'Counts the stars': 'fishhut', 'Gives big hugs': 'garden', 'Brave explorer': 'fishhut',
+};
+export type Suggest = { kind: 'assign'; b: Building } | { kind: 'build'; t: BuildingType };
+export type Alert = { id: string; icon: string; text: string; fix: string; fixIcon: string; urgent: boolean; run: () => void };
+
 type Task = 'idle' | 'walk' | 'work' | 'eat' | 'sleep' | 'play' | 'drag' | 'wander';
 export class Villager {
   img: Phaser.GameObjects.Image;
@@ -56,6 +64,10 @@ export class Villager {
   stepT = 0;
   frame = 0;
   hop = 0;
+  idleT = 0;
+  walkT = 0;
+  suggest: Suggest | null = null;
+  bubble: Phaser.GameObjects.Container | null = null;
   constructor(public v: Village, public data: VillagerSave, x: number, y: number, public guest = false) {
     const w = v.w;
     this.x = x; this.y = y;
@@ -73,9 +85,9 @@ export class Villager {
   goTo(x: number, y: number, then: Task) {
     const p = this.v.w.nav.find(this.x, this.y, x, y);
     this.path = p && p.length ? p : [[x, y]];
-    this.task = 'walk'; this.next = then;
+    this.task = 'walk'; this.next = then; this.walkT = 0;
   }
-  destroy() { this.img.destroy(); this.shadow.destroy(); this.face.destroy(); }
+  destroy() { this.img.destroy(); this.shadow.destroy(); this.face.destroy(); this.bubble?.destroy(); }
 }
 
 export type Building = { data: BuildingSave; img: Phaser.GameObjects.Image; x: number; y: number; cx: number; cy: number; worker: Villager | null; prog: number; alt: number; bar: Phaser.GameObjects.Graphics };
@@ -114,7 +126,9 @@ export class Village {
     for (const b of save.village.buildings) this.spawnBuilding(b, false);
     for (const d of save.village.villagers) {
       const [x, y] = this.homeSpot(d.id);
-      this.villagers.push(new Villager(this, d, x, y));
+      const v = new Villager(this, d, x, y);
+      this.villagers.push(v);
+      this.addTap(v);
     }
     for (const b of this.buildings) {
       const id = save.village.villagers.find((v) => v.job === b.data.id);
@@ -336,6 +350,7 @@ export class Village {
     return true;
   }
   addTap(v: Villager) {
+    this.w.tappables.push({ x: () => v.x, y: () => v.y - 108, r: 34, enabled: () => !!v.bubble && this.villagers.includes(v) && !this.building, tap: () => this.acceptSuggestion(v) });
     this.w.tappables.push({ x: () => v.x, y: () => v.y - 26, r: 32, enabled: () => this.villagers.includes(v) && !this.building, tap: () => this.w.game.events.emit('card', { kind: 'villager', v }) });
   }
   villagerAt(wx: number, wy: number): Villager | null {
@@ -393,6 +408,127 @@ export class Village {
     for (const v of this.villagers) this.tick(v, dt, time);
     for (const b of this.buildings) this.work(b, dt);
     this.events(dt, time);
+    this.checkT -= dt;
+    if (this.checkT <= 0) { this.checkT = 1; this.think(); }
+  }
+
+  // ------------------------------------------------------------ friendly helpers (no fail states)
+  checkT = 0.5;
+  alert: Alert | null = null;
+  gifts = 0;
+  /** What job would make this friend happy? A free building that fits, any free one, or a new one to build. */
+  suggestFor(v: Villager): Suggest | null {
+    const want = TRAIT_JOB[v.data.trait] ?? 'garden';
+    const free = this.buildings.filter((b) => BUILD[b.data.type].job && !b.worker);
+    const fit = free.find((b) => b.data.type === want) ?? free[0];
+    if (fit) return { kind: 'assign', b: fit };
+    if (this.building) return null;
+    for (const t of [want, 'garden', 'workshop'] as BuildingType[]) if (isUnlockedB(t) && canAfford(BUILD[t].cost) && this.firstFree(t)) return { kind: 'build', t };
+    return null;
+  }
+  private think() {
+    for (const v of this.villagers) {
+      const s = v.data.job === null && v.idleT > 5 && !this.building ? this.suggestFor(v) : null;
+      const same = s && v.suggest && s.kind === v.suggest.kind && (s.kind === 'assign' ? s.b === (v.suggest as any).b : s.t === (v.suggest as any).t);
+      if (!same) this.setBubble(v, s);
+    }
+    const a = this.findAlert();
+    if ((a?.id ?? null) !== (this.alert?.id ?? null)) { this.alert = a; this.w.game.events.emit('alert', a); }
+    else this.alert = a;
+  }
+  private setBubble(v: Villager, s: Suggest | null) {
+    v.suggest = s;
+    v.bubble?.destroy(); v.bubble = null;
+    if (!s) return;
+    const w = this.w;
+    const g = w.add.graphics();
+    g.fillStyle(0x2a1d14, 0.25); g.fillCircle(1, 3, 27);
+    g.fillStyle(0xffffff, 1); g.fillCircle(0, 0, 27);
+    g.fillTriangle(-7, 22, 7, 22, 0, 34);
+    g.lineStyle(3, theme.ui.accent, 1); g.strokeCircle(0, 0, 25.5);
+    const frame = s.kind === 'assign' ? BUILD[s.b.data.type].frame : BUILD[s.t].frame;
+    const im = w.add.image(0, 2, atlasOf(frame), frame);
+    im.setScale(Math.min(38 / im.width, 34 / im.height));
+    const parts: Phaser.GameObjects.GameObject[] = [g, im];
+    if (s.kind === 'build') parts.push(w.add.image(17, -17, atlasOf('i_hammer'), 'i_hammer').setDisplaySize(22, 22));
+    else parts.push(w.add.image(17, -17, atlasOf('i_check'), 'i_check').setDisplaySize(20, 20));
+    const c = w.add.container(v.x, v.y - 108, parts).setDepth(9050).setScale(0.2);
+    w.tweens.add({ targets: c, scale: 1, duration: 360, ease: 'Back.easeOut' });
+    v.bubble = c;
+    sfx.blip();
+  }
+  /** One tap on the bubble: take the job (undoable) or start building the right place. */
+  acceptSuggestion(v: Villager) {
+    const s = v.suggest;
+    if (!s) return;
+    this.setBubble(v, null);
+    v.idleT = -20;
+    if (s.kind === 'assign') {
+      const prev = v.data.job;
+      this.assign(v, s.b);
+      this.w.game.events.emit('undo', {
+        label: `Undo`, run: () => {
+          if (s.b.worker === v) s.b.worker = null;
+          v.data.job = prev;
+          const pb = prev !== null ? this.buildings.find((b) => b.data.id === prev) : null;
+          if (pb) pb.worker = v;
+          persist();
+          v.task = 'idle'; v.think = 0.3;
+          this.w.game.events.emit('toast', `Okay! ${v.data.name} is free.`);
+        },
+      });
+    } else {
+      this.enterBuild();
+      this.w.game.events.emit('build-pick', s.t);
+    }
+  }
+  private findAlert(): Alert | null {
+    const w = this.w, res = save.village.res;
+    if (this.building) return null;
+    // 1. A visitor wants to stay but there is no bed.
+    if (this.wanderer && save.village.villagers.length >= this.beds()) {
+      const name = this.wanderer.data.name;
+      return { id: 'home', icon: 'b_home', text: `${name} needs a home!`, fix: 'Build', fixIcon: 'i_hammer', urgent: false, run: () => {
+        if (!canAfford(BUILD.home.cost)) this.gift();
+        this.enterBuild(); w.game.events.emit('build-pick', 'home');
+      } };
+    }
+    // 2. A friend who really needs something right now.
+    for (const v of this.villagers) {
+      const d = v.data;
+      if (['eat', 'sleep', 'play', 'drag'].includes(v.task) || (v.task === 'walk' && v.next !== 'work' && v.next !== 'idle')) continue;
+      if (d.food < 0.18) return { id: `food${d.id}`, icon: 'i_food', text: `${d.name} is hungry!`, fix: 'Snack', fixIcon: 'i_food', urgent: true, run: () => this.care(v, 'food') };
+      if (d.sleep < 0.18) return { id: `sleep${d.id}`, icon: 'i_sleep', text: `${d.name} is sleepy!`, fix: 'Nap', fixIcon: 'i_sleep', urgent: true, run: () => this.care(v, 'sleep') };
+      if (d.fun < 0.18) return { id: `fun${d.id}`, icon: 'i_fun', text: `${d.name} is bored!`, fix: 'Play', fixIcon: 'i_fun', urgent: true, run: () => this.care(v, 'fun') };
+    }
+    // 3. Out of things to build with and nothing makes more: friends bring a gift.
+    const cheapest = Math.min(...BUILD_ORDER.filter(isUnlockedB).map((t) => BUILD[t].cost.wood ?? 0).filter((n) => n > 0));
+    const maker = this.buildings.some((b) => b.data.type === 'workshop' && b.worker);
+    if (!maker && !this.cart && (res.wood < cheapest || (res.wood < BUILD.workshop.cost.wood! || res.stone < BUILD.workshop.cost.stone!)) && !this.buildings.some((b) => b.data.type === 'workshop')) {
+      return { id: 'wood', icon: 'i_wood', text: 'Need more wood?', fix: 'Get some', fixIcon: 'i_wood', urgent: false, run: () => this.gift() };
+    }
+    return null;
+  }
+  /** Friends find a little pile of wood and stone. Always works, so building never gets stuck. */
+  gift() {
+    this.gifts++;
+    this.add('wood', 4, VILLAGE_SIGN.x, VILLAGE_SIGN.y - 90);
+    this.add('stone', 2, VILLAGE_SIGN.x + 40, VILLAGE_SIGN.y - 90);
+    this.w.burst(VILLAGE_SIGN.x, VILLAGE_SIGN.y - 60, 0xfff1c4, 18, 'spark');
+    sfx.sparkle();
+    this.w.game.events.emit('toast', 'Friends found wood and stone!');
+  }
+  /** The one-tap fix on a need alert. */
+  care(v: Villager, need: 'food' | 'sleep' | 'fun') {
+    const d = v.data;
+    v.path = [];
+    if (need === 'food') { if (save.village.res.food > 0) { save.village.res.food--; this.w.game.events.emit('res', null, 0); } d.food = 1; this.w.floatText(v.x, v.y - 70, 'Yum!'); v.task = 'idle'; v.think = 1; }
+    if (need === 'sleep') { v.task = 'sleep'; v.timer = 3; this.w.floatText(v.x, v.y - 60, 'Zzz'); }
+    if (need === 'fun') { v.task = 'play'; v.timer = 3; d.fun = Math.max(d.fun, 0.5); this.w.floatText(v.x, v.y - 70, 'Wheee!'); }
+    this.w.life.hearts.emitParticleAt(v.x, v.y - 50, 4);
+    sfx.sparkle();
+    persist();
+    this.checkT = 0;
   }
 
   private tick(v: Villager, dt: number, time: number) {
@@ -404,6 +540,13 @@ export class Village {
       d.fun = this.festival > 0 ? 1 : Math.max(0, d.fun - dt / 180);
     }
     let moving = false;
+    v.idleT = v.task === 'idle' || v.task === 'wander' ? v.idleT + dt : Math.min(v.idleT, 0);
+    if (v.task === 'walk') {
+      v.walkT += dt;
+      // Never stuck: if a walk takes far too long, hop straight to the end.
+      if (v.walkT > 30 && v.path.length) { const [ex, ey] = v.path[v.path.length - 1]; v.x = ex; v.y = ey; v.path = [[ex, ey]]; }
+      if (!v.path.length) { v.task = v.next; v.timer = 3; }
+    }
     if (v.task === 'walk' && v.path.length) {
       const [tx, ty] = v.path[0];
       const dx = tx - v.x, dy = ty - v.y, dist = Math.hypot(dx, dy);
@@ -444,6 +587,7 @@ export class Village {
     v.shadow.setPosition(v.x, v.y - 2).setVisible(v.task !== 'sleep');
     if (!v.guest) { const m = v.task === 'sleep' ? 'i_sleep' : v.mood(); if (v.face.frame.name !== m) v.face.setTexture(atlasOf(m), m); }
     v.face.setPosition(v.x, v.y + bob - 58 + Math.sin(time / 300 + d.id) * 1.5).setVisible(v.task !== 'drag');
+    if (v.bubble) v.bubble.setPosition(v.x, v.y + bob - 108 + Math.sin(time / 260 + d.id) * 3).setVisible(v.task !== 'drag' && !this.building);
   }
 
   private arrive(v: Villager) {
