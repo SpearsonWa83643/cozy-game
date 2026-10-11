@@ -144,9 +144,9 @@ export class VillageUIScene extends Phaser.Scene {
     this.alertC?.destroy(); this.alertC = null; this.alertData = a;
     delete this.rects.alert; delete this.rects['alert:fix'];
     if (!a || this.village?.building) return;
-    const si = safeInsets();
     const msg = this.text(0, 0, a.text, 20, INK, 900);
-    const bw = 132, W = 70 + msg.width + 16 + bw + 12, H = 58;
+    const ft = this.text(0, 0, a.fix, 19, '#fffaf0', 900).setOrigin(0, 0.5).setStroke('#2f6b24', 4);
+    const bw = 58 + ft.width, W = 64 + msg.width + 20 + bw + 12, H = 60;
     const x0 = this.w / 2 - W / 2, y0 = this.bar.y + 66;
     const g = this.add.graphics();
     g.fillStyle(0x2a1d14, 0.25); g.fillRoundedRect(2, 5, W, H, 29);
@@ -155,10 +155,10 @@ export class VillageUIScene extends Phaser.Scene {
     const ic = this.add.image(34, H / 2, atlasOf(a.icon), a.icon); ic.setScale(38 / Math.max(ic.width, ic.height));
     msg.setPosition(62, H / 2).setOrigin(0, 0.5);
     const c = this.add.container(x0, y0, [g, ic, msg]);
-    const bx = W - bw - 8;
-    const [bg, z] = this.button(x0 + bx, y0 + 7, bw, H - 14, 0x7cc463, 0x4f9a3c, () => { a.run(); this.showAlert(null); }, 22, 'alert:fix');
-    const fic = this.icon(x0 + bx + 26, y0 + H / 2, a.fixIcon, 28);
-    const ft = this.text(x0 + bx + 46, y0 + H / 2, a.fix, 19, '#fffaf0', 900).setOrigin(0, 0.5).setStroke('#2f6b24', 4);
+    const bx = W - bw - 10;
+    const [bg, z] = this.button(x0 + bx, y0 + 8, bw, H - 16, 0x7cc463, 0x4f9a3c, () => { a.run(); this.showAlert(null); }, 22, 'alert:fix');
+    const fic = this.icon(x0 + bx + 24, y0 + H / 2, a.fixIcon, 28);
+    ft.setPosition(x0 + bx + 44, y0 + H / 2);
     const btn = this.add.container(0, 0, [bg, z, fic, ft]);
     const all = this.add.container(0, 0, [c, btn]);
     this.alertC = all;
@@ -323,7 +323,7 @@ export class VillageUIScene extends Phaser.Scene {
       title = 'Merchant'; portrait = 'v_cart'; lines = ['Want to trade?'];
       btns = Village.TRADES.map((t, i) => ({ id: `trade:${i}`, label: '', ok: canAfford(t.give), tap: () => { if (v.trade(i)) this.openCard(data); else { sfx.softFail(); this.game.events.emit('toast', 'Not enough yet!'); } } }));
     }
-    const W = Math.min(420, this.w - 40), H = 230 + (needs ? 70 : 0) + (btns.length ? (data.kind === 'merchant' ? btns.length * 66 : 74) : 0);
+    const W = Math.min(420, this.w - 40), H = 176 + (needs ? 70 : 0) + (btns.length ? (data.kind === 'merchant' ? btns.length * 66 : 74) : 0);
     const x0 = (this.w - W) / 2, y0 = Math.max(20, (this.h - H) / 2 - 20);
     const c = this.add.container(0, 0);
     const dim = this.add.rectangle(0, 0, this.w, this.h, 0x1d1510, 0.35).setOrigin(0, 0).setInteractive();

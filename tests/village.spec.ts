@@ -138,6 +138,12 @@ test('village: invite, build, assign a job, resources, theme toggle', async ({ p
   await tapRect(page, await waitRect(page, 'alert:fix'));
   await expect.poll(async () => (await village(page)).villagers[0].need.food, { timeout: 30_000 }).toBeGreaterThan(0.9);
   await page.evaluate((n) => (window as any).__cozy.setRes({ food: n }), foodBefore);
+  // Out of wood and stone with no workshop: friends bring some, so building never gets stuck.
+  await page.evaluate(() => (window as any).__cozy.setRes({ wood: 0, stone: 0 }));
+  await expect.poll(async () => (await village(page)).alert?.id ?? null, { timeout: 60_000, intervals: [400] }).toBe('wood');
+  await page.waitForTimeout(500);
+  await tapRect(page, await waitRect(page, 'alert:fix'));
+  await expect.poll(async () => (await village(page)).res.wood, { timeout: 30_000 }).toBeGreaterThanOrEqual(4);
 
   // 5c. Tap a fruit tree, pick up the fruit, then feed the cat: hearts, and it follows you.
   const cat0 = (await cozy(page, 'critters()')).cat;

@@ -503,9 +503,9 @@ export class Village {
       if (d.fun < 0.1) return { id: `fun${d.id}`, icon: 'i_fun', text: `${d.name} is bored!`, fix: 'Play', fixIcon: 'i_fun', urgent: true, run: () => this.care(v, 'fun') };
     }
     // 3. Out of things to build with and nothing makes more: friends bring a gift.
-    const cheapest = Math.min(...BUILD_ORDER.filter(isUnlockedB).map((t) => BUILD[t].cost.wood ?? 0).filter((n) => n > 0));
-    const maker = this.buildings.some((b) => b.data.type === 'workshop' && b.worker);
-    if (!maker && !this.cart && (res.wood < cheapest || (res.wood < BUILD.workshop.cost.wood! || res.stone < BUILD.workshop.cost.stone!)) && !this.buildings.some((b) => b.data.type === 'workshop')) {
+    const core: BuildingType[] = ['home', 'garden', 'kitchen', 'workshop', 'fishhut'];
+    const stuck = !core.some((t) => isUnlockedB(t) && canAfford(BUILD[t].cost));
+    if (stuck && !this.cart && !this.buildings.some((b) => b.data.type === 'workshop' && b.worker)) {
       return { id: 'wood', icon: 'i_wood', text: 'Need more wood?', fix: 'Get some', fixIcon: 'i_wood', urgent: false, run: () => this.gift() };
     }
     return null;
