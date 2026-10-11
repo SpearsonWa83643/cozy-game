@@ -9,7 +9,7 @@ import type { WorldScene } from './scenes/World';
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 
-type Base = { img: Phaser.GameObjects.Image; shadow: Phaser.GameObjects.Image; hx: number; hy: number; x: number; y: number; t: number; busy: boolean };
+type Base = { img: Phaser.GameObjects.Image; shadow: Phaser.GameObjects.Image; hx: number; hy: number; x: number; y: number; t: number; busy: boolean; follow?: number; slot?: number };
 type Rabbit = Base & { temp?: boolean; life?: number };
 type Squirrel = Base & { tx: number; ty: number; hidden: number };
 type Hedgehog = Base & { ball: number; tx: number; ty: number };
@@ -52,6 +52,29 @@ export class Creatures {
     return x > v.x - m && x < v.right + m && y > v.y - m && y < v.bottom + m;
   }
   private player() { return [this.w.feet.x, this.w.feet.y] as const; }
+  /** Fed animals become friends and trot after you for a little while. */
+  friends = 0;
+  befriend(c: Base, secs = 10) { c.follow = secs; c.slot = this.friends++ % 4; }
+  followers() { return [...this.rabbits, ...this.squirrels, ...this.hedgehogs, ...this.deer].filter((c) => (c.follow ?? 0) > 0).length; }
+  private following(c: Base, dt: number, speed = 120, hop = 6) {
+    if (!c.follow || c.follow <= 0) return false;
+    c.follow -= dt;
+    if (c.busy) return true;
+    if (c.follow <= 0) { c.hx = c.x; c.hy = c.y; return false; }  // settle where they are
+    const [px, py] = this.player();
+    const side = (c.slot ?? 0) % 2 ? 1 : -1, back = 1 + Math.floor((c.slot ?? 0) / 2);
+    const tx = px + side * 44 * back, ty = py + 18 + back * 6;
+    const dx = tx - c.x, dy = ty - c.y, d = Math.hypot(dx, dy);
+    if (d > 8) {
+      const sp = Math.min(speed, d * 3) * dt;
+      const nx = c.x + dx / d * sp, ny = c.y + dy / d * sp;
+      if (!waterBlocks(nx, ny)) { c.x = nx; c.y = ny; }
+      c.img.setFlipX(dx > 0);
+      this.place(c);
+      c.img.y -= Math.abs(Math.sin(this.w.time.now / 110)) * hop;
+    }
+    return true;
+  }
   private place(c: Base) {
     c.img.setPosition(c.x, c.y).setDepth(c.y);
     c.shadow.setPosition(c.x, c.y - 1);
@@ -81,6 +104,7 @@ export class Creatures {
       this.w.tappables.push({
         x: () => r.x, y: () => r.y - 10, r: 26, enabled: () => !r.busy,
         tap: () => { sfx.thump(); this.onReact(); this.w.floatText(r.x, r.y - 30, '!'); this.flee(r, 3); },
+        feed: () => { this.onReact(); r.img.setTexture(ATLAS, 'rabbit_sit'); this.befriend(r); },
       });
     }
     return r;
@@ -113,6 +137,7 @@ export class Creatures {
         if (r.life! <= 0) { r.img.destroy(); r.shadow.destroy(); this.rabbits.splice(i, 1); }
         continue;
       }
+      if (this.following(r, dt, 150, 9)) continue;
       if (r.busy || !this.near(r.x, r.y)) continue;
       if (Math.hypot(r.x - px, r.y - py) < 75) { this.flee(r, 2); continue; }
       r.t -= dt * 1000;
@@ -133,6 +158,7 @@ export class Creatures {
     this.squirrels.push(s);
     this.w.tappables.push({
       x: () => s.x, y: () => s.y - 10, r: 26, enabled: () => !s.busy && s.hidden <= 0,
+      feed: () => { this.onReact(); sfx.chirp(); this.befriend(s); },
       tap: () => {
         this.onReact();
         sfx.chirp();
@@ -161,6 +187,7 @@ export class Creatures {
         }
         continue;
       }
+      if (this.following(s, dt, 140, 5)) continue;
       if (s.busy || !this.near(s.x, s.y)) continue;
       s.t -= dt * 1000;
       if (s.t <= 0) {
@@ -179,6 +206,7 @@ export class Creatures {
     this.hedgehogs.push(h);
     this.w.tappables.push({
       x: () => h.x, y: () => h.y - 6, r: 26,
+      feed: () => { this.onReact(); h.ball = 0; h.img.setTexture(ATLAS, 'hedgehog'); this.befriend(h); },
       tap: () => {
         this.onReact();
         sfx.tock();
@@ -192,6 +220,7 @@ export class Creatures {
   private updateHedgehogs(dt: number) {
     const [px, py] = this.player();
     for (const h of this.hedgehogs) {
+      if (this.following(h, dt, 100, 2)) { h.tx = h.x; h.ty = h.y; continue; }
       if (!this.near(h.x, h.y)) continue;
       if (h.ball > 0) {
         h.ball -= dt;
@@ -214,6 +243,7 @@ export class Creatures {
     this.deer.push(d);
     this.w.tappables.push({
       x: () => d.x, y: () => d.y - 26, r: 40,
+      feed: () => { this.onReact(); d.state = 'graze'; d.img.setTexture(ATLAS, 'deer_graze'); this.befriend(d); },
       tap: () => {
         this.onReact();
         d.state = 'alert'; d.t = 3.5;
@@ -235,6 +265,7 @@ export class Creatures {
   private updateDeer(dt: number, t: number) {
     const [px, py] = this.player();
     for (const d of this.deer) {
+      if (this.following(d, dt, 160, 4)) { d.state = 'graze'; if (!d.follow || d.follow <= 0) { d.hx = d.x; d.hy = d.y; } continue; }
       if (!this.near(d.x, d.y, 300)) continue;
       const dist = Math.hypot(d.x - px, d.y - py);
       if (d.state === 'flee') {
@@ -265,6 +296,7 @@ export class Creatures {
     this.crabs.push(c);
     this.w.tappables.push({
       x: () => c.x, y: () => c.y - 6, r: 24, enabled: () => c.hidden <= 0 && !c.busy,
+      feed: () => { this.onReact(); this.w.tweens.add({ targets: c.img, angle: { from: -12, to: 12 }, duration: 120, yoyo: true, repeat: 3, onComplete: () => c.img.setAngle(0) }); },
       tap: () => {
         this.onReact();
         sfx.dig();
@@ -304,6 +336,7 @@ export class Creatures {
     this.owl = this.sprite(OWL.x, OWL.y, 'owl', 1.1).setDepth(OWL.y + 130);
     this.w.tappables.push({
       x: () => this.owl.x, y: () => this.owl.y - 14, r: 30,
+      feed: () => { this.onReact(); sfx.hoot(); this.w.floatText(this.owl.x, this.owl.y - 60, 'hoo! thank you!'); },
       tap: () => {
         this.onReact();
         sfx.hoot();

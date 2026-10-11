@@ -2,7 +2,7 @@
 import Phaser from 'phaser';
 import { ATLAS, frameScale, S } from './art';
 import { sfx } from './audio';
-import { addMinor } from './save';
+import { addMinor, save, persist, tipOnce } from './save';
 import type { WorldScene } from './scenes/World';
 
 type Pickup = { img: Phaser.GameObjects.Image; kind: string; minor: string; t0: number; flying: boolean };
@@ -11,6 +11,8 @@ const MINOR_LABEL: Record<string, string> = { petal: 'petal', shell: 'shell', ap
 export class Reacts {
   pickups: Pickup[] = [];
   cool = new WeakMap<object, number>();
+  /** Trees that drop fruit (for the test hook). */
+  fruitTrees: Phaser.GameObjects.Image[] = [];
   constructor(private w: WorldScene) {}
 
   private ready(o: object, ms: number) {
@@ -31,6 +33,7 @@ export class Reacts {
 
   tree(t: Phaser.GameObjects.Image, kind: 'fruit' | 'blossom' | 'leaf' | 'pear' | 'apple' | 'birch') {
     this.w.canopies.push(t);
+    if (kind === 'apple' || kind === 'pear' || kind === 'fruit') this.fruitTrees.push(t);
     this.w.tappables.push({
       x: () => t.x, y: () => t.y - t.displayHeight * 0.58, r: Math.max(34, t.displayWidth * 0.32), soft: true,
       tap: () => {
@@ -42,8 +45,8 @@ export class Reacts {
         const tint = kind === 'blossom' ? 0xffc6dc : kind === 'birch' ? 0xf0d36a : 0x8fcf6a;
         this.w.burst(t.x, cy, tint, 10, kind === 'blossom' ? 'petal' : 'leaf');
         this.material(t, 'wood', t.x, cy);
-        if (!this.ready(t, 12000)) return;
-        if (kind === 'apple' || kind === 'pear' || (kind === 'fruit' && Math.random() < 0.6)) {
+        if (!this.ready(t, 6000)) return;
+        if (kind === 'apple' || kind === 'pear' || kind === 'fruit') {
           const n = 1 + (Math.random() < 0.4 ? 1 : 0);
           for (let i = 0; i < n; i++) this.drop(t.x + (Math.random() * 2 - 1) * t.displayWidth * 0.3, cy + 10, t.y + 8 + Math.random() * 22, kind === 'pear' ? 'pear' : 'apple', 'apple');
         } else if (kind === 'birch' && Math.random() < 0.3) {
@@ -164,6 +167,12 @@ export class Reacts {
       targets: p.img, x: this.w.feet.x, y: this.w.feet.y - 30, scale: p.img.scale * 0.6, duration: 320, ease: 'Sine.easeIn',
       onComplete: () => {
         this.give(p.img.x, p.img.y - 10, p.minor);
+        if (p.minor === 'apple') {
+          save.snacks = Math.min(9, save.snacks + 1);
+          persist();
+          this.w.game.events.emit('snacks', save.snacks);
+          if (tipOnce('feed')) this.w.game.events.emit('toast', 'Yum! Tap an animal to feed it.');
+        }
         p.img.destroy();
       },
     });

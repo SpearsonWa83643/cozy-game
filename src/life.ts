@@ -83,6 +83,13 @@ export class Life {
     for (const d of this.ducks) {
       w.tappables.push({
         x: () => d.img.x, y: () => d.img.y - 6, r: 30,
+        feed: () => {
+          this.reactions++;
+          sfx.quack();
+          // The whole family paddles over to the shore by you.
+          for (const o of this.ducks) this.w.tweens.add({ targets: o.img, scale: o.img.scale * 1.12, duration: 160, yoyo: true, repeat: 1 });
+          this.hearts.emitParticleAt(d.img.x, d.img.y - 20, 5);
+        },
         tap: () => {
           this.reactions++;
           sfx.quack();
@@ -97,6 +104,7 @@ export class Life {
     // The frog croaks and hops.
     w.tappables.push({
       x: () => this.frog.x, y: () => this.frog.y - 8, r: 26, enabled: () => this.frog.visible && !this.frogBusy,
+      feed: () => { this.reactions++; sfx.croak(); this.w.tweens.add({ targets: this.frog, y: this.frog.y - 14, duration: 160, yoyo: true, repeat: 2 }); },
       tap: () => {
         this.reactions++;
         sfx.croak();
@@ -129,8 +137,11 @@ export class Life {
     w.tappables.push({
       x: () => this.cat.x, y: () => this.cat.y - 14, r: 30,
       tap: () => this.petCat(),
+      feed: () => { this.reactions++; this.w.catPets++; this.catSwish = 2; this.catFollow = 12; },
     });
   }
+
+  followers() { return this.creatures.followers() + (this.catFollow > 0 ? 1 : 0); }
 
   petCat() {
     const w = this.w;

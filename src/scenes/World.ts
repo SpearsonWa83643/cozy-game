@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { S, ATLAS, atlasOf, frameScale, mulberry32, pondValue, distToPaths, pathDist, ALL_PATHS } from '../art';
 import { GroundStreamer } from '../ground';
 import { waterBlocks, areaAt, waterAt } from '../geo';
-import { save, setPuzzle, addTreasure, hasTreasure, visit } from '../save';
+import { save, persist, setPuzzle, addTreasure, hasTreasure, visit } from '../save';
 import { buildHeroSheet } from '../hero';
 import { buildAreas } from '../areas';
 import { Village } from '../village/village';
@@ -35,7 +35,8 @@ export type Interactable = {
 };
 
 /** soft: scenery (trees, bushes...) that yields to walking when the tap lands on a path. */
-export type Tappable = { x: () => number; y: () => number; r: number; tap: () => void; enabled?: () => boolean; soft?: boolean };
+/** feed: an animal that can be fed from your fruit basket (hearts, then it follows you). */
+export type Tappable = { x: () => number; y: () => number; r: number; tap: () => void; enabled?: () => boolean; soft?: boolean; feed?: () => void };
 
 /** Hides static decoration far from the camera (cheap on iPad with thousands of props). */
 class CullGrid {
@@ -846,7 +847,10 @@ export class WorldScene extends Phaser.Scene {
       const d = Math.min(Math.hypot(wx - it.x, wy - it.y), Math.hypot(wx - it.x, wy - (it.y - it.promptY * 0.55)));
       if (d < bestD) { bestD = d; target = it; }
     }
-    if (tb && (!target || tbD < bestD * 0.8)) { tb.tap(); return; }
+    if (tb && (!target || tbD < bestD * 0.8)) {
+      if (tb.feed && save.snacks > 0) this.feedTap(tb); else tb.tap();
+      return;
+    }
     // Already standing next to it (or within its reach): just use it.
     if (target && (this.nearestInteractable() === target || (target.reach && Math.hypot(target.x - this.feet.x, target.y - this.feet.y) < target.reach))) {
       target.action(); this.path = []; this.pathTarget = null; return;
@@ -857,6 +861,37 @@ export class WorldScene extends Phaser.Scene {
     const gx = target ? target.x + ax : wx;
     const gy = target ? target.y + ay : wy;
     this.walkTo(gx, gy, target);
+  }
+
+  fed = 0;
+  /** Feed an animal: walk over if it is far, toss a fruit, hearts, and it tags along. */
+  feedTap(tb: Tappable) {
+    const x = tb.x(), y = tb.y();
+    if (Math.hypot(x - this.feet.x, y - this.feet.y) > 260) { this.walkTo(x, y + 30, null, () => this.feedAnimal(tb)); return; }
+    this.feedAnimal(tb);
+  }
+  feedAnimal(tb: Tappable) {
+    if (save.snacks <= 0 || !tb.feed) { tb.tap(); return; }
+    save.snacks--;
+    persist();
+    this.game.events.emit('snacks', save.snacks);
+    const x = tb.x(), y = tb.y();
+    const fruit = this.add.image(this.feet.x, this.feet.y - 40, atlasOf('apple'), 'apple').setScale(1 / (frameScale.apple ?? S)).setDepth(9500);
+    this.tweens.add({ targets: fruit, x, duration: 380, ease: 'Linear' });
+    this.tweens.add({
+      targets: fruit, y: { from: this.feet.y - 40, to: y - 6 }, duration: 380, ease: 'Quad.easeOut',
+      onComplete: () => {
+        fruit.destroy();
+        this.life.hearts.emitParticleAt(x, y - 16, 7);
+        this.burst(x, y - 10, 0xff9ccf, 10, 'spark');
+        this.floatText(x, y - 40, 'Yum!');
+        sfx.purr(); sfx.pickup();
+        tb.feed!();
+        this.fed++;
+        this.game.events.emit('fed');
+        this.game.events.emit('toast', save.snacks > 0 ? 'Yum! Now you are friends!' : 'Yum! Tap a fruit tree for more.');
+      },
+    });
   }
 
   /** Path to a world point; optionally use an interactable or run a callback on arrival. */
@@ -1119,7 +1154,8 @@ export class WorldScene extends Phaser.Scene {
           pathLen: self.path.length, catPets: self.catPets, ducks: self.life?.ducks.length ?? 0,
           area: self.area, fishing: self.fishing.state, tiles: self.ground.tiles.size, paintMs: [...self.ground.paintMs], puzzles: { ...save.puzzles },
           treasures: [...save.treasures], fish: Object.keys(save.fish), look: { ...save.look }, minor: { ...save.minor },
-          reactions: self.life?.reactions ?? 0,
+          reactions: self.life?.reactions ?? 0, snacks: save.snacks, fed: self.fed,
+          followers: self.life?.followers() ?? 0,
           dialogOpen: !!self.registry.get('dialogOpen'),
         };
       },
@@ -1144,6 +1180,12 @@ export class WorldScene extends Phaser.Scene {
         };
       },
       pots: () => self.puzzles.pots.map((p) => p.color),
+      /** Fruit trees near a point, nearest first: [x, tapY]. */
+      fruitTrees(x: number, y: number) {
+        return self.reacts.fruitTrees.map((t) => [Math.round(t.x), Math.round(t.y - t.displayHeight * 0.58), Math.round(t.y)])
+          .sort((a, b) => Math.hypot(a[0] - x, a[2] - y) - Math.hypot(b[0] - x, b[2] - y)).slice(0, 5);
+      },
+      pickups: () => self.reacts.pickups.filter((p) => p.img.active && !p.flying).map((p) => [Math.round(p.img.x), Math.round(p.img.y), p.minor]),
       fish() {
         const f = self.fishing;
         return { state: f.state, catches: f.catches, reel: f.reel ? { hits: f.reel.hits, need: f.reel.need, misses: f.reel.misses } : null };

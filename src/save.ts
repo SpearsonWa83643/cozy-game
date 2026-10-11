@@ -23,6 +23,10 @@ export type SaveData = {
   look: Look;
   visited: string[];
   chests: string[];
+  /** Fruit in your basket, for feeding animals. */
+  snacks: number;
+  /** One-time tips already shown. */
+  tips: string[];
 };
 
 const KEY = 'cozy.save.v2';
@@ -34,7 +38,7 @@ export function freshVillage(): VillageSave {
 }
 
 function fresh(): SaveData {
-  return { v: 2, theme: 'classic', village: freshVillage(), puzzles: {}, treasures: [], fish: {}, minor: {}, look: { ...DEFAULT_LOOK }, visited: ['glade'], chests: [] };
+  return { v: 2, theme: 'classic', village: freshVillage(), puzzles: {}, treasures: [], fish: {}, minor: {}, look: { ...DEFAULT_LOOK }, visited: ['glade'], chests: [], snacks: 0, tips: [] };
 }
 
 export const save: SaveData = (() => {
@@ -48,7 +52,7 @@ export const save: SaveData = (() => {
         const f = fresh();
         const v = { ...f.village, ...(d.village ?? {}) };
         v.res = { ...f.village.res, ...(v.res ?? {}) };
-        return { ...f, ...d, v: 2, theme: d.theme === 'halloween' ? 'halloween' : 'classic', village: v, look: { ...DEFAULT_LOOK, ...(d.look ?? {}) } };
+        return { ...f, ...d, v: 2, snacks: Math.max(0, Math.min(9, Number(d.snacks) || 0)), tips: Array.isArray(d.tips) ? d.tips : [], theme: d.theme === 'halloween' ? 'halloween' : 'classic', village: v, look: { ...DEFAULT_LOOK, ...(d.look ?? {}) } };
       }
     }
   } catch { /* storage unavailable or corrupt */ }
@@ -71,6 +75,8 @@ export function resetSave() {
   try { localStorage.setItem(KEY, JSON.stringify(save)); } catch { /* ignore */ }
 }
 
+/** Show a tip only once per save. */
+export function tipOnce(id: string) { if (save.tips.includes(id)) return false; save.tips.push(id); persist(); return true; }
 export const hasTreasure = (id: string) => save.treasures.includes(id);
 export function addTreasure(id: string) { if (!hasTreasure(id)) { save.treasures.push(id); persist(); } }
 export function addMinor(id: string, n = 1) { save.minor[id] = (save.minor[id] ?? 0) + n; persist(); return save.minor[id]; }
