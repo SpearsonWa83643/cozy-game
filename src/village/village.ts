@@ -496,10 +496,11 @@ export class Village {
     // 2. A friend who really needs something right now.
     for (const v of this.villagers) {
       const d = v.data;
-      if (['eat', 'sleep', 'play', 'drag'].includes(v.task) || (v.task === 'walk' && v.next !== 'work' && v.next !== 'idle')) continue;
-      if (d.food < 0.18) return { id: `food${d.id}`, icon: 'i_food', text: `${d.name} is hungry!`, fix: 'Snack', fixIcon: 'i_food', urgent: true, run: () => this.care(v, 'food') };
-      if (d.sleep < 0.18) return { id: `sleep${d.id}`, icon: 'i_sleep', text: `${d.name} is sleepy!`, fix: 'Nap', fixIcon: 'i_sleep', urgent: true, run: () => this.care(v, 'sleep') };
-      if (d.fun < 0.18) return { id: `fun${d.id}`, icon: 'i_fun', text: `${d.name} is bored!`, fix: 'Play', fixIcon: 'i_fun', urgent: true, run: () => this.care(v, 'fun') };
+      if (v.task === 'drag' || v.task === 'eat' || v.task === 'sleep' || v.task === 'play') continue;
+      // Friends look after themselves; only call for help when they can't (no food left) or it takes too long.
+      if (d.food < 0.25 && res.food <= 0) return { id: `food${d.id}`, icon: 'i_food', text: `${d.name} is hungry!`, fix: 'Snack', fixIcon: 'i_food', urgent: true, run: () => this.care(v, 'food') };
+      if (d.sleep < 0.1) return { id: `sleep${d.id}`, icon: 'i_sleep', text: `${d.name} is sleepy!`, fix: 'Nap', fixIcon: 'i_sleep', urgent: true, run: () => this.care(v, 'sleep') };
+      if (d.fun < 0.1) return { id: `fun${d.id}`, icon: 'i_fun', text: `${d.name} is bored!`, fix: 'Play', fixIcon: 'i_fun', urgent: true, run: () => this.care(v, 'fun') };
     }
     // 3. Out of things to build with and nothing makes more: friends bring a gift.
     const cheapest = Math.min(...BUILD_ORDER.filter(isUnlockedB).map((t) => BUILD[t].cost.wood ?? 0).filter((n) => n > 0));
@@ -540,7 +541,8 @@ export class Village {
       d.fun = this.festival > 0 ? 1 : Math.max(0, d.fun - dt / 180);
     }
     let moving = false;
-    v.idleT = v.task === 'idle' || v.task === 'wander' ? v.idleT + dt : Math.min(v.idleT, 0);
+    const free = v.task === 'idle' || v.task === 'wander' || (v.task === 'walk' && v.next === 'idle');
+    v.idleT = free ? v.idleT + dt : Math.min(v.idleT, 0);
     if (v.task === 'walk') {
       v.walkT += dt;
       // Never stuck: if a walk takes far too long, hop straight to the end.

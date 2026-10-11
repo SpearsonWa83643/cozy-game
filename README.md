@@ -165,3 +165,33 @@ canopy fades so you can still see the hero.
 Tests: `tests/world.spec.ts` runs on an iPad 1180x820 @2x with touch. It walks between areas, solves
 the pots, equips the crown, catches a fish, taps six creatures and checks the console. Screenshots go
 to `screenshots/hd-ipad-v4-*.png`.
+
+## Willow Village (v0.5)
+The glade grows into a little village you build and run. Rules for a young audience: simple taps,
+short sentences, big icons, few numbers, no combat and no fail states.
+
+- **Themes:** the satchel has a live Classic / Halloween (spooky-cute) toggle. It is saved, and
+  the ground, trees, sky, fog, particles, critters, props, UI accents and music all follow it.
+  New themes are one entry in `src/theme.ts` (`THEMES` + `THEME_ORDER`).
+- **Friends:** visitors wander in. Tap one, then tap Invite. Each has a name, one cute trait and a
+  mood face (food, sleep, fun). Tap a friend for their tiny card.
+- **Build:** tap the hammer. Pick Home, Garden, Kitchen, Workshop or Fishing Hut (plus decorations),
+  tap a spot on the snap grid, then tap the green check. Costs are small (wood / stone).
+- **Jobs:** drag a friend onto a building. Gardeners and cooks make food, builders make wood and
+  stone, fishers catch fish. The resource bar shows food, wood and stone.
+- **Links to exploring:** fish you catch add food; treasures unlock decorations; the first fish
+  unlocks the Fishing Hut. Trees and rocks sometimes give wood and stone.
+- **Events:** a merchant (simple trades), rainy days (gardens grow faster) and festivals (everyone dances).
+- **Fruit and feeding:** tap a fruit tree and fruit drops. Pick it up and it goes in your basket
+  (shown next to the bar). Tap an animal while you have fruit to feed it: hearts, and it follows
+  you for a bit (cat, rabbits, squirrels, hedgehogs, deer; ducks, frog, crabs and the owl say thanks).
+- **Helpers (from Gamer's RimWorld notes):** an idle friend shows a bubble with a job that suits
+  them; one tap takes it (Undo button) or opens build mode on the right building. Alerts only
+  appear when something needs you, and each one has a one-tap fix (Snack, Nap, Play, Build, Get
+  some). Friends always recover, and if you run out of wood with no workshop, friends bring some.
+- **Save:** `localStorage` key `cozy.save.v2`; v1 saves are migrated (exploration progress kept,
+  village starts fresh).
+
+Test: `npx playwright test -c playwright.touch.config.ts tests/village.spec.ts` (iPad viewport,
+touch) invites a friend, builds, takes and undoes a job bubble, drags to assign, waits for food,
+fixes an alert, drops fruit and feeds the cat, toggles both themes and reloads.

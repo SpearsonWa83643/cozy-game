@@ -1226,6 +1226,7 @@ export class WorldScene extends Phaser.Scene {
         };
       },
       villageSpeed: (n: number) => { self.village.speed = n; },
+      setRes: (r: { food?: number; wood?: number; stone?: number }) => { Object.assign(save.village.res, r); self.game.events.emit('res', null, 0); },
       setNeeds: (id: number, n: { food?: number; sleep?: number; fun?: number }) => { const q = self.village.villagers.find((x) => x.data.id === id); if (q) Object.assign(q.data, n); },
       setTheme: (id: 'classic' | 'halloween') => setTheme(id),
       villageEvent: (e: 'merchant' | 'rain' | 'festival') => self.village.start(e),
