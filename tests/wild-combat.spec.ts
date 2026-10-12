@@ -14,7 +14,7 @@ async function closeDialogs(page: Page) {
 const wildRect = (page: Page, k: string) => page.evaluate((k) => (window as any).__game.scene.getScene('wildui').rects[k], k);
 const tapRect = async (page: Page, r: { x: number; y: number; w: number; h: number }) => page.touchscreen.tap(r.x + r.w / 2, r.y + r.h / 2);
 
-test('wild woods: enter, seeded generation, theme, home, portal', async ({ page }) => {
+test('wild woods combat: bop, loot, hearts, home, wardrobe, theme', async ({ page }) => {
   test.setTimeout(900_000);
   const errors: string[] = [];
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
@@ -58,7 +58,7 @@ test('wild woods: enter, seeded generation, theme, home, portal', async ({ page 
   const m0 = mons[mons.length - 1];
   await page.evaluate(([x, y]) => (window as any).__cozy.wildTeleport(x - 120, y + 20), [m0.x, m0.y]);
   await page.waitForTimeout(1200);
-  await page.screenshot({ path: `${SHOTS}/hd-ipad-v8-02-wild-halloween.png` });
+  await page.screenshot({ path: `${SHOTS}/hd-ipad-v8-03-wild-combat.png` });
 
   // 4. Combat: tap a monster to walk over and bop it until it poofs into sparkles.
   const poof0 = (await wild(page)).poofs;
@@ -73,13 +73,21 @@ test('wild woods: enter, seeded generation, theme, home, portal', async ({ page 
   const poof1 = (await wild(page)).poofs;
   for (let i = 0; i < 10 && (await wild(page)).poofs === poof1; i++) {
     const m = (await wild(page)).mons[0];
-    await page.evaluate(([x, y]) => (window as any).__cozy.wildTeleport(x - 40, y), [m.x, m.y]);
+    await page.evaluate(([x, y]) => (window as any).__cozy.wildTeleport(x - 64, y), [m.x, m.y]);
     await tapRect(page, await wildRect(page, 'attack'));
     await page.waitForTimeout(700);
   }
   expect((await wild(page)).poofs).toBeGreaterThan(poof1);
   expect((await cozy(page, 'wildSave()')).poofs).toBeGreaterThanOrEqual(2);
   await cozy(page, "setTheme('classic')");
+
+  // 4b. Get bumped once: a heart goes away, you get a little safe moment.
+  expect((await wild(page)).on, 'still in the woods after bopping').toBe(true);
+  await page.waitForTimeout(2600);
+  const h0 = (await wild(page)).hearts;
+  await page.evaluate(() => { const w = (window as any).__game.scene.getScene('wild'); const m = w.monsters.find((x: any) => x.alive) ?? w.monsters[0]; w.invulnT = 0; w.hurt(m); });
+  await expect.poll(async () => (await wild(page)).hearts, { timeout: 10_000 }).toBe(h0 - 1);
+  expect((await wild(page)).on).toBe(true);
 
   // 5a. Loot: walk over a drop, then open the wild treasure chest.
   await expect.poll(async () => (await wild(page)).pickups.length + Object.values((await wild(page)).bag as Record<string, number>).reduce((a, b) => a + b, 0), { timeout: 30_000 }).toBeGreaterThan(0);
@@ -110,6 +118,17 @@ test('wild woods: enter, seeded generation, theme, home, portal', async ({ page 
   const st = await state(page);
   expect((st.minor.glowmoss ?? 0) + (st.minor.starshard ?? 0)).toBeGreaterThanOrEqual(banked);
   expect(st.treasures).toContain('acorn_cap');
+  expect(Object.values(await cozy(page, 'wildSave()').then((w: any) => w.loot) as Record<string, number>).reduce((a, b) => a + b, 0)).toBeGreaterThan(0);
+  // The Acorn Cap shows up unlocked in the wardrobe and can be worn.
+  await closeDialogs(page);
+  const sb = await page.evaluate(() => { const u = (window as any).__game.scene.getScene('ui'); return { x: u.bagC.x, y: u.bagC.y }; });
+  await page.touchscreen.tap(sb.x, sb.y);
+  await expect.poll(() => page.evaluate(() => (window as any).__menu.open), { timeout: 30_000 }).toBe(true);
+  await page.waitForTimeout(600);
+  await tapRect(page, await page.evaluate(() => (window as any).__menu.rects['hat:acorn']));
+  await expect.poll(async () => (await state(page)).look.hat, { timeout: 30_000 }).toBe('acorn');
+  await tapRect(page, await page.evaluate(() => (window as any).__menu.rects['close']));
+  await expect.poll(() => page.evaluate(() => (window as any).__game.registry.get('menuOpen')), { timeout: 30_000 }).toBe(false);
 
   // 6. Same seed, same woods; then walk out through the exit portal to the trailhead.
   await cozy(page, 'enterWild(4242)');

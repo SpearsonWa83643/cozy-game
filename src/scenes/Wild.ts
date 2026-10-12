@@ -14,8 +14,8 @@ import { Monster, SWING_RANGE } from '../wild/monsters';
 
 const TREE_FRAMES = ['tree0', 'tree1', 'tree2', 'tree3', 'tree4', 'tree5'];
 
-/** Monsters, combat and loot are still being finished; off in the shipped build. */
-export const WILD_COMBAT = false;
+/** Gentle monsters, bopping and loot in the Wild Woods. */
+export const WILD_COMBAT = true;
 
 export class WildScene extends Phaser.Scene {
   map!: WildMap;
@@ -200,7 +200,7 @@ export class WildScene extends Phaser.Scene {
       if (d < bd) { bd = d; best = mo; }
     }
     const ch = this.chests.find((c) => !c.opened && Math.hypot(c.x - x, c.y - 20 - y) < 50);
-    if (ch) { this.chase = null; this.target = { x: ch.x, y: ch.y + 30 }; return; }
+    if (ch) { this.chase = null; if (Math.hypot(ch.x - this.feet.x, ch.y + 20 - this.feet.y) < 130) { this.target = null; this.openChest(ch); } else this.target = { x: ch.x, y: ch.y + 30 }; return; }
     if (best) { this.chase = best; this.holdPointer = null; if (Math.hypot(best.x - this.feet.x, best.y - this.feet.y) < SWING_RANGE) this.swing(); return; }
     this.chase = null;
     this.target = { x, y };
@@ -305,7 +305,7 @@ export class WildScene extends Phaser.Scene {
   hurt(from: Monster) {
     if (this.invulnT > 0 || this.leaving) return;
     this.hearts = Math.max(0, this.hearts - 1);
-    this.invulnT = 1600;
+    this.invulnT = 2400; // a gentle, long safe moment after a bump
     sfx.softFail();
     this.cameras.main.shake(160, 0.004);
     const d = Math.hypot(this.feet.x - from.x, this.feet.y - from.y) || 1;
