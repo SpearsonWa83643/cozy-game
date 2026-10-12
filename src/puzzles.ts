@@ -32,6 +32,7 @@ export function resetStone(w: WorldScene, x: number, y: number, id: string, rese
     w.burst(x, y - 34, 0x9fd8ff, 22, 'spark');
     w.game.events.emit('toast', fresh ? 'All set. Have fun!' : 'Fresh start! Play again.');
     w.game.events.emit('puzzle-reset', id);
+    (window as any).__cozyResets = ((window as any).__cozyResets ?? 0) + 1;
   };
   w.interactables.push({ x, y, r: 50, label: 'Reset', promptY: 82, reach: 240, approach: [0, 30], enabled: () => true, action: go });
 }

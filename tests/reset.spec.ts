@@ -34,8 +34,13 @@ async function solvePots(page: Page) {
 }
 async function tapStone(page: Page, id: string) {
   const s = (await cozy(page, 'resetStones()'))[id];
+  const n0 = await page.evaluate(() => (window as any).__cozyResets ?? 0);
   await teleport(page, s.x, s.y + 60);
-  await tapWorld(page, s.x, s.y - 20);
+  for (let i = 0; i < 4; i++) {
+    await tapWorld(page, s.x, s.y - 20);
+    try { await page.waitForFunction((n) => ((window as any).__cozyResets ?? 0) > n, n0, { timeout: 15_000 }); return; } catch { await page.waitForTimeout(500); }
+  }
+  throw new Error('reset stone tap did not register: ' + id);
 }
 
 test('puzzle reset stones: replay without a second treasure', async ({ page }) => {
