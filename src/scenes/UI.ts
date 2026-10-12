@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { S, ATLAS, frameScale } from '../art';
+import { S, ATLAS, frameScale, atlasOf } from '../art';
+import { NumBadge, SeqCard } from '../seq';
 import { DPR } from '../dpr';
 import { LANTERN_ORDER, LanternId } from '../layout';
 import { sfx, VolumeLevel } from '../audio';
@@ -55,7 +56,7 @@ export class UIScene extends Phaser.Scene {
   typing = false;
   // HUD.
   hudC!: Phaser.GameObjects.Container;
-  hudIcons: { id: LanternId; ring: Phaser.GameObjects.Graphics; sym: Phaser.GameObjects.Image; glow: Phaser.GameObjects.Image }[] = [];
+  hudIcons: { id: LanternId; ring: Phaser.GameObjects.Graphics; sym: Phaser.GameObjects.Image; glow: Phaser.GameObjects.Image; badge: NumBadge }[] = [];
   feather!: Phaser.GameObjects.Image;
   // Toast.
   toastC!: Phaser.GameObjects.Container;
@@ -100,9 +101,10 @@ export class UIScene extends Phaser.Scene {
       const glow = this.add.image(x + 18, 18, ATLAS, 'glow').setScale(0.22).setBlendMode('ADD').setTint(0xffc560).setAlpha(0);
       const ring = this.add.graphics();
       this.drawRing(ring, x + 18, 18, false);
-      const sym = this.add.image(x + 18, 18, ATLAS, `sym_${id}`).setScale(0.62 / S * 1.2).setTint(0x8b7d6b);
-      this.hudC.add([glow, ring, sym]);
-      this.hudIcons.push({ id, ring, sym, glow });
+      const sym = this.add.image(x + 18, 18, atlasOf(`q_${id}`), `q_${id}`).setDisplaySize(30, 30).setAlpha(0.75);
+      const badge = new NumBadge(this, x + 33, 33, i + 1, 9, Math.max(3, DPR * 2));
+      this.hudC.add([glow, ring, sym, badge.c]);
+      this.hudIcons.push({ id, ring, sym, glow, badge });
     });
     this.feather = this.add.image(3 * 46 + 26, 18, ATLAS, 'feather').setScale(0.75 / S).setAlpha(0).setAngle(-10);
     this.hudC.add(this.feather);
@@ -219,10 +221,44 @@ export class UIScene extends Phaser.Scene {
     g.fillCircle(px + pw - 6, py + 6, 4);
     this.dialogText.setPosition(px + 26, py + 22).setWordWrapWidth(pw - 52, true);
     this.dialogHint.setPosition(px + pw - 20, py + ph - 14);
+    if (this.seqC) this.drawSeqCards();
   }
 
   // -------------------------------------------------------------- dialog
-  openDialog(pages: string[]) {
+  /** Clue cards (big number + big icon + one word) shown above the dialog for ordered puzzles. */
+  seqC: Phaser.GameObjects.Container | null = null;
+  seqCards: SeqCard[] | null = null;
+  rects: Record<string, { x: number; y: number; w: number; h: number }> = {};
+  drawSeqCards() {
+    this.seqC?.destroy(); this.seqC = null;
+    for (const k of Object.keys(this.rects)) if (k.startsWith('seq')) delete this.rects[k];
+    const cards = this.seqCards;
+    if (!cards || !cards.length) return;
+    const cw = Math.min(118, (this.dialogBox.w - 24) / cards.length - 14), ch = cw * 1.12, gap = 14;
+    const tw = cards.length * cw + (cards.length - 1) * gap;
+    const x0 = this.dialogBox.x + (this.dialogBox.w - tw) / 2, y0 = this.dialogBox.y - ch - 18;
+    const c = this.add.container(0, 0);
+    cards.forEach((cd, i) => {
+      const x = x0 + i * (cw + gap), y = y0;
+      const g = this.add.graphics();
+      g.fillStyle(0x1d1418, 0.3); g.fillRoundedRect(x + 2, y + 6, cw, ch, 20);
+      g.fillStyle(cd.done ? 0xeaf7df : 0xfffaf0, 1); g.fillRoundedRect(x, y, cw, ch, 20);
+      g.lineStyle(5, cd.done ? 0x3f8f2f : 0x2e2230, 1); g.strokeRoundedRect(x + 2.5, y + 2.5, cw - 5, ch - 5, 18);
+      const im = this.add.image(x + cw / 2, y + ch * 0.47, atlasOf(cd.icon), cd.icon).setDisplaySize(cw * 0.66, cw * 0.66);
+      const lab = this.text(x + cw / 2, y + ch - 17, cd.label, Math.round(cw * 0.17), '#2e2230', 900).setOrigin(0.5);
+      const b = new NumBadge(this, x + 6, y + 6, cd.n, cw * 0.22, Math.max(3, DPR * 2));
+      if (cd.done) b.set('done', false);
+      c.add([g, im, lab, b.c]);
+      this.rects[`seq${i}`] = { x, y, w: cw, h: ch };
+    });
+    c.setAlpha(0);
+    this.tweens.add({ targets: c, alpha: 1, y: { from: 14, to: 0 }, duration: 280, ease: 'Back.easeOut' });
+    this.seqC = c;
+  }
+
+  openDialog(pages: string[], cards?: SeqCard[]) {
+    this.seqCards = cards ?? null;
+    this.drawSeqCards();
     this.pages = pages;
     this.page = 0;
     this.registry.set('dialogOpen', true);
@@ -248,8 +284,9 @@ export class UIScene extends Phaser.Scene {
     this.page++;
     if (this.page < this.pages.length) { this.showPage(); return; }
     this.tweens.add({
-      targets: this.dialogC, alpha: 0, duration: 180, onComplete: () => {
+      targets: [this.dialogC, ...(this.seqC ? [this.seqC] : [])], alpha: 0, duration: 180, onComplete: () => {
         this.dialogC.setVisible(false);
+        this.seqC?.destroy(); this.seqC = null; this.seqCards = null;
         // Release on the next frame so the closing key press doesn't re-trigger an interaction.
         this.time.delayedCall(60, () => this.registry.set('dialogOpen', false));
       },
@@ -286,10 +323,13 @@ export class UIScene extends Phaser.Scene {
     this.hudIcons.forEach((ic, i) => {
       const on = lit.includes(ic.id);
       this.drawRing(ic.ring, i * 46 + 18, 18, on);
-      ic.sym.setTint(on ? 0xf29a2e : 0x8b7d6b);
+      ic.sym.setAlpha(on ? 1 : 0.75);
+      ic.badge.set(on ? 'done' : 'todo');
       this.tweens.add({ targets: ic.glow, alpha: on ? 0.8 : 0, duration: 400 });
       if (on && lit[lit.length - 1] === ic.id) {
-        this.tweens.add({ targets: ic.sym, scale: { from: (0.62 / S) * 1.9, to: (0.62 / S) * 1.2 }, duration: 500, ease: 'Back.easeOut' });
+        ic.sym.setDisplaySize(30, 30);
+        const base = ic.sym.scaleX;
+        this.tweens.add({ targets: ic.sym, scale: { from: base * 1.6, to: base }, duration: 500, ease: 'Back.easeOut' });
       }
     });
   }

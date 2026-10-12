@@ -6,11 +6,10 @@ import { POTS, POT_SIGN, POT_CHEST, BELLS, BELL_SIGN, BELL_CHEST, SONGBIRD, TILE
 import { sfx } from './audio';
 import { save, setPuzzle, addTreasure, hasTreasure } from './save';
 import { TREASURES } from './catalog';
+import { NumBadge, plate, SeqCard, POT_COLORS, POT_NAMES, RIBBONS, RIBBON_NAMES } from './seq';
 import type { WorldScene } from './scenes/World';
 
-const POT_COLORS = [0xff9ec4, 0x8fc8ff, 0xffd75e, 0xffffff, 0xc59bff];
 const POT_TARGET = [0, 1, 2, 3];
-const RIBBONS = [0xe85d5d, 0xf2c14e, 0x7cc463, 0x6fa8ff];
 const SONG = [2, 0, 3, 1];
 
 class Chest {
@@ -72,9 +71,9 @@ class Chest {
 }
 
 export class Puzzles {
-  pots: { img: Phaser.GameObjects.Image; flower: Phaser.GameObjects.Image; color: number }[] = [];
+  pots: { img: Phaser.GameObjects.Image; flower: Phaser.GameObjects.Image; color: number; pl: ReturnType<typeof plate>; badge: NumBadge }[] = [];
   potChest: Chest;
-  bells: { bell: Phaser.GameObjects.Image; ribbon: Phaser.GameObjects.Image }[] = [];
+  bells: { bell: Phaser.GameObjects.Image; ribbon: Phaser.GameObjects.Image; badge: NumBadge }[] = [];
   bellInput: number[] = [];
   bellChest: Chest;
   bird!: Phaser.GameObjects.Image;
@@ -97,12 +96,12 @@ export class Puzzles {
     this.buildDig();
   }
 
-  private sign(x: number, y: number, lines: string[]) {
+  private sign(x: number, y: number, lines: string[], cards?: () => SeqCard[]) {
     const w = this.w;
     w.shadow(x + 3, y - 2, 44, 0.7);
     w.img(x, y, 'sign').setDepth(y);
     w.solidCircle(x, y - 5, 8);
-    w.interactables.push({ x, y, r: 56, label: 'Read', promptY: 70, enabled: () => true, action: () => w.game.events.emit('dialog', lines) });
+    w.interactables.push({ x, y, r: 56, label: 'Read', promptY: 70, enabled: () => true, action: () => w.game.events.emit('dialog', lines, cards?.()) });
   }
 
   // ------------------------------------------------------------ garden flower pots
@@ -116,26 +115,33 @@ export class Puzzles {
       const color = solved ? POT_TARGET[i] : start[i];
       const flower = w.img(p.x, p.y - 16, 'potflower').setDepth(p.y + 0.5).setTint(POT_COLORS[color]);
       w.sway(flower, 0.06, 1.5);
-      const pot = { img, flower, color };
+      // Big flower plate showing the pot's colour now, and the pot's number (1-4, left to right).
+      const pl = plate(w, p.x, p.y - 64, `q_flower${color}`, 17);
+      pl.c.setDepth(p.y + 1);
+      const badge = new NumBadge(w, p.x, p.y - 98, i + 1, 13).setDepth(p.y + 2);
+      if (color === POT_TARGET[i]) badge.set('done', false);
+      const pot = { img, flower, color, pl, badge };
       this.pots.push(pot);
       w.solidCircle(p.x, p.y - 4, 9);
       w.interactables.push({
-        x: p.x, y: p.y, r: 30, label: 'Change', promptY: 52, reach: 190, approach: [0, 28],
+        x: p.x, y: p.y, r: 30, label: 'Change', promptY: 132, reach: 190, approach: [0, 28],
         enabled: () => !save.puzzles.pots,
         action: () => this.cyclePot(i),
       });
     });
     this.sign(POT_SIGN.x, POT_SIGN.y, [
       'Tap a pot to change its flower.',
-      'Left to right: pink, then blue,',
-      'then yellow, then white.',
-    ]);
+      'Match the numbers: 1 pink, 2 blue,',
+      '3 yellow, 4 white.',
+    ], () => POT_TARGET.map((c, i): SeqCard => ({ n: i + 1, icon: `q_flower${c}`, label: POT_NAMES[c], done: this.pots[i]?.color === c })));
     this.potChest.set(solved, hasTreasure('flower_crown'));
   }
   cyclePot(i: number) {
     const p = this.pots[i];
     p.color = (p.color + 1) % POT_COLORS.length;
     p.flower.setTint(POT_COLORS[p.color]);
+    p.pl.setFrame(`q_flower${p.color}`);
+    p.badge.set(p.color === POT_TARGET[i] ? 'done' : 'todo');
     const sx = p.flower.scaleX, sy = p.flower.scaleY;
     this.w.tweens.add({ targets: p.flower, scaleX: sx * 1.3, scaleY: sy * 1.3, duration: 140, yoyo: true, ease: 'Back.easeOut', onComplete: () => p.flower.setScale(sx, sy) });
     this.w.burst(p.img.x, p.img.y - 26, POT_COLORS[p.color], 8, 'petal');
@@ -160,9 +166,13 @@ export class Puzzles {
       w.solidCircle(b.x, b.y - 4, 7);
       const ribbon = w.add.image(b.x - 9, b.y - 84, ATLAS, 'ribbon').setOrigin(0.5, 0).setScale(1 / S).setTint(RIBBONS[i]).setDepth(b.y + 0.4);
       const bell = w.add.image(b.x + 2, b.y - 88, ATLAS, 'bell').setOrigin(0.5, 0.08).setScale(1 / S).setDepth(b.y + 0.5);
-      this.bells.push({ bell, ribbon });
+      // The bell's place in the songbird's tune, as a big number with the bell's colour.
+      const step = SONG.indexOf(i);
+      const badge = new NumBadge(w, b.x + 2, b.y - 128, step + 1, 15).setDepth(b.y + 2);
+      if (solved) badge.set('done', false);
+      this.bells.push({ bell, ribbon, badge });
       w.interactables.push({
-        x: b.x, y: b.y, r: 40, label: 'Ring', promptY: 110, reach: 230, approach: [0, 30],
+        x: b.x, y: b.y, r: 40, label: 'Ring', promptY: 168, reach: 230, approach: [0, 30],
         enabled: () => !save.puzzles.bells && !this.singing,
         action: () => this.ring(i),
       });
@@ -177,9 +187,9 @@ export class Puzzles {
     });
     this.sign(BELL_SIGN.x, BELL_SIGN.y, [
       'Tap the songbird. She sings a song.',
-      'Ring the bells in the same order.',
-      'Watch the ribbon colors!',
-    ]);
+      'Ring the bells: 1, 2, 3, 4.',
+      'Look for the numbers!',
+    ], () => SONG.map((n, k): SeqCard => ({ n: k + 1, icon: `q_bell${n}`, label: RIBBON_NAMES[n], done: !!save.puzzles.bells || this.bellInput.length > k })));
     this.bellChest.set(solved, hasTreasure('rusty_key'));
   }
   sing() {
@@ -191,6 +201,7 @@ export class Puzzles {
     SONG.forEach((n, k) => {
       w.time.delayedCall(300 + k * 700, () => {
         sfx.bellNote(n, true);
+        this.bells[n]?.badge.pulse();
         w.tweens.add({ targets: this.bird, y: this.bird.y - 5, duration: 110, yoyo: true });
         this.note(this.bird.x, this.bird.y - 22, RIBBONS[n]);
       });
@@ -212,12 +223,15 @@ export class Puzzles {
     const k = this.bellInput.length - 1;
     if (this.bellInput[k] !== SONG[k]) {
       this.bellInput = [];
+      b.badge.set('wrong');
+      this.w.time.delayedCall(600, () => { for (const q of this.bells) q.badge.set('todo'); });
       this.w.time.delayedCall(350, () => {
         sfx.softFail();
         this.w.game.events.emit('toast', this.birdSang ? 'Not quite. Try again!' : 'Tap the songbird first!');
       });
       return;
     }
+    b.badge.set('done');
     if (this.bellInput.length === SONG.length) {
       setPuzzle('bells');
       this.w.time.delayedCall(500, () => {

@@ -8,6 +8,7 @@ import { buildAreas } from '../areas';
 import { Village } from '../village/village';
 import { ThemeDresser } from '../themeDress';
 import { setTheme } from '../theme';
+import { NumBadge, plate, SeqCard } from '../seq';
 import { Puzzles } from '../puzzles';
 import { Fishing } from '../fishing';
 import { Reacts } from '../react';
@@ -66,7 +67,7 @@ export type Swayer = { obj: Phaser.GameObjects.Image; amp: number; speed: number
 
 type Lantern = {
   id: LanternId; x: number; y: number; lit: boolean;
-  img: Phaser.GameObjects.Image; glow: Phaser.GameObjects.Image; sym: Phaser.GameObjects.Image;
+  img: Phaser.GameObjects.Image; glow: Phaser.GameObjects.Image; sym: Phaser.GameObjects.Image; badge: NumBadge;
 };
 
 export type Prompt = { x: number; y: number; label: string } | null;
@@ -563,8 +564,12 @@ export class WorldScene extends Phaser.Scene {
       const glow = this.fx(L.x, L.y - 58, 'glow', 0.9).setBlendMode('ADD').setTint(0xff9636).setAlpha(0).setDepth(L.y + 2);
       this.shadow(L.x + 4, L.y - 3, 50, 0.8);
       const img = this.img(L.x, L.y, 'lantern_off').setDepth(L.y);
-      const sym = this.img(L.x, L.y - 26, `sym_${L.id}`, 0.5, 0.5, 0.42).setDepth(L.y + 1).setTint(0x5d6670).setAlpha(0.9);
-      const lantern: Lantern = { id: L.id, x: L.x, y: L.y, lit: false, img, glow, sym };
+      // Big bold symbol plate on the lantern, with its order number beside it.
+      const pl = plate(this, L.x, L.y - 30, `q_${L.id}`, 19);
+      pl.c.setDepth(L.y + 1);
+      const sym = pl.im;
+      const badge = new NumBadge(this, L.x + 27, L.y - 52, LANTERN_ORDER.indexOf(L.id) + 1, 13).setDepth(L.y + 2);
+      const lantern: Lantern = { id: L.id, x: L.x, y: L.y, lit: false, img, glow, sym, badge };
       this.lanterns.push(lantern);
       this.solidCircle(L.x, L.y - 8, 15);
       this.interactables.push({
@@ -591,9 +596,9 @@ export class WorldScene extends Phaser.Scene {
       x: SIGN.x, y: SIGN.y, r: 56, label: 'Read', promptY: 70, enabled: () => true,
       action: () => this.game.events.emit('dialog', [
         'Light the lanterns in order.',
-        'First dawn. Then noon. Then dusk.',
-        'Then the gate will open!',
-      ]),
+        '1 is dawn. 2 is noon. 3 is dusk.',
+        'Then the gate opens!',
+      ], LANTERN_ORDER.map((id, i): SeqCard => ({ n: i + 1, icon: `q_${id}`, label: id, done: this.solved || this.litOrder.includes(id) }))),
     });
   }
 
@@ -674,25 +679,27 @@ export class WorldScene extends Phaser.Scene {
     const expected = LANTERN_ORDER[this.litOrder.length];
     L.lit = true;
     L.img.setTexture(ATLAS, 'lantern_on');
-    L.sym.setTint(0xffd36b);
     this.tweens.add({ targets: L.glow, alpha: 0.42, duration: 500, ease: 'Sine.easeOut' });
     this.burst(L.x, L.y - 62, 0xffd27a, 18);
     if (L.id === expected) {
       this.litOrder.push(L.id);
+      L.badge.set('done');
       sfx.lantern(this.litOrder.length - 1);
       this.cameras.main.shake(140, 0.0015);
       this.game.events.emit('lanterns', [...this.litOrder]);
       if (this.litOrder.length === LANTERN_ORDER.length) { setPuzzle('lanterns'); this.solve(); }
     } else {
       sfx.lantern(this.litOrder.length);
+      L.badge.set('wrong');
       this.locked = true;
       this.time.delayedCall(650, () => {
         sfx.fizzle();
         for (const l of this.lanterns) {
+          l.badge.set('todo');
           if (!l.lit) continue;
           l.lit = false;
           l.img.setTexture(ATLAS, 'lantern_off');
-          l.sym.setTint(0x5d6670);
+          l.badge.set('todo');
           this.tweens.add({ targets: l.glow, alpha: 0, duration: 400 });
           this.smoke(l.x, l.y - 62);
         }
@@ -1111,7 +1118,7 @@ export class WorldScene extends Phaser.Scene {
       this.solved = true;
       this.gateOpen = true;
       for (const L of this.lanterns) {
-        L.lit = true; L.img.setTexture(ATLAS, 'lantern_on'); L.sym.setTint(0xffd36b); L.glow.setAlpha(0.42);
+        L.lit = true; L.img.setTexture(ATLAS, 'lantern_on'); L.badge.set('done', false); L.glow.setAlpha(0.42);
       }
       this.litOrder = [...LANTERN_ORDER];
       this.brambles.setAlpha(0).setScale(this.brambles.scaleX, 0);

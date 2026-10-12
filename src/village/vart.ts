@@ -2,6 +2,7 @@
 // one simple highlight. Painted once at boot into a second, smaller atlas.
 import Phaser from 'phaser';
 import { Ctx, canvasTex, atlasTarget, buildAtlas, ATLAS2, ATLAS, mulberry32, rr } from '../art';
+import { paintSeqArt } from '../seq';
 
 const INK = '#3b2a35';
 const LW = 3;
@@ -393,6 +394,7 @@ export function paintVillageArt(scene: Phaser.Scene) {
   T('p_drop', 4, 12, paintDrop, 2);
   T('p_leafo', 12, 8, paintLeafO, 3);
   T('sky_halloween', 8, 64, (c, w, h) => paintSkyGrad(c, w, h), 2);
+  paintSeqArt(scene);
   buildAtlas(scene, ATLAS2);
   atlasTarget(ATLAS);
 }
