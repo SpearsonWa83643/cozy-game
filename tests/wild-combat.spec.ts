@@ -73,7 +73,7 @@ test('wild woods combat: bop, loot, hearts, home, wardrobe, theme', async ({ pag
   const poof1 = (await wild(page)).poofs;
   for (let i = 0; i < 10 && (await wild(page)).poofs === poof1; i++) {
     const m = (await wild(page)).mons[0];
-    await page.evaluate(([x, y]) => (window as any).__cozy.wildTeleport(x - 40, y), [m.x, m.y]);
+    await page.evaluate(([x, y]) => (window as any).__cozy.wildTeleport(x - 64, y), [m.x, m.y]);
     await tapRect(page, await wildRect(page, 'attack'));
     await page.waitForTimeout(700);
   }
@@ -82,6 +82,8 @@ test('wild woods combat: bop, loot, hearts, home, wardrobe, theme', async ({ pag
   await cozy(page, "setTheme('classic')");
 
   // 4b. Get bumped once: a heart goes away, you get a little safe moment.
+  expect((await wild(page)).on, 'still in the woods after bopping').toBe(true);
+  await page.waitForTimeout(2600);
   const h0 = (await wild(page)).hearts;
   await page.evaluate(() => { const w = (window as any).__game.scene.getScene('wild'); const m = w.monsters.find((x: any) => x.alive) ?? w.monsters[0]; w.invulnT = 0; w.hurt(m); });
   await expect.poll(async () => (await wild(page)).hearts, { timeout: 10_000 }).toBe(h0 - 1);

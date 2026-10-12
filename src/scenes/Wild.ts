@@ -305,7 +305,7 @@ export class WildScene extends Phaser.Scene {
   hurt(from: Monster) {
     if (this.invulnT > 0 || this.leaving) return;
     this.hearts = Math.max(0, this.hearts - 1);
-    this.invulnT = 1600;
+    this.invulnT = 2400; // a gentle, long safe moment after a bump
     sfx.softFail();
     this.cameras.main.shake(160, 0.004);
     const d = Math.hypot(this.feet.x - from.x, this.feet.y - from.y) || 1;
