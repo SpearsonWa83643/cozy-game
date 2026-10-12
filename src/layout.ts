@@ -82,6 +82,7 @@ export const POTS = [{ x: 175, y: 760 }, { x: 220, y: 760 }, { x: 265, y: 760 },
 export const POT_SIGN = { x: 120, y: 790 };
 export const POT_CHEST = { x: 245, y: 830 };
 
+export const TRAILHEAD = { x: 4080, y: 2720 }; // the way into the Wild Woods
 export const DIG = { x: 560, y: 2100 };
 export const DIG_SIGN = { x: 820, y: 1965 };
 export const DIG_STONES: [number, number][] = [[520, 2070], [605, 2075], [560, 2140]];

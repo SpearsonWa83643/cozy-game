@@ -8,12 +8,18 @@ export const TREASURES: Treasure[] = [
   { id: 'rusty_key', name: 'Rusty Key', icon: 'ic_key', blurb: 'It opens the north gate.', hint: 'The windmill bells.' },
   { id: 'shell_necklace', name: 'Seashell Necklace', icon: 'ic_shells', blurb: 'Found under the sand.', hint: 'The lake shore.' },
   { id: 'fox_hood', name: 'Fox-ear Hood', icon: 'ic_hood', blurb: 'Cozy and orange. Sneaky!', hint: 'Deep in the wood.' },
+  // The Wild Woods set: one in each wild treasure chest, in this order.
+  { id: 'acorn_cap', name: 'Acorn Cap', icon: 'ic_acorncap', blurb: 'A snug cap from the Wild Woods.', hint: 'A chest in the Wild Woods.' },
+  { id: 'glow_scarf', name: 'Glow Scarf', icon: 'ic_glowscarf', blurb: 'Soft moss that glows a little.', hint: 'A chest in the Wild Woods.' },
+  { id: 'ranger_coat', name: 'Ranger Coat', icon: 'ic_ranger', blurb: 'For brave woods explorers!', hint: 'A chest in the Wild Woods.' },
 ];
 
-export type MinorId = 'petal' | 'shell' | 'apple' | 'acorn' | 'beetle';
+export type MinorId = 'petal' | 'shell' | 'apple' | 'acorn' | 'beetle' | 'glowmoss' | 'starshard';
+export const WILD_SET = ['acorn_cap', 'glow_scarf', 'ranger_coat'];
 export const MINORS: { id: MinorId; name: string; icon: string }[] = [
   { id: 'petal', name: 'Petals', icon: 'petal' }, { id: 'shell', name: 'Shells', icon: 'shell0' },
   { id: 'apple', name: 'Fruit', icon: 'apple' }, { id: 'acorn', name: 'Acorns', icon: 'acorn' }, { id: 'beetle', name: 'Beetles spotted', icon: 'beetle' },
+  { id: 'glowmoss', name: 'Glow moss', icon: 'l_glowmoss' }, { id: 'starshard', name: 'Star shards', icon: 'l_starshard' },
 ];
 
 export type Slot = 'hat' | 'scarf' | 'outfit' | 'back' | 'feather' | 'shells';
@@ -23,16 +29,19 @@ export const COSMETICS: Cosmetic[] = [
   { id: 'hat:straw', slot: 'hat', value: 'straw', name: 'Straw hat', unlock: null, hint: '' },
   { id: 'hat:none', slot: 'hat', value: 'none', name: 'No hat', unlock: null, hint: '' },
   { id: 'hat:crown', slot: 'hat', value: 'crown', name: 'Flower crown', unlock: { treasure: 'flower_crown' }, hint: 'Solve the garden flower pots.' },
+  { id: 'hat:acorn', slot: 'hat', value: 'acorn', name: 'Acorn cap', unlock: { treasure: 'acorn_cap' }, hint: 'A chest in the Wild Woods.' },
   { id: 'hat:foxhood', slot: 'hat', value: 'foxhood', name: 'Fox-ear hood', unlock: { treasure: 'fox_hood' }, hint: 'Somewhere in Mistbirch Wood.' },
   { id: 'scarf:red', slot: 'scarf', value: 'red', name: 'Red scarf', unlock: null, hint: '' },
   { id: 'scarf:sunny', slot: 'scarf', value: 'sunny', name: 'Sunflower scarf', unlock: { treasure: 'rusty_key' }, hint: 'Ring the windmill bells.' },
   { id: 'scarf:petal', slot: 'scarf', value: 'petal', name: 'Petal scarf', unlock: { minor: ['petal', 10] }, hint: 'Collect 10 petals from flowers.' },
   { id: 'scarf:silver', slot: 'scarf', value: 'silver', name: 'Silver scarf', unlock: { fish: 'silver_eel' }, hint: 'Catch a rare river fish.' },
+  { id: 'scarf:moss', slot: 'scarf', value: 'moss', name: 'Glow scarf', unlock: { treasure: 'glow_scarf' }, hint: 'A chest in the Wild Woods.' },
   { id: 'scarf:none', slot: 'scarf', value: 'none', name: 'No scarf', unlock: null, hint: '' },
   { id: 'outfit:teal', slot: 'outfit', value: 'teal', name: 'Teal tunic', unlock: null, hint: '' },
   { id: 'outfit:moss', slot: 'outfit', value: 'moss', name: 'Moss tunic', unlock: null, hint: '' },
   { id: 'outfit:sea', slot: 'outfit', value: 'sea', name: 'Sea cloak', unlock: { treasure: 'shell_necklace' }, hint: 'Dig up the lake shore secret.' },
   { id: 'outfit:koi', slot: 'outfit', value: 'koi', name: 'Koi coat', unlock: { fish: 'lily_koi' }, hint: 'Catch the rare pond koi.' },
+  { id: 'outfit:ranger', slot: 'outfit', value: 'ranger', name: 'Ranger coat', unlock: { treasure: 'ranger_coat' }, hint: 'A chest in the Wild Woods.' },
   { id: 'back:none', slot: 'back', value: 'none', name: 'Nothing', unlock: null, hint: '' },
   { id: 'back:backpack', slot: 'back', value: 'backpack', name: 'Backpack', unlock: { minor: ['shell', 6] }, hint: 'Collect 6 shells on the shore.' },
   { id: 'back:staff', slot: 'back', value: 'staff', name: 'Lantern staff', unlock: { fish: 'moonfish' }, hint: 'Catch the rare lake moonfish.' },

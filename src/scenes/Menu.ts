@@ -314,7 +314,7 @@ export class MenuScene extends Phaser.Scene {
       const [bg, z] = this.btn(x, y, tile, tile + 40, () => { sfx.blip(); this.hint(found ? t.blurb : `Hint: ${t.hint}`); }, found ? 0xfff4d6 : 0xe6dccb, found ? 0xf2a93b : 0xd9b98f, 18);
       this.content.add([bg, z]);
       if (found) {
-        const ic = this.add.image(x + tile / 2, y + tile * 0.48, ATLAS, t.icon);
+        const ic = this.add.image(x + tile / 2, y + tile * 0.48, atlasOf(t.icon), t.icon);
         ic.setScale(Math.min(tile * 0.55 / ic.width, tile * 0.55 / ic.height));
         const glow = this.add.image(x + tile / 2, y + tile * 0.48, ATLAS, 'glow').setBlendMode('ADD').setTint(0xffd27a).setAlpha(0.35).setScale(tile / 300);
         this.content.add([glow, ic]);
@@ -327,12 +327,12 @@ export class MenuScene extends Phaser.Scene {
     let y = a.y + 36 + tile + 64;
     this.content.add(this.text(a.x, y, 'Little finds', 18, '#8a6a50', 800));
     y += 30;
-    const mw = Math.min(190, (a.w - 4 * 12) / 5);
+    const mw = Math.min(190, (a.w - (MINORS.length - 1) * 10) / MINORS.length);
     MINORS.forEach((m, i) => {
-      const x = a.x + i * (mw + 12);
+      const x = a.x + i * (mw + 10);
       const g = this.add.graphics();
       g.fillStyle(0xf3e6cc, 1); g.fillRoundedRect(x, y, mw, 64, 14);
-      const ic = this.add.image(x + 32, y + 32, ATLAS, m.icon);
+      const ic = this.add.image(x + 32, y + 32, atlasOf(m.icon), m.icon);
       ic.setScale(Math.min(34 / ic.width, 34 / ic.height));
       this.content.add([g, ic, this.text(x + 60, y + 14, m.name, 14, '#8a6a50', 700), this.text(x + 60, y + 32, `${save.minor[m.id] ?? 0}`, 20, INK, 900)]);
     });
