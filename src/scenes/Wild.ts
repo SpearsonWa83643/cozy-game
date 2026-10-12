@@ -14,8 +14,8 @@ import { Monster, SWING_RANGE } from '../wild/monsters';
 
 const TREE_FRAMES = ['tree0', 'tree1', 'tree2', 'tree3', 'tree4', 'tree5'];
 
-/** Monsters, combat and loot are still being finished; off in the shipped build. */
-export const WILD_COMBAT = false;
+/** Gentle monsters, bopping and loot in the Wild Woods. */
+export const WILD_COMBAT = true;
 
 export class WildScene extends Phaser.Scene {
   map!: WildMap;

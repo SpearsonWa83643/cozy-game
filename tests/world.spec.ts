@@ -90,6 +90,9 @@ test('bigger world: areas, puzzle, fishing, wardrobe, creatures', async ({ page 
     if ((await cozy(page, 'fish()')).state === 'idle') {
       // A friendly tip card can pop up on arrival; close it first (taps on the world wait while it is open).
       await closeDialogs(page);
+      // A catch / got-away card from the last try can still be up; let it clear before casting again.
+      await expect.poll(() => page.evaluate(() => (window as any).__game.scene.getScene('ui').cardOpen), { timeout: 30_000 }).toBeFalsy();
+      await page.waitForTimeout(300);
       await tapWorld(page, 1330, 2390);
       await expect.poll(async () => (await cozy(page, 'fish()')).state, { timeout: 30_000, intervals: [150] }).not.toBe('idle');
     }
