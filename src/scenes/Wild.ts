@@ -200,7 +200,7 @@ export class WildScene extends Phaser.Scene {
       if (d < bd) { bd = d; best = mo; }
     }
     const ch = this.chests.find((c) => !c.opened && Math.hypot(c.x - x, c.y - 20 - y) < 50);
-    if (ch) { this.chase = null; this.target = { x: ch.x, y: ch.y + 30 }; return; }
+    if (ch) { this.chase = null; if (Math.hypot(ch.x - this.feet.x, ch.y + 20 - this.feet.y) < 130) { this.target = null; this.openChest(ch); } else this.target = { x: ch.x, y: ch.y + 30 }; return; }
     if (best) { this.chase = best; this.holdPointer = null; if (Math.hypot(best.x - this.feet.x, best.y - this.feet.y) < SWING_RANGE) this.swing(); return; }
     this.chase = null;
     this.target = { x, y };
