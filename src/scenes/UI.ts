@@ -159,12 +159,13 @@ export class UIScene extends Phaser.Scene {
     ev.on('dialog-advance', this.advanceDialog, this);
     ev.on('toast', this.toast, this);
     ev.on('lanterns', this.updateLanterns, this);
+    ev.on('wild-home', this.wildHome, this);
     ev.on('feather', () => {
       this.tweens.add({ targets: this.feather, alpha: 1, scale: { from: 1.6 / S, to: 0.75 / S }, duration: 700, ease: 'Back.easeOut' });
     });
     this.events.once('shutdown', () => {
       ev.off('dialog', this.openDialog, this); ev.off('dialog-advance', this.advanceDialog, this);
-      ev.off('toast', this.toast, this); ev.off('lanterns', this.updateLanterns, this);
+      ev.off('toast', this.toast, this); ev.off('lanterns', this.updateLanterns, this); ev.off('wild-home', this.wildHome, this);
     });
   }
 
@@ -176,6 +177,12 @@ export class UIScene extends Phaser.Scene {
     g.fillCircle(x, y, 18);
     g.lineStyle(2.5, lit ? 0xf2a93b : 0xb59b7c, 1);
     g.strokeCircle(x, y, 18);
+  }
+
+  wildHome(why: string, banked?: { glowmoss: number; starshard: number; found: string[] }) {
+    const got = banked && (banked.glowmoss || banked.starshard) ? 'Your finds help the village!' : '';
+    if (why === 'faint') this.openDialog(['You woke up at home.', 'Cozy and safe!', 'You kept all your finds.']);
+    else this.toast(why === 'portal' ? `Back from the Wild! ${got}` : `Home sweet home! ${got}`);
   }
 
   layout() {

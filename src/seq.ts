@@ -84,6 +84,40 @@ function paintReset(c: Ctx) {
 
 export function paintSeqArt(scene: Phaser.Scene) {
   canvasTex(scene, 'q_reset', 56, 56, paintReset, 3);
+  // Wild Woods loot icons.
+  canvasTex(scene, 'l_glowmoss', 48, 48, (c) => {
+    const g = c.createRadialGradient(24, 26, 2, 24, 26, 22); g.addColorStop(0, 'rgba(200,255,170,0.9)'); g.addColorStop(1, 'rgba(120,255,160,0)');
+    c.fillStyle = g; c.beginPath(); c.arc(24, 26, 22, 0, Math.PI * 2); c.fill();
+    for (const [x, y, r] of [[17, 30, 9], [29, 28, 10], [23, 20, 9]]) { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); fo(c, '#5fd18a', 2.4); }
+    c.fillStyle = '#eaffc0'; for (const [x, y] of [[15, 27], [27, 23], [31, 31], [22, 17]]) { c.beginPath(); c.arc(x, y, 2, 0, Math.PI * 2); c.fill(); }
+  }, 2);
+  canvasTex(scene, 'l_starshard', 48, 48, (c) => {
+    c.beginPath(); c.moveTo(24, 4); c.lineTo(35, 20); c.lineTo(30, 42); c.lineTo(18, 42); c.lineTo(13, 20); c.closePath(); fo(c, '#8fd8ff', 2.6);
+    c.beginPath(); c.moveTo(24, 4); c.lineTo(24, 42); c.moveTo(13, 20); c.lineTo(35, 20); c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = 1.6; c.stroke();
+    c.fillStyle = '#fff'; c.beginPath(); c.arc(20, 14, 2.4, 0, Math.PI * 2); c.fill();
+  }, 2);
+  canvasTex(scene, 'ic_acorncap', 48, 48, (c) => {
+    c.beginPath(); c.ellipse(24, 30, 18, 14, 0, Math.PI, 0); c.lineTo(42, 34); c.ellipse(24, 34, 18, 4, 0, 0, Math.PI); c.closePath(); fo(c, '#8a5a30', 2.6);
+    c.strokeStyle = 'rgba(230,190,130,0.7)'; c.lineWidth = 1.4;
+    for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(24 + i * 6 - 5, 32); c.lineTo(24 + i * 6 + 5, 20); c.stroke(); }
+    c.beginPath(); c.roundRect(21, 8, 6, 10, 2); fo(c, '#6a4424', 2);
+  }, 2);
+  canvasTex(scene, 'ic_glowscarf', 48, 48, (c) => {
+    c.beginPath(); c.moveTo(6, 16); c.quadraticCurveTo(24, 26, 42, 16); c.lineTo(42, 24); c.quadraticCurveTo(24, 34, 6, 24); c.closePath(); fo(c, '#3fae78', 2.4);
+    c.beginPath(); c.moveTo(30, 26); c.lineTo(36, 44); c.lineTo(28, 44); c.lineTo(24, 28); c.closePath(); fo(c, '#55c98a', 2.4);
+    c.fillStyle = '#eaffc0'; for (const [x, y] of [[14, 20], [24, 24], [34, 20], [31, 38]]) { c.beginPath(); c.arc(x, y, 2, 0, Math.PI * 2); c.fill(); }
+  }, 2);
+  canvasTex(scene, 'ic_ranger', 48, 48, (c) => {
+    c.beginPath(); c.moveTo(16, 8); c.lineTo(32, 8); c.lineTo(42, 18); c.lineTo(38, 24); c.lineTo(34, 21); c.lineTo(35, 44); c.lineTo(13, 44); c.lineTo(14, 21); c.lineTo(10, 24); c.lineTo(6, 18); c.closePath(); fo(c, '#b0702e', 2.6);
+    c.beginPath(); c.moveTo(19, 8); c.lineTo(24, 16); c.lineTo(29, 8); c.strokeStyle = '#3b2a22'; c.lineWidth = 2; c.stroke();
+    c.fillStyle = '#ffd84a'; for (const y of [22, 30, 38]) { c.beginPath(); c.arc(24, y, 2.2, 0, Math.PI * 2); c.fill(); }
+  }, 2);
+  canvasTex(scene, 'q_wild', 56, 56, (c) => {
+    // A bold pine with a bright star: "the Wild Woods".
+    c.beginPath(); c.moveTo(28, 6); c.lineTo(44, 30); c.lineTo(37, 30); c.lineTo(48, 46); c.lineTo(8, 46); c.lineTo(19, 30); c.lineTo(12, 30); c.closePath(); fo(c, '#3fa860', 3);
+    c.fillStyle = '#8a5a34'; c.fillRect(24, 46, 8, 6);
+    c.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 4 : 9; c.lineTo(42 + Math.cos(a) * r, 12 + Math.sin(a) * r); } c.closePath(); fo(c, '#ffd84a', 2);
+  }, 3);
   const T = (k: string, fn: (c: Ctx) => void) => canvasTex(scene, k, 56, 56, fn, 3);
   T('q_dawn', paintDawn); T('q_noon', paintNoon); T('q_dusk', paintDusk);
   POT_COLORS.forEach((col, i) => T(`q_flower${i}`, paintFlower(col)));

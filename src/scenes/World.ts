@@ -15,6 +15,7 @@ import { Reacts } from '../react';
 import {
   WORLD_W, WORLD_H, GLADE_W, GLADE_H, AREA_NAMES, AreaId, VILLAGE, PLAYER_START, POND, COTTAGE, GARDEN, WALL_Y, GATE, SHRINE, SHRINE_CLEARING, SIGN,
   LANTERNS, LANTERN_ORDER, LanternId,
+  TRAILHEAD,
 } from '../layout';
 import { sfx } from '../audio';
 import { DPR } from '../dpr';
@@ -197,6 +198,7 @@ export class WorldScene extends Phaser.Scene {
     this.buildScatter();
     this.buildLanterns();
     this.buildSign();
+    this.buildTrailhead();
     this.buildPlayer();
     this.buildAtmosphere();
     buildAreas(this);
@@ -587,6 +589,63 @@ export class WorldScene extends Phaser.Scene {
         this.sway(f, 0.1, 1.5);
       }
     }
+  }
+
+  // ------------------------------------------------------------ Wild Woods trailhead
+  inWild = false;
+  buildTrailhead() {
+    const T = TRAILHEAD;
+    this.shadow(T.x, T.y - 2, 120, 0.6);
+    const p0 = this.img(T.x - 46, T.y, 'pillar0', 0.5, 1, 0.8).setDepth(T.y);
+    const p1 = this.img(T.x + 46, T.y, 'pillar1', 0.5, 1, 0.8).setDepth(T.y);
+    void p0; void p1;
+    const glow = this.fx(T.x, T.y - 46, 'glow', 2.2).setBlendMode('ADD').setTint(0x9fe0ff).setDepth(T.y - 1);
+    this.tweens.add({ targets: glow, alpha: { from: 0.55, to: 1 }, scale: glow.scale * 1.15, duration: 1100, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.time.addEvent({ delay: 420, loop: true, callback: () => { if (this.cameras.main.worldView.contains(T.x, T.y)) this.burst(T.x + (Math.random() - 0.5) * 60, T.y - 30 - Math.random() * 50, 0xbfe8ff, 2); } });
+    const sign = this.img(T.x - 105, T.y + 6, 'sign', 0.5, 1, 0.9).setDepth(T.y + 6);
+    const pl = plate(this, T.x - 105, T.y - 64, 'q_wild', 22);
+    pl.c.setDepth(8400);
+    void sign;
+    this.interactables.push({
+      x: T.x, y: T.y - 4, r: 70, label: 'Explore!', promptY: 100, reach: 200, approach: [0, 30],
+      enabled: () => !this.inWild, action: () => this.enterWild(),
+    });
+  }
+
+  /** Off into the Wild Woods: a new seeded patch of forest each trip. */
+  enterWild(seed?: number) {
+    if (this.inWild) return;
+    this.inWild = true;
+    this.locked = true;
+    this.path = []; this.body.setVelocity(0, 0);
+    sfx.chimes();
+    const cam = this.cameras.main;
+    cam.fadeOut(500, 255, 250, 235);
+    cam.once('camerafadeoutcomplete', () => {
+      this.scene.sleep('ui'); this.scene.sleep('vui');
+      this.scene.sleep();
+      this.scene.launch('wild', { seed });
+    });
+  }
+
+  /** Back from the woods: through the portal you pop out at the trailhead, otherwise at home. */
+  returnFromWild(why: 'button' | 'portal' | 'faint', banked: { glowmoss: number; starshard: number; found: string[] } = { glowmoss: 0, starshard: 0, found: [] }) {
+    this.scene.wake(); this.scene.wake('ui'); this.scene.wake('vui');
+    const at = why === 'portal' ? { x: TRAILHEAD.x, y: TRAILHEAD.y + 70 } : { x: COTTAGE.x, y: COTTAGE.y + 70 };
+    this.feet.setPosition(at.x, at.y); this.body.reset(at.x, at.y);
+    this.lastSafe = [at.x, at.y]; this.path = [];
+    this.cameras.main.centerOn(at.x, at.y + 18);
+    this.ground.update(this.cameras.main.worldView, 99);
+    this.cameras.main.fadeIn(700, 255, 250, 235);
+    this.locked = false;
+    this.inWild = false;
+    persist();
+    this.time.delayedCall(500, () => {
+      this.game.events.emit('wild-home', why, banked);
+      // Wild finds help the village: glow moss makes soup, star shards make strong stone.
+      if (banked.glowmoss) this.village.add('food', banked.glowmoss, this.feet.x - 20, this.feet.y - 60);
+      if (banked.starshard) this.village.add('stone', banked.starshard * 2, this.feet.x + 20, this.feet.y - 60);
+    });
   }
 
   buildSign() {
@@ -1202,6 +1261,17 @@ export class WorldScene extends Phaser.Scene {
         self.ground.update(self.cameras.main.worldView, 99);
       },
       lanterns: LANTERNS,
+      enterWild: (seed?: number) => self.enterWild(seed),
+      wild() {
+        const wl = self.scene.get('wild') as any;
+        const on = self.scene.isActive('wild') && wl.ready;
+        return on ? { on, seed: wl.seed, w: wl.map.w, h: wl.map.h, props: wl.map.props.length, ponds: wl.map.ponds.length, clearings: wl.map.clearings.length,
+          player: [Math.round(wl.feet.x), Math.round(wl.feet.y)], exit: [wl.map.exit.x, wl.map.exit.y], ...(wl.testState?.() ?? {}) } : { on: false, inWild: self.inWild };
+      },
+      wildTap(x: number, y: number) { const wl = self.scene.get('wild') as any; wl.tapAt(x, y); },
+      wildTeleport(x: number, y: number) { const wl = self.scene.get('wild') as any; wl.feet.setPosition(x, y); wl.body.reset(x, y); wl.target = null; },
+      wildToScreen(x: number, y: number) { const c = (self.scene.get('wild') as any).cameras.main; return { x: (x - c.worldView.x) * c.zoom / DPR, y: (y - c.worldView.y) * c.zoom / DPR }; },
+      wildSave: () => JSON.parse(JSON.stringify(save.wild)),
       tapWorld: (x: number, y: number) => self.tapWorld(x, y),
       critters() {
         const c = self.life.creatures;

@@ -11,10 +11,11 @@ const OUTFITS: Record<string, { a: [number, number, number]; b: [number, number,
   moss: { a: [95, 34, 50], b: [108, 38, 33], arm: [100, 34, 40] },
   sea: { a: [205, 58, 60], b: [218, 55, 40], arm: [210, 50, 48] },
   koi: { a: [35, 40, 94], b: [28, 30, 80], arm: [30, 35, 86] },
+  ranger: { a: [28, 55, 40], b: [32, 45, 28], arm: [30, 50, 34] },
 };
 const SCARVES: Record<string, [[number, number, number], [number, number, number]] | null> = {
   red: [[10, 78, 56], [18, 85, 66]], sunny: [[44, 90, 56], [50, 95, 72]], petal: [[340, 70, 72], [345, 85, 84]],
-  silver: [[210, 14, 76], [210, 25, 92]], none: null,
+  silver: [[210, 14, 76], [210, 25, 92]], moss: [[150, 60, 46], [120, 80, 70]], none: null,
 };
 
 /** Paints one frame. dir: 0 S, 1 SE, 2 E, 3 NE, 4 N; step: 0 idle, 1/2 stride. */
@@ -158,6 +159,15 @@ export function paintHero(ctx: Ctx, dir: number, step: number, look: Look) {
       }
       featherAt = [hx + 10 - facing * 2, hy - 9];
     }
+  } else if (look.hat === 'acorn') {
+    // Acorn cap: a snug brown dome with a little stem.
+    ctx.fillStyle = hsl(28, 50, 36);
+    ctx.beginPath(); ctx.ellipse(hx, hy - 6, 13.5, 10, 0, Math.PI, 0); ctx.lineTo(hx + 13.5, hy - 3); ctx.ellipse(hx, hy - 3, 13.5, 3, 0, 0, Math.PI); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = hsl(30, 45, 52, 0.75); ctx.lineWidth = 0.9;
+    for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(hx + i * 5 - 4, hy - 4); ctx.lineTo(hx + i * 5 + 4, hy - 13); ctx.moveTo(hx + i * 5 + 4, hy - 4); ctx.lineTo(hx + i * 5 - 4, hy - 13); ctx.stroke(); }
+    ctx.fillStyle = hsl(26, 45, 30); ctx.fillRect(hx - 1.4, hy - 20, 2.8, 5);
+    dab(ctx, hx - 5, hy - 12, 4, 1.8, -0.3, hsl(35, 60, 62, 0.6));
+    featherAt = [hx + 10 - facing * 2, hy - 10];
   } else if (look.hat === 'foxhood') {
     const fur = hsl(22, 75, 54);
     ctx.fillStyle = fur;

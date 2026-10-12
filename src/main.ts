@@ -4,6 +4,8 @@ import { BootScene } from './scenes/Boot';
 import { WorldScene } from './scenes/World';
 import { UIScene } from './scenes/UI';
 import { MenuScene } from './scenes/Menu';
+import { WildScene } from './scenes/Wild';
+import { WildUIScene } from './scenes/WildUI';
 import { VillageUIScene } from './scenes/VillageUI';
 
 import { DPR } from './dpr';
@@ -67,7 +69,7 @@ async function start() {
     audio: { noAudio: true }, // we use our own WebAudio synth
     banner: false,
     physics: { default: 'arcade', arcade: { debug: false } },
-    scene: [BootScene, WorldScene, UIScene, VillageUIScene, MenuScene],
+    scene: [BootScene, WorldScene, UIScene, VillageUIScene, MenuScene, WildScene, WildUIScene],
   });
 
   let lastW = w, lastH = h;
