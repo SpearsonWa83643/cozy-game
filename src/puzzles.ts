@@ -117,8 +117,8 @@ export class Puzzles {
       w.sway(flower, 0.06, 1.5);
       // Big flower plate showing the pot's colour now, and the pot's number (1-4, left to right).
       const pl = plate(w, p.x, p.y - 64, `q_flower${color}`, 17);
-      pl.c.setDepth(p.y + 1);
-      const badge = new NumBadge(w, p.x, p.y - 98, i + 1, 13).setDepth(p.y + 2);
+      pl.c.setDepth(8400 + p.y * 0.001);
+      const badge = new NumBadge(w, p.x, p.y - 98, i + 1, 13).setDepth(8401 + p.y * 0.001);
       if (color === POT_TARGET[i]) badge.set('done', false);
       const pot = { img, flower, color, pl, badge };
       this.pots.push(pot);
@@ -168,7 +168,7 @@ export class Puzzles {
       const bell = w.add.image(b.x + 2, b.y - 88, ATLAS, 'bell').setOrigin(0.5, 0.08).setScale(1 / S).setDepth(b.y + 0.5);
       // The bell's place in the songbird's tune, as a big number with the bell's colour.
       const step = SONG.indexOf(i);
-      const badge = new NumBadge(w, b.x + 2, b.y - 128, step + 1, 15).setDepth(b.y + 2);
+      const badge = new NumBadge(w, b.x + 2, b.y - 128, step + 1, 15).setDepth(8401 + b.y * 0.001);
       if (solved) badge.set('done', false);
       this.bells.push({ bell, ribbon, badge });
       w.interactables.push({

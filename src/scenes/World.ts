@@ -566,9 +566,9 @@ export class WorldScene extends Phaser.Scene {
       const img = this.img(L.x, L.y, 'lantern_off').setDepth(L.y);
       // Big bold symbol plate on the lantern, with its order number beside it.
       const pl = plate(this, L.x, L.y - 30, `q_${L.id}`, 19);
-      pl.c.setDepth(L.y + 1);
+      pl.c.setDepth(8400 + L.y * 0.001);
       const sym = pl.im;
-      const badge = new NumBadge(this, L.x + 27, L.y - 52, LANTERN_ORDER.indexOf(L.id) + 1, 13).setDepth(L.y + 2);
+      const badge = new NumBadge(this, L.x + 27, L.y - 52, LANTERN_ORDER.indexOf(L.id) + 1, 13).setDepth(8401 + L.y * 0.001);
       const lantern: Lantern = { id: L.id, x: L.x, y: L.y, lit: false, img, glow, sym, badge };
       this.lanterns.push(lantern);
       this.solidCircle(L.x, L.y - 8, 15);

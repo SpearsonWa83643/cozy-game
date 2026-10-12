@@ -195,3 +195,15 @@ short sentences, big icons, few numbers, no combat and no fail states.
 Test: `npx playwright test -c playwright.touch.config.ts tests/village.spec.ts` (iPad viewport,
 touch) invites a friend, builds, takes and undoes a job bubble, drags to assign, waits for food,
 fixes an alert, drops fruit and feeds the cat, toggles both themes and reloads.
+
+## Numbered sequences (v0.5.1)
+For kids learning numbers, every ordered puzzle shows its order with big numbers.
+- Bold, thick-outlined symbol art (`src/seq.ts`: dawn / noon / dusk, five flower colours, four
+  ribboned bells) on round white plates, readable at iPad size in Classic and Halloween.
+- Each puzzle object carries a big number badge: lanterns 1-2-3, flower pots 1-4 (left to right),
+  bells numbered by the songbird's tune (they pulse as she sings). A badge turns green with a check
+  when its step is done, shakes red on a wrong step, and resets with the puzzle.
+- Clue signs open with a row of big icon + number cards above the text (e.g. 1 dawn, 2 noon,
+  3 dusk); cards already done show green with a check. The lantern HUD shows 1-2-3 too.
+- The moon tiles and the dig spot are not ordered puzzles, so they have no numbers.
+- Test: `tests/seq.spec.ts` (part of `playwright.touch.config.ts`).
