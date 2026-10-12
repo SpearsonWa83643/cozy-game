@@ -207,3 +207,15 @@ For kids learning numbers, every ordered puzzle shows its order with big numbers
   3 dusk); cards already done show green with a check. The lantern HUD shows 1-2-3 too.
 - The moon tiles and the dig spot are not ordered puzzles, so they have no numbers.
 - Test: `tests/seq.spec.ts` (part of `playwright.touch.config.ts`).
+
+## Play it again: reset stones (v0.5.2)
+
+Every puzzle (lanterns, flower pots, bells, moon tiles, dig spot) has a little
+rock with a big blue circle-arrow beside it. Tap it to set that puzzle back to
+the start; there is no "are you sure?" step because nothing is lost.
+
+- Treasures you already found stay in your bag, and opened gates stay open.
+- Solving a puzzle again gives a bonus (+3 wood, +2 stone for the village)
+  instead of a second copy of the treasure.
+- The satchel's "Reset progress" still wipes the whole save, as before.
+- Test: `tests/reset.spec.ts` (iPad touch).

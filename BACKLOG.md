@@ -6,6 +6,10 @@
 - Alerts only when a friend can't help themselves, each with a one-tap fix (Snack / Nap / Play / Build / Get some).
 - Never soft-lock: friends always recover (eat with an empty pantry still helps, long walks finish), and friends bring wood + stone when nothing is buildable.
 
+## Done in v0.5.2
+- Reset stones for every puzzle; replay gives a wood/stone bonus, never a duplicate treasure.
+- world.spec fishing step: close any tip card before casting (the game was fine; the test tapped while a card was open).
+
 ## Next
 - Bring care close (Gamer): "bring food here" / nearest bed hints; food storage near homes.
 - Urgency colours on mood faces over villagers (soft pulse when needed).

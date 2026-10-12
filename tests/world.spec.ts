@@ -88,6 +88,8 @@ test('bigger world: areas, puzzle, fishing, wardrobe, creatures', async ({ page 
   let shotTaken = false;
   for (let attempt = 0; attempt < 8 && (await cozy(page, 'fish()')).catches === 0; attempt++) {
     if ((await cozy(page, 'fish()')).state === 'idle') {
+      // A friendly tip card can pop up on arrival; close it first (taps on the world wait while it is open).
+      await closeDialogs(page);
       await tapWorld(page, 1330, 2390);
       await expect.poll(async () => (await cozy(page, 'fish()')).state, { timeout: 30_000, intervals: [150] }).not.toBe('idle');
     }

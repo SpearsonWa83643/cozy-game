@@ -22,11 +22,12 @@ const wood = async (page: Page) => (await cozy(page, 'village()')).res.wood;
 async function solvePots(page: Page) {
   const pots = [175, 220, 265, 310];
   for (let i = 0; i < 4; i++) {
-    for (let g = 0; g < 8; g++) {
+    for (let g = 0; g < 12; g++) {
       const cols = await cozy(page, 'pots()');
       if (cols[i] === i) break;
+      await closeDialogs(page); // a welcome tip card can be open; world taps wait behind it
       await tapWorld(page, pots[i], 756);
-      await expect.poll(async () => (await cozy(page, 'pots()'))[i], { timeout: 30_000, intervals: [200] }).not.toBe(cols[i]);
+      try { await expect.poll(async () => (await cozy(page, 'pots()'))[i], { timeout: 15_000, intervals: [200] }).not.toBe(cols[i]); } catch { /* retry the tap */ }
     }
   }
   await expect.poll(async () => (await cozy(page, 'chests()')).pots, { timeout: 60_000, intervals: [300] }).toBe(true);
@@ -37,6 +38,7 @@ async function tapStone(page: Page, id: string) {
   const n0 = await page.evaluate(() => (window as any).__cozyResets ?? 0);
   await teleport(page, s.x, s.y + 60);
   for (let i = 0; i < 4; i++) {
+    await closeDialogs(page);
     await tapWorld(page, s.x, s.y - 20);
     try { await page.waitForFunction((n) => ((window as any).__cozyResets ?? 0) > n, n0, { timeout: 15_000 }); return; } catch { await page.waitForTimeout(500); }
   }
