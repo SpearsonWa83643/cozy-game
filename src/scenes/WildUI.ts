@@ -5,7 +5,7 @@ import { DPR } from '../dpr';
 import { safeInsets } from '../device';
 import { theme, themeEvents } from '../theme';
 import { ATLAS3 } from '../wild/wart';
-import type { WildScene } from './Wild';
+import { WILD_COMBAT, type WildScene } from './Wild';
 
 const FONT = 'Nunito, "Trebuchet MS", sans-serif';
 const INK = '#4a3426';
@@ -92,6 +92,7 @@ export class WildUIScene extends Phaser.Scene {
     this.wild.events.on('toast', this.toast, this);
 
     this.paintButtons();
+    if (!WILD_COMBAT) { this.heartsC.setVisible(false); this.atkC.setVisible(false); this.bagC.setVisible(false); }
     this.layout();
     this.scale.on('resize', this.layout, this);
     themeEvents.on('change', this.onTheme);
@@ -141,7 +142,7 @@ export class WildUIScene extends Phaser.Scene {
     this.heartsC.setPosition(hx + 80, hy - 18);
     const ax = this.w - 92 - si.right, ay = this.h - 100 - si.bottom;
     this.atkC.setPosition(ax, ay);
-    this.rects.attack = { x: ax - 62, y: ay - 62, w: 124, h: 124 };
+    if (WILD_COMBAT) this.rects.attack = { x: ax - 62, y: ay - 62, w: 124, h: 124 };
     this.bagC.setPosition(24 + si.left, this.h - 54 - si.bottom);
     this.rects.bag = { x: 24 + si.left, y: this.h - 84 - si.bottom, w: 200, h: 60 };
   }

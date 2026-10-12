@@ -14,6 +14,9 @@ import { Monster, SWING_RANGE } from '../wild/monsters';
 
 const TREE_FRAMES = ['tree0', 'tree1', 'tree2', 'tree3', 'tree4', 'tree5'];
 
+/** Monsters, combat and loot are still being finished; off in the shipped build. */
+export const WILD_COMBAT = false;
+
 export class WildScene extends Phaser.Scene {
   map!: WildMap;
   seed = 1;
@@ -87,8 +90,8 @@ export class WildScene extends Phaser.Scene {
     this.buildPortal(m.start.x - 70, m.start.y + 10, false);
     this.portal = this.buildPortal(m.exit.x, m.exit.y, true);
 
-    m.monsters.forEach((sp, i) => this.monsters.push(new Monster(this, sp.kind, sp, i)));
-    for (const c of m.chests) {
+    if (WILD_COMBAT) m.monsters.forEach((sp, i) => this.monsters.push(new Monster(this, sp.kind, sp, i)));
+    for (const c of WILD_COMBAT ? m.chests : []) {
       this.add.image(c.x, c.y, ATLAS, 'shadow').setScale(60 / 64 / (frameScale.shadow ?? 1)).setDepth(-500).setAlpha(0.8);
       const img = this.img(c.x, c.y, 'chest_closed').setDepth(c.y);
       const glow = this.add.image(c.x, c.y - 20, ATLAS, 'glow').setBlendMode('ADD').setTint(0xffe08a).setDepth(c.y - 1).setScale(1.4 / (frameScale.glow ?? 1));

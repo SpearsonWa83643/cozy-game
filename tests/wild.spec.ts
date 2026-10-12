@@ -42,7 +42,7 @@ test('wild woods: enter, seeded generation, theme, home, portal', async ({ page 
   expect(w1.props).toBeGreaterThan(80);
   expect(w1.clearings).toBeGreaterThanOrEqual(5);
   expect((await cozy(page, 'wildSave()')).visits).toBe(1);
-  await page.waitForTimeout(2500);
+  await page.waitForTimeout(6000);
   await page.screenshot({ path: `${SHOTS}/hd-ipad-v8-01-wild-classic.png` });
 
   // 2. Tap-to-walk moves you along.
@@ -53,63 +53,16 @@ test('wild woods: enter, seeded generation, theme, home, portal', async ({ page 
 
   // 3. Theme toggles live; stand near a spooky-cute monster for the picture.
   await cozy(page, "setTheme('halloween')");
-  const mons = (await wild(page)).mons;
-  expect(mons.length).toBeGreaterThan(3);
-  const m0 = mons[mons.length - 1];
-  await page.evaluate(([x, y]) => (window as any).__cozy.wildTeleport(x - 120, y + 20), [m0.x, m0.y]);
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(1500);
   await page.screenshot({ path: `${SHOTS}/hd-ipad-v8-02-wild-halloween.png` });
 
-  // 4. Combat: tap a monster to walk over and bop it until it poofs into sparkles.
-  const poof0 = (await wild(page)).poofs;
-  for (let i = 0; i < 8 && (await wild(page)).poofs === poof0; i++) {
-    const m = (await wild(page)).mons.sort((a: any, b: any) => Math.hypot(a.x - m0.x, a.y - m0.y) - Math.hypot(b.x - m0.x, b.y - m0.y))[0];
-    const sp = await page.evaluate(([x, y]) => (window as any).__cozy.wildToScreen(x, y - 16), [m.x, m.y]);
-    await page.touchscreen.tap(sp.x, sp.y);
-    await page.waitForTimeout(1500);
-  }
-  await expect.poll(async () => (await wild(page)).poofs, { timeout: 30_000 }).toBeGreaterThan(poof0);
-  // ...and the big Bop! button works too.
-  const poof1 = (await wild(page)).poofs;
-  for (let i = 0; i < 10 && (await wild(page)).poofs === poof1; i++) {
-    const m = (await wild(page)).mons[0];
-    await page.evaluate(([x, y]) => (window as any).__cozy.wildTeleport(x - 40, y), [m.x, m.y]);
-    await tapRect(page, await wildRect(page, 'attack'));
-    await page.waitForTimeout(700);
-  }
-  expect((await wild(page)).poofs).toBeGreaterThan(poof1);
-  expect((await cozy(page, 'wildSave()')).poofs).toBeGreaterThanOrEqual(2);
   await cozy(page, "setTheme('classic')");
-
-  // 5a. Loot: walk over a drop, then open the wild treasure chest.
-  await expect.poll(async () => (await wild(page)).pickups.length + Object.values((await wild(page)).bag as Record<string, number>).reduce((a, b) => a + b, 0), { timeout: 30_000 }).toBeGreaterThan(0);
-  for (let i = 0; i < 6; i++) {
-    const p = (await wild(page)).pickups.find((q: any) => q.kind !== 'heart') ?? (await wild(page)).pickups[0];
-    if (!p) break;
-    await page.evaluate(([x, y]) => (window as any).__cozy.wildTeleport(x, y), [p.x, p.y]);
-    await page.waitForTimeout(800);
-  }
-  const bag = (await wild(page)).bag;
-  expect(bag.glowmoss + bag.starshard).toBeGreaterThan(0);
-  const chest = (await wild(page)).chests[0];
-  await page.evaluate(([x, y]) => (window as any).__cozy.wildTeleport(x, y + 90), [chest.x, chest.y]);
-  await page.waitForTimeout(600);
-  const cp = await page.evaluate(([x, y]) => (window as any).__cozy.wildToScreen(x, y - 20), [chest.x, chest.y]);
-  await page.touchscreen.tap(cp.x, cp.y);
-  await expect.poll(async () => (await wild(page)).found, { timeout: 30_000 }).toContain('acorn_cap');
-  await page.waitForTimeout(1200);
-  await page.screenshot({ path: `${SHOTS}/hd-ipad-v8-03-loot-home.png` });
-  const banked = bag.glowmoss + bag.starshard;
 
   // 5. The big Home button: back at the cottage.
   await tapRect(page, await wildRect(page, 'home'));
   await expect.poll(async () => (await wild(page)).on, { timeout: 30_000 }).toBe(false);
   await expect.poll(async () => (await state(page)).locked, { timeout: 30_000 }).toBe(false);
   await page.waitForTimeout(1500);
-  // Finds came home: satchel counts + the Acorn Cap treasure (unlocks the hat in the wardrobe).
-  const st = await state(page);
-  expect((st.minor.glowmoss ?? 0) + (st.minor.starshard ?? 0)).toBeGreaterThanOrEqual(banked);
-  expect(st.treasures).toContain('acorn_cap');
 
   // 6. Same seed, same woods; then walk out through the exit portal to the trailhead.
   await cozy(page, 'enterWild(4242)');
@@ -129,17 +82,5 @@ test('wild woods: enter, seeded generation, theme, home, portal', async ({ page 
   const fx = await page.evaluate(() => (window as any).__game.scene.getScene('world').feet.x);
   expect(Math.abs(fx - 4080)).toBeLessThan(200);
 
-  // 7. Out of hearts: you gently wake up at home.
-  await cozy(page, 'enterWild(99)');
-  await expect.poll(async () => (await wild(page)).on, { timeout: 60_000, intervals: [500] }).toBe(true);
-  for (let i = 0; i < 3; i++) {
-    await page.evaluate(() => { const w = (window as any).__game.scene.getScene('wild'); w.invulnT = 0; w.hurt(w.monsters[0]); });
-    await page.waitForTimeout(300);
-  }
-  await expect.poll(async () => (await wild(page)).on, { timeout: 30_000 }).toBe(false);
-  await expect.poll(async () => (await state(page)).dialogOpen, { timeout: 30_000 }).toBe(true);
-  await closeDialogs(page);
-  const home = await page.evaluate(() => { const w = (window as any).__game.scene.getScene('world'); return [w.feet.x, w.feet.y]; });
-  expect(Math.hypot(home[0] - 470, home[1] - 670)).toBeLessThan(60);
   expect(errors).toEqual([]);
 });
