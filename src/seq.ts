@@ -73,7 +73,17 @@ function paintBell(color: number) {
   };
 }
 
+function paintReset(c: Ctx) {
+  // A fat circular arrow.
+  const cx = 28, cy = 29, r = 15;
+  c.beginPath(); c.arc(cx, cy, r + 5, -Math.PI * 0.35, Math.PI * 1.25, false); c.arc(cx, cy, r - 5, Math.PI * 1.25, -Math.PI * 0.35, true); c.closePath(); fo(c, '#5fb8ff', 3.2);
+  const a = -Math.PI * 0.35, hx = cx + Math.cos(a) * r, hy = cy + Math.sin(a) * r;
+  c.beginPath(); c.moveTo(hx - 12, hy - 4); c.lineTo(hx + 9, hy - 9); c.lineTo(hx + 4, hy + 12); c.closePath(); fo(c, '#5fb8ff', 3.2);
+  c.fillStyle = 'rgba(255,255,255,0.55)'; c.beginPath(); c.ellipse(cx - 13, cy - 4, 2.4, 5, 0.4, 0, Math.PI * 2); c.fill();
+}
+
 export function paintSeqArt(scene: Phaser.Scene) {
+  canvasTex(scene, 'q_reset', 56, 56, paintReset, 3);
   const T = (k: string, fn: (c: Ctx) => void) => canvasTex(scene, k, 56, 56, fn, 3);
   T('q_dawn', paintDawn); T('q_noon', paintNoon); T('q_dusk', paintDusk);
   POT_COLORS.forEach((col, i) => T(`q_flower${i}`, paintFlower(col)));

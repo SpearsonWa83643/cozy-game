@@ -9,7 +9,7 @@ import { Village } from '../village/village';
 import { ThemeDresser } from '../themeDress';
 import { setTheme } from '../theme';
 import { NumBadge, plate, SeqCard } from '../seq';
-import { Puzzles } from '../puzzles';
+import { Puzzles, resetStone } from '../puzzles';
 import { Fishing } from '../fishing';
 import { Reacts } from '../react';
 import {
@@ -89,6 +89,7 @@ export class WorldScene extends Phaser.Scene {
   lanterns: Lantern[] = [];
   litOrder: LanternId[] = [];
   solved = false;
+  resetStones: Record<string, { x: number; y: number }> = {};
   chestOpened = false;
   gateOpen = false;
   lastSafe: [number, number] = [PLAYER_START.x, PLAYER_START.y];
@@ -589,6 +590,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   buildSign() {
+    resetStone(this, SIGN.x + 75, SIGN.y + 20, 'lanterns', () => this.resetLanterns());
     this.shadow(SIGN.x + 3, SIGN.y - 2, 44, 0.7);
     this.img(SIGN.x, SIGN.y, 'sign').setDepth(SIGN.y);
     this.solidCircle(SIGN.x, SIGN.y - 5, 8);
@@ -711,8 +713,33 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
+  /** Replay reward: a little pile of wood and stone (treasures are never given twice). */
+  puzzleBonus(x: number, y: number) {
+    sfx.sparkle();
+    this.burst(x, y, 0xffe08a, 30, 'spark');
+    this.village.add('wood', 3, x - 20, y);
+    this.village.add('stone', 2, x + 20, y);
+    this.game.events.emit('toast', 'Bonus! You got wood and stone!');
+    this.game.events.emit('bonus');
+  }
+  puzzleDirty(id: string) { return id === 'lanterns' ? this.litOrder.length > 0 : this.puzzles.dirty(id); }
+  resetLanterns() {
+    this.solved = false;
+    this.litOrder = [];
+    for (const l of this.lanterns) {
+      l.badge.set('todo');
+      if (!l.lit) continue;
+      l.lit = false;
+      l.img.setTexture(ATLAS, 'lantern_off');
+      this.tweens.add({ targets: l.glow, alpha: 0, duration: 400 });
+      this.smoke(l.x, l.y - 62);
+    }
+    this.game.events.emit('lanterns', []);
+  }
+
   solve() {
     this.solved = true;
+    if (this.gateOpen) { this.time.delayedCall(500, () => { sfx.solve(); this.puzzleBonus(this.feet.x, this.feet.y - 70); }); return; }
     this.locked = true;
     this.body.setVelocity(0, 0);
     const cam = this.cameras.main;
@@ -1187,6 +1214,9 @@ export class WorldScene extends Phaser.Scene {
         };
       },
       pots: () => self.puzzles.pots.map((p) => p.color),
+      resetStones: () => self.resetStones,
+      tiles: () => self.puzzles.tiles.map((t) => t.rot),
+      chests: () => ({ pots: self.puzzles.potChest.revealed, bells: self.puzzles.bellChest.revealed, tiles: self.puzzles.tileChest.revealed, dig: self.puzzles.digChest.revealed }),
       /** Fruit trees near a point, nearest first: [x, tapY]. */
       fruitTrees(x: number, y: number) {
         return self.reacts.fruitTrees.map((t) => [Math.round(t.x), Math.round(t.y - t.displayHeight * 0.58), Math.round(t.y)])

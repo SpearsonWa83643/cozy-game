@@ -4,13 +4,37 @@ import Phaser from 'phaser';
 import { ATLAS, frameScale, S } from './art';
 import { POTS, POT_SIGN, POT_CHEST, BELLS, BELL_SIGN, BELL_CHEST, SONGBIRD, TILES, TILE_SIGN, TILE_CHEST, DIG, DIG_SIGN } from './layout';
 import { sfx } from './audio';
-import { save, setPuzzle, addTreasure, hasTreasure } from './save';
+import { save, setPuzzle, addTreasure, hasTreasure, persist } from './save';
 import { TREASURES } from './catalog';
 import { NumBadge, plate, SeqCard, POT_COLORS, POT_NAMES, RIBBONS, RIBBON_NAMES } from './seq';
 import type { WorldScene } from './scenes/World';
 
 const POT_TARGET = [0, 1, 2, 3];
 const SONG = [2, 0, 3, 1];
+
+/** A big friendly reset stone next to a puzzle. Tap it to play the puzzle again. */
+export function resetStone(w: WorldScene, x: number, y: number, id: string, reset: () => void) {
+  w.shadow(x + 2, y - 2, 46, 0.6);
+  const rock = w.img(x, y, 'rock1').setDepth(y);
+  rock.setScale(rock.scale * 0.8);
+  const pl = plate(w, x, y - 34, 'q_reset', 20);
+  pl.c.setDepth(8400 + y * 0.001);
+  w.tweens.add({ targets: pl.c, y: y - 38, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+  w.solidCircle(x, y - 6, 12);
+  w.resetStones[id] = { x, y };
+  const go = () => {
+    const fresh = !save.puzzles[id] && !w.puzzleDirty(id);
+    delete save.puzzles[id];
+    persist();
+    reset();
+    sfx.chimes();
+    w.tweens.add({ targets: pl.c, angle: { from: 0, to: -360 }, duration: 600, ease: 'Cubic.easeOut' });
+    w.burst(x, y - 34, 0x9fd8ff, 22, 'spark');
+    w.game.events.emit('toast', fresh ? 'All set. Have fun!' : 'Fresh start! Play again.');
+    w.game.events.emit('puzzle-reset', id);
+  };
+  w.interactables.push({ x, y, r: 50, label: 'Reset', promptY: 82, reach: 240, approach: [0, 30], enabled: () => true, action: go });
+}
 
 class Chest {
   img: Phaser.GameObjects.Image;
@@ -45,11 +69,19 @@ class Chest {
     w.cameras.main.shake(200, 0.002);
     sfx.solve();
   }
+  /** Hide the chest again for a replay (the treasure stays in your bag). */
+  reset() {
+    this.revealed = false; this.opened = false;
+    this.w.tweens.killTweensOf([this.img, this.shadow]);
+    this.img.setTexture(ATLAS, 'chest_closed').setAlpha(0).setScale(1 / (frameScale.chest_closed ?? S));
+    this.shadow.setAlpha(0);
+  }
   open() {
     if (this.opened) return;
     this.opened = true;
     const w = this.w;
     this.img.setTexture(ATLAS, 'chest_open');
+    if (hasTreasure(this.treasure)) { w.puzzleBonus(this.x, this.y - 40); return; }
     addTreasure(this.treasure);
     sfx.sparkle();
     w.cameras.main.shake(200, 0.002);
@@ -71,6 +103,13 @@ class Chest {
 }
 
 export class Puzzles {
+  /** Has the player changed anything since the last reset? */
+  dirty(id: string) {
+    if (id === 'pots') return this.pots.some((p, i) => p.color !== [4, 2, 0, 1][i]);
+    if (id === 'bells') return this.bellInput.length > 0;
+    if (id === 'tiles') return this.tiles.some((t, q) => t.rot !== [1, 2, 3, 1][q]);
+    return false;
+  }
   pots: { img: Phaser.GameObjects.Image; flower: Phaser.GameObjects.Image; color: number; pl: ReturnType<typeof plate>; badge: NumBadge }[] = [];
   potChest: Chest;
   bells: { bell: Phaser.GameObjects.Image; ribbon: Phaser.GameObjects.Image; badge: NumBadge }[] = [];
@@ -94,6 +133,32 @@ export class Puzzles {
     this.buildBells();
     this.buildTiles();
     this.buildDig();
+    resetStone(w, POT_CHEST.x + 175, POT_CHEST.y + 10, 'pots', () => this.resetPots());
+    resetStone(w, BELL_SIGN.x - 10, BELL_SIGN.y + 80, 'bells', () => this.resetBells());
+    resetStone(w, TILE_SIGN.x, TILE_SIGN.y + 70, 'tiles', () => this.resetTiles());
+    resetStone(w, DIG_SIGN.x + 70, DIG_SIGN.y + 20, 'dig', () => this.resetDig());
+  }
+
+  // ------------------------------------------------------------ replay: reset stones
+  resetPots() {
+    const start = [4, 2, 0, 1];
+    this.pots.forEach((p, i) => { p.color = start[i]; p.flower.setTint(POT_COLORS[p.color]); p.pl.setFrame(`q_flower${p.color}`); p.badge.set(p.color === POT_TARGET[i] ? 'done' : 'todo'); this.w.burst(p.img.x, p.img.y - 30, 0xbfe3ff, 6, 'spark'); });
+    this.potChest.reset();
+  }
+  resetBells() {
+    this.bellInput = []; this.birdSang = false;
+    for (const b of this.bells) b.badge.set('todo');
+    this.bellChest.reset();
+  }
+  resetTiles() {
+    const start = [1, 2, 3, 1];
+    this.tiles.forEach((t, q) => { t.rot = start[q]; this.w.tweens.killTweensOf(t.img); t.img.setAngle(t.rot * 90); });
+    this.tileGlow.setAlpha(0);
+    this.tileChest.reset();
+  }
+  resetDig() {
+    this.digImg.setTexture(ATLAS, 'digspot');
+    this.digChest.reset();
   }
 
   private sign(x: number, y: number, lines: string[], cards?: () => SeqCard[]) {
@@ -302,7 +367,7 @@ export class Puzzles {
       'Then dig!',
     ]);
     this.digChest.set(dug, hasTreasure('shell_necklace'));
-    if (!dug) {
+    {
       w.time.addEvent({ delay: 1600, loop: true, callback: () => {
         if (save.puzzles.dig || Math.hypot(w.feet.x - DIG.x, w.feet.y - DIG.y) > 260) return;
         const g = w.fx(DIG.x + (Math.random() * 16 - 8), DIG.y - 2, 'spark', 0.2).setBlendMode('ADD').setTint(0xfff3c4).setAlpha(0).setDepth(-350);
