@@ -21,7 +21,7 @@ const badges = (page: Page) => page.evaluate(() => {
   return { lanterns: w.lanterns.map((l: any) => l.badge.state), pots: w.puzzles.pots.map((p: any) => p.badge.state), bells: w.puzzles.bells.map((b: any) => b.badge.state) };
 });
 async function closeDialogs(page: Page) {
-  for (let i = 0; i < 12 && (await state(page)).dialogOpen; i++) { await page.touchscreen.tap(590, 300); await page.waitForTimeout(500); }
+  for (let i = 0; i < 12 && (await state(page)).dialogOpen; i++) { await page.touchscreen.tap(590, 650); await page.waitForTimeout(700); }
 }
 async function readSign(page: Page, x: number, y: number) {
   for (let i = 0; i < 4 && !(await state(page)).dialogOpen; i++) { await tapWorld(page, x, y - 24); await page.waitForTimeout(1500); }
@@ -61,7 +61,7 @@ test('numbered sequences: sign cards, object badges, step checks, both themes', 
   expect(lb.lanterns.filter((s: string) => s === 'done').length).toBe(2);
   // Stand between noon (lit, check) and dusk (3, waiting) for the object shot.
   const noon = at('noon'), dusk = at('dusk');
-  await teleport(page, (noon.x + dusk.x) / 2 - 60, (noon.y + dusk.y) / 2 + 40, 2500);
+  await teleport(page, (noon.x + dusk.x) / 2 + 40, (noon.y + dusk.y) / 2 - 20, 2500);
   await page.screenshot({ path: `${SHOTS}/hd-ipad-v6-02-lanterns-numbers.png` });
 
   // 3. Flower pots in Halloween: numbered pots, one fixed (check), and the pot sign's cards.
@@ -73,7 +73,7 @@ test('numbered sequences: sign cards, object badges, step checks, both themes', 
     await expect.poll(async () => (await cozy(page, 'pots()'))[0], { timeout: 30_000, intervals: [200] }).not.toBe(c0);
   }
   await expect.poll(async () => (await badges(page)).pots[0], { timeout: 10_000 }).toBe('done');
-  await page.waitForTimeout(6000); // ground repaint + cross-fade
+  await teleport(page, 330, 830, 6000); // frame the pots; ground repaint + cross-fade
   await page.screenshot({ path: `${SHOTS}/hd-ipad-v6-03-pots-halloween.png` });
   await teleport(page, 140, 860);
   await readSign(page, 120, 790);
