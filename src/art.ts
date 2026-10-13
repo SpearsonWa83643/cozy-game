@@ -43,6 +43,10 @@ export function atlasTarget(key: string) { target = key; }
 export const atlasOf = (frame: string) => frameAtlas[frame] ?? ATLAS;
 /** Texture px per world unit for each atlas frame (so sprites can be normalised to world units). */
 export const frameScale: Record<string, number> = {};
+/** Trees are drawn a bit smaller than painted so they sit in proportion with people and houses. */
+export const TREE_SCALE = 0.78;
+/** Ground collectibles: size of the bold bubble behind the icon (world px) and icon size inside it. */
+export const PICKUP_BUBBLE = 46, PICKUP_ICON = 34;
 
 /**
  * Paints a w×h (world units) image at `scale` px per unit. By default the result is queued

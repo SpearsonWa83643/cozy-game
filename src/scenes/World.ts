@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { S, ATLAS, atlasOf, frameScale, mulberry32, pondValue, distToPaths, pathDist, ALL_PATHS } from '../art';
+import { S, ATLAS, atlasOf, frameScale, mulberry32, pondValue, distToPaths, pathDist, ALL_PATHS , TREE_SCALE} from '../art';
 import { GroundStreamer } from '../ground';
 import { waterBlocks, areaAt, waterAt } from '../geo';
 import { save, persist, setPuzzle, addTreasure, hasTreasure, visit } from '../save';
@@ -501,7 +501,7 @@ export class WorldScene extends Phaser.Scene {
       if (LANTERNS.some((l) => Math.hypot(l.x - s.x, l.y - s.y) < 80)) continue;
       if (Math.hypot(SIGN.x - s.x, SIGN.y - s.y) < 60) continue;
       const key = s.kinds[Math.floor(rng() * s.kinds.length)];
-      const scale = 0.85 + rng() * 0.35;
+      const scale = (0.85 + rng() * 0.35) * TREE_SCALE;
       const isPine = key.startsWith('pine');
       const oy = isPine ? (190 - 8) / 190 : (210 - 8) / 210;
       const t = this.img(s.x, s.y, key, 0.5, oy, scale).setDepth(s.y).setFlipX(rng() < 0.5);

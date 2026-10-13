@@ -1,7 +1,7 @@
 // Builds the wider world around the glade: Brookside, Mistbirch Wood, Windmill Orchard and
 // Shellwater Shore. All placement is deterministic.
 import Phaser from 'phaser';
-import { mulberry32, pondValue, pathDist, ATLAS } from './art';
+import { mulberry32, pondValue, pathDist, ATLAS , TREE_SCALE } from './art';
 import {
   WORLD_W, WORLD_H, GLADE_W, GLADE_H, LAKE, BRIDGES, BRIDGE_GATE, PIER, WINDMILL, FOREST_EDGE_Y, RIDGE_X,
   TILES, OWL, BELLS, DIG, DIG_STONES, DIG_SIGN, BELL_SIGN, TILE_SIGN, POTS, POT_SIGN, SONGBIRD, VILLAGE, VILLAGE_SIGN, MERCHANT_SPOT,
@@ -36,7 +36,8 @@ export function buildAreas(w: WorldScene) {
     return true;
   };
 
-  const tree = (x: number, y: number, key: string, scale: number, rng: Rng, kind: Parameters<WorldScene['reacts']['tree']>[1], solid = true) => {
+  const tree = (x: number, y: number, key: string, scale0: number, rng: Rng, kind: Parameters<WorldScene['reacts']['tree']>[1], solid = true) => {
+    const scale = scale0 * TREE_SCALE;
     const isPine = key.startsWith('pine');
     const isBirch = key.startsWith('birch');
     const h = isPine ? 190 : isBirch ? 230 : key.startsWith('apple') ? 180 : 210;

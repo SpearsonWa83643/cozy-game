@@ -84,6 +84,14 @@ function paintReset(c: Ctx) {
 
 export function paintSeqArt(scene: Phaser.Scene) {
   canvasTex(scene, 'q_reset', 56, 56, paintReset, 3);
+  // Bold bubble that sits behind every collectible on the ground (big, crisp and easy to spot).
+  canvasTex(scene, 'pk_bubble', 64, 64, (c) => {
+    c.fillStyle = 'rgba(40,28,20,0.22)'; c.beginPath(); c.ellipse(32, 60, 20, 3.5, 0, 0, Math.PI * 2); c.fill();
+    const g = c.createRadialGradient(26, 22, 4, 32, 30, 28); g.addColorStop(0, '#ffffff'); g.addColorStop(1, '#fff1d2');
+    c.beginPath(); c.arc(32, 30, 26, 0, Math.PI * 2); c.fillStyle = g; c.fill();
+    c.lineWidth = 5; c.strokeStyle = SEQ_INK; c.stroke();
+    c.beginPath(); c.arc(32, 30, 21, Math.PI * 1.1, Math.PI * 1.45); c.lineWidth = 3.5; c.lineCap = 'round'; c.strokeStyle = 'rgba(255,255,255,0.95)'; c.stroke();
+  }, 3);
   // Wild Woods loot icons.
   canvasTex(scene, 'l_glowmoss', 48, 48, (c) => {
     const g = c.createRadialGradient(24, 26, 2, 24, 26, 22); g.addColorStop(0, 'rgba(200,255,170,0.9)'); g.addColorStop(1, 'rgba(120,255,160,0)');
