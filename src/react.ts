@@ -13,6 +13,10 @@ export class Reacts {
   cool = new WeakMap<object, number>();
   /** Trees that drop fruit (for the test hook). */
   fruitTrees: Phaser.GameObjects.Image[] = [];
+  /** Leaf / birch trees that yield wood (for the test hook). */
+  woodTrees: Phaser.GameObjects.Image[] = [];
+  /** Remaining wood hits per tree (default 5). */
+  woodStock = new WeakMap<object, number>();
   constructor(private w: WorldScene) {}
 
   private ready(o: object, ms: number) {
@@ -22,7 +26,7 @@ export class Reacts {
     return true;
   }
   matCool = new WeakMap<object, number>();
-  /** Trees and rocks out in the world sometimes give building materials. */
+  /** Rocks out in the world sometimes give building stone. */
   private material(o: object, id: 'wood' | 'stone', x: number, y: number) {
     const now = this.w.time.now;
     if ((this.matCool.get(o) ?? 0) > now || !this.w.village) return;
@@ -34,6 +38,7 @@ export class Reacts {
   tree(t: Phaser.GameObjects.Image, kind: 'fruit' | 'blossom' | 'leaf' | 'pear' | 'apple' | 'birch') {
     this.w.canopies.push(t);
     if (kind === 'apple' || kind === 'pear' || kind === 'fruit') this.fruitTrees.push(t);
+    if (kind === 'leaf' || kind === 'birch') this.woodTrees.push(t);
     this.w.tappables.push({
       x: () => t.x, y: () => t.y - t.displayHeight * 0.58, r: Math.max(34, t.displayWidth * 0.32), soft: true,
       tap: () => {
@@ -44,7 +49,14 @@ export class Reacts {
         const cy = t.y - t.displayHeight * 0.55;
         const tint = kind === 'blossom' ? 0xffc6dc : kind === 'birch' ? 0xf0d36a : 0x8fcf6a;
         this.w.burst(t.x, cy, tint, 10, kind === 'blossom' ? 'petal' : 'leaf');
-        this.material(t, 'wood', t.x, cy);
+        if ((kind === 'leaf' || kind === 'birch') && this.w.village) {
+          const left = this.woodStock.get(t) ?? 5;
+          if (left > 0) {
+            this.woodStock.set(t, left - 1);
+            this.w.village.add('wood', 1, t.x, cy);
+            if (tipOnce('harvest')) this.w.game.events.emit('toast', 'Wood! Keep tapping to get more.');
+          }
+        }
         if (!this.ready(t, 6000)) return;
         if (kind === 'apple' || kind === 'pear' || kind === 'fruit') {
           const n = 1 + (Math.random() < 0.4 ? 1 : 0);

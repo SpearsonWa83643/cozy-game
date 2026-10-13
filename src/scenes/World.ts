@@ -1287,10 +1287,17 @@ export class WorldScene extends Phaser.Scene {
       resetStones: () => self.resetStones,
       tiles: () => self.puzzles.tiles.map((t) => t.rot),
       chests: () => ({ pots: self.puzzles.potChest.revealed, bells: self.puzzles.bellChest.revealed, tiles: self.puzzles.tileChest.revealed, dig: self.puzzles.digChest.revealed }),
-      /** Fruit trees near a point, nearest first: [x, tapY]. */
+      /** Fruit trees near a point, nearest first: [x, tapY, baseY]. */
       fruitTrees(x: number, y: number) {
         return self.reacts.fruitTrees.map((t) => [Math.round(t.x), Math.round(t.y - t.displayHeight * 0.58), Math.round(t.y)])
           .sort((a, b) => Math.hypot(a[0] - x, a[2] - y) - Math.hypot(b[0] - x, b[2] - y)).slice(0, 5);
+      },
+      /** Leaf/birch wood trees near a point: [x, tapY, baseY, stockLeft]. */
+      woodTrees(x: number, y: number) {
+        return self.reacts.woodTrees.map((t) => {
+          const left = self.reacts.woodStock.get(t) ?? 5;
+          return [Math.round(t.x), Math.round(t.y - t.displayHeight * 0.58), Math.round(t.y), left];
+        }).sort((a, b) => Math.hypot(a[0] - x, a[2] - y) - Math.hypot(b[0] - x, b[2] - y)).slice(0, 5);
       },
       pickups: () => self.reacts.pickups.filter((p) => p.img.active && !p.flying).map((p) => [Math.round(p.img.x), Math.round(p.img.y), p.minor]),
       fish() {
