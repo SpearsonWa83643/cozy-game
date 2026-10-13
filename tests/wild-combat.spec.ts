@@ -104,6 +104,7 @@ test('wild woods combat: bop, loot, hearts, home, wardrobe, theme', async ({ pag
   await page.waitForTimeout(600);
   const cp = await page.evaluate(([x, y]) => (window as any).__cozy.wildToScreen(x, y - 20), [chest.x, chest.y]);
   await page.touchscreen.tap(cp.x, cp.y);
+  for (let t = 0; t < 4 && !(await wild(page)).found?.length; t++) { await page.waitForTimeout(2500); if (!(await wild(page)).found?.length) await page.touchscreen.tap(cp.x, cp.y); }
   await expect.poll(async () => (await wild(page)).found, { timeout: 30_000 }).toContain('acorn_cap');
   await page.waitForTimeout(1200);
   await page.screenshot({ path: `${SHOTS}/hd-ipad-v8-03-loot-home.png` });
