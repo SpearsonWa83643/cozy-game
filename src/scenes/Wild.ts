@@ -1,7 +1,7 @@
 // The Wilderness: a fresh, seeded patch of woods every trip. Reached from the trailhead at the
 // south-east edge of the map; the big Home button (WildUI) or the exit portal brings you back.
 import Phaser from 'phaser';
-import { ATLAS, S, atlasOf, frameScale } from '../art';
+import { ATLAS, S, atlasOf, frameScale, TREE_SCALE, PICKUP_BUBBLE, PICKUP_ICON } from '../art';
 import { DPR } from '../dpr';
 import { save, addTreasure, hasTreasure, addMinor } from '../save';
 import { TREASURES, WILD_SET } from '../catalog';
@@ -45,7 +45,7 @@ export class WildScene extends Phaser.Scene {
   /** Finds from this trip; banked at home (always kept, even after a nap). */
   bag: Record<string, number> = { glowmoss: 0, starshard: 0 };
   found: string[] = [];
-  pickups: { img: Phaser.GameObjects.Image; glow: Phaser.GameObjects.Image; kind: string; x: number; y: number; taken: boolean }[] = [];
+  pickups: { img: Phaser.GameObjects.Image; glow: Phaser.GameObjects.Image; bub: Phaser.GameObjects.Image; kind: string; x: number; y: number; taken: boolean }[] = [];
   chests: { img: Phaser.GameObjects.Image; x: number; y: number; opened: boolean }[] = [];
   swings = 0;
 
@@ -76,10 +76,10 @@ export class WildScene extends Phaser.Scene {
       if (p.kind === 'tree' || p.kind === 'pine') {
         const pine = p.kind === 'pine';
         const f = pine ? `pine${p.v % 2}` : TREE_FRAMES[p.v % TREE_FRAMES.length];
-        const im = this.img(p.x, p.y, f, pine ? 0.95 : 0.9 + (p.v % 3) * 0.08).setDepth(p.y).setOrigin(0.5, pine ? 182 / 190 : 202 / 210);
+        const im = this.img(p.x, p.y, f, (pine ? 0.95 : 0.9 + (p.v % 3) * 0.08) * TREE_SCALE).setDepth(p.y).setOrigin(0.5, pine ? 182 / 190 : 202 / 210);
         this.trees.push({ img: im, v: p.v, pine });
-        this.add.image(p.x, p.y - 2, ATLAS, 'shadow').setScale(70 / 64 / (frameScale.shadow ?? 1)).setDepth(-500).setAlpha(0.8);
-        this.solid(p.x, p.y - 6, 16);
+        this.add.image(p.x, p.y - 2, ATLAS, 'shadow').setScale(70 * TREE_SCALE / 64 / (frameScale.shadow ?? 1)).setDepth(-500).setAlpha(0.8);
+        this.solid(p.x, p.y - 6, 16 * TREE_SCALE);
       } else if (p.kind === 'rock') { this.img(p.x, p.y, `rock${p.v}`).setDepth(p.y); this.solid(p.x, p.y - 8, 18); }
       else if (p.kind === 'bush') { this.img(p.x, p.y, `bush${p.v}`).setDepth(p.y); this.solid(p.x, p.y - 8, 16); }
       else if (p.kind === 'shroom') this.img(p.x, p.y, 'mushrooms').setDepth(p.y);
@@ -181,8 +181,8 @@ export class WildScene extends Phaser.Scene {
     }
     const tf = theme.trees;
     for (const t of this.trees) {
-      if (!t.pine && tf) { const f = tf[t.v % tf.length]; t.img.setTexture(atlasOf(f), f).setScale(1 / (frameScale[f] ?? S)); }
-      else if (!t.pine) { const f = TREE_FRAMES[t.v % TREE_FRAMES.length]; t.img.setTexture(atlasOf(f), f).setScale((0.9 + (t.v % 3) * 0.08) / (frameScale[f] ?? S)); }
+      if (!t.pine && tf) { const f = tf[t.v % tf.length]; t.img.setTexture(atlasOf(f), f).setScale(TREE_SCALE / (frameScale[f] ?? S)); }
+      else if (!t.pine) { const f = TREE_FRAMES[t.v % TREE_FRAMES.length]; t.img.setTexture(atlasOf(f), f).setScale((0.9 + (t.v % 3) * 0.08) * TREE_SCALE / (frameScale[f] ?? S)); }
       if (theme.foliage !== null && t.pine) t.img.setTint(theme.foliage); else t.img.clearTint();
     }
     this.cameras.main.setBackgroundColor(hal ? '#20262a' : '#3c5a32');
@@ -232,15 +232,19 @@ export class WildScene extends Phaser.Scene {
   drop(x: number, y: number, kind: string) {
     const glow = this.add.image(x, y - 10, ATLAS, 'glow').setBlendMode('ADD').setTint(kind === 'heart' ? 0xff9ab0 : kind === 'starshard' ? 0x9fe0ff : 0xb8ffb0).setDepth(y - 1).setScale(0.9 / (frameScale.glow ?? 1));
     const img = this.add.image(x, y, atlasOf(kind === 'heart' ? 'heart' : `l_${kind}`), kind === 'heart' ? 'heart' : `l_${kind}`).setOrigin(0.5, 1).setDepth(y);
-    img.setScale((kind === 'heart' ? 26 / 12 : 30 / 48) / (frameScale[kind === 'heart' ? 'heart' : `l_${kind}`] ?? 2));
-    this.tweens.add({ targets: img, y: { from: y - 30, to: y }, duration: 420, ease: 'Bounce.easeOut' });
-    this.tweens.add({ targets: img, scaleX: img.scaleX * 1.1, scaleY: img.scaleY * 1.1, duration: 600, yoyo: true, repeat: -1, delay: 420 });
-    this.pickups.push({ img, glow, kind, x, y, taken: false });
+    img.setScale(PICKUP_ICON / Math.max(img.width, img.height)).setY(y - 8);
+    const sz = PICKUP_BUBBLE * 64 / 52;
+    const bub = this.add.image(x, y, atlasOf('pk_bubble'), 'pk_bubble').setOrigin(0.5, 1).setDepth(y - 0.5).setDisplaySize(sz, sz);
+    img.once('destroy', () => bub.destroy());
+    this.tweens.add({ targets: img, y: { from: y - 38, to: y - 8 }, duration: 420, ease: 'Bounce.easeOut' });
+    this.tweens.add({ targets: bub, y: { from: y - 30, to: y }, duration: 420, ease: 'Bounce.easeOut' });
+    this.tweens.add({ targets: [img, bub], scaleX: '*=1.1', scaleY: '*=1.1', duration: 600, yoyo: true, repeat: -1, delay: 420 });
+    this.pickups.push({ img, glow, bub, kind, x, y, taken: false });
   }
 
-  pickUp(p: { img: Phaser.GameObjects.Image; glow: Phaser.GameObjects.Image; kind: string; taken: boolean; x: number; y: number }) {
+  pickUp(p: { img: Phaser.GameObjects.Image; glow: Phaser.GameObjects.Image; bub: Phaser.GameObjects.Image; kind: string; taken: boolean; x: number; y: number }) {
     p.taken = true;
-    this.tweens.killTweensOf(p.img);
+    this.tweens.killTweensOf(p.img); this.tweens.killTweensOf(p.bub); p.bub.setVisible(false);
     this.tweens.add({ targets: [p.img, p.glow], y: this.feet.y - 70, alpha: 0, duration: 380, ease: 'Cubic.easeIn', onComplete: () => { p.img.destroy(); p.glow.destroy(); } });
     sfx.pickup();
     if (p.kind === 'heart') {
@@ -358,7 +362,7 @@ export class WildScene extends Phaser.Scene {
       if (p.taken) continue;
       const d = Math.hypot(p.x - this.feet.x, p.y - this.feet.y);
       if (d < 34) this.pickUp(p);
-      else if (d < 90 && p.kind !== 'heart') { p.x += (this.feet.x - p.x) * 0.08; p.y += (this.feet.y - p.y) * 0.08; p.img.setPosition(p.x, p.y); p.glow.setPosition(p.x, p.y - 10); }
+      else if (d < 90 && p.kind !== 'heart') { p.x += (this.feet.x - p.x) * 0.08; p.y += (this.feet.y - p.y) * 0.08; p.img.setPosition(p.x, p.y - 8); p.bub.setPosition(p.x, p.y); p.glow.setPosition(p.x, p.y - 10); }
     }
     for (const c of this.chests) if (!c.opened && Math.hypot(c.x - this.feet.x, c.y + 20 - this.feet.y) < 60) this.openChest(c);
     let vx = 0, vy = 0;

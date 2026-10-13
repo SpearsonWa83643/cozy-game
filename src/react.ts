@@ -1,11 +1,11 @@
 // Tap reactions for scenery (trees, flowers, bushes, rocks, chimes) and small pickups.
 import Phaser from 'phaser';
-import { ATLAS, frameScale, S } from './art';
+import { ATLAS, atlasOf, PICKUP_BUBBLE, PICKUP_ICON } from './art';
 import { sfx } from './audio';
 import { addMinor, save, persist, tipOnce } from './save';
 import type { WorldScene } from './scenes/World';
 
-type Pickup = { img: Phaser.GameObjects.Image; kind: string; minor: string; t0: number; flying: boolean };
+type Pickup = { img: Phaser.GameObjects.Image; kind: string; minor: string; t0: number; flying: boolean; bub?: Phaser.GameObjects.Image };
 const MINOR_LABEL: Record<string, string> = { petal: 'petal', shell: 'shell', apple: 'fruit', acorn: 'acorn', beetle: 'beetle spotted' };
 
 export class Reacts {
@@ -132,8 +132,9 @@ export class Reacts {
 
   /** A pickup falls from (x, y0) to the ground at y1; walk over or tap to collect. */
   drop(x: number, y0: number, y1: number, kind: string, minor: string) {
-    const img = this.w.add.image(x, y0, ATLAS, kind).setScale(1 / (frameScale[kind] ?? S)).setOrigin(0.5, 1).setDepth(y1);
+    const img = this.w.add.image(x, y0, ATLAS, kind).setOrigin(0.5, 1).setDepth(y1);
     const p: Pickup = { img, kind, minor, t0: this.w.time.now, flying: false };
+    this.bubble(p);
     this.pickups.push(p);
     this.w.tweens.add({ targets: img, y: y1, duration: 520, ease: 'Bounce.easeOut' });
     this.addPickupTap(p);
@@ -142,16 +143,26 @@ export class Reacts {
 
   /** A pickup already resting on the ground (shells on the beach). */
   place(x: number, y: number, kind: string, minor: string) {
-    const img = this.w.add.image(x, y, ATLAS, kind).setScale(1 / (frameScale[kind] ?? S)).setOrigin(0.5, 1).setDepth(y - 4).setRotation(Math.random() - 0.5);
+    const img = this.w.add.image(x, y, ATLAS, kind).setOrigin(0.5, 1).setDepth(y - 4).setRotation((Math.random() - 0.5) * 0.5);
     const p: Pickup = { img, kind, minor, t0: 0, flying: false };
+    this.bubble(p);
     this.pickups.push(p);
     this.addPickupTap(p);
     return p;
   }
 
+  /** Big bold bubble behind a ground collectible; the icon is sized to fill it. */
+  private bubble(p: Pickup) {
+    const img = p.img;
+    img.setScale(PICKUP_ICON / Math.max(img.width, img.height));
+    const sz = PICKUP_BUBBLE * 64 / 52; // the bubble disc is 52 of its 64 px
+    p.bub = this.w.add.image(img.x, img.y + 6, atlasOf('pk_bubble'), 'pk_bubble').setOrigin(0.5, 1).setDepth(img.depth - 0.5).setDisplaySize(sz, sz);
+    img.once('destroy', () => p.bub?.destroy());
+  }
+
   private addPickupTap(p: Pickup) {
     this.w.tappables.push({
-      x: () => p.img.x, y: () => p.img.y - 4, r: 24, enabled: () => p.img.active && !p.flying,
+      x: () => p.img.x, y: () => p.img.y - 14, r: 34, enabled: () => p.img.active && !p.flying,
       tap: () => {
         const d = Math.hypot(p.img.x - this.w.feet.x, p.img.y - this.w.feet.y);
         if (d < 170) this.collect(p);
@@ -183,6 +194,7 @@ export class Reacts {
     for (let i = this.pickups.length - 1; i >= 0; i--) {
       const p = this.pickups[i];
       if (!p.img.active) { this.pickups.splice(i, 1); continue; }
+      if (p.bub) { p.bub.setPosition(p.img.x, p.img.y + 6); if (p.flying) p.bub.setVisible(false); }
       if (!p.flying && this.w.time.now - p.t0 > 600 && Math.abs(p.img.x - fx) < 26 && Math.abs(p.img.y - fy) < 22) this.collect(p);
     }
   }
