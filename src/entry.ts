@@ -85,7 +85,7 @@ const CSS = `
 #entry .e-title{margin:0;font-weight:900;font-size:clamp(40px,min(8.5vw,10vh),88px);line-height:1.05;color:var(--title);white-space:nowrap;text-align:center;
   -webkit-text-stroke:3px var(--titleEdge);paint-order:stroke fill;text-shadow:0 6px 0 var(--titleEdge),0 10px 24px rgba(0,0,0,.35);animation:e-swing 5s ease-in-out infinite alternate;transform-origin:50% 0}
 #entry .e-title span{display:inline-block;animation:e-bob 2.4s ease-in-out infinite;animation-delay:calc(var(--i)*-0.16s)}
-#entry .e-title .sp{width:.3em}
+#entry .e-title .sp{white-space:pre}
 @keyframes e-swing{from{transform:rotate(-1.6deg)}to{transform:rotate(1.6deg)}}
 @keyframes e-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-.09em)}}
 #entry .e-card{width:100%;background:var(--card);border:3px solid var(--cardEdge);border-radius:30px;box-shadow:0 12px 0 rgba(0,0,0,.14),0 22px 50px rgba(0,0,0,.3);
@@ -167,7 +167,8 @@ class EntryScreen {
     const title = this.el.querySelector('.e-title')!;
     [...'Willowmere Glade'].forEach((ch, i) => {
       const s = document.createElement('span'); s.setAttribute('aria-hidden', 'true');
-      if (ch === ' ') s.className = 'sp'; else s.textContent = ch;
+      s.textContent = ch === ' ' ? ' ' : ch;
+      if (ch === ' ') s.className = 'sp';
       s.style.setProperty('--i', String(i));
       title.appendChild(s);
     });

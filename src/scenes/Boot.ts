@@ -19,6 +19,8 @@ export class BootScene extends Phaser.Scene {
     this.scene.launch('vui');
     this.scene.launch('menu');
     // After the glade is up, show the living name + birthday card (skipped in automated tests).
-    this.time.delayedCall(80, () => showEntry(this.game));
+    // (setTimeout, not this.time: starting 'world' shuts this scene and its clock down.)
+    const game = this.game;
+    setTimeout(() => showEntry(game), 80);
   }
 }
