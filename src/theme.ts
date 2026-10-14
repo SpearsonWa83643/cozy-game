@@ -27,6 +27,21 @@ export type Theme = {
   glow: number;
   ui: { accent: number; accentDark: number; css: string; tab: number; tabOn: number };
   music: 'classic' | 'spooky';
+  /** Entry (name + birthday) screen look. A new theme just fills this in. */
+  entry: EntryLook;
+};
+
+/** Colours + drifting decorations for the DOM entry screen (see entry.ts). */
+export type EntryLook = {
+  sky: [string, string, string];      // backdrop gradient, top -> bottom (CSS colours, may be translucent)
+  title: string; titleEdge: string;   // big title letters + their outline/shadow
+  card: string; cardEdge: string;     // parchment card + border
+  ink: string; soft: string;          // main text + secondary text
+  accent: string; accentDark: string; // Play button / steppers
+  field: string;                      // input + stepper value background
+  drift: { shape: 'leaf' | 'bat' | 'petal' | 'snow'; colors: string[]; count: number };
+  glow: { colors: string[]; count: number }; // fireflies / embers
+  iconSvg: string;                    // little picture for the theme toggle (inline SVG)
 };
 
 const classic: Theme = {
@@ -38,6 +53,16 @@ const classic: Theme = {
   props: false, glow: 0xffd27a,
   ui: { accent: 0xf2a93b, accentDark: 0xc9802a, css: '#f2a93b', tab: 0xf3e6cc, tabOn: 0xf2a93b },
   music: 'classic',
+  entry: {
+    sky: ['rgba(126,178,196,0.78)', 'rgba(150,196,120,0.72)', 'rgba(52,86,48,0.86)'],
+    title: '#fff6dc', titleEdge: '#5b3d24',
+    card: 'rgba(251,241,220,0.96)', cardEdge: '#d9b98f',
+    ink: '#3d2c20', soft: '#8a6a50',
+    accent: '#f2a93b', accentDark: '#c9802a', field: '#fffaf0',
+    drift: { shape: 'leaf', colors: ['#8fc45a', '#c9d65a', '#6fae4f', '#f2b84b'], count: 14 },
+    glow: { colors: ['#f4ff9a', '#fff07a'], count: 16 },
+    iconSvg: '<svg viewBox="0 0 40 40"><path d="M8 32 C8 14 20 6 34 6 C34 22 26 32 8 32Z" fill="#79b84a" stroke="#4f7d2e" stroke-width="2.5"/><path d="M8 32 L26 14" stroke="#4f7d2e" stroke-width="2.5" stroke-linecap="round"/></svg>',
+  },
 };
 
 const halloween: Theme = {
@@ -52,6 +77,16 @@ const halloween: Theme = {
   props: true, glow: 0xffa040,
   ui: { accent: 0xb072e0, accentDark: 0x7f4ab0, css: '#b072e0', tab: 0xefe2f7, tabOn: 0xb072e0 },
   music: 'spooky',
+  entry: {
+    sky: ['rgba(38,24,64,0.86)', 'rgba(84,48,104,0.78)', 'rgba(28,20,36,0.92)'],
+    title: '#ffcf7a', titleEdge: '#3a1d4a',
+    card: 'rgba(246,234,250,0.96)', cardEdge: '#b98fd9',
+    ink: '#2f2140', soft: '#7a5a92',
+    accent: '#ff9a3c', accentDark: '#c8641c', field: '#fff8f0',
+    drift: { shape: 'bat', colors: ['#2a1f36', '#3d2c52', '#1e1628'], count: 9 },
+    glow: { colors: ['#ffb347', '#ffd36b', '#ff8c2e'], count: 18 },
+    iconSvg: '<svg viewBox="0 0 40 40"><path d="M20 10 C20 6 23 4 25 4" stroke="#4f7d2e" stroke-width="3" fill="none" stroke-linecap="round"/><ellipse cx="20" cy="23" rx="15" ry="12" fill="#ff8c2e" stroke="#b5521a" stroke-width="2.5"/><path d="M13 21 l3 -3 l3 3z M21 21 l3 -3 l3 3z M13 27 q7 5 14 0" fill="#3a1d1a" stroke="#3a1d1a" stroke-width="1.5"/></svg>',
+  },
 };
 
 export const THEMES: Record<ThemeId, Theme> = { classic, halloween };

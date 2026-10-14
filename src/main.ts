@@ -18,7 +18,11 @@ document.addEventListener('gesturestart', stop as EventListener, { passive: fals
 document.addEventListener('gesturechange', stop as EventListener, { passive: false } as any);
 document.addEventListener('dblclick', stop, { passive: false });
 document.addEventListener('contextmenu', stop);
-document.addEventListener('selectstart', stop);
+document.addEventListener('selectstart', (e) => {
+  const t = e.target as HTMLElement | null;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+  stop(e);
+});
 let lastTouchEnd = 0;
 document.addEventListener('touchend', (e) => {
   const now = Date.now();

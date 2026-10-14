@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { paintAll } from '../art';
+import { showEntry } from '../entry';
 
 export class BootScene extends Phaser.Scene {
   constructor() { super('boot'); }
@@ -17,5 +18,7 @@ export class BootScene extends Phaser.Scene {
     this.scene.launch('ui');
     this.scene.launch('vui');
     this.scene.launch('menu');
+    // After the glade is up, show the living name + birthday card (skipped in automated tests).
+    this.time.delayedCall(80, () => showEntry(this.game));
   }
 }
