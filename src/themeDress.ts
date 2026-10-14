@@ -91,7 +91,10 @@ export class ThemeDresser {
       let o = this.orig.get(img);
       if (!o) { o = { frame: img.frame.name, tex: img.texture.key, ox: img.originX, oy: img.originY, sx: img.scaleX, sy: img.scaleY }; this.orig.set(img, o); }
       const f = o.frame;
-      const round = f.startsWith('tree') || f.startsWith('apple');
+      // Fruit trees keep their own bare canopy (tinted below) so their live fruit read clearly
+      // and an empty tree really looks empty (the spooky canopies have berries painted in).
+      const fruity = w.reacts.fruit.has(img);
+      const round = (f.startsWith('tree') || f.startsWith('apple')) && !fruity;
       if (t.trees && round) {
         const nf = t.trees[(i * 7 + Math.floor(img.x)) % t.trees.length];
         const dw = (img.width * o.sx);
@@ -99,7 +102,7 @@ export class ThemeDresser {
         img.setScale((dw * 1.05) / img.width).clearTint();
       } else {
         if (img.frame.name !== f) img.setTexture(o.tex, f).setOrigin(o.ox, o.oy).setScale(o.sx, o.sy);
-        if (t.id === 'halloween') img.setTint(f.startsWith('pine') ? 0x9c88c0 : f.startsWith('birch') ? 0xffc27a : t.foliage ?? 0xffffff);
+        if (t.id === 'halloween') img.setTint(fruity ? 0xffcf96 : f.startsWith('pine') ? 0x9c88c0 : f.startsWith('birch') ? 0xffc27a : t.foliage ?? 0xffffff);
         else img.clearTint();
       }
     }

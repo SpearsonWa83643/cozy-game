@@ -264,7 +264,12 @@ export function buildAreas(w: WorldScene) {
       tree(x + rng() * 30, WORLD_H - 20 + rng() * 20, rng() < 0.5 ? 'tree1' : 'tree5', 0.95 + rng() * 0.3, rng, 'leaf');
     }
     // Meadow between the glade and the beach.
-    scatter(rng, 150, GLADE_H + 90, RIDGE_X, 2150, 16, 150, 50, (x, y) => { if (lakeValue(x, y) > 1.45) tree(x, y, ['tree0', 'tree3', 'tree1'][Math.floor(rng() * 3)], 0.85 + rng() * 0.3, rng, rng() < 0.5 ? 'blossom' : 'fruit'); });
+    scatter(rng, 150, GLADE_H + 90, RIDGE_X, 2150, 16, 150, 50, (x, y) => {
+      if (lakeValue(x, y) <= 1.45) return;
+      // Same rng order as before; a fruit tree never uses the (decoratively dotted) tree1 canopy.
+      const key = ['tree0', 'tree3', 'tree1'][Math.floor(rng() * 3)], sc = 0.85 + rng() * 0.3, kind = rng() < 0.5 ? 'blossom' : 'fruit';
+      tree(x, y, kind === 'fruit' && key === 'tree1' ? 'tree0' : key, sc, rng, kind);
+    });
     scatter(rng, 150, GLADE_H + 80, RIDGE_X, WORLD_H - 60, 14, 120, 30, (x, y) => { if (lakeValue(x, y) > 1.45) (rng() < 0.6 ? bush(x, y, rng) : rock(x, y, Math.floor(rng() * 3))); });
     scatter(rng, 150, GLADE_H + 60, RIDGE_X + 300, WORLD_H - 40, 200, 16, 4, (x, y) => { if (lakeValue(x, y) > 1.38) tuft(x, y, `tuft${Math.floor(rng() * 3)}`, rng); });
     for (let i = 0; i < 16; i++) { const fx = 200 + rng() * 1700, fy = 1620 + rng() * 500; if (lakeValue(fx, fy) > 1.5 && free(fx, fy, 10)) flowerClump(fx, fy, rng); }

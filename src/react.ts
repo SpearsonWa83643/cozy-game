@@ -8,6 +8,13 @@ import type { WorldScene } from './scenes/World';
 
 /** How long a stump stays before it fades back into grass (game time, ms). */
 export const STUMP_MS = 75_000;
+/** Fruit trees: how many fruit hang on a full tree, how long one takes to grow back (game time, ms),
+ *  and the shortest gap between two fruit-giving taps. */
+export const FRUIT_STOCK = 4, FRUIT_REGROW_MS = 38_000, FRUIT_TAP_MS = 650;
+/** Where the fruit hang, as fractions of the canopy: x from the trunk (+ = right), y up from the base. */
+const FRUIT_SLOTS: [number, number][] = [[-0.21, 0.6], [0.2, 0.66], [-0.04, 0.47], [0.24, 0.49], [-0.26, 0.45], [0.02, 0.71]];
+type FruitDot = { img: Phaser.GameObjects.Image; fx: number; fy: number; size: number; k: number; on: boolean };
+export type FruitTree = { t: Phaser.GameObjects.Image; stock: number; dots: FruitDot[]; nextAt: number };
 type TreeParts = { shadow?: Phaser.GameObjects.Image; solid?: Phaser.GameObjects.Zone; scale: number };
 export type Stump = {
   x: number; y: number; img: Phaser.GameObjects.Image; shadow?: Phaser.GameObjects.Image; solid?: Phaser.GameObjects.Zone;
@@ -34,6 +41,10 @@ export class Reacts {
   stumps: Stump[] = [];
   /** Stump lifetime; tests shorten it through the debug hook. */
   stumpMs = STUMP_MS;
+  /** Live fruit on each fruit tree (stock + the fruit sprites hanging in the canopy). */
+  fruit = new Map<object, FruitTree>();
+  /** Fruit regrow time; tests shorten it through the debug hook. */
+  fruitRegrowMs = FRUIT_REGROW_MS;
   constructor(private w: WorldScene) {}
 
   private ready(o: object, ms: number) {
@@ -54,7 +65,7 @@ export class Reacts {
 
   tree(t: Phaser.GameObjects.Image, kind: 'fruit' | 'blossom' | 'leaf' | 'pear' | 'apple' | 'birch', parts: TreeParts = { scale: 1 }) {
     this.w.canopies.push(t);
-    if (kind === 'apple' || kind === 'pear' || kind === 'fruit') this.fruitTrees.push(t);
+    if (kind === 'apple' || kind === 'pear' || kind === 'fruit') { this.fruitTrees.push(t); this.hangFruit(t, kind === 'pear' ? 'pear' : 'apple'); }
     if (kind === 'leaf' || kind === 'birch') this.woodTrees.push(t);
     this.treeParts.set(t, { ...parts, birch: t.frame.name.startsWith('birch') });
     this.w.tappables.push({
@@ -77,15 +88,93 @@ export class Reacts {
             else if (tipOnce('harvest')) this.w.game.events.emit('toast', 'Wood! Keep tapping to get more.');
           }
         }
+        if (kind === 'apple' || kind === 'pear' || kind === 'fruit') { this.pickFruit(t, kind === 'pear' ? 'pear' : 'apple'); return; }
         if (!this.ready(t, 6000)) return;
-        if (kind === 'apple' || kind === 'pear' || kind === 'fruit') {
-          const n = 1 + (Math.random() < 0.4 ? 1 : 0);
-          for (let i = 0; i < n; i++) this.drop(t.x + (Math.random() * 2 - 1) * t.displayWidth * 0.3, cy + 10, t.y + 8 + Math.random() * 22, kind === 'pear' ? 'pear' : 'apple', 'apple');
-        } else if (kind === 'birch' && Math.random() < 0.3) {
+        if (kind === 'birch' && Math.random() < 0.3) {
           this.drop(t.x + (Math.random() * 2 - 1) * 30, cy, t.y + 14, 'acorn', 'acorn');
         }
       },
     });
+  }
+
+  /** Hang FRUIT_STOCK fruit sprites in a fruit tree's canopy (they follow its sway, fade and theme swaps). */
+  private hangFruit(t: Phaser.GameObjects.Image, frame: 'apple' | 'pear') {
+    const w = this.w;
+    // Deterministic per tree, so the fruit sit in the same places every visit.
+    let seed = (Math.floor(t.x) * 73856093) ^ (Math.floor(t.y) * 19349663);
+    const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+    const start = Math.floor(rnd() * FRUIT_SLOTS.length);
+    const dots: FruitDot[] = [];
+    for (let i = 0; i < FRUIT_STOCK; i++) {
+      const [sx, sy] = FRUIT_SLOTS[(start + i) % FRUIT_SLOTS.length];
+      const img = w.add.image(t.x, t.y, atlasOf(frame), frame).setOrigin(0.5, 0.5).setVisible(false);
+      dots.push({ img, fx: sx + (rnd() - 0.5) * 0.06, fy: sy + (rnd() - 0.5) * 0.05, size: 0.098 + rnd() * 0.012, k: 1, on: true });
+    }
+    this.fruit.set(t, { t, stock: FRUIT_STOCK, dots, nextAt: 0 });
+  }
+
+  /** A fruit-giving tap: the newest fruit drops from the canopy as a pickup; an empty tree just rustles. */
+  private pickFruit(t: Phaser.GameObjects.Image, frame: 'apple' | 'pear') {
+    const rec = this.fruit.get(t);
+    if (!rec || !this.ready(rec, FRUIT_TAP_MS)) return;
+    if (rec.stock <= 0) {
+      if (tipOnce('fruitwait')) this.w.game.events.emit('toast', 'This tree needs time to grow more fruit.');
+      return;
+    }
+    if (rec.stock >= FRUIT_STOCK) rec.nextAt = this.w.time.now + this.fruitRegrowMs;
+    rec.stock--;
+    const d = rec.dots[rec.stock];
+    d.on = false;
+    const p = this.dotPos(t, d);
+    d.img.setVisible(false);
+    this.drop(p.x, p.y, t.y + 8 + Math.random() * 22, frame, 'apple');
+  }
+
+  /** World position of a hanging fruit, following the canopy's sway and flip. */
+  private dotPos(t: Phaser.GameObjects.Image, d: FruitDot) {
+    const dx = d.fx * t.displayWidth * (t.flipX ? -1 : 1);
+    const dy = -(d.fy * t.displayHeight - t.displayHeight * (1 - t.originY));
+    const c = Math.cos(t.rotation), s = Math.sin(t.rotation);
+    return { x: t.x + dx * c - dy * s, y: t.y + dx * s + dy * c };
+  }
+
+  /** One fruit grows back: a little pop and sparkle (and a soft blip if you are close). */
+  private regrow(rec: FruitTree) {
+    const w = this.w;
+    const d = rec.dots[rec.stock];
+    rec.stock++;
+    d.on = true;
+    d.k = 0;
+    w.tweens.add({ targets: d, k: 1, duration: 520, ease: 'Back.easeOut' });
+    rec.nextAt = rec.stock < FRUIT_STOCK ? w.time.now + this.fruitRegrowMs : 0;
+    if (!rec.t.visible) return;
+    const p = this.dotPos(rec.t, d);
+    w.burst(p.x, p.y, 0xfff2a8, 6, 'spark');
+    if (Math.hypot(p.x - w.feet.x, p.y - w.feet.y) < 420) sfx.blip();
+  }
+
+  /** Keep hanging fruit glued to their (swaying, fading, culled) trees and grow fruit back over time. */
+  private updateFruit(now: number) {
+    for (const rec of this.fruit.values()) {
+      if (rec.stock < FRUIT_STOCK && rec.nextAt && now >= rec.nextAt) this.regrow(rec);
+      const t = rec.t;
+      const show = t.visible && t.active;
+      for (const d of rec.dots) {
+        const vis = show && d.on;
+        if (d.img.visible !== vis) d.img.setVisible(vis);
+        if (!vis) continue;
+        const p = this.dotPos(t, d);
+        const px = (t.displayWidth * d.size * d.k) / Math.max(d.img.width, d.img.height);
+        d.img.setPosition(p.x, p.y).setRotation(t.rotation).setScale(px).setAlpha(t.alpha).setDepth(t.depth + 0.05);
+      }
+    }
+  }
+
+  /** Tests: shorten (or restore) fruit regrow time; fruit already growing come back no later than that. */
+  setFruitRegrowMs(ms: number) {
+    this.fruitRegrowMs = ms;
+    const now = this.w.time.now;
+    for (const rec of this.fruit.values()) if (rec.nextAt) rec.nextAt = Math.min(rec.nextAt, now + ms);
   }
 
   /** The last bit of wood is gone: the tree shrinks away in a puff of leaves and leaves a stump. */
@@ -303,6 +392,7 @@ export class Reacts {
   }
 
   update(_time: number, _dt: number) {
+    this.updateFruit(this.w.time.now);
     const fx = this.w.feet.x, fy = this.w.feet.y;
     for (let i = this.pickups.length - 1; i >= 0; i--) {
       const p = this.pickups[i];

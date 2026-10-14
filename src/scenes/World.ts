@@ -1300,11 +1300,15 @@ export class WorldScene extends Phaser.Scene {
       resetStones: () => self.resetStones,
       tiles: () => self.puzzles.tiles.map((t) => t.rot),
       chests: () => ({ pots: self.puzzles.potChest.revealed, bells: self.puzzles.bellChest.revealed, tiles: self.puzzles.tileChest.revealed, dig: self.puzzles.digChest.revealed }),
-      /** Fruit trees near a point, nearest first: [x, tapY, baseY]. */
+      /** Fruit trees near a point, nearest first: [x, tapY, baseY, stock, fruitShowing]. */
       fruitTrees(x: number, y: number) {
-        return self.reacts.fruitTrees.map((t) => [Math.round(t.x), Math.round(t.y - t.displayHeight * 0.58), Math.round(t.y)])
-          .sort((a, b) => Math.hypot(a[0] - x, a[2] - y) - Math.hypot(b[0] - x, b[2] - y)).slice(0, 5);
+        return self.reacts.fruitTrees.map((t) => {
+          const f = self.reacts.fruit.get(t);
+          return [Math.round(t.x), Math.round(t.y - t.displayHeight * 0.58), Math.round(t.y), f?.stock ?? 0, f ? f.dots.filter((d) => d.on && d.img.visible).length : 0];
+        }).sort((a, b) => Math.hypot(a[0] - x, a[2] - y) - Math.hypot(b[0] - x, b[2] - y)).slice(0, 5);
       },
+      /** Shorten (or restore) how long one fruit takes to grow back on a fruit tree. */
+      setFruitRegrowMs(ms: number) { self.reacts.setFruitRegrowMs(ms); },
       /** Leaf/birch wood trees near a point: [x, tapY, baseY, stockLeft]. */
       woodTrees(x: number, y: number) {
         return self.reacts.woodTrees.map((t) => {

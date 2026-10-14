@@ -182,7 +182,9 @@ short sentences, big icons, few numbers, no combat and no fail states.
 - **Links to exploring:** fish you catch add food; treasures unlock decorations; the first fish
   unlocks the Fishing Hut. Trees and rocks sometimes give wood and stone.
 - **Events:** a merchant (simple trades), rainy days (gardens grow faster) and festivals (everyone dances).
-- **Fruit and feeding:** tap a fruit tree and fruit drops. Pick it up and it goes in your basket
+- **Fruit and feeding:** each fruit tree holds 4 fruit you can see in its canopy; each tap drops one.
+  An empty tree just rustles until its fruit grow back (one every ~38 s, with a little sparkle;
+  constants `FRUIT_STOCK` / `FRUIT_REGROW_MS` in `src/react.ts`). Pick fruit up and it goes in your basket
   (shown next to the bar). Tap an animal while you have fruit to feed it: hearts, and it follows
   you for a bit (cat, rabbits, squirrels, hedgehogs, deer; ducks, frog, crabs and the owl say thanks).
 - **Helpers (from Gamer's RimWorld notes):** an idle friend shows a bubble with a job that suits

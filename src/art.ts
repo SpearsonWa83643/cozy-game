@@ -257,7 +257,8 @@ const TREE_PALETTES: Record<TreeKind, { h: number; s: number; dark: number; mid:
   pear: { h: 78, s: 50, dark: 30, mid: 44, light: 58, hi: [58, 80, 74] },
 };
 
-export function paintTree(ctx: Ctx, w: number, h: number, kind: TreeKind, seed: number) {
+/** `fruit: false` leaves the canopy bare: fruit trees get live fruit sprites on top (they deplete and regrow). */
+export function paintTree(ctx: Ctx, w: number, h: number, kind: TreeKind, seed: number, fruit = true) {
   const rng = mulberry32(seed);
   const pal = TREE_PALETTES[kind];
   const cx = w / 2;
@@ -321,7 +322,7 @@ export function paintTree(ctx: Ctx, w: number, h: number, kind: TreeKind, seed: 
     const y = canopyY + Math.sin(a) * R * rr(rng, 0.6, 0.8);
     dab(ctx, x, y, rr(rng, 1.5, 3.5), rr(rng, 1, 2), rng() * 3, hsl(pal.hi[0], pal.hi[1], pal.hi[2], 0.8));
   }
-  if (kind === 'apple' || kind === 'pear') {
+  if (fruit && (kind === 'apple' || kind === 'pear')) {
     for (let i = 0; i < 14; i++) {
       const a = rng() * Math.PI * 2;
       const d = Math.sqrt(rng()) * R * 0.85;
@@ -333,7 +334,7 @@ export function paintTree(ctx: Ctx, w: number, h: number, kind: TreeKind, seed: 
       dab(ctx, x - 1, y - 1, 1.1, 1.1, 0, hsl(fh, 80, 86));
     }
   }
-  if (kind === 'oak' || kind === 'teal') {
+  if (fruit && (kind === 'oak' || kind === 'teal')) {
     // A few fruits / blossoms for colour.
     const fruitH = kind === 'oak' ? 5 : 330;
     for (let i = 0; i < (kind === 'oak' ? 7 : 4); i++) {
@@ -1134,7 +1135,8 @@ import { paintVillageArt } from './village/vart';
 export function paintAll(scene: Phaser.Scene) {
 
   const trees: [TreeKind, number][] = [['oak', 1], ['oak', 2], ['teal', 3], ['blossom', 4], ['amber', 5], ['teal', 6]];
-  trees.forEach(([k, seed], i) => canvasTex(scene, `tree${i}`, 170, 210, (c) => paintTree(c, 170, 210, k, seed)));
+  // tree0 is the round fruit tree: painted bare, its fruit are live sprites (see Reacts.fruit).
+  trees.forEach(([k, seed], i) => canvasTex(scene, `tree${i}`, 170, 210, (c) => paintTree(c, 170, 210, k, seed, i !== 0)));
   for (let i = 0; i < 2; i++) canvasTex(scene, `pine${i}`, 110, 190, (c) => paintPine(c, 110, 190, 20 + i));
   canvasTex(scene, 'bush0', 70, 56, (c) => paintBush(c, 70, 56, 31, null));
   canvasTex(scene, 'bush1', 70, 56, (c) => paintBush(c, 70, 56, 32, 350));

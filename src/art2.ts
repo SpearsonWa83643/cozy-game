@@ -532,8 +532,8 @@ function paintStump(ctx: Ctx, w: number, h: number, birch: boolean, seed: number
 
 export function paintAll2(scene: Phaser.Scene) {
   for (let i = 0; i < 2; i++) canvasTex(scene, `birch${i}`, 110, 230, (c) => paintBirch(c, 110, 230, 200 + i), 2.5);
-  canvasTex(scene, 'apple0', 150, 180, (c) => paintTree(c, 150, 180, 'apple', 301), 2.5);
-  canvasTex(scene, 'apple1', 150, 180, (c) => paintTree(c, 150, 180, 'pear', 302), 2.5);
+  canvasTex(scene, 'apple0', 150, 180, (c) => paintTree(c, 150, 180, 'apple', 301, false), 2.5);
+  canvasTex(scene, 'apple1', 150, 180, (c) => paintTree(c, 150, 180, 'pear', 302, false), 2.5);
   canvasTex(scene, 'fishicon', 120, 56, (c) => paintFishIcon(c, 120, 56), 2);
   canvasTex(scene, 'windmill', 120, 190, (c) => paintWindmill(c, 120, 190), 2);
   canvasTex(scene, 'blades', 190, 190, (c) => paintBlades(c, 190), 2);
