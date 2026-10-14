@@ -4,8 +4,6 @@ import { resolve } from 'node:path';
 
 // Living themed entry screen (name + birthday). Forced on with ?entry=1 so webdriver still sees it.
 const FILE = pathToFileURL(resolve('dist-single/index.html')).href + '?entry=1';
-const SHOTS = 'screenshots';
-const SHARE = 'screenshots/share';
 
 const ready = (page: Page) => page.waitForFunction(() => (window as any).__cozy?.ready, null, { timeout: 180_000 });
 const entry = (page: Page) => page.evaluate(() => (window as any).__entry as { open: boolean; view: string; player: { name: string; dob: string | null; seen: boolean } } | null);
@@ -36,7 +34,7 @@ test('entry screen: empty, filled, welcome-back, theme, skip', async ({ page }) 
   const nameBox = await page.locator('#entry input.e-name').boundingBox();
   expect(nameBox!.height).toBeGreaterThanOrEqual(60);
   await page.waitForTimeout(800);
-  await page.screenshot({ path: `${SHOTS}/hd-ipad-entry-01-empty.png` });
+  await page.screenshot({ path: `test-results/entry-1-empty.png` });
 
   // Type a name (real HTML input so the iPad keyboard would open).
   await page.locator('#entry input.e-name').tap();
@@ -51,7 +49,7 @@ test('entry screen: empty, filled, welcome-back, theme, skip', async ({ page }) 
   for (let i = 0; i < 2; i++) await page.locator('#entry .e-pm[data-k="y"][data-s="-1"]').tap();
   await expect(page.locator('#entry .e-age')).toContainText(/You are|brand-new/);
   await page.waitForTimeout(400);
-  await page.screenshot({ path: `${SHOTS}/hd-ipad-entry-02-filled.png` });
+  await page.screenshot({ path: `test-results/entry-2-filled.png` });
 
   // Theme toggle still works on the entry screen.
   const halloween = page.locator('#entry .e-th[data-theme="halloween"]');
@@ -59,9 +57,12 @@ test('entry screen: empty, filled, welcome-back, theme, skip', async ({ page }) 
     await halloween.tap();
     await expect.poll(() => page.evaluate(() => (window as any).__entry && document.documentElement.querySelector('#entry')?.getAttribute('data-theme')), { timeout: 5_000 }).toBe('halloween');
     await page.waitForTimeout(500);
-    await page.screenshot({ path: `${SHOTS}/hd-ipad-entry-03-halloween.png` });
+    await page.screenshot({ path: `test-results/entry-3-halloween.png` });
     await page.locator('#entry .e-th[data-theme="classic"]').tap();
     await expect.poll(() => page.locator('#entry').getAttribute('data-theme'), { timeout: 5_000 }).toBe('classic');
+    // Taps on the entry screen must not reach the game's buttons underneath (volume, map...).
+    await page.waitForTimeout(400);
+    expect(await page.evaluate(() => ({ vol: localStorage.getItem('cozy.vol'), menu: !!(window as any).__menu?.open }))).toEqual({ vol: null, menu: false });
   }
 
   await page.locator('#entry .e-play').tap();
@@ -78,7 +79,7 @@ test('entry screen: empty, filled, welcome-back, theme, skip', async ({ page }) 
   await expect(page.locator('#entry .e-hello')).toContainText('Mia');
   await expect(page.locator('#entry .e-card')).toHaveAttribute('data-view', 'welcome');
   await page.waitForTimeout(600);
-  await page.screenshot({ path: `${SHOTS}/hd-ipad-entry-04-welcome.png` });
+  await page.screenshot({ path: `test-results/entry-4-welcome.png` });
 
   // Edit keeps the name editable, then Play again.
   await page.locator('#entry .e-edit').tap();
@@ -109,6 +110,5 @@ test('entry screen: empty, filled, welcome-back, theme, skip', async ({ page }) 
   await page.locator('#entry .e-play').tap();
   expect((await save(page))?.name).toBe('Supercalifragili');
 
-  // Touch config files land in screenshots/; make share JPEGs later in the shell.
   expect(errors.filter((e) => !/favicon|Failed to load resource/.test(e))).toEqual([]);
 });

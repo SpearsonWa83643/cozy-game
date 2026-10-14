@@ -162,6 +162,9 @@ class EntryScreen {
       e.stopPropagation();
       if (ev === 'keydown' && (e as KeyboardEvent).key === 'Enter' && document.activeElement instanceof HTMLInputElement) document.activeElement.blur();
     });
+    // Phaser also listens for touches/mouse on window (taps outside its canvas), so keep the
+    // entry screen's taps from leaking through to buttons underneath it.
+    for (const ev of ['touchstart', 'touchend', 'touchcancel', 'mousedown', 'mouseup']) this.el.addEventListener(ev, (e) => e.stopPropagation());
     this.el.innerHTML = `<div class="e-sky"></div><div class="e-fx"></div><div class="e-themes"></div>
       <div class="e-wrap"><h1 class="e-title" aria-label="Willowmere Glade"></h1><div class="e-card"></div></div>`;
     const title = this.el.querySelector('.e-title')!;
