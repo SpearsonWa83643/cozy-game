@@ -50,6 +50,10 @@ class CullGrid {
     if (!a) this.cells.set(k, (a = []));
     a.push(o);
   }
+  /** Stop culling an object (it is being hidden or destroyed for good). */
+  remove(o: any) {
+    for (const a of this.cells.values()) { const i = a.indexOf(o); if (i >= 0) { a.splice(i, 1); return; } }
+  }
   update(v: Phaser.Geom.Rectangle) {
     const x0 = Math.floor((v.x - 260) / 400), x1 = Math.floor((v.right + 260) / 400);
     const y0 = Math.floor((v.y - 200) / 400), y1 = Math.floor((v.bottom + 420) / 400);
@@ -175,6 +179,15 @@ export class WorldScene extends Phaser.Scene {
     this.swayers.push(sw);
     this.swayerOf.set(obj, sw);
     return sw;
+  }
+
+  /** Take a scenery image out of swaying, culling and canopy fading (before hiding/removing it). */
+  retire(obj: Phaser.GameObjects.Image) {
+    const sw = this.swayerOf.get(obj);
+    if (sw) { this.swayers.splice(this.swayers.indexOf(sw), 1); this.swayerOf.delete(obj); }
+    const ci = this.canopies.indexOf(obj);
+    if (ci >= 0) this.canopies.splice(ci, 1);
+    this.cull.remove(obj);
   }
 
   shadow(x: number, y: number, w: number, alpha = 1) {
@@ -505,10 +518,10 @@ export class WorldScene extends Phaser.Scene {
       const isPine = key.startsWith('pine');
       const oy = isPine ? (190 - 8) / 190 : (210 - 8) / 210;
       const t = this.img(s.x, s.y, key, 0.5, oy, scale).setDepth(s.y).setFlipX(rng() < 0.5);
-      this.shadow(s.x + 14, s.y - 4, (isPine ? 90 : 150) * scale, 0.75);
+      const shadow = this.shadow(s.x + 14, s.y - 4, (isPine ? 90 : 150) * scale, 0.75);
       this.sway(t, isPine ? 0.008 : 0.014, 0.6 + rng() * 0.4);
-      this.reacts.tree(t, key === 'tree3' || key === 'tree4' ? 'blossom' : key === 'tree0' ? 'fruit' : 'leaf');
-      if (s.y > WALL_Y - 10) this.solidCircle(s.x, s.y - 6, 15 * scale);
+      const solid = s.y > WALL_Y - 10 ? this.solidCircle(s.x, s.y - 6, 15 * scale) : undefined;
+      this.reacts.tree(t, key === 'tree3' || key === 'tree4' ? 'blossom' : key === 'tree0' ? 'fruit' : 'leaf', { shadow, solid, scale });
     }
   }
 
@@ -1299,6 +1312,10 @@ export class WorldScene extends Phaser.Scene {
           return [Math.round(t.x), Math.round(t.y - t.displayHeight * 0.58), Math.round(t.y), left];
         }).sort((a, b) => Math.hypot(a[0] - x, a[2] - y) - Math.hypot(b[0] - x, b[2] - y)).slice(0, 5);
       },
+      /** Stumps left by chopped trees: [x, y, state, stumpAlpha]. */
+      stumps: () => self.reacts.stumps.map((s) => [Math.round(s.x), Math.round(s.y), s.state, s.img.active ? +s.img.alpha.toFixed(2) : 0]),
+      /** Shorten (or restore) how long new stumps stay before turning to grass. */
+      setStumpMs(ms: number) { self.reacts.stumpMs = ms; },
       pickups: () => self.reacts.pickups.filter((p) => p.img.active && !p.flying).map((p) => [Math.round(p.img.x), Math.round(p.img.y), p.minor]),
       fish() {
         const f = self.fishing;

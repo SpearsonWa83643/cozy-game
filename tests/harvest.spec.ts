@@ -2,7 +2,8 @@ import { test, expect, type Page } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 
-// Tap leaf/birch trees for wood: stock depletes after ~5 hits, then no more wood.
+// Tap leaf/birch trees for wood: stock depletes after ~5 hits, the tree turns into a stump,
+// and the stump later fades back into grass (timer shortened through the debug hook).
 const FILE = pathToFileURL(resolve('dist-single/index.html')).href;
 const SHOTS = 'screenshots';
 const cozy = (page: Page, expr: string) => page.evaluate(`(window.__cozy.${expr})`) as Promise<any>;
@@ -51,13 +52,15 @@ test('harvest: tap leaf/birch tree for wood until stock empty', async ({ page })
   await page.waitForTimeout(400);
   await page.screenshot({ path: `${SHOTS}/harvest-wood-slice1.png` });
 
-  // Drain remaining stock on this tree.
-  const stockLeft = await page.evaluate(([x, y]) => {
+  // Drain remaining stock on this tree (short stump timer so the test can see it turn to grass).
+  await cozy(page, 'setStumpMs(8000)');
+  const stockOf = () => page.evaluate(([x, y]) => {
     const list = (window as any).__cozy.woodTrees(x, y) as [number, number, number, number][];
     const hit = list.find((r) => r[0] === x);
     return hit ? hit[3] : 0;
   }, [t[0], t[2]]);
-  for (let i = 0; i < stockLeft + 2; i++) {
+  // Stop as soon as it is empty: a chopped tree no longer takes taps, so extra taps could land on a neighbour.
+  for (let i = 0; i < 8 && (await stockOf()) > 0; i++) {
     await page.evaluate(([x, y]) => (window as any).__cozy.tapWorld(x, y), [t[0], t[1]]);
     await page.waitForTimeout(350);
   }
@@ -69,13 +72,39 @@ test('harvest: tap leaf/birch tree for wood until stock empty', async ({ page })
   }, [t[0], t[2]]);
   expect(afterDrain).toBe(0);
 
+  // Slice 2: the empty tree is now a stump at the same spot.
+  const stumpAt = (x: number, y: number) => page.evaluate(([x, y]) =>
+    ((window as any).__cozy.stumps() as [number, number, string, number][]).find((s) => s[0] === x && s[1] === y)?.[2] ?? null, [x, y]);
+  expect(await stumpAt(t[0], t[2])).toBe('stump');
+  await page.evaluate(([x, y]) => (window as any).__cozy.teleport(x + 110, y + 70), [t[0], t[2]]);
+  // The box renders slowly (few fps), so wait on game state rather than wall time.
+  await page.waitForFunction(([x, y]) => ((window as any).__cozy.stumps() as any[])
+    .some((s) => s[0] === x && s[1] === y && s[3] >= 0.99), [t[0], t[2]], { timeout: 60_000 });
+  await page.waitForTimeout(1200);
+  await page.screenshot({ path: `${SHOTS}/harvest-stump-slice2.png` });
+
   const woodFull = (await village(page)).res.wood as number;
-  // Extra taps on an empty tree must not grant more wood.
+  // Extra taps on the stump must not grant more wood.
   for (let i = 0; i < 4; i++) {
-    await page.evaluate(([x, y]) => (window as any).__cozy.tapWorld(x, y), [t[0], t[1]]);
-    await page.waitForTimeout(350);
+    await page.evaluate(([x, y]) => (window as any).__cozy.tapWorld(x, y - 12), [t[0], t[2]]);
+    await page.waitForTimeout(300);
   }
   expect((await village(page)).res.wood).toBe(woodFull);
+
+  // Stumps follow the theme too.
+  await cozy(page, "setTheme('halloween')");
+  await page.waitForTimeout(2000);
+  expect(await stumpAt(t[0], t[2])).toBe('stump');
+  await page.screenshot({ path: `${SHOTS}/harvest-stump-halloween.png` });
+  await cozy(page, "setTheme('classic')");
+
+  // Slice 3: after the (shortened) timer the stump fades away into grass.
+  await page.waitForFunction(([x, y]) => ((window as any).__cozy.stumps() as [number, number, string][])
+    .some((s) => s[0] === x && s[1] === y && s[2] === 'grass'), [t[0], t[2]], { timeout: 180_000 });
+  await page.waitForFunction(([x, y]) => ((window as any).__cozy.stumps() as any[])
+    .some((s) => s[0] === x && s[1] === y && s[3] === 0), [t[0], t[2]], { timeout: 60_000 });
+  await page.waitForTimeout(2500);
+  await page.screenshot({ path: `${SHOTS}/harvest-grass-slice3.png` });
   // At most 5 wood from this one tree (start stock).
   expect(woodFull - wood0).toBeLessThanOrEqual(5);
   expect(woodFull - wood0).toBeGreaterThanOrEqual(1);

@@ -468,6 +468,68 @@ function paintDigSpot(ctx: Ctx, w: number, h: number, hole: boolean) {
   for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.ellipse(w / 2, h / 2, w * (0.18 + i * 0.12), h * (0.16 + i * 0.1), 0, Math.PI * 1.1, Math.PI * 1.9); ctx.stroke(); }
 }
 
+/** A cut tree stump: bark sides, a pale ringed top, little roots and a moss tuft. */
+function paintStump(ctx: Ctx, w: number, h: number, birch: boolean, seed: number) {
+  const rng = mulberry32(seed);
+  const cx = w / 2, base = h - 5, top = h * 0.42;
+  const rt = w * 0.27, rb = w * 0.36, ry = h * 0.13;
+  // Soft contact shadow.
+  dab(ctx, cx + 2, base + 1, rb * 1.15, 4.5, 0, 'rgba(30,40,30,0.28)');
+  // Roots.
+  const bark0 = birch ? hsl(40, 25, 93) : hsl(28, 35, 44);
+  const bark1 = birch ? hsl(210, 10, 64) : hsl(22, 38, 25);
+  for (const [dx, len] of [[-1, 1], [1, 0.9], [-0.25, 0.6]] as [number, number][]) {
+    ctx.fillStyle = dx < 0 ? bark0 : bark1;
+    ctx.beginPath();
+    const x0 = cx + dx * rb * 0.6;
+    ctx.moveTo(x0 - 5, base - 7);
+    ctx.quadraticCurveTo(x0 + dx * 10 * len, base - 4, x0 + dx * 15 * len, base + 1);
+    ctx.quadraticCurveTo(x0 + dx * 6, base + 2, x0 + 5, base - 5);
+    ctx.closePath(); ctx.fill();
+  }
+  // Bark body, lit from the top-left like the standing trees.
+  const g = ctx.createLinearGradient(cx - rb, 0, cx + rb, 0);
+  g.addColorStop(0, bark0); g.addColorStop(0.55, birch ? hsl(40, 15, 82) : hsl(25, 36, 34)); g.addColorStop(1, bark1);
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.moveTo(cx - rt, top);
+  ctx.quadraticCurveTo(cx - rt * 1.02, base - 8, cx - rb, base);
+  ctx.quadraticCurveTo(cx, base + 5, cx + rb, base);
+  ctx.quadraticCurveTo(cx + rt * 1.02, base - 8, cx + rt, top);
+  ctx.closePath(); ctx.fill();
+  if (birch) {
+    for (let i = 0; i < 9; i++) {
+      ctx.fillStyle = hsl(220, 15, 18, 0.75);
+      ctx.fillRect(cx + rr(rng, -rt, rt - 6), rr(rng, top + 3, base - 4), rr(rng, 3, 7), rr(rng, 1, 1.8));
+    }
+  } else {
+    ctx.strokeStyle = hsl(22, 30, 18, 0.45); ctx.lineWidth = 1;
+    for (let i = 0; i < 8; i++) {
+      const x = cx + rr(rng, -rt * 0.9, rt * 0.9);
+      ctx.beginPath(); ctx.moveTo(x, top + rr(rng, 3, 6)); ctx.lineTo(x + rr(rng, -2, 2), base - rr(rng, 1, 5)); ctx.stroke();
+    }
+  }
+  // Cut top: bark rim, pale wood, growth rings, a little crack.
+  dab(ctx, cx, top, rt + 1.5, ry + 1.5, 0, birch ? hsl(35, 18, 72) : hsl(24, 34, 30));
+  const tg = ctx.createRadialGradient(cx - rt * 0.3, top - ry * 0.3, 1, cx, top, rt);
+  tg.addColorStop(0, hsl(42, 70, 86)); tg.addColorStop(1, hsl(34, 55, 66));
+  ctx.fillStyle = tg;
+  ctx.beginPath(); ctx.ellipse(cx, top, rt - 1, ry - 0.6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = hsl(30, 45, 48, 0.55); ctx.lineWidth = 0.9;
+  for (let i = 1; i <= 3; i++) { ctx.beginPath(); ctx.ellipse(cx + 0.6, top + 0.3, (rt - 1) * i / 4, (ry - 0.6) * i / 4, 0, 0, Math.PI * 2); ctx.stroke(); }
+  ctx.strokeStyle = hsl(28, 40, 40, 0.7); ctx.lineWidth = 1.1;
+  ctx.beginPath(); ctx.moveTo(cx + 2, top); ctx.lineTo(cx + rt * 0.55, top + ry * 0.35); ctx.stroke();
+  dab(ctx, cx - rt * 0.4, top - ry * 0.35, rt * 0.3, ry * 0.25, 0, 'rgba(255,250,230,0.5)');
+  // Moss and a brave little sprout.
+  for (let i = 0; i < 22; i++) {
+    dab(ctx, cx - rb * 0.55 + rr(rng, -6, 8), base - rr(rng, 1, 7), rr(rng, 1.4, 3), rr(rng, 1, 2), rng() * 3, hsl(rr(rng, 85, 110), 50, rr(rng, 36, 54), 0.9));
+  }
+  ctx.strokeStyle = hsl(95, 45, 38); ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(cx + rt * 0.75, top + 2); ctx.quadraticCurveTo(cx + rt * 0.8, top - 5, cx + rt * 0.95, top - 8); ctx.stroke();
+  dab(ctx, cx + rt * 0.95 + 2.6, top - 8.5, 3, 1.6, -0.4, hsl(95, 55, 52));
+  dab(ctx, cx + rt * 0.95 - 2, top - 7, 2.4, 1.3, 0.5, hsl(85, 60, 60));
+}
+
 export function paintAll2(scene: Phaser.Scene) {
   for (let i = 0; i < 2; i++) canvasTex(scene, `birch${i}`, 110, 230, (c) => paintBirch(c, 110, 230, 200 + i), 2.5);
   canvasTex(scene, 'apple0', 150, 180, (c) => paintTree(c, 150, 180, 'apple', 301), 2.5);
@@ -494,6 +556,8 @@ export function paintAll2(scene: Phaser.Scene) {
   canvasTex(scene, 'wstone', 20, 14, (c) => { dab(c, 10, 9, 9, 4.5, 0, 'rgba(40,30,20,0.3)'); dab(c, 10, 7, 8.5, 5, 0, hsl(40, 15, 94)); dab(c, 8, 5.5, 4, 1.8, 0, '#fff'); });
   canvasTex(scene, 'digspot', 40, 22, (c) => paintDigSpot(c, 40, 22, false), 2);
   canvasTex(scene, 'hole', 40, 22, (c) => paintDigSpot(c, 40, 22, true), 2);
+  canvasTex(scene, 'stump', 56, 40, (c) => paintStump(c, 56, 40, false, 401));
+  canvasTex(scene, 'stump_birch', 56, 40, (c) => paintStump(c, 56, 40, true, 402));
   canvasTex(scene, 'driftwood', 70, 24, (c) => paintDriftwood(c, 70, 24), 2);
   for (let i = 0; i < 2; i++) canvasTex(scene, `dune${i}`, 30, 30, (c) => paintDuneGrass(c, 30, 30, 70 + i), 2.5);
   for (let i = 0; i < 2; i++) canvasTex(scene, `fern${i}`, 44, 32, (c) => paintFern(c, 44, 32, 80 + i), 2.5);

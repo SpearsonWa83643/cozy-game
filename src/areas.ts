@@ -42,10 +42,10 @@ export function buildAreas(w: WorldScene) {
     const isBirch = key.startsWith('birch');
     const h = isPine ? 190 : isBirch ? 230 : key.startsWith('apple') ? 180 : 210;
     const t = w.img(x, y, key, 0.5, (h - 8) / h, scale).setDepth(y).setFlipX(rng() < 0.5);
-    w.shadow(x + 12, y - 4, (isPine ? 90 : isBirch ? 80 : 140) * scale, 0.7);
+    const shadow = w.shadow(x + 12, y - 4, (isPine ? 90 : isBirch ? 80 : 140) * scale, 0.7);
     w.sway(t, isPine ? 0.008 : isBirch ? 0.02 : 0.014, 0.6 + rng() * 0.4);
-    w.reacts.tree(t, kind);
-    if (solid) w.solidCircle(x, y - 6, (isBirch ? 10 : 15) * scale);
+    const zone = solid ? w.solidCircle(x, y - 6, (isBirch ? 10 : 15) * scale) : undefined;
+    w.reacts.tree(t, kind, { shadow, solid: zone, scale });
     return t;
   };
   const bush = (x: number, y: number, rng: Rng) => {

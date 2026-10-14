@@ -1,9 +1,20 @@
 // Tap reactions for scenery (trees, flowers, bushes, rocks, chimes) and small pickups.
 import Phaser from 'phaser';
 import { ATLAS, atlasOf, PICKUP_BUBBLE, PICKUP_ICON } from './art';
+import { theme } from './theme';
 import { sfx } from './audio';
 import { addMinor, save, persist, tipOnce } from './save';
 import type { WorldScene } from './scenes/World';
+
+/** How long a stump stays before it fades back into grass (game time, ms). */
+export const STUMP_MS = 75_000;
+type TreeParts = { shadow?: Phaser.GameObjects.Image; solid?: Phaser.GameObjects.Zone; scale: number };
+export type Stump = {
+  x: number; y: number; img: Phaser.GameObjects.Image; shadow?: Phaser.GameObjects.Image; solid?: Phaser.GameObjects.Zone;
+  state: 'stump' | 'grass'; timer?: Phaser.Time.TimerEvent;
+};
+/** Tint for stumps in the Halloween theme (matches the dusky foliage). */
+const stumpTint = () => (theme.id === 'halloween' ? 0xc8b0d8 : null);
 
 type Pickup = { img: Phaser.GameObjects.Image; kind: string; minor: string; t0: number; flying: boolean; bub?: Phaser.GameObjects.Image };
 const MINOR_LABEL: Record<string, string> = { petal: 'petal', shell: 'shell', apple: 'fruit', acorn: 'acorn', beetle: 'beetle spotted' };
@@ -17,6 +28,12 @@ export class Reacts {
   woodTrees: Phaser.GameObjects.Image[] = [];
   /** Remaining wood hits per tree (default 5). */
   woodStock = new WeakMap<object, number>();
+  /** Trees that have been chopped down (no longer tappable). */
+  felled = new WeakSet<object>();
+  treeParts = new WeakMap<object, TreeParts & { birch: boolean }>();
+  stumps: Stump[] = [];
+  /** Stump lifetime; tests shorten it through the debug hook. */
+  stumpMs = STUMP_MS;
   constructor(private w: WorldScene) {}
 
   private ready(o: object, ms: number) {
@@ -35,12 +52,14 @@ export class Reacts {
   }
   private count() { if (this.w.life) this.w.life.reactions++; }
 
-  tree(t: Phaser.GameObjects.Image, kind: 'fruit' | 'blossom' | 'leaf' | 'pear' | 'apple' | 'birch') {
+  tree(t: Phaser.GameObjects.Image, kind: 'fruit' | 'blossom' | 'leaf' | 'pear' | 'apple' | 'birch', parts: TreeParts = { scale: 1 }) {
     this.w.canopies.push(t);
     if (kind === 'apple' || kind === 'pear' || kind === 'fruit') this.fruitTrees.push(t);
     if (kind === 'leaf' || kind === 'birch') this.woodTrees.push(t);
+    this.treeParts.set(t, { ...parts, birch: t.frame.name.startsWith('birch') });
     this.w.tappables.push({
       x: () => t.x, y: () => t.y - t.displayHeight * 0.58, r: Math.max(34, t.displayWidth * 0.32), soft: true,
+      enabled: () => !this.felled.has(t),
       tap: () => {
         const sw = this.w.swayerOf.get(t);
         if (sw) sw.shake = 1;
@@ -54,7 +73,8 @@ export class Reacts {
           if (left > 0) {
             this.woodStock.set(t, left - 1);
             this.w.village.add('wood', 1, t.x, cy);
-            if (tipOnce('harvest')) this.w.game.events.emit('toast', 'Wood! Keep tapping to get more.');
+            if (left - 1 <= 0) this.fell(t, kind);
+            else if (tipOnce('harvest')) this.w.game.events.emit('toast', 'Wood! Keep tapping to get more.');
           }
         }
         if (!this.ready(t, 6000)) return;
@@ -66,6 +86,87 @@ export class Reacts {
         }
       },
     });
+  }
+
+  /** The last bit of wood is gone: the tree shrinks away in a puff of leaves and leaves a stump. */
+  fell(t: Phaser.GameObjects.Image, kind: string) {
+    const w = this.w;
+    if (this.felled.has(t)) return;
+    this.felled.add(t);
+    const p = this.treeParts.get(t) ?? { scale: 1, birch: false };
+    const x = t.x, y = t.y;
+    const st = w.img(x, y, p.birch ? 'stump_birch' : 'stump', 0.5, 35 / 40, p.scale * 1.15).setDepth(y - 1).setFlipX(t.flipX);
+    const tint = stumpTint();
+    if (tint) st.setTint(tint);
+    const sx = st.scaleX, sy = st.scaleY;
+    st.setScale(sx * 0.6, sy * 0.3).setAlpha(0);
+    const rec: Stump = { x, y, img: st, shadow: p.shadow, solid: p.solid, state: 'stump' };
+    this.stumps.push(rec);
+    // Tree: a short wobble, then it shrinks down into the stump while fading out.
+    w.retire(t);
+    const cy = y - t.displayHeight * 0.55;
+    const leafTint = theme.id === 'halloween' ? 0xffa64d : kind === 'birch' ? 0xf0d36a : 0x8fcf6a;
+    w.time.delayedCall(260, () => {
+      sfx.rustle(); sfx.tock();
+      w.burst(x, cy, leafTint, 24, 'leaf');
+      w.burst(x, cy - 20, 0xffffff, 6, 'spark');
+      const puff = w.fx(x, y - 10, 'smoke', 0.5).setDepth(y + 2).setAlpha(0.55).setTint(0xf4ecd8);
+      w.tweens.add({ targets: puff, scale: 1.4, alpha: 0, duration: 900, ease: 'Cubic.easeOut', onComplete: () => puff.destroy() });
+      w.tweens.add({
+        targets: t, scaleY: t.scaleY * 0.12, scaleX: t.scaleX * 0.75, alpha: 0, angle: (Math.random() < 0.5 ? -1 : 1) * 6,
+        duration: 620, ease: 'Cubic.easeIn', onComplete: () => t.setVisible(false).setActive(false),
+      });
+      w.tweens.add({ targets: st, scaleX: sx, scaleY: sy, alpha: 1, delay: 260, duration: 520, ease: 'Back.easeOut' });
+      if (p.shadow) w.tweens.add({ targets: p.shadow, scaleX: p.shadow.scaleX * 0.38, scaleY: p.shadow.scaleY * 0.5, duration: 700, ease: 'Sine.easeInOut' });
+      // A stump is small: swap the trunk's collider for a little one.
+      if (p.solid) {
+        (p.solid.body as Phaser.Physics.Arcade.StaticBody).enable = false;
+        rec.solid = w.solidCircle(x, y - 5, Math.max(6, 11 * p.scale));
+      }
+      w.buildNav();
+      if (tipOnce('stump')) w.game.events.emit('toast', 'Timber! The tree is all used up.');
+    });
+    w.tappables.push({
+      x: () => st.x, y: () => st.y - 12, r: 26, soft: true, enabled: () => rec.state === 'stump',
+      tap: () => {
+        sfx.tock();
+        this.count();
+        w.tweens.add({ targets: st, scaleY: sy * 0.88, scaleX: sx * 1.08, duration: 90, yoyo: true, ease: 'Sine.easeOut', onComplete: () => st.setScale(sx, sy) });
+        w.burst(x, y - 16, 0x9be07a, 5, 'leaf');
+      },
+    });
+    rec.timer = w.time.delayedCall(this.stumpMs + 900, () => this.toGrass(rec));
+  }
+
+  /** After a while the stump softens away and the spot is just grass again. */
+  toGrass(rec: Stump) {
+    const w = this.w;
+    if (rec.state !== 'stump') return;
+    rec.state = 'grass';
+    rec.timer?.remove(false);
+    const st = rec.img;
+    w.tweens.add({ targets: st, alpha: 0, scaleY: st.scaleY * 0.5, duration: 1600, ease: 'Sine.easeIn', onComplete: () => { w.cull.remove(st); st.destroy(); } });
+    if (rec.shadow) w.tweens.add({ targets: rec.shadow, alpha: 0, duration: 1600, onComplete: () => rec.shadow?.setVisible(false) });
+    // Fresh grass springs up where the stump was.
+    for (let i = 0; i < 3; i++) {
+      const g = w.img(rec.x + (i - 1) * 11 + (Math.random() * 4 - 2), rec.y + (i % 2) * 4 - 2, `tuft${i}`, 0.5, 1, 0.9 + Math.random() * 0.3).setDepth(rec.y);
+      const gs = g.scaleX;
+      g.setScale(gs, 0.01).setAlpha(0);
+      w.tweens.add({ targets: g, scaleY: gs, alpha: 1, delay: 700 + i * 160, duration: 700, ease: 'Back.easeOut' });
+      w.sway(g, 0.09, 1.2 + Math.random() * 0.8);
+    }
+    w.time.delayedCall(800, () => w.burst(rec.x, rec.y - 6, 0x9be07a, 8, 'leaf'));
+    if (rec.solid) { (rec.solid.body as Phaser.Physics.Arcade.StaticBody).enable = false; rec.solid = undefined; }
+    w.buildNav();
+  }
+
+  /** Re-tint stumps when the theme changes. */
+  restyleStumps() {
+    const tint = stumpTint();
+    for (const s of this.stumps) {
+      if (s.state !== 'stump') continue;
+      if (tint) s.img.setTint(tint); else s.img.clearTint();
+    }
   }
 
   flower(f: Phaser.GameObjects.Image) {

@@ -103,6 +103,7 @@ export class ThemeDresser {
         else img.clearTint();
       }
     }
+    w.reacts.restyleStumps();
     for (const b of w.reacts.foliage) { if (t.foliage) b.setTint(t.foliage); else b.clearTint(); }
     // Sky wash + fog.
     this.sky.setVisible(!!t.sky);
