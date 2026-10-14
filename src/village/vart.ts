@@ -297,6 +297,25 @@ function paintBat(frame: number) {
     circ(c, cx - 2.6, cy, 1.4, '#ffe36b', 0.01); circ(c, cx + 2.6, cy, 1.4, '#ffe36b', 0.01);
   };
 }
+/** A wrapped sweet (white body so it can be tinted any candy colour). */
+function paintCandy(c: Ctx, w: number, h: number) {
+  const cx = w / 2, cy = h / 2;
+  poly(c, [[cx - 6, cy], [cx - 13, cy - 6], [cx - 13, cy + 6]], '#ffffff', 1.8);
+  poly(c, [[cx + 6, cy], [cx + 13, cy - 6], [cx + 13, cy + 6]], '#ffffff', 1.8);
+  ell(c, cx, cy, 7.5, 5.5, '#ffffff', 2);
+  c.strokeStyle = 'rgba(59,42,53,0.35)'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(cx - 3, cy - 4.5); c.lineTo(cx + 1, cy + 4.5); c.moveTo(cx + 2, cy - 4.5); c.lineTo(cx + 5, cy + 3); c.stroke();
+  hi(c, cx - 2.5, cy - 2, 2, 1.4, 0.7);
+}
+/** A little bat snoozing upside down, wings wrapped like a blanket. */
+function paintBatNap(c: Ctx, w: number, h: number) {
+  const cx = w / 2;
+  c.strokeStyle = INK; c.lineWidth = 1.8; c.beginPath(); c.moveTo(cx - 3, 1); c.lineTo(cx - 3, 6); c.moveTo(cx + 3, 1); c.lineTo(cx + 3, 6); c.stroke();
+  ell(c, cx, 15, 8, 10, '#5a3f78', 2.2);
+  c.beginPath(); c.moveTo(cx - 8, 13); c.quadraticCurveTo(cx, 22, cx + 8, 13); c.lineWidth = 1.6; c.strokeStyle = 'rgba(30,20,40,0.6)'; c.stroke();
+  poly(c, [[cx - 6, 21], [cx - 5, 29], [cx - 1, 23]], '#5a3f78', 1.8);
+  poly(c, [[cx + 6, 21], [cx + 5, 29], [cx + 1, 23]], '#5a3f78', 1.8);
+  c.strokeStyle = '#ffe36b'; c.lineWidth = 1.4; c.beginPath(); c.arc(cx - 3, 18, 1.8, Math.PI + 0.3, -0.3); c.moveTo(cx + 4.8, 18); c.arc(cx + 3, 18, 1.8, Math.PI + 0.3, -0.3); c.stroke();
+}
 function paintGhost(c: Ctx, w: number, h: number) {
   const cx = w / 2, by = h - 4;
   c.beginPath(); c.moveTo(cx - 16, by - 6); c.lineTo(cx - 16, by - 30); c.arc(cx, by - 30, 16, Math.PI, 0); c.lineTo(cx + 16, by - 6);
@@ -389,6 +408,8 @@ export function paintVillageArt(scene: Phaser.Scene) {
   T('h_bat0', 48, 30, paintBat(0), 2.5);
   T('h_bat1', 48, 30, paintBat(1), 2.5);
   T('h_ghost', 40, 54, paintGhost, 2.5);
+  T('h_candy', 30, 16, paintCandy, 2.5);
+  T('h_batnap', 24, 32, paintBatNap, 2.5);
   for (let i = 0; i < 3; i++) T(`h_tree${i}`, 160, 200, paintSpooky(i), 2);
   T('f_bunting', 200, 40, paintBunting, 2);
   T('p_drop', 4, 12, paintDrop, 2);

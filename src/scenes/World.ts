@@ -1364,6 +1364,20 @@ export class WorldScene extends Phaser.Scene {
       setRes: (r: { food?: number; wood?: number; stone?: number }) => { Object.assign(save.village.res, r); self.game.events.emit('res', null, 0); },
       setNeeds: (id: number, n: { food?: number; sleep?: number; fun?: number }) => { const q = self.village.villagers.find((x) => x.data.id === id); if (q) Object.assign(q.data, n); },
       setTheme: (id: 'classic' | 'halloween') => setTheme(id),
+      /** Halloween decorations: positions (world) + live state, and tap counters. */
+      halloween() {
+        const d = self.dresser;
+        const r = (n: number) => Math.round(n);
+        return {
+          taps: { ...d.taps },
+          jacks: d.jacks.map((j) => [r(j.img.x), r(j.img.y - 14), +j.flare.toFixed(2), j.img.visible]),
+          pumpkins: d.pumpkins.map((p) => [r(p.x), r(p.y - 14), p.visible]),
+          batTrees: d.batTrees.map((b) => [r(b.x), r(b.y - 60), b.fly.filter((f) => f.img.visible).length, b.tree.visible, b.fly.map((f) => +f.t.toFixed(2)).join(",")]),
+          peeks: d.peeks.map((p) => [r(p.x), r(p.y - 28), +p.up.toFixed(2), p.ghost.visible]),
+          wisps: d.wisps ? d.wisps.getAliveParticleCount() : 0,
+          orchardBats: d.orchardBats.length,
+        };
+      },
       villageEvent: (e: 'merchant' | 'rain' | 'festival') => self.village.start(e),
       worldToScreen(x: number, y: number) {
         const cam = self.cameras.main;
