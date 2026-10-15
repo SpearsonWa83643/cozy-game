@@ -1131,6 +1131,7 @@ function paintLeafBig(ctx: Ctx, w: number, h: number) {
 
 import { paintAll2 } from './art2';
 import { paintEagle } from './mount/eagleArt';
+import { paintPtero } from './mount/pteroArt';
 import { paintVillageArt } from './village/vart';
 
 export function paintAll(scene: Phaser.Scene) {
@@ -1234,6 +1235,7 @@ export function paintAll(scene: Phaser.Scene) {
   canvasTex(scene, 'white', 4, 4, (c) => { c.fillStyle = '#fff'; c.fillRect(0, 0, 4, 4); }, 2);
   paintAll2(scene);
   paintEagle(scene);
+  paintPtero(scene);
   buildAtlas(scene);
   paintVillageArt(scene);
 }

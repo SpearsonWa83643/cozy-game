@@ -1379,7 +1379,9 @@ export class WorldScene extends Phaser.Scene {
       setTheme: (id: 'classic' | 'halloween') => setTheme(id),
       villageEvent: (e: 'merchant' | 'rain' | 'festival') => self.village.start(e),
       mount: () => self.mount.snapshot(),
-      callMount: () => self.mount.call(),
+      callMount: (id?: string) => self.mount.call(id),
+      /** Test hook: grant a treasure (e.g. a mount egg) without the trip. */
+      giveTreasure: (id: string) => { addTreasure(id); self.game.events.emit('treasure', id); },
       mountTap: (x: number, y: number) => self.tapWorld(x, y),
       worldToScreen(x: number, y: number) {
         const cam = self.cameras.main;

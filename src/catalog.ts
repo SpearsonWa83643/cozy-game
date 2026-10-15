@@ -12,10 +12,13 @@ export const TREASURES: Treasure[] = [
   { id: 'acorn_cap', name: 'Acorn Cap', icon: 'ic_acorncap', blurb: 'A snug cap from the Wild Woods.', hint: 'A chest in the Wild Woods.' },
   { id: 'glow_scarf', name: 'Glow Scarf', icon: 'ic_glowscarf', blurb: 'Soft moss that glows a little.', hint: 'A chest in the Wild Woods.' },
   { id: 'ranger_coat', name: 'Ranger Coat', icon: 'ic_ranger', blurb: 'For brave woods explorers!', hint: 'A chest in the Wild Woods.' },
+  { id: 'pterodactyl_egg', name: 'Pterodactyl Egg', icon: 'ic_ptero_egg', blurb: 'Warm! Call Mount to ride a pterodactyl!', hint: 'A chest in the Wild Woods.' },
 ];
 
 export type MinorId = 'petal' | 'shell' | 'apple' | 'acorn' | 'beetle' | 'glowmoss' | 'starshard';
 export const WILD_SET = ['acorn_cap', 'glow_scarf', 'ranger_coat'];
+/** Mounts found in Wild Woods chests after the cosmetic set. */
+export const WILD_MOUNTS = ['pterodactyl_egg'];
 export const MINORS: { id: MinorId; name: string; icon: string }[] = [
   { id: 'petal', name: 'Petals', icon: 'petal' }, { id: 'shell', name: 'Shells', icon: 'shell0' },
   { id: 'apple', name: 'Fruit', icon: 'apple' }, { id: 'acorn', name: 'Acorns', icon: 'acorn' }, { id: 'beetle', name: 'Beetles spotted', icon: 'beetle' },

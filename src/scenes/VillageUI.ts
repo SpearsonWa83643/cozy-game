@@ -9,6 +9,7 @@ import { save, BuildingType, Res } from '../save';
 import { theme, themeEvents } from '../theme';
 import { BUILD, BUILD_ORDER, isUnlockedB, canAfford, Village, Villager, Building, ResId, Alert } from '../village/village';
 import type { WorldScene } from './World';
+import { unlockedMounts, type MountDef } from '../mount/defs';
 
 const INK = '#3d2c20';
 const FONT = 'Nunito, "Trebuchet MS", sans-serif';
@@ -32,6 +33,7 @@ export class VillageUIScene extends Phaser.Scene {
   mountIcon!: Phaser.GameObjects.Image;
   mountLabel!: Phaser.GameObjects.Text;
   mountState = '';
+  mountPicker: Phaser.GameObjects.Container | null = null;
   tray: Phaser.GameObjects.Container | null = null;
   card: Phaser.GameObjects.Container | null = null;
   cardData: any = null;
@@ -96,7 +98,7 @@ export class VillageUIScene extends Phaser.Scene {
     this.mountC = this.add.container(0, 0, [this.mountBg, this.mountIcon, this.mountLabel]);
     const zm = this.add.zone(0, 0, 92, 92).setOrigin(0, 0).setInteractive(new Phaser.Geom.Circle(46, 46, 46), Phaser.Geom.Circle.Contains);
     zm.on('pointerdown', () => {
-      if (this.registry.get('menuOpen') || this.card) return;
+      if (this.registry.get('menuOpen') || this.card || this.mountPicker) return;
       sfx.unlock();
       const m = this.world.mount;
       if (m.riding) {
@@ -108,7 +110,9 @@ export class VillageUIScene extends Phaser.Scene {
       if (!m.canCall()) { this.tweens.add({ targets: this.mountC, angle: { from: -8, to: 8 }, duration: 90, yoyo: true, repeat: 1, onComplete: () => this.mountC.setAngle(0) }); return; }
       sfx.blip();
       this.tweens.add({ targets: this.mountC, scale: { from: 0.85, to: 1 }, duration: 220, ease: 'Back.easeOut' });
-      m.call();
+      const list = unlockedMounts();
+      if (list.length <= 1) m.call(list[0]?.id ?? 'eagle');
+      else this.openMountPicker(list);
     });
     this.mountC.setData('zone', zm);
     this.drawMountBtn();
@@ -227,6 +231,56 @@ export class VillageUIScene extends Phaser.Scene {
     g.lineStyle(4, on ? theme.ui.accentDark : theme.ui.accent, 1); g.strokeCircle(0, 0, 40);
     this.buildLabel.setText(on ? 'Done' : 'Build');
   }
+  // ------------------------------------------------------------ mount picker
+  /** Big touch tiles for every unlocked mount. One mount: Call Mount skips this. */
+  openMountPicker(list: MountDef[]) {
+    this.closeMountPicker(true);
+    this.registry.set('mountPicker', true);
+    const si = safeInsets();
+    const tile = 150, gap = 16;
+    const n = list.length;
+    const cols = Math.min(n, 3);
+    const rows = Math.ceil(n / cols);
+    const tw = cols * (tile + gap) - gap + 40;
+    const th = rows * (tile + gap) - gap + 78;
+    const tx = (this.w - tw) / 2, ty = Math.max(si.top + 60, (this.h - th) / 2 - 20);
+    const c = this.add.container(0, 0).setDepth(50);
+    // Dim the world so kids focus on the tiles; tap outside to close.
+    const dim = this.add.graphics();
+    dim.fillStyle(0x2a1d14, 0.45); dim.fillRect(0, 0, this.w, this.h);
+    const dimZ = this.add.zone(0, 0, this.w, this.h).setOrigin(0, 0).setInteractive();
+    dimZ.on('pointerup', () => this.closeMountPicker());
+    const g = this.add.graphics();
+    g.fillStyle(0x2a1d14, 0.35); g.fillRoundedRect(tx + 3, ty + 6, tw, th, 26);
+    g.fillStyle(0xfbf1dc, 0.98); g.fillRoundedRect(tx, ty, tw, th, 26);
+    g.lineStyle(4, theme.ui.accent, 1); g.strokeRoundedRect(tx + 5, ty + 5, tw - 10, th - 10, 22);
+    const block = this.add.zone(tx, ty, tw, th).setOrigin(0, 0).setInteractive();
+    const title = this.text(tx + tw / 2, ty + 26, 'Pick a mount!', 24, INK, 900).setOrigin(0.5);
+    c.add([dim, dimZ, g, block, title]);
+    list.forEach((m, i) => {
+      const col = i % cols, row = Math.floor(i / cols);
+      const x = tx + 20 + col * (tile + gap), y = ty + 56 + row * (tile + gap);
+      const [bg, z] = this.button(x, y, tile, tile, 0xfff4d6, theme.ui.accent, () => {
+        sfx.blip();
+        this.closeMountPicker(true);
+        this.world.mount.call(m.id);
+      }, 20, `mountPick:${m.id}`);
+      c.add([bg, z]);
+      const ic = this.icon(x + tile / 2, y + tile * 0.42, m.icon, 80);
+      const name = this.text(x + tile / 2, y + tile - 24, m.name, 17, INK, 900).setOrigin(0.5);
+      c.add([ic, name]);
+    });
+    this.mountPicker = c;
+    c.setAlpha(0); this.tweens.add({ targets: c, alpha: 1, duration: 160 });
+  }
+  closeMountPicker(instant = false) {
+    if (!this.mountPicker) return;
+    const c = this.mountPicker; this.mountPicker = null;
+    this.registry.set('mountPicker', false);
+    for (const k of Object.keys(this.rects)) if (k.startsWith('mountPick:')) delete this.rects[k];
+    if (instant) c.destroy(); else this.tweens.add({ targets: c, alpha: 0, duration: 140, onComplete: () => c.destroy() });
+  }
+
   /** Riding: accent fill + 'Land'. Can't call right now: faded. */
   drawMountBtn() {
     const m = this.world?.mount;
@@ -450,6 +504,7 @@ export class VillageUIScene extends Phaser.Scene {
     (this.buildC.getData('zone') as Phaser.GameObjects.Zone).input!.enabled = !hide;
     // Call Mount hides in build mode (and with the satchel open).
     const mh = hide || !!this.village?.building;
+    if (mh && this.mountPicker) this.closeMountPicker(true);
     this.mountC.setVisible(!mh);
     (this.mountC.getData('zone') as Phaser.GameObjects.Zone).input!.enabled = !mh;
     if (!mh) this.drawMountBtn();

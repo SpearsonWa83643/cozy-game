@@ -1,12 +1,14 @@
-// Mounts: call a bald eagle, it swoops in, picks you up and wanders the map with you on its
-// back. Tap the ground to hop off near there; tap the eagle for a few seconds of whoosh.
-// The eagle only ever sets you down on ground you could already walk to (no skipping gates).
+// Mounts: call a flying friend, it swoops in, picks you up and wanders the map with you on its
+// back. Tap the ground to hop off near there; tap the mount for a few seconds of whoosh.
+// Drop-off only on ground you could already walk to (no skipping gates). Art is data-driven
+// (see defs.ts) so Call Mount can pick among unlocked mounts.
 import Phaser from 'phaser';
 import { atlasOf, frameScale, S } from '../art';
 import { WORLD_W, WORLD_H } from '../layout';
 import { sfx } from '../audio';
 import { theme, themeEvents } from '../theme';
 import type { WorldScene } from '../scenes/World';
+import { MountDef, mountById } from './defs';
 
 export type MountPhase = 'off' | 'arrive' | 'ride' | 'land' | 'hop' | 'leave';
 
@@ -16,7 +18,6 @@ const FAST_SPEED = 360;
 const FAST_MS = 3500;
 const COOLDOWN_MS = 4000; // after fast mode ends
 const DEPTH = 9300;
-const SCALE = 0.85;
 const EDGE = 70;
 
 /** Cubic Hermite between two points with start/end velocities (already scaled by duration). */
@@ -54,13 +55,15 @@ export class Mount {
   hopT = 0;
   hopFrom: [number, number] = [0, 0];
   riderOn = false;
+  def: MountDef = mountById('eagle');
+  get SCALE() { return this.def.scale; }
 
   constructor(private w: WorldScene) {
-    const sc = (k: string) => SCALE / (frameScale[k] ?? S);
     this.shadow = w.add.image(0, 0, atlasOf('shadow'), 'shadow').setDepth(-480).setVisible(false);
-    this.wingFar = w.add.image(0, 0, atlasOf('eagle_wing_far'), 'eagle_wing_far').setOrigin(0.5, 0.96).setScale(sc('eagle_wing_far')).setDepth(DEPTH - 1).setVisible(false);
-    this.body = w.add.image(0, 0, atlasOf('eagle_body'), 'eagle_body').setOrigin(0.5, 0.52).setScale(sc('eagle_body')).setDepth(DEPTH).setVisible(false);
-    this.wing = w.add.image(0, 0, atlasOf('eagle_wing'), 'eagle_wing').setOrigin(0.5, 0.96).setScale(sc('eagle_wing')).setDepth(DEPTH + 0.5).setVisible(false);
+    this.wingFar = w.add.image(0, 0, atlasOf('eagle_wing_far'), 'eagle_wing_far').setOrigin(0.5, 0.96).setDepth(DEPTH - 1).setVisible(false);
+    this.body = w.add.image(0, 0, atlasOf('eagle_body'), 'eagle_body').setOrigin(0.5, 0.52).setDepth(DEPTH).setVisible(false);
+    this.wing = w.add.image(0, 0, atlasOf('eagle_wing'), 'eagle_wing').setOrigin(0.5, 0.96).setDepth(DEPTH + 0.5).setVisible(false);
+    this.applyDef(this.def);
     this.trail = w.add.particles(0, 0, atlasOf('spark'), {
       frame: 'spark', lifespan: 520, speed: { min: 4, max: 20 }, scale: { start: 0.5, end: 0 }, alpha: { start: 0.85, end: 0 },
       tint: [0xffffff, 0xdff3ff, 0xfff1c4], blendMode: 'ADD', frequency: 22, quantity: 2, emitting: false,
@@ -77,6 +80,16 @@ export class Mount {
     for (const o of [this.body, this.wing, this.wingFar]) { if (t === 0xffffff) o.clearTint(); else o.setTint(t); }
   }
 
+  /** Swap body/wing textures to the chosen mount. */
+  applyDef(def: MountDef) {
+    this.def = def;
+    const sc = (k: string) => this.SCALE / (frameScale[k] ?? S);
+    this.body.setTexture(atlasOf(def.body), def.body).setScale(sc(def.body));
+    this.wing.setTexture(atlasOf(def.wing), def.wing).setScale(sc(def.wing));
+    this.wingFar.setTexture(atlasOf(def.wingFar), def.wingFar).setScale(sc(def.wingFar));
+    this.applyTheme();
+  }
+
   /** Eagle is on screen at all. */
   get active() { return this.phase !== 'off'; }
   /** The eagle (not the walk code) moves the player. */
@@ -90,7 +103,7 @@ export class Mount {
   canCall() {
     const w = this.w;
     return this.phase === 'off' && !w.inWild && !w.locked && !w.village?.building && !w.buildView && !w.fishing?.active
-      && !w.registry.get('dialogOpen') && !w.registry.get('menuOpen');
+      && !w.registry.get('dialogOpen') && !w.registry.get('menuOpen') && !w.registry.get('mountPicker');
   }
 
   // ------------------------------------------------------------ reachability
@@ -157,8 +170,9 @@ export class Mount {
   }
 
   // ------------------------------------------------------------ calling + riding
-  call() {
+  call(mountId?: string) {
     if (!this.canCall()) return false;
+    this.applyDef(mountById(mountId ?? 'eagle'));
     const w = this.w;
     this.computeReach();
     w.path = []; w.pathTarget = null; w.stick = null;
@@ -201,7 +215,7 @@ export class Mount {
     this.speed = 140; this.heading = this.dir > 0 ? 0 : Math.PI;
     this.target = this.pickWaypoint(); this.targetTime = 0;
     w.game.events.emit('mount', this.phase);
-    w.game.events.emit('toast', 'Wheee! Tap the ground to hop off.');
+    w.game.events.emit('toast', `Wheee! Riding the ${this.def.name}! Tap the ground to hop off.`);
   }
 
   /** Fly down to the nearest reachable spot near (x, y) and let the rider off there. */
@@ -384,22 +398,22 @@ export class Mount {
     const x = this.ex, y = this.ey + bob;
     const vy = Math.sin(this.heading) * this.speed;
     const tilt = Phaser.Math.Clamp(vy / 900, -0.14, 0.14) * d + (this.phase === 'hop' ? -0.12 * d : 0);
-    const bs = SCALE / (frameScale.eagle_body ?? S);
+    const bs = this.SCALE / (frameScale[this.def.body] ?? S);
     this.body.setPosition(x, y).setFlipX(d < 0).setRotation(tilt).setScale(bs);
-    const ws = SCALE / (frameScale.eagle_wing ?? S);
+    const ws = this.SCALE / (frameScale[this.def.wing] ?? S);
     const sy = ws * (lift >= 0 ? 0.35 + 0.65 * lift : 0.35 + 0.95 * lift); // through 0 the wing flips to point down
     const sweep = d * (0.32 + 0.08 * Math.sin(this.flap));
     const cos = Math.cos(tilt), sin = Math.sin(tilt);
     const at = (ox: number, oy: number) => [x + (ox * d) * cos - oy * sin, y + (ox * d) * sin + oy * cos];
-    const [nx, ny] = at(-4 * SCALE, -7 * SCALE); // shoulder just behind the rider, who sits in front
+    const [nx, ny] = at(-4 * this.SCALE, -7 * this.SCALE); // shoulder just behind the rider, who sits in front
     this.wing.setPosition(nx, ny).setScale(ws, sy).setRotation(-sweep + tilt).setFlipX(d < 0);
-    const [fx, fy] = at(3 * SCALE, -10 * SCALE);
+    const [fx, fy] = at(3 * this.SCALE, -10 * this.SCALE);
     this.wingFar.setPosition(fx, fy).setScale(ws * 0.9, sy * 0.88).setRotation(-sweep * 1.15 + tilt).setFlipX(d < 0);
     // Shadow shrinks and fades with height.
     const k = 1 / (1 + this.alt / 140);
     this.shadow.setPosition(this.gx, this.gy + 4).setScale((96 * k / 64) / (frameScale.shadow ?? 1)).setAlpha((0.35 + 0.5 * k) * this.body.alpha);
     // Whoosh trail from the tail.
-    const [tx, ty] = at(-48 * SCALE, 2);
+    const [tx, ty] = at(-48 * this.SCALE, 2);
     this.trail.setPosition(tx, ty);
     if (fast && !this.trail.emitting) this.trail.start(); else if (!fast && this.trail.emitting) this.trail.stop();
     // Rider sits on the eagle's back (legs tucked into the feathers).
@@ -411,7 +425,7 @@ export class Mount {
     const img = w.playerImg;
     const fw = img.frame.realWidth, fh = img.frame.realHeight;
     if (this.phase === 'arrive') return; // still standing on the ground, waiting
-    const [bx, by] = at(4 * SCALE, -10 * SCALE);
+    const [bx, by] = at(4 * this.SCALE, -10 * this.SCALE);
     img.setTexture(w.heroKey, '2_0').setFlipX(d < 0).setScale(1 / S);
     if (this.phase === 'hop') {
       const [sx, sy] = [bx, by + 12];
@@ -427,6 +441,7 @@ export class Mount {
   /** Test/debug snapshot. */
   snapshot() {
     return {
+      id: this.def.id, name: this.def.name,
       phase: this.phase, riding: this.riding, carrying: this.carrying, riderOn: this.riderOn,
       fast: this.fastMs > 0, cooldown: Math.max(0, Math.round(this.cooldownMs)), ground: [Math.round(this.gx), Math.round(this.gy)],
       eagle: [Math.round(this.ex), Math.round(this.ey)], alt: Math.round(this.alt), speed: Math.round(this.speed),

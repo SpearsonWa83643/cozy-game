@@ -4,7 +4,7 @@ import Phaser from 'phaser';
 import { ATLAS, S, atlasOf, frameScale, TREE_SCALE, PICKUP_BUBBLE, PICKUP_ICON } from '../art';
 import { DPR } from '../dpr';
 import { save, addTreasure, hasTreasure, addMinor } from '../save';
-import { TREASURES, WILD_SET } from '../catalog';
+import { TREASURES, WILD_SET, WILD_MOUNTS } from '../catalog';
 import { sfx } from '../audio';
 import { theme, themeEvents } from '../theme';
 import { generateWild, inPond, WildMap, WILD_W, WILD_H } from '../wild/gen';
@@ -264,7 +264,8 @@ export class WildScene extends Phaser.Scene {
     c.img.setTexture(atlasOf('chest_open'), 'chest_open');
     sfx.sparkle();
     this.tweens.add({ targets: c.img, scaleY: c.img.scaleY * 1.12, duration: 120, yoyo: true });
-    const next = WILD_SET.find((id) => !hasTreasure(id) && !this.found.includes(id));
+    const next = WILD_SET.find((id) => !hasTreasure(id) && !this.found.includes(id))
+      ?? WILD_MOUNTS.find((id) => !hasTreasure(id) && !this.found.includes(id));
     const burst = this.add.particles(c.x, c.y - 30, ATLAS3, { frame: 'w_star', speed: { min: 60, max: 180 }, lifespan: 900, scale: { start: 0.2, end: 0 }, gravityY: 80, emitting: false } as any).setDepth(9001);
     burst.explode(20); this.time.delayedCall(1200, () => burst.destroy());
     if (next) {
@@ -273,7 +274,8 @@ export class WildScene extends Phaser.Scene {
       const t = TREASURES.find((x) => x.id === next)!;
       const ic = this.add.image(c.x, c.y - 40, atlasOf(t.icon), t.icon).setDepth(9002).setScale(1 / (frameScale[t.icon] ?? 2));
       this.tweens.add({ targets: ic, y: c.y - 110, scale: ic.scale * 1.6, duration: 700, ease: 'Back.easeOut', onComplete: () => this.tweens.add({ targets: ic, alpha: 0, delay: 1400, duration: 400, onComplete: () => ic.destroy() }) });
-      this.events.emit('toast', `${t.name}! Try it on at home!`);
+      const mountLoot = WILD_MOUNTS.includes(next);
+      this.events.emit('toast', mountLoot ? `${t.name}! Tap Call Mount to ride!` : `${t.name}! Try it on at home!`);
       this.events.emit('treasure', next);
     } else {
       this.bag.starshard += 3;
