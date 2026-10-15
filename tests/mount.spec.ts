@@ -46,5 +46,57 @@ test('mount: call eagle, ride, tap eagle for whoosh, tap ground to hop off', asy
   expect(Math.hypot(s1.x - m1.ground[0], s1.y - m1.ground[1])).toBeLessThan(30);
   await expect.poll(async () => (await mount(page)).alt, { timeout: 30_000, intervals: [300] }).toBeGreaterThan(60);
   await page.screenshot({ path: `${SHOTS}/mount-riding-classic.png` });
+
+  // Halloween look while riding (subtle tint), then back to Classic.
+  await page.evaluate(() => (window as any).__cozy.setTheme('halloween'));
+  await page.waitForTimeout(2500);
+  await page.screenshot({ path: `${SHOTS}/mount-riding-halloween.png` });
+  await page.evaluate(() => (window as any).__cozy.setTheme('classic'));
+  expect((await mount(page)).phase).toBe('ride');
+
+  // 3) Tap the eagle: a few seconds of whoosh. Tapping again right away does nothing (cooldown).
+  const tapEagle = async () => { const m = await mount(page); const p = await toScreen(page, m.eagle[0], m.eagle[1] - 6); await page.touchscreen.tap(p.x, p.y); };
+  await tapEagle();
+  await expect.poll(async () => (await mount(page)).fast, { timeout: 10_000, intervals: [100] }).toBe(true);
+  await expect.poll(async () => (await mount(page)).speed, { timeout: 30_000, intervals: [200] }).toBeGreaterThan(250);
+  expect((await mount(page)).phase).toBe('ride');
+  await tapEagle();
+  await page.waitForTimeout(600);
+  const mf = await mount(page);
+  expect(mf.boosts).toBe(1);
+  expect(mf.cooldown).toBeGreaterThan(0);
+  await expect.poll(async () => (await mount(page)).fast, { timeout: 90_000, intervals: [300] }).toBe(false);
+  expect((await mount(page)).cooldown).toBeGreaterThan(0);
+
+  // 4) Tap the ground away from the eagle: it lands near there, you hop off, it flies away.
+  const m2 = await mount(page);
+  const e = await toScreen(page, m2.eagle[0], m2.eagle[1]);
+  const gx = Math.min(950, Math.max(260, e.x + (e.x < 590 ? 260 : -260))), gy = Math.min(600, Math.max(200, e.y + 140));
+  await page.touchscreen.tap(gx, gy);
+  await expect.poll(async () => (await mount(page)).phase, { timeout: 10_000, intervals: [100] }).toBe('land');
+  await expect.poll(async () => (await mount(page)).landings, { timeout: 90_000, intervals: [200] }).toBe(1);
+  const m3 = await mount(page);
+  const s3 = await st(page);
+  expect(m3.riderOn).toBe(false);
+  expect(m3.reachableHere).toBe(true);
+  expect(Math.hypot(s3.x - m3.dropAt[0], s3.y - m3.dropAt[1])).toBeLessThan(6);
+  await expect.poll(async () => (await mount(page)).phase, { timeout: 60_000, intervals: [200] }).toBe('off');
+  // On foot again: tap-to-move works.
+  const s4 = await st(page);
+  const to = await toScreen(page, s4.x + 70, s4.y);
+  await page.touchscreen.tap(to.x, to.y);
+  await expect.poll(async () => (await st(page)).x, { timeout: 60_000, intervals: [300] }).toBeGreaterThan(s4.x + 25);
+
+  // 5) Build mode while riding: you are set down first; Call Mount hides in build mode.
+  await tapRect(page, 'mount');
+  await expect.poll(async () => (await mount(page)).riderOn, { timeout: 60_000, intervals: [200] }).toBe(true);
+  await tapRect(page, 'build');
+  await expect.poll(async () => (await page.evaluate(() => (window as any).__cozy.village())).building, { timeout: 10_000, intervals: [100] }).toBe(true);
+  expect((await mount(page)).carrying).toBe(false);
+  expect((await mount(page)).canCall).toBe(false);
+  await expect.poll(() => page.evaluate(() => (window as any).__vui.mountC.visible), { timeout: 10_000, intervals: [100] }).toBe(false);
+  await tapRect(page, 'build');
+  await expect.poll(async () => (await page.evaluate(() => (window as any).__cozy.village())).building, { timeout: 10_000, intervals: [100] }).toBe(false);
+  await expect.poll(() => page.evaluate(() => (window as any).__vui.mountC.visible), { timeout: 10_000, intervals: [100] }).toBe(true);
   expect(errors).toEqual([]);
 });

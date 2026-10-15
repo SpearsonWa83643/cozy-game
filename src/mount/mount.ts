@@ -60,7 +60,7 @@ export class Mount {
     this.shadow = w.add.image(0, 0, atlasOf('shadow'), 'shadow').setDepth(-480).setVisible(false);
     this.wingFar = w.add.image(0, 0, atlasOf('eagle_wing_far'), 'eagle_wing_far').setOrigin(0.5, 0.96).setScale(sc('eagle_wing_far')).setDepth(DEPTH - 1).setVisible(false);
     this.body = w.add.image(0, 0, atlasOf('eagle_body'), 'eagle_body').setOrigin(0.5, 0.52).setScale(sc('eagle_body')).setDepth(DEPTH).setVisible(false);
-    this.wing = w.add.image(0, 0, atlasOf('eagle_wing'), 'eagle_wing').setOrigin(0.5, 0.96).setScale(sc('eagle_wing')).setDepth(DEPTH + 2).setVisible(false);
+    this.wing = w.add.image(0, 0, atlasOf('eagle_wing'), 'eagle_wing').setOrigin(0.5, 0.96).setScale(sc('eagle_wing')).setDepth(DEPTH + 0.5).setVisible(false);
     this.trail = w.add.particles(0, 0, atlasOf('spark'), {
       frame: 'spark', lifespan: 520, speed: { min: 4, max: 20 }, scale: { start: 0.5, end: 0 }, alpha: { start: 0.85, end: 0 },
       tint: [0xffffff, 0xdff3ff, 0xfff1c4], blendMode: 'ADD', frequency: 22, quantity: 2, emitting: false,
@@ -391,9 +391,9 @@ export class Mount {
     const sweep = d * (0.32 + 0.08 * Math.sin(this.flap));
     const cos = Math.cos(tilt), sin = Math.sin(tilt);
     const at = (ox: number, oy: number) => [x + (ox * d) * cos - oy * sin, y + (ox * d) * sin + oy * cos];
-    const [nx, ny] = at(2 * SCALE, -7 * SCALE);
+    const [nx, ny] = at(-4 * SCALE, -7 * SCALE); // shoulder just behind the rider, who sits in front
     this.wing.setPosition(nx, ny).setScale(ws, sy).setRotation(-sweep + tilt).setFlipX(d < 0);
-    const [fx, fy] = at(9 * SCALE, -10 * SCALE);
+    const [fx, fy] = at(3 * SCALE, -10 * SCALE);
     this.wingFar.setPosition(fx, fy).setScale(ws * 0.9, sy * 0.88).setRotation(-sweep * 1.15 + tilt).setFlipX(d < 0);
     // Shadow shrinks and fades with height.
     const k = 1 / (1 + this.alt / 140);
@@ -411,7 +411,7 @@ export class Mount {
     const img = w.playerImg;
     const fw = img.frame.realWidth, fh = img.frame.realHeight;
     if (this.phase === 'arrive') return; // still standing on the ground, waiting
-    const [bx, by] = at(-6 * SCALE, -10 * SCALE);
+    const [bx, by] = at(4 * SCALE, -10 * SCALE);
     img.setTexture(w.heroKey, '2_0').setFlipX(d < 0).setScale(1 / S);
     if (this.phase === 'hop') {
       const [sx, sy] = [bx, by + 12];
