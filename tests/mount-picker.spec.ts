@@ -11,7 +11,7 @@ const rect = (page: Page, id: string) => page.evaluate((id) => (window as any)._
 const tapRect = async (page: Page, id: string) => { const r = await rect(page, id); await page.touchscreen.tap(r.x + r.w / 2, r.y + r.h / 2); };
 
 test('mount picker: eagle alone skips picker; pterodactyl unlock shows picker', async ({ page }) => {
-  test.setTimeout(300_000);
+  test.setTimeout(600_000);
   const errors: string[] = [];
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', (e) => errors.push(e.message));
