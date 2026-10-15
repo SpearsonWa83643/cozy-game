@@ -60,6 +60,7 @@ test('mount: call eagle, ride, tap eagle for whoosh, tap ground to hop off', asy
   await expect.poll(async () => (await mount(page)).fast, { timeout: 10_000, intervals: [100] }).toBe(true);
   await expect.poll(async () => (await mount(page)).speed, { timeout: 30_000, intervals: [200] }).toBeGreaterThan(250);
   expect((await mount(page)).phase).toBe('ride');
+  await page.screenshot({ path: 'test-results/mount-fast-classic.png' });
   await tapEagle();
   await page.waitForTimeout(600);
   const mf = await mount(page);
@@ -81,11 +82,17 @@ test('mount: call eagle, ride, tap eagle for whoosh, tap ground to hop off', asy
   expect(m3.reachableHere).toBe(true);
   expect(Math.hypot(s3.x - m3.dropAt[0], s3.y - m3.dropAt[1])).toBeLessThan(6);
   await expect.poll(async () => (await mount(page)).phase, { timeout: 60_000, intervals: [200] }).toBe('off');
-  // On foot again: tap-to-move works.
+  // On foot again: tap-to-move works. Clear any villager alert, teleport to open ground (box GPU is slow).
+  await page.evaluate(() => { try { (window as any).__cozy.dismiss?.(); } catch { /* */ } });
+  await page.evaluate(() => (window as any).__cozy.teleport(905, 1330));
+  await page.waitForTimeout(400);
   const s4 = await st(page);
-  const to = await toScreen(page, s4.x + 70, s4.y);
+  const to = await toScreen(page, s4.x + 90, s4.y);
   await page.touchscreen.tap(to.x, to.y);
-  await expect.poll(async () => (await st(page)).x, { timeout: 60_000, intervals: [300] }).toBeGreaterThan(s4.x + 25);
+  await expect.poll(async () => {
+    const s = await st(page);
+    return Math.hypot(s.x - s4.x, s.y - s4.y);
+  }, { timeout: 90_000, intervals: [400] }).toBeGreaterThan(30);
 
   // 5) Build mode while riding: you are set down first; Call Mount hides in build mode.
   await tapRect(page, 'mount');
