@@ -3,7 +3,7 @@ import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 
 const FILE = pathToFileURL(resolve('dist-single/index.html')).href;
-const SHOTS = 'screenshots';
+const SHOTS = 'test-results/shots'; // scratch: keep committed screenshots/ untouched
 
 const state = (page: Page) => page.evaluate(() => (window as any).__cozy.state);
 const toScreen = (page: Page, x: number, y: number) =>
