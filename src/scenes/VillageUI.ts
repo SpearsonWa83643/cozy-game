@@ -294,6 +294,8 @@ export class VillageUIScene extends Phaser.Scene {
     g.fillStyle(riding ? theme.ui.accent : 0xfbf1dc, 0.97); g.fillCircle(0, 0, 44);
     g.lineStyle(4, riding ? theme.ui.accentDark : theme.ui.accent, 1); g.strokeCircle(0, 0, 40);
     this.mountLabel.setText(riding ? 'Land' : 'Call Mount').setFontSize(riding ? 15 : 13);
+    const ik = riding && m ? m.def.icon : 'i_eagle';
+    if (this.mountIcon.frame.name !== ik) this.mountIcon.setTexture(atlasOf(ik), ik).setDisplaySize(50, 50);
     this.mountC.setAlpha(ok ? 1 : 0.5);
   }
   refresh() {
