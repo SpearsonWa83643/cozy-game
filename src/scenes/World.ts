@@ -1367,7 +1367,7 @@ export class WorldScene extends Phaser.Scene {
         return {
           res: { ...save.village.res }, building: v.building, selected: v.selected, ghost: v.ghost ? { gx: v.ghost.gx, gy: v.ghost.gy, ok: v.ghost.ok, check: xy(v.ghost.check) } : null,
           buildings: v.buildings.map((b) => ({ id: b.data.id, type: b.data.type, x: Math.round(b.cx), y: Math.round(b.y - b.img.displayHeight * 0.45), worker: b.worker?.data.id ?? null })),
-          villagers: v.villagers.map((q) => ({ id: q.data.id, name: q.data.name, x: Math.round(q.x), y: Math.round(q.y - 26), job: q.data.job, task: q.task, need: { food: q.data.food, sleep: q.data.sleep, fun: q.data.fun }, suggest: q.suggest ? (q.suggest.kind === 'assign' ? { kind: 'assign', b: q.suggest.b.data.id } : { kind: 'build', t: q.suggest.t }) : null, bubble: q.bubble ? [Math.round(q.bubble.x), Math.round(q.bubble.y)] : null })),
+          villagers: v.villagers.map((q) => ({ id: q.data.id, name: q.data.name, x: Math.round(q.x), y: Math.round(q.y - 26), job: q.data.job, task: q.task, need: { food: q.data.food, sleep: q.data.sleep, fun: q.data.fun }, urg: q.urgency(), ring: q.ring.visible ? q.ring.tintTopLeft : 0, suggest: q.suggest ? (q.suggest.kind === 'assign' ? { kind: 'assign', b: q.suggest.b.data.id } : { kind: 'build', t: q.suggest.t }) : null, bubble: q.bubble ? [Math.round(q.bubble.x), Math.round(q.bubble.y)] : null })),
           alert: v.alert ? { id: v.alert.id, text: v.alert.text } : null, gifts: v.gifts,
           guest: v.wanderer ? { name: v.wanderer.data.name, x: Math.round(v.wanderer.x), y: Math.round(v.wanderer.y - 26) } : null,
           produced: v.produced, rain: v.rain > 0, festival: v.festival > 0, merchant: !!v.cart, theme: save.theme,

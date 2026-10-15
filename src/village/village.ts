@@ -54,6 +54,8 @@ export class Villager {
   img: Phaser.GameObjects.Image;
   shadow: Phaser.GameObjects.Image;
   face: Phaser.GameObjects.Image;
+  /** Urgency halo behind the face (Order 15): hidden when happy, amber when so-so, pulsing coral when they need care. */
+  ring: Phaser.GameObjects.Image;
   x: number; y: number;
   task: Task = 'idle';
   next: Task = 'idle';
@@ -74,7 +76,14 @@ export class Villager {
     this.shadow = w.fx(x, y, 'shadow', 0.45).setAlpha(0.5).setDepth(-480);
     this.img = w.add.image(x, y, atlasOf(this.key()), this.key()).setOrigin(0.5, 1).setScale(0.62 / (frameScale[this.key()] ?? 3)).setDepth(y);
     this.face = w.add.image(x, y - 54, atlasOf('f_happy'), 'f_happy').setScale(0.42 / (frameScale.f_happy ?? 2.5)).setDepth(9000);
+    this.ring = w.add.image(x, y - 54, atlasOf('f_ring'), 'f_ring').setScale(0.72 / (frameScale.f_ring ?? 2.5)).setDepth(8999).setVisible(false);
     if (guest) this.face.setTexture(atlasOf('i_heart'), 'i_heart');
+  }
+  /** 0 = fine, 1 = getting low, 2 = needs care now. */
+  urgency(): 0 | 1 | 2 {
+    if (this.guest || this.task === 'sleep') return 0;
+    const m = this.mood();
+    return m === 'f_meh' ? 2 : m === 'f_ok' ? 1 : 0;
   }
   key() { return `vil${this.data.kind}_${this.frame}`; }
   mood(): 'f_happy' | 'f_ok' | 'f_meh' {
@@ -87,7 +96,7 @@ export class Villager {
     this.path = p && p.length ? p : [[x, y]];
     this.task = 'walk'; this.next = then; this.walkT = 0;
   }
-  destroy() { this.img.destroy(); this.shadow.destroy(); this.face.destroy(); this.bubble?.destroy(); }
+  destroy() { this.img.destroy(); this.shadow.destroy(); this.face.destroy(); this.ring.destroy(); this.bubble?.destroy(); }
 }
 
 export type Building = { data: BuildingSave; img: Phaser.GameObjects.Image; x: number; y: number; cx: number; cy: number; worker: Villager | null; prog: number; alt: number; bar: Phaser.GameObjects.Graphics };
@@ -589,7 +598,18 @@ export class Village {
     v.img.setAngle(v.task === 'sleep' ? (v.img.flipX ? -80 : 80) : v.task === 'drag' ? Math.sin(v.hop * 0.7) * 10 : 0);
     v.shadow.setPosition(v.x, v.y - 2).setVisible(v.task !== 'sleep');
     if (!v.guest) { const m = v.task === 'sleep' ? 'i_sleep' : v.mood(); if (v.face.frame.name !== m) v.face.setTexture(atlasOf(m), m); }
-    v.face.setPosition(v.x, v.y + bob - 58 + Math.sin(time / 300 + d.id) * 1.5).setVisible(v.task !== 'drag');
+    const fy = v.y + bob - 58 + Math.sin(time / 300 + d.id) * 1.5;
+    v.face.setPosition(v.x, fy).setVisible(v.task !== 'drag');
+    // Urgency colours: amber halo when so-so, a soft coral pulse when they really need care.
+    const urg = v.urgency();
+    const fs = 0.42 / (frameScale.f_happy ?? 2.5), rs = 0.72 / (frameScale.f_ring ?? 2.5);
+    if (urg === 0 || v.task === 'drag') { v.ring.setVisible(false); v.face.setScale(fs); }
+    else {
+      const p = urg === 2 ? 0.5 + 0.5 * Math.sin(time / 220 + d.id) : 0.5;
+      v.ring.setVisible(true).setPosition(v.x, fy).setTint(urg === 2 ? 0xff6a5a : 0xffc04d)
+        .setAlpha(urg === 2 ? 0.55 + 0.4 * p : 0.55).setScale(rs * (urg === 2 ? 1 + 0.18 * p : 1));
+      v.face.setScale(fs * (urg === 2 ? 1 + 0.08 * p : 1));
+    }
     if (v.bubble) v.bubble.setPosition(v.x, v.y + bob - 108 + Math.sin(time / 260 + d.id) * 3).setVisible(v.task !== 'drag' && !this.building);
   }
 
