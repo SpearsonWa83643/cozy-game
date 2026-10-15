@@ -525,7 +525,7 @@ export class UIScene extends Phaser.Scene {
       if (this.stickPointer || this.dragP) return;
       // Press on a villager: drag them onto a building (or just tap for their card).
       const vg = this.world.village;
-      if (vg && !vg.building && !this.world.fishing.active) {
+      if (vg && !vg.building && !this.world.fishing.active && !this.world.mount?.carrying) {
         const wp = this.world.cameras.main.getWorldPoint(p.x, p.y);
         const v = vg.villagerAt(wp.x, wp.y);
         if (v) { this.dragP = p; this.dragV = v; this.dragOn = false; this.stickStart = { x: p.x / DPR, y: p.y / DPR }; this.stickDownAt = this.time.now; return; }

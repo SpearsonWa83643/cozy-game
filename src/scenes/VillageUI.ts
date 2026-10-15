@@ -27,6 +27,11 @@ export class VillageUIScene extends Phaser.Scene {
   buildBg!: Phaser.GameObjects.Graphics;
   buildIcon!: Phaser.GameObjects.Image;
   buildLabel!: Phaser.GameObjects.Text;
+  mountC!: Phaser.GameObjects.Container;
+  mountBg!: Phaser.GameObjects.Graphics;
+  mountIcon!: Phaser.GameObjects.Image;
+  mountLabel!: Phaser.GameObjects.Text;
+  mountState = '';
   tray: Phaser.GameObjects.Container | null = null;
   card: Phaser.GameObjects.Container | null = null;
   cardData: any = null;
@@ -84,6 +89,29 @@ export class VillageUIScene extends Phaser.Scene {
     });
     this.buildC.setData('zone', zb);
     this.drawBuildBtn();
+    // Call Mount button (above Build): call the eagle; while riding it says Land.
+    this.mountBg = this.add.graphics();
+    this.mountIcon = this.icon(0, -6, 'i_eagle', 50);
+    this.mountLabel = this.text(0, 29, 'Call Mount', 13, '#fffaf0', 900).setOrigin(0.5).setStroke('#5a3d28', 4);
+    this.mountC = this.add.container(0, 0, [this.mountBg, this.mountIcon, this.mountLabel]);
+    const zm = this.add.zone(0, 0, 92, 92).setOrigin(0, 0).setInteractive(new Phaser.Geom.Circle(46, 46, 46), Phaser.Geom.Circle.Contains);
+    zm.on('pointerdown', () => {
+      if (this.registry.get('menuOpen') || this.card) return;
+      sfx.unlock();
+      const m = this.world.mount;
+      if (m.riding) {
+        sfx.blip();
+        this.tweens.add({ targets: this.mountC, scale: { from: 0.85, to: 1 }, duration: 220, ease: 'Back.easeOut' });
+        m.landAt(m.gx + Math.cos(m.heading) * 90, m.gy + Math.sin(m.heading) * 90);
+        return;
+      }
+      if (!m.canCall()) { this.tweens.add({ targets: this.mountC, angle: { from: -8, to: 8 }, duration: 90, yoyo: true, repeat: 1, onComplete: () => this.mountC.setAngle(0) }); return; }
+      sfx.blip();
+      this.tweens.add({ targets: this.mountC, scale: { from: 0.85, to: 1 }, duration: 220, ease: 'Back.easeOut' });
+      m.call();
+    });
+    this.mountC.setData('zone', zm);
+    this.drawMountBtn();
 
     this.layout();
     this.scale.on('resize', this.layout, this);
@@ -97,7 +125,7 @@ export class VillageUIScene extends Phaser.Scene {
     ev.on('undo', (u: { label: string; run: () => void }) => this.showUndo(u));
     ev.on('snacks', () => this.drawSnacks(true));
     ev.on('build-mode', () => this.showAlert(this.village.alert));
-    themeEvents.on('change', () => { this.drawBar(); this.drawBuildBtn(); if (this.tray) this.openTray(); });
+    themeEvents.on('change', () => { this.drawBar(); this.drawBuildBtn(); this.mountState = ''; this.drawMountBtn(); if (this.tray) this.openTray(); });
     this.refresh();
     (window as any).__vui = this;
   }
@@ -113,6 +141,10 @@ export class VillageUIScene extends Phaser.Scene {
     const z = this.buildC.getData('zone') as Phaser.GameObjects.Zone;
     z.setPosition(bx - 46, by - 46);
     this.rects.build = { x: bx - 46, y: by - 46, w: 92, h: 92 };
+    const my = by - 112;
+    this.mountC.setPosition(bx, my);
+    (this.mountC.getData('zone') as Phaser.GameObjects.Zone).setPosition(bx - 46, my - 46);
+    this.rects.mount = { x: bx - 46, y: my - 46, w: 92, h: 92 };
     this.rects.bar = { x: this.bar.x, y: this.bar.y, w: 312, h: 52 };
     if (this.tray) this.openTray();
     if (this.card) this.openCard(this.cardData);
@@ -194,6 +226,21 @@ export class VillageUIScene extends Phaser.Scene {
     g.fillStyle(on ? theme.ui.accent : 0xfbf1dc, 0.97); g.fillCircle(0, 0, 44);
     g.lineStyle(4, on ? theme.ui.accentDark : theme.ui.accent, 1); g.strokeCircle(0, 0, 40);
     this.buildLabel.setText(on ? 'Done' : 'Build');
+  }
+  /** Riding: accent fill + 'Land'. Can't call right now: faded. */
+  drawMountBtn() {
+    const m = this.world?.mount;
+    const riding = !!m?.carrying;
+    const ok = riding || !!m?.canCall();
+    const st = `${riding}|${ok}`;
+    if (st === this.mountState) return;
+    this.mountState = st;
+    const g = this.mountBg; g.clear();
+    g.fillStyle(0x2a1d14, 0.3); g.fillCircle(0, 4, 44);
+    g.fillStyle(riding ? theme.ui.accent : 0xfbf1dc, 0.97); g.fillCircle(0, 0, 44);
+    g.lineStyle(4, riding ? theme.ui.accentDark : theme.ui.accent, 1); g.strokeCircle(0, 0, 40);
+    this.mountLabel.setText(riding ? 'Land' : 'Call Mount').setFontSize(riding ? 15 : 13);
+    this.mountC.setAlpha(ok ? 1 : 0.5);
   }
   refresh() {
     for (const id of RES) this.counts[id].setText(String(save.village.res[id]));
@@ -401,6 +448,11 @@ export class VillageUIScene extends Phaser.Scene {
     this.buildC.setVisible(!hide); this.bar.setVisible(!hide);
     this.snackC?.setVisible(!hide); this.alertC?.setVisible(!hide && !this.card); this.undoC?.setVisible(!hide);
     (this.buildC.getData('zone') as Phaser.GameObjects.Zone).input!.enabled = !hide;
+    // Call Mount hides in build mode (and with the satchel open).
+    const mh = hide || !!this.village?.building;
+    this.mountC.setVisible(!mh);
+    (this.mountC.getData('zone') as Phaser.GameObjects.Zone).input!.enabled = !mh;
+    if (!mh) this.drawMountBtn();
   }
 }
 export type { Res };

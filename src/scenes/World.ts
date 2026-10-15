@@ -21,6 +21,7 @@ import { sfx } from '../audio';
 import { DPR } from '../dpr';
 import { NavGrid } from '../pathfind';
 import { Life } from '../life';
+import { Mount } from '../mount/mount';
 
 export type Interactable = {
   x: number; y: number; r: number; label: string;
@@ -143,6 +144,7 @@ export class WorldScene extends Phaser.Scene {
   village!: Village;
   dresser!: ThemeDresser;
   buildView = false;
+  mount!: Mount;
   windmill: { blades: Phaser.GameObjects.Image; speed: number; boost: number } | null = null;
 
   constructor() { super('world'); }
@@ -222,6 +224,7 @@ export class WorldScene extends Phaser.Scene {
     this.buildNav();
     this.village = new Village(this);
     this.dresser = new ThemeDresser(this);
+    this.mount = new Mount(this);
     this.tapMarker = this.fx(0, 0, 'ripple', 0.5).setBlendMode('ADD').setAlpha(0).setDepth(-300);
 
     // Camera.
@@ -628,6 +631,7 @@ export class WorldScene extends Phaser.Scene {
   /** Off into the Wild Woods: a new seeded patch of forest each trip. */
   enterWild(seed?: number) {
     if (this.inWild) return;
+    if (this.mount.carrying) this.mount.dropNow();
     this.inWild = true;
     this.locked = true;
     this.path = []; this.body.setVelocity(0, 0);
@@ -899,7 +903,7 @@ export class WorldScene extends Phaser.Scene {
   tryInteract() {
     if (this.registry.get('menuOpen')) return;
     if (this.registry.get('dialogOpen')) { this.game.events.emit('dialog-advance'); return; }
-    if (this.locked) return;
+    if (this.locked || this.mount.carrying) return;
     if (this.fishing.active) { this.fishing.tap(); return; }
     const target = this.nearestInteractable();
     if (target) { this.path = []; this.pathTarget = null; target.action(); }
@@ -921,6 +925,7 @@ export class WorldScene extends Phaser.Scene {
 
   /** Analog stick from the UI (screen-space, magnitude 0..1), or null when released. */
   setStick(v: { x: number; y: number } | null) {
+    if (v && this.mount?.carrying) v = null;
     this.stick = v;
     if (v) { this.path = []; this.pathTarget = null; }
   }
@@ -933,6 +938,7 @@ export class WorldScene extends Phaser.Scene {
 
   tapWorld(wx: number, wy: number) {
     if (this.locked || this.registry.get('dialogOpen') || this.registry.get('menuOpen')) return;
+    if (this.mount.carrying) { if (this.mount.onTap(wx, wy)) return; }
     if (this.village.building) { this.village.buildTap(wx, wy); return; }
     if (this.fishing.active) { this.fishing.tap(); return; }
     // Creatures and reactive objects respond right away, wherever they are on screen.
@@ -1080,7 +1086,10 @@ export class WorldScene extends Phaser.Scene {
   update(time: number, delta: number) {
     const dt = Math.min(delta, 50) / 1000;
     const k = this.keys;
-    const frozen = this.buildView || this.locked || !!this.registry.get('dialogOpen') || !!this.registry.get('menuOpen') || ['cast', 'reel', 'land'].includes(this.fishing?.state);
+    const paused = !!this.registry.get('dialogOpen') || !!this.registry.get('menuOpen');
+    const frozen = this.buildView || this.locked || paused || ['cast', 'reel', 'land'].includes(this.fishing?.state) || this.mount.carrying;
+    this.mount.update(time, dt, paused);
+    const carried = this.mount.riderOn;
     let ix = 0, iy = 0;
     if (!frozen) {
       ix = (k.D.isDown || k.RIGHT.isDown ? 1 : 0) - (k.A.isDown || k.LEFT.isDown ? 1 : 0);
@@ -1100,10 +1109,10 @@ export class WorldScene extends Phaser.Scene {
     }
     const v = this.body.velocity;
     const blend = 1 - Math.exp(-dt * (len ? 12 : 16));
-    this.body.setVelocity(v.x + (ix * SPEED - v.x) * blend, v.y + (iy * SPEED - v.y) * blend);
+    if (!carried) this.body.setVelocity(v.x + (ix * SPEED - v.x) * blend, v.y + (iy * SPEED - v.y) * blend);
 
     // Pond: collide against the painted shoreline shape, sliding along it.
-    if (waterBlocks(this.feet.x, this.feet.y)) {
+    if (!carried && waterBlocks(this.feet.x, this.feet.y)) {
       const [lx, ly] = this.lastSafe;
       if (!waterBlocks(this.feet.x, ly)) this.feet.setPosition(this.feet.x, ly);
       else if (!waterBlocks(lx, this.feet.y)) this.feet.setPosition(lx, this.feet.y);
@@ -1112,8 +1121,8 @@ export class WorldScene extends Phaser.Scene {
     this.lastSafe = [this.feet.x, this.feet.y];
 
     // Facing + animation.
-    const speed = Math.hypot(v.x, v.y);
-    if (speed > 25) {
+    const speed = carried ? 0 : Math.hypot(v.x, v.y);
+    if (carried) { /* the eagle draws the rider */ } else if (speed > 25) {
       const a = Math.atan2(v.y, v.x);
       const sector = (Math.round(a / (Math.PI / 4)) + 8) % 8; // 0=E,1=SE,2=S,3=SW,4=W,5=NW,6=N,7=NE
       const map: [number, boolean][] = [[2, false], [1, false], [0, false], [1, true], [2, true], [3, true], [4, false], [3, false]];
@@ -1127,6 +1136,7 @@ export class WorldScene extends Phaser.Scene {
       this.dust.emitParticleAt(this.feet.x, this.feet.y + 4, 2);
     }
     this.lastStepFrame = stepFrame;
+    if (!carried) {
     this.playerImg.setTexture(this.heroKey, `${this.facing}_${stepFrame}`).setFlipX(this.flip);
     const bob = speed > 25 ? Math.abs(Math.sin(this.walkPhase * Math.PI / 2)) * 2.4 : 0;
     const breathe = speed > 25 ? 0 : Math.sin(time / 420) * 0.018;
@@ -1134,6 +1144,7 @@ export class WorldScene extends Phaser.Scene {
     this.playerImg.setScale((1 / S) * (1 - breathe * 0.5), (1 / S) * (1 + breathe));
     this.playerImg.setDepth(this.feet.y + 6);
     this.playerShadow.setPosition(this.feet.x, this.feet.y + 5).setScale((34 / 64) * (1 - bob * 0.03) / frameScale.shadow);
+    }
 
     // Sway everything gently; rustle what the player brushes past.
     const t = time / 1000;
@@ -1207,7 +1218,7 @@ export class WorldScene extends Phaser.Scene {
 
     if (time > this.nextChirp) { sfx.chirp(); this.nextChirp = time + 5000 + Math.random() * 9000; }
 
-    const it = frozen || this.fishing.active ? null : this.nearestInteractable();
+    const it = frozen || this.fishing.active || this.mount.active ? null : this.nearestInteractable();
     this.prompt = it ? { x: it.x, y: it.y - it.promptY, label: it.label } : null;
   }
 
@@ -1263,9 +1274,11 @@ export class WorldScene extends Phaser.Scene {
           reactions: self.life?.reactions ?? 0, snacks: save.snacks, fed: self.fed,
           followers: self.life?.followers() ?? 0,
           dialogOpen: !!self.registry.get('dialogOpen'),
+          mount: self.mount.phase,
         };
       },
       teleport(x: number, y: number) {
+        if (self.mount.carrying) self.mount.dropNow();
         self.feet.setPosition(x, y);
         self.body.reset(x, y);
         self.cameras.main.centerOn(x, y + 18);
@@ -1365,6 +1378,9 @@ export class WorldScene extends Phaser.Scene {
       setNeeds: (id: number, n: { food?: number; sleep?: number; fun?: number }) => { const q = self.village.villagers.find((x) => x.data.id === id); if (q) Object.assign(q.data, n); },
       setTheme: (id: 'classic' | 'halloween') => setTheme(id),
       villageEvent: (e: 'merchant' | 'rain' | 'festival') => self.village.start(e),
+      mount: () => self.mount.snapshot(),
+      callMount: () => self.mount.call(),
+      mountTap: (x: number, y: number) => self.tapWorld(x, y),
       worldToScreen(x: number, y: number) {
         const cam = self.cameras.main;
         return { x: (x - cam.worldView.x) * cam.zoom / DPR, y: (y - cam.worldView.y) * cam.zoom / DPR };
