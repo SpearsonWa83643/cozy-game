@@ -64,5 +64,35 @@ test('mount picker: eagle alone skips picker; pterodactyl unlock shows picker', 
   });
   await expect.poll(async () => (await mount(page)).landings, { timeout: 90_000, intervals: [200] }).toBeGreaterThan(0);
   await expect.poll(async () => (await mount(page)).phase, { timeout: 60_000, intervals: [200] }).toBe('off');
+
+  // 4) Cloud Puppy: grant its tuft, the picker shows three tiles; ride the puppy.
+  await page.evaluate(() => (window as any).__cozy.giveTreasure('cloud_puppy_tuft'));
+  await page.waitForTimeout(300);
+  await tapRect(page, 'mount');
+  await expect.poll(() => page.evaluate(() => !!(window as any).__vui.rects['mountPick:cloud_puppy']), { timeout: 10_000, intervals: [100] }).toBe(true);
+  await page.screenshot({ path: `${SHOTS}/mount-picker3-classic.png` });
+  await tapRect(page, 'mountPick:cloud_puppy');
+  await expect.poll(async () => (await mount(page)).id, { timeout: 10_000, intervals: [100] }).toBe('cloud_puppy');
+  await expect.poll(async () => (await mount(page)).phase, { timeout: 90_000, intervals: [200] }).toBe('ride');
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${SHOTS}/mount-cloud-riding-classic.png` });
+  await page.evaluate(() => (window as any).__cozy.setTheme('halloween'));
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: `${SHOTS}/mount-cloud-riding-halloween.png` });
+  await page.evaluate(() => (window as any).__cozy.setTheme('classic'));
+  await page.evaluate(() => {
+    const m = (window as any).__cozy.mount();
+    (window as any).__cozy.mountTap(m.ground[0] + 120, m.ground[1] + 80);
+  });
+  await expect.poll(async () => (await mount(page)).phase, { timeout: 120_000, intervals: [300] }).toBe('off');
+
+  // 5) Satchel Treasures tab lists the mount treasures (two rows of big tiles).
+  await page.evaluate(() => (window as any).__menu.show('treasures'));
+  await expect.poll(() => page.evaluate(() => (window as any).__menu.open), { timeout: 30_000 }).toBe(true);
+  await page.waitForTimeout(1200);
+  const treasures = await page.evaluate(() => (window as any).__cozy.state.treasures as string[]);
+  expect(treasures.includes('pterodactyl_egg')).toBe(true);
+  expect(treasures.includes('cloud_puppy_tuft')).toBe(true);
+  await page.screenshot({ path: `${SHOTS}/mount-treasures-tab.png` });
   expect(errors).toEqual([]);
 });

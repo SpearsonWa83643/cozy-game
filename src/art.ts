@@ -1132,6 +1132,7 @@ function paintLeafBig(ctx: Ctx, w: number, h: number) {
 import { paintAll2 } from './art2';
 import { paintEagle } from './mount/eagleArt';
 import { paintPtero } from './mount/pteroArt';
+import { paintCloudPuppy } from './mount/cloudArt';
 import { paintVillageArt } from './village/vart';
 
 export function paintAll(scene: Phaser.Scene) {
@@ -1236,6 +1237,7 @@ export function paintAll(scene: Phaser.Scene) {
   paintAll2(scene);
   paintEagle(scene);
   paintPtero(scene);
+  paintCloudPuppy(scene);
   buildAtlas(scene);
   paintVillageArt(scene);
 }

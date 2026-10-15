@@ -32,6 +32,14 @@ export const MOUNTS: MountDef[] = [
     scale: 0.92,
     blurb: 'A big friendly flyer from long ago!',
   },
+  {
+    id: 'cloud_puppy',
+    name: 'Cloud Puppy',
+    treasure: 'cloud_puppy_tuft',
+    body: 'cloud_body', wing: 'cloud_wing', wingFar: 'cloud_wing_far', icon: 'i_cloud',
+    scale: 0.9,
+    blurb: 'A soft puppy made of clouds!',
+  },
 ];
 
 export function mountById(id: string): MountDef {

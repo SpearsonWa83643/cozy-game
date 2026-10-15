@@ -306,10 +306,13 @@ export class MenuScene extends Phaser.Scene {
   // ------------------------------------------------------------ treasures
   renderTreasures(a: { x: number; y: number; w: number; h: number }) {
     const n = TREASURES.length;
-    const tile = Math.min(170, (a.w - (n - 1) * 14) / n);
+    // Big tiles: wrap into two rows once there are lots of treasures (mounts add more).
+    const cols = n > 7 ? Math.ceil(n / 2) : n;
+    const rows = Math.ceil(n / cols);
+    const tile = Math.min(rows > 1 ? 118 : 170, (a.w - (cols - 1) * 14) / cols);
     this.content.add(this.text(a.x, a.y, `Treasures found: ${TREASURES.filter((t) => save.treasures.includes(t.id)).length} / ${n}`, 20, INK, 800));
     TREASURES.forEach((t, i) => {
-      const x = a.x + i * (tile + 14), y = a.y + 36;
+      const x = a.x + (i % cols) * (tile + 14), y = a.y + 36 + Math.floor(i / cols) * (tile + 52);
       const found = save.treasures.includes(t.id);
       const [bg, z] = this.btn(x, y, tile, tile + 40, () => { sfx.blip(); this.hint(found ? t.blurb : `Hint: ${t.hint}`); }, found ? 0xfff4d6 : 0xe6dccb, found ? 0xf2a93b : 0xd9b98f, 18);
       this.content.add([bg, z]);
@@ -324,7 +327,7 @@ export class MenuScene extends Phaser.Scene {
       this.content.add(this.text(x + tile / 2, y + tile + 18, found ? t.name : 'Not found yet', 15, found ? INK : '#9a8a78', 800).setOrigin(0.5).setWordWrapWidth(tile - 10).setAlign('center'));
     });
     // Minor collectibles.
-    let y = a.y + 36 + tile + 64;
+    let y = a.y + 36 + (rows - 1) * (tile + 52) + tile + 64;
     this.content.add(this.text(a.x, y, 'Little finds', 18, '#8a6a50', 800));
     y += 30;
     const mw = Math.min(190, (a.w - (MINORS.length - 1) * 10) / MINORS.length);
