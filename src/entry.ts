@@ -357,16 +357,27 @@ class EntryScreen {
     clearTimeout(this.repeat); clearInterval(this.repeat);
     const kb = this.game.input?.keyboard as any;
     if (kb) kb.enabled = true;
-    setTimeout(() => { this.el.remove(); active = null; }, 520);
+    setTimeout(() => { this.el.remove(); active = null; markDone(); }, 520);
   }
 }
 
 let active: EntryScreen | null = null;
 
+// Things (like the "What's new" note) that should wait until the entry screen is gone.
+const after: (() => void)[] = [];
+let done = false;
+function markDone() {
+  if (done) return;
+  done = true;
+  for (const f of after.splice(0)) { try { f(); } catch (e) { console.error(e); } }
+}
+/** Run cb once the entry screen has been closed (or right away if it never shows). */
+export function afterEntry(cb: () => void) { if (done) cb(); else after.push(cb); }
+
 /** Show the entry screen over the game. Automated test browsers skip it unless the URL has ?entry=1. */
 export function showEntry(game: Phaser.Game) {
   const q = new URLSearchParams(location.search).get('entry');
-  if (q === '0' || (navigator.webdriver && q !== '1')) return;
+  if (q === '0' || (navigator.webdriver && q !== '1')) { markDone(); return; }
   if (active) return;
   active = new EntryScreen(game);
   active.open();

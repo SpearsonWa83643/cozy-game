@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { paintAll } from '../art';
-import { showEntry } from '../entry';
+import { showEntry, afterEntry } from '../entry';
+import { showWhatsNew } from '../whatsnewNote';
 
 export class BootScene extends Phaser.Scene {
   constructor() { super('boot'); }
@@ -21,6 +22,8 @@ export class BootScene extends Phaser.Scene {
     // After the glade is up, show the living name + birthday card (skipped in automated tests).
     // (setTimeout, not this.time: starting 'world' shuts this scene and its clock down.)
     const game = this.game;
+    // Then, once the entry card is gone, the one-time "What's new" note (if this release has any).
+    afterEntry(() => setTimeout(() => showWhatsNew(game), 350));
     setTimeout(() => showEntry(game), 80);
   }
 }
