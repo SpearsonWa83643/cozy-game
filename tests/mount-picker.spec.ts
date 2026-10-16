@@ -79,7 +79,7 @@ test('mount picker: eagle alone skips picker; pterodactyl unlock shows picker', 
   await page.evaluate(() => (window as any).__cozy.setTheme('halloween'));
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${SHOTS}/mount-cloud-riding-halloween.png` });
-  await page.evaluate(() => (window as any).__cozy.setTheme('classic'));
+  await page.evaluate(() => (window as any).__cozy.setTheme('spring'));
   await page.evaluate(() => {
     const m = (window as any).__cozy.mount();
     (window as any).__cozy.mountTap(m.ground[0] + 120, m.ground[1] + 80);
@@ -100,7 +100,7 @@ test('mount picker: eagle alone skips picker; pterodactyl unlock shows picker', 
   await page.evaluate(() => (window as any).__cozy.setTheme('halloween'));
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${SHOTS}/mount-unicorn-riding-halloween.png` });
-  await page.evaluate(() => (window as any).__cozy.setTheme('classic'));
+  await page.evaluate(() => (window as any).__cozy.setTheme('spring'));
   await page.evaluate(() => {
     const m = (window as any).__cozy.mount();
     (window as any).__cozy.mountTap(m.ground[0] + 120, m.ground[1] + 80);
@@ -138,7 +138,7 @@ test('mount picker: eagle alone skips picker; pterodactyl unlock shows picker', 
   await page.evaluate(() => (window as any).__cozy.setTheme('halloween'));
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${SHOTS}/mount-snail-riding-halloween.png` });
-  await page.evaluate(() => (window as any).__cozy.setTheme('classic'));
+  await page.evaluate(() => (window as any).__cozy.setTheme('spring'));
   await page.evaluate(() => {
     const m = (window as any).__cozy.mount();
     (window as any).__cozy.mountTap(m.ground[0] + 120, m.ground[1] + 80);
@@ -159,7 +159,7 @@ test('mount picker: eagle alone skips picker; pterodactyl unlock shows picker', 
   await page.evaluate(() => (window as any).__cozy.setTheme('halloween'));
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${SHOTS}/mount-teacup-riding-halloween.png` });
-  await page.evaluate(() => (window as any).__cozy.setTheme('classic'));
+  await page.evaluate(() => (window as any).__cozy.setTheme('spring'));
   await page.evaluate(() => {
     const m = (window as any).__cozy.mount();
     (window as any).__cozy.mountTap(m.ground[0] + 120, m.ground[1] + 80);
@@ -197,7 +197,7 @@ test('mount picker: eagle alone skips picker; pterodactyl unlock shows picker', 
   await page.evaluate(() => (window as any).__cozy.setTheme('halloween'));
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${SHOTS}/mount-pumpkin-riding-halloween.png` });
-  await page.evaluate(() => (window as any).__cozy.setTheme('classic'));
+  await page.evaluate(() => (window as any).__cozy.setTheme('spring'));
   await page.evaluate(() => {
     const m = (window as any).__cozy.mount();
     (window as any).__cozy.mountTap(m.ground[0] + 120, m.ground[1] + 80);

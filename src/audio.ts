@@ -2,7 +2,7 @@
 export type VolumeLevel = 'on' | 'quiet' | 'off';
 const LEVELS: Record<VolumeLevel, number> = { on: 0.6, quiet: 0.26, off: 0 };
 
-import { CLASSIC, HALLOWEEN, type Soundscape, type Extra } from './soundscapes';
+import { SPRING, HALLOWEEN, type Soundscape, type Extra } from './soundscapes';
 const midi = (n: number) => 440 * Math.pow(2, (n - 69) / 12);
 
 class Synth {
@@ -98,7 +98,7 @@ class Synth {
   // ------------------------------------------------------------ generative ambient music
   // ------------------------------------------------------------ theme soundscapes
   /** Active soundscape; each has its own layer (gain + pad filter) so a switch crossfades. */
-  private scape: Soundscape = CLASSIC;
+  private scape: Soundscape = SPRING;
   private layer: { gain: GainNode; pad: BiquadFilterNode; windSrc?: AudioBufferSourceNode } | null = null;
   private extraAt: number[] = [];
   festival = false;
@@ -197,7 +197,7 @@ class Synth {
     }
   }
   /** Back-compat for older callers. */
-  setTheme(t: 'classic' | 'spooky') { this.setSoundscape(t === 'spooky' ? HALLOWEEN : CLASSIC); }
+  setTheme(t: 'classic' | 'spring' | 'spooky') { this.setSoundscape(t === 'spooky' ? HALLOWEEN : SPRING); }
   private static CHORD_LEN = 8.5;
   /** Per-area mood: transposition (semitones), melody density and pad brightness. */
   private static MOODS: Record<string, { tr: number; dens: number; cut: number }> = {

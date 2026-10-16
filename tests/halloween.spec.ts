@@ -39,7 +39,7 @@ test('halloween: interactive decorations respond to taps', async ({ page }) => {
   for (let i = 0; i < 6 && (await cozy(page, 'state')).dialogOpen; i++) { await page.touchscreen.tap(590, 700); await page.waitForTimeout(400); }
 
   await checkParticles(page, 'classic');
-  expect((await cozy(page, 'state')).soundscape).toBe('classic');
+  expect((await cozy(page, 'state')).soundscape).toBe('spring');
   await cozy(page, "setTheme('halloween')");
   await page.waitForTimeout(1500);
   expect((await cozy(page, 'state')).soundscape).toBe('halloween');
@@ -98,8 +98,8 @@ test('halloween: interactive decorations respond to taps', async ({ page }) => {
   await page.screenshot({ path: `${SHOTS}/halloween-preview-orchard.png` });
 
   // Classic: decorations hidden, taps there do nothing.
-  await cozy(page, "setTheme('classic')");
-  expect((await cozy(page, 'state')).soundscape).toBe('classic');
+  await cozy(page, "setTheme('spring')");
+  expect((await cozy(page, 'state')).soundscape).toBe('spring');
   await checkParticles(page, 'classic again');
   await teleport(page, (bt[0] + pk[0]) / 2, (bt[1] + pk[1]) / 2 + 60);
   await page.waitForTimeout(1200);

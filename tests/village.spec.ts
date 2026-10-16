@@ -193,7 +193,7 @@ test('village: invite, build, assign a job, resources, theme toggle', async ({ p
   await page.waitForTimeout(9000); // let the ground repaint + cross-fade
   await page.screenshot({ path: `${SHOTS}/hd-ipad-v5-02-village-halloween.png` });
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('cozy.save.v2') || '{}').theme)).toBe('halloween');
-  await pickTheme('classic');
+  await pickTheme('spring');
   await tapRect(page, await menuRect(page, 'close'));
 
   // Progress survives a reload.
@@ -203,6 +203,6 @@ test('village: invite, build, assign a job, resources, theme toggle', async ({ p
   const after = await village(page);
   expect(after.villagers.length).toBe(1);
   expect(after.buildings.length).toBe(2);
-  expect(after.theme).toBe('classic');
+  expect(after.theme).toBe('spring');
   expect(errors).toEqual([]);
 });

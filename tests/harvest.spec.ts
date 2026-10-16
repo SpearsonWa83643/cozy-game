@@ -96,7 +96,7 @@ test('harvest: tap leaf/birch tree for wood until stock empty', async ({ page })
   await page.waitForTimeout(2000);
   expect(await stumpAt(t[0], t[2])).toBe('stump');
   await page.screenshot({ path: `${SHOTS}/harvest-stump-halloween.png` });
-  await cozy(page, "setTheme('classic')");
+  await cozy(page, "setTheme('spring')");
 
   // Slice 3: after the (shortened) timer the stump fades away into grass.
   await page.waitForFunction(([x, y]) => ((window as any).__cozy.stumps() as [number, number, string][])

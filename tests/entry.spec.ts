@@ -58,8 +58,8 @@ test('entry screen: empty, filled, welcome-back, theme, skip', async ({ page }) 
     await expect.poll(() => page.evaluate(() => (window as any).__entry && document.documentElement.querySelector('#entry')?.getAttribute('data-theme')), { timeout: 5_000 }).toBe('halloween');
     await page.waitForTimeout(500);
     await page.screenshot({ path: `test-results/entry-3-halloween.png` });
-    await page.locator('#entry .e-th[data-theme="classic"]').tap();
-    await expect.poll(() => page.locator('#entry').getAttribute('data-theme'), { timeout: 5_000 }).toBe('classic');
+    await page.locator('#entry .e-th[data-theme="spring"]').tap();
+    await expect.poll(() => page.locator('#entry').getAttribute('data-theme'), { timeout: 5_000 }).toBe('spring');
     // Taps on the entry screen must not reach the game's buttons underneath (volume, map...).
     await page.waitForTimeout(400);
     expect(await page.evaluate(() => ({ vol: localStorage.getItem('cozy.vol'), menu: !!(window as any).__menu?.open }))).toEqual({ vol: null, menu: false });

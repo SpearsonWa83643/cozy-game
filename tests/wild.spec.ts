@@ -60,7 +60,7 @@ test('wild woods: enter, seeded generation, theme, home, portal', async ({ page 
     expect(ps.filter((p) => /^(h_)?tree|^pine|^birch|^apple|^stump/.test(p.frame) || p.frameTex !== p.tex || p.frame === '__BASE')).toEqual([]);
   }
 
-  await cozy(page, "setTheme('classic')");
+  await cozy(page, "setTheme('spring')");
 
   // 5. The big Home button: back at the cottage.
   await tapRect(page, await wildRect(page, 'home'));

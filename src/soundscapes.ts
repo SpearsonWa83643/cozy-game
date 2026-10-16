@@ -18,7 +18,7 @@ export type Soundscape = {
   extras: Extra[];
 };
 
-/** Classic: the original F-major glade music, unchanged. */
+/** Classic: the original F-major glade music (kept for reference / a future theme; Spring replaced it). */
 export const CLASSIC: Soundscape = {
   id: 'classic', lead: 'kalimba', dens: 1, pad: 1, bright: 1, wind: 0, extras: [],
   chords: [
@@ -52,3 +52,6 @@ export const HALLOWEEN: Soundscape = {
     { bass: 45, pad: [52, 55, 57, 61], mel: [76, 73, 79, 81] },                     // A7sus->A
   ],
 };
+
+/** Spring (replaces Classic): placeholder copy of the glade music until its own score lands. */
+export const SPRING: Soundscape = { ...CLASSIC, id: 'spring' };

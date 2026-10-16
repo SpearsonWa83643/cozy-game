@@ -1,8 +1,8 @@
 // Theme system. A theme describes the whole look and feel; World, UI, audio and the ground
 // painter read the active theme and listen for changes, so a switch happens live.
 import Phaser from 'phaser';
-import { save, persist, ThemeId } from './save';
-import { CLASSIC, HALLOWEEN, type Soundscape } from './soundscapes';
+import { save, persist, normTheme, ThemeId } from './save';
+import { SPRING, HALLOWEEN, type Soundscape } from './soundscapes';
 
 export type Theme = {
   id: ThemeId;
@@ -46,15 +46,15 @@ export type EntryLook = {
   iconSvg: string;                    // little picture for the theme toggle (inline SVG)
 };
 
-const classic: Theme = {
-  id: 'classic', name: 'Classic', icon: 'i_leaf',
+const spring: Theme = {
+  id: 'spring', name: 'Spring', icon: 'i_leaf',
   ground: (h, s, l) => [h, s, l],
   foliage: null, trees: null, sky: null, fog: null,
   particles: { pollen: [0xfff3c4, 0xffe8a3, 0xffffff], firefly: [0xe6ff8a, 0xfff07a], petal: 'petal', petalTint: null },
   critters: { cat: null, bats: false, ghosts: false, butterflies: null },
   props: false, glow: 0xffd27a,
   ui: { accent: 0xf2a93b, accentDark: 0xc9802a, css: '#f2a93b', tab: 0xf3e6cc, tabOn: 0xf2a93b },
-  soundscape: CLASSIC,
+  soundscape: SPRING,
   entry: {
     sky: ['rgba(126,178,196,0.78)', 'rgba(150,196,120,0.72)', 'rgba(52,86,48,0.86)'],
     title: '#fff6dc', titleEdge: '#5b3d24',
@@ -91,13 +91,16 @@ const halloween: Theme = {
   },
 };
 
-export const THEMES: Record<ThemeId, Theme> = { classic, halloween };
-export const THEME_ORDER: ThemeId[] = ['classic', 'halloween'];
+// Ready for more: Summer, Fall, Winter and holiday themes each add one entry here + a soundscape.
+export const THEMES: Record<ThemeId, Theme> = { spring, halloween };
+export const THEME_ORDER: ThemeId[] = ['spring', 'halloween'];
 
 export const themeEvents = new Phaser.Events.EventEmitter();
-export let theme: Theme = THEMES[save.theme] ?? classic;
+export let theme: Theme = THEMES[normTheme(save.theme)] ?? spring;
 
-export function setTheme(id: ThemeId) {
+/** Switch theme live. Accepts the legacy id 'classic' (now Spring). */
+export function setTheme(raw: ThemeId | 'classic') {
+  const id = normTheme(raw);
   if (theme.id === id) return;
   theme = THEMES[id];
   save.theme = id;
