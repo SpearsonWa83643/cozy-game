@@ -18,13 +18,14 @@ export const TREASURES: Treasure[] = [
   { id: 'glow_pearl', name: 'Glow Pearl', icon: 'ic_glow_pearl', blurb: 'It glows! Call Mount to ride a lantern snail!', hint: 'A chest in the Wild Woods.' },
   { id: 'sugar_cube', name: 'Sugar Cube', icon: 'ic_sugar_cube', blurb: 'Sweet! Call Mount to ride a flying teacup!', hint: 'A chest in the Wild Woods.' },
   { id: 'toy_propeller', name: 'Toy Propeller', icon: 'ic_toy_prop', blurb: 'Zoom! Call Mount to fly a toy airplane!', hint: 'A chest in the Wild Woods.' },
+  { id: 'pumpkin_seed', name: 'Magic Pumpkin Seed', icon: 'ic_pumpkin_seed', blurb: 'Spooky-sweet! Call Mount to ride a flying pumpkin!', hint: 'A chest in the Wild Woods.' },
   { id: 'golden_honeycomb', name: 'Golden Honeycomb', icon: 'ic_honeycomb', blurb: 'Sweet! Call Mount to ride a bumblebee!', hint: 'A chest in the Wild Woods.' },
 ];
 
 export type MinorId = 'petal' | 'shell' | 'apple' | 'acorn' | 'beetle' | 'glowmoss' | 'starshard';
 export const WILD_SET = ['acorn_cap', 'glow_scarf', 'ranger_coat'];
 /** Mounts found in Wild Woods chests after the cosmetic set. */
-export const WILD_MOUNTS = ['pterodactyl_egg', 'cloud_puppy_tuft', 'rainbow_horseshoe', 'golden_honeycomb', 'glow_pearl', 'sugar_cube', 'toy_propeller'];
+export const WILD_MOUNTS = ['pterodactyl_egg', 'cloud_puppy_tuft', 'rainbow_horseshoe', 'golden_honeycomb', 'glow_pearl', 'sugar_cube', 'toy_propeller', 'pumpkin_seed'];
 export const MINORS: { id: MinorId; name: string; icon: string }[] = [
   { id: 'petal', name: 'Petals', icon: 'petal' }, { id: 'shell', name: 'Shells', icon: 'shell0' },
   { id: 'apple', name: 'Fruit', icon: 'apple' }, { id: 'acorn', name: 'Acorns', icon: 'acorn' }, { id: 'beetle', name: 'Beetles spotted', icon: 'beetle' },

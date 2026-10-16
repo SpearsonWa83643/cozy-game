@@ -183,6 +183,27 @@ test('mount picker: eagle alone skips picker; pterodactyl unlock shows picker', 
   });
   await expect.poll(async () => (await mount(page)).phase, { timeout: 120_000, intervals: [300] }).toBe('off');
 
+  // 4g) Pumpkin: grant the magic pumpkin seed; ride it in Halloween too.
+  await page.evaluate(() => (window as any).__cozy.giveTreasure('pumpkin_seed'));
+  await page.waitForTimeout(300);
+  await tapRect(page, 'mount');
+  await expect.poll(() => page.evaluate(() => !!(window as any).__vui.rects['mountPick:pumpkin']), { timeout: 10_000, intervals: [100] }).toBe(true);
+  await page.screenshot({ path: `${SHOTS}/mount-picker9-classic.png` });
+  await tapRect(page, 'mountPick:pumpkin');
+  await expect.poll(async () => (await mount(page)).id, { timeout: 10_000, intervals: [100] }).toBe('pumpkin');
+  await expect.poll(async () => (await mount(page)).phase, { timeout: 90_000, intervals: [200] }).toBe('ride');
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${SHOTS}/mount-pumpkin-riding-classic.png` });
+  await page.evaluate(() => (window as any).__cozy.setTheme('halloween'));
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: `${SHOTS}/mount-pumpkin-riding-halloween.png` });
+  await page.evaluate(() => (window as any).__cozy.setTheme('classic'));
+  await page.evaluate(() => {
+    const m = (window as any).__cozy.mount();
+    (window as any).__cozy.mountTap(m.ground[0] + 120, m.ground[1] + 80);
+  });
+  await expect.poll(async () => (await mount(page)).phase, { timeout: 120_000, intervals: [300] }).toBe('off');
+
   // 5) Satchel Treasures tab lists the mount treasures (two rows of big tiles).
   await page.evaluate(() => (window as any).__menu.show('treasures'));
   await expect.poll(() => page.evaluate(() => (window as any).__menu.open), { timeout: 30_000 }).toBe(true);
@@ -195,6 +216,7 @@ test('mount picker: eagle alone skips picker; pterodactyl unlock shows picker', 
   expect(treasures.includes('glow_pearl')).toBe(true);
   expect(treasures.includes('sugar_cube')).toBe(true);
   expect(treasures.includes('toy_propeller')).toBe(true);
+  expect(treasures.includes('pumpkin_seed')).toBe(true);
   await page.screenshot({ path: `${SHOTS}/mount-treasures-tab.png` });
   expect(errors).toEqual([]);
 });
