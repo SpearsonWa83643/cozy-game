@@ -25,7 +25,7 @@ test("what's new: after entry, shows once, closes, stays closed; none when empty
   await expect(page.locator('#entry')).toHaveCount(0);
   await expect(page.locator('#whatsnew h2')).toContainText("What's new");
   await expect(page.locator('#whatsnew li')).toHaveCount(4);
-  await expect(page.locator('#whatsnew li').first()).toContainText('Halloween');
+  await expect(page.locator('#whatsnew li').first()).toContainText('Pumpkin');
   await expect(page.locator('#whatsnew li').nth(1)).toContainText('music');
   const ok = await page.locator('#whatsnew .w-ok').boundingBox();
   expect(ok!.height).toBeGreaterThanOrEqual(70);

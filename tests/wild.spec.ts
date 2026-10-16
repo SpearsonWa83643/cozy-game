@@ -55,6 +55,10 @@ test('wild woods: enter, seeded generation, theme, home, portal', async ({ page 
   await cozy(page, "setTheme('halloween')");
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${SHOTS}/hd-ipad-v8-02-wild-halloween.png` });
+  { // Particles in the Wild Woods (Halloween) never draw tree art or a frame from another atlas.
+    const ps: any[] = await cozy(page, 'particleFrames()');
+    expect(ps.filter((p) => /^(h_)?tree|^pine|^birch|^apple|^stump/.test(p.frame) || p.frameTex !== p.tex || p.frame === '__BASE')).toEqual([]);
+  }
 
   await cozy(page, "setTheme('classic')");
 

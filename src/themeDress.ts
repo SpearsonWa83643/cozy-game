@@ -284,13 +284,12 @@ export class ThemeDresser {
     if (t.sky) this.sky.setTexture(atlasOf(t.sky.frame), t.sky.frame).setAlpha(t.sky.alpha);
     for (const f of this.fog) f.img.setVisible(!!t.fog).setTint(t.fog?.tint ?? 0xffffff).setAlpha(t.fog?.alpha ?? 0);
     // Particles.
-    const [pollen, petals] = w.ambient;
+    const [pollen] = w.ambient;
     pollen?.updateConfig({ tint: t.particles.pollen } as any);
-    if (petals) {
-      (petals as any).setTexture(atlasOf(t.particles.petal), t.particles.petal);
-      petals.setEmitterFrame(t.particles.petal);
-      petals.updateConfig({ tint: t.particles.petalTint ?? 0xffffff, frequency: t.id === 'halloween' ? 300 : 700 } as any);
-    }
+    // Each theme's petal/leaf frame has its own emitter on the right atlas page; only one runs.
+    const petals = w.makePetals(t.particles.petal, t.particles.petalTint, t.id === 'halloween' ? 300 : 700);
+    for (const [f, e] of w.petalBy) { const on = e === petals; e.emitting = on; if (!on) e.killAll(); e.setVisible(on); }
+    w.petals = petals;
     for (const e of w.fireflies) e.updateConfig({ tint: t.particles.firefly } as any);
     // Critters.
     if (t.critters.cat) w.life.cat.setTint(t.critters.cat); else w.life.cat.clearTint();

@@ -1,5 +1,6 @@
 // Data-driven mount definitions. Eagle is free; others unlock via treasures.
-import { hasTreasure } from '../save';
+import { hasTreasure, save } from '../save';
+import { theme } from '../theme';
 
 export type MountDef = {
   id: string;
@@ -88,16 +89,48 @@ export const MOUNTS: MountDef[] = [
     blurb: 'Zoom! A little red airplane!',
     style: 'prop', propAt: [61, 5],
   },
+  {
+    id: 'pumpkin',
+    name: 'Pumpkin',
+    treasure: 'pumpkin_seed',
+    body: 'pump_body', wing: 'pump_wing', wingFar: 'pump_wing_far', icon: 'i_pumpkin',
+    scale: 0.85,
+    blurb: 'A happy flying jack-o\'-lantern!',
+    flapRate: 1.3,
+  },
 ];
 
 export function mountById(id: string): MountDef {
   return MOUNTS.find((m) => m.id === id) ?? MOUNTS[0];
 }
 
-export function isMountUnlocked(m: MountDef): boolean {
-  return m.treasure === null || hasTreasure(m.treasure);
+/** The theme's own default mount: the pumpkin carriage in Halloween, the bald eagle otherwise. */
+export function themeDefaultMount(): string {
+  return theme.id === 'halloween' ? 'pumpkin' : 'eagle';
 }
 
+export function isMountUnlocked(m: MountDef): boolean {
+  return m.treasure === null || hasTreasure(m.treasure) || m.id === themeDefaultMount();
+}
+
+/** Unlocked mounts, the theme's default first. */
 export function unlockedMounts(): MountDef[] {
-  return MOUNTS.filter(isMountUnlocked);
+  const def = themeDefaultMount();
+  const list = MOUNTS.filter(isMountUnlocked);
+  return [...list.filter((m) => m.id === def), ...list.filter((m) => m.id !== def)];
+}
+
+/**
+ * What Call Mount summons straight away, or null to open the picker. With no treasure mounts
+ * (beyond the free eagle and the theme's default) it is your own last pick if you made one,
+ * otherwise the theme's default. With treasure mounts the picker opens (your pick is marked).
+ */
+export function directMount(): string | null {
+  const def = themeDefaultMount();
+  const list = unlockedMounts();
+  const extras = list.filter((m) => m.id !== def && m.id !== 'eagle');
+  if (extras.length) return null;
+  const pick = save.mountPick;
+  if (pick && list.some((m) => m.id === pick)) return pick;
+  return def;
 }

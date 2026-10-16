@@ -5,11 +5,11 @@ import { atlasOf } from '../art';
 import { DPR } from '../dpr';
 import { safeInsets } from '../device';
 import { sfx } from '../audio';
-import { save, BuildingType, Res } from '../save';
+import { save, persist, BuildingType, Res } from '../save';
 import { theme, themeEvents } from '../theme';
 import { BUILD, BUILD_ORDER, isUnlockedB, canAfford, Village, Villager, Building, ResId, Alert } from '../village/village';
 import type { WorldScene } from './World';
-import { unlockedMounts, type MountDef } from '../mount/defs';
+import { unlockedMounts, directMount, themeDefaultMount, mountById, type MountDef } from '../mount/defs';
 
 const INK = '#3d2c20';
 const FONT = 'Nunito, "Trebuchet MS", sans-serif';
@@ -110,9 +110,9 @@ export class VillageUIScene extends Phaser.Scene {
       if (!m.canCall()) { this.tweens.add({ targets: this.mountC, angle: { from: -8, to: 8 }, duration: 90, yoyo: true, repeat: 1, onComplete: () => this.mountC.setAngle(0) }); return; }
       sfx.blip();
       this.tweens.add({ targets: this.mountC, scale: { from: 0.85, to: 1 }, duration: 220, ease: 'Back.easeOut' });
-      const list = unlockedMounts();
-      if (list.length <= 1) m.call(list[0]?.id ?? 'eagle');
-      else this.openMountPicker(list);
+      const direct = directMount();
+      if (direct) m.call(direct);
+      else this.openMountPicker(unlockedMounts());
     });
     this.mountC.setData('zone', zm);
     this.drawMountBtn();
@@ -263,9 +263,14 @@ export class VillageUIScene extends Phaser.Scene {
       const [bg, z] = this.button(x, y, tile, tile, 0xfff4d6, theme.ui.accent, () => {
         sfx.blip();
         this.closeMountPicker(true);
+        save.mountPick = m.id; persist();
         this.world.mount.call(m.id);
       }, 20, `mountPick:${m.id}`);
       c.add([bg, z]);
+      if (m.id === (save.mountPick ?? themeDefaultMount())) {
+        // Your pick (or the theme's default) gets a bold ring.
+        const ring = this.add.graphics(); ring.lineStyle(6, theme.ui.accentDark, 1); ring.strokeRoundedRect(x - 4, y - 4, tile + 8, tile + 8, 24); c.add(ring);
+      }
       const ic = this.icon(x + tile / 2, y + tile * 0.42, m.icon, 80);
       const name = this.text(x + tile / 2, y + tile - 24, m.name, 17, INK, 900).setOrigin(0.5);
       c.add([ic, name]);
@@ -294,7 +299,7 @@ export class VillageUIScene extends Phaser.Scene {
     g.fillStyle(riding ? theme.ui.accent : 0xfbf1dc, 0.97); g.fillCircle(0, 0, 44);
     g.lineStyle(4, riding ? theme.ui.accentDark : theme.ui.accent, 1); g.strokeCircle(0, 0, 40);
     this.mountLabel.setText(riding ? 'Land' : 'Call Mount').setFontSize(riding ? 15 : 13);
-    const ik = riding && m ? m.def.icon : 'i_eagle';
+    const ik = riding && m ? m.def.icon : mountById(directMount() ?? save.mountPick ?? themeDefaultMount()).icon;
     if (this.mountIcon.frame.name !== ik) this.mountIcon.setTexture(atlasOf(ik), ik).setDisplaySize(50, 50);
     this.mountC.setAlpha(ok ? 1 : 0.5);
   }

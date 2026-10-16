@@ -25,6 +25,8 @@ export type SaveData = {
   chests: string[];
   /** Fruit in your basket, for feeding animals. */
   snacks: number;
+  /** Mount you last picked yourself in the mount picker (kept over the theme's default). */
+  mountPick?: string;
   /** One-time tips already shown. */
   tips: string[];
   /** Wilderness: trips taken, monsters poofed, rare finds banked at home. */
