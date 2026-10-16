@@ -86,6 +86,44 @@ test('mount picker: eagle alone skips picker; pterodactyl unlock shows picker', 
   });
   await expect.poll(async () => (await mount(page)).phase, { timeout: 120_000, intervals: [300] }).toBe('off');
 
+  // 4b) Unicorn: grant the rainbow horseshoe, the picker shows four tiles; ride the unicorn.
+  await page.evaluate(() => (window as any).__cozy.giveTreasure('rainbow_horseshoe'));
+  await page.waitForTimeout(300);
+  await tapRect(page, 'mount');
+  await expect.poll(() => page.evaluate(() => !!(window as any).__vui.rects['mountPick:unicorn']), { timeout: 10_000, intervals: [100] }).toBe(true);
+  await page.screenshot({ path: `${SHOTS}/mount-picker4-classic.png` });
+  await tapRect(page, 'mountPick:unicorn');
+  await expect.poll(async () => (await mount(page)).id, { timeout: 10_000, intervals: [100] }).toBe('unicorn');
+  await expect.poll(async () => (await mount(page)).phase, { timeout: 90_000, intervals: [200] }).toBe('ride');
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${SHOTS}/mount-unicorn-riding-classic.png` });
+  await page.evaluate(() => (window as any).__cozy.setTheme('halloween'));
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: `${SHOTS}/mount-unicorn-riding-halloween.png` });
+  await page.evaluate(() => (window as any).__cozy.setTheme('classic'));
+  await page.evaluate(() => {
+    const m = (window as any).__cozy.mount();
+    (window as any).__cozy.mountTap(m.ground[0] + 120, m.ground[1] + 80);
+  });
+  await expect.poll(async () => (await mount(page)).phase, { timeout: 120_000, intervals: [300] }).toBe('off');
+
+  // 4c) Bumblebee: grant the golden honeycomb; five tiles; ride the bee (fast buzzing wings).
+  await page.evaluate(() => (window as any).__cozy.giveTreasure('golden_honeycomb'));
+  await page.waitForTimeout(300);
+  await tapRect(page, 'mount');
+  await expect.poll(() => page.evaluate(() => !!(window as any).__vui.rects['mountPick:bumblebee']), { timeout: 10_000, intervals: [100] }).toBe(true);
+  await page.screenshot({ path: `${SHOTS}/mount-picker5-classic.png` });
+  await tapRect(page, 'mountPick:bumblebee');
+  await expect.poll(async () => (await mount(page)).id, { timeout: 10_000, intervals: [100] }).toBe('bumblebee');
+  await expect.poll(async () => (await mount(page)).phase, { timeout: 90_000, intervals: [200] }).toBe('ride');
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${SHOTS}/mount-bee-riding-classic.png` });
+  await page.evaluate(() => {
+    const m = (window as any).__cozy.mount();
+    (window as any).__cozy.mountTap(m.ground[0] + 120, m.ground[1] + 80);
+  });
+  await expect.poll(async () => (await mount(page)).phase, { timeout: 120_000, intervals: [300] }).toBe('off');
+
   // 5) Satchel Treasures tab lists the mount treasures (two rows of big tiles).
   await page.evaluate(() => (window as any).__menu.show('treasures'));
   await expect.poll(() => page.evaluate(() => (window as any).__menu.open), { timeout: 30_000 }).toBe(true);
@@ -93,6 +131,8 @@ test('mount picker: eagle alone skips picker; pterodactyl unlock shows picker', 
   const treasures = await page.evaluate(() => (window as any).__cozy.state.treasures as string[]);
   expect(treasures.includes('pterodactyl_egg')).toBe(true);
   expect(treasures.includes('cloud_puppy_tuft')).toBe(true);
+  expect(treasures.includes('rainbow_horseshoe')).toBe(true);
+  expect(treasures.includes('golden_honeycomb')).toBe(true);
   await page.screenshot({ path: `${SHOTS}/mount-treasures-tab.png` });
   expect(errors).toEqual([]);
 });

@@ -390,7 +390,7 @@ export class Mount {
     if (this.glide > 0) this.glide -= dt;
     const gTarget = this.glide > 0 || this.phase === 'arrive' && (this.seg?.t ?? 0) < 0.55 ? 1 : 0;
     this.glideAmt += (gTarget - this.glideAmt) * (1 - Math.exp(-dt * 4));
-    this.flap += dt * Math.PI * 2 * rate * (1 - this.glideAmt * 0.85);
+    this.flap += dt * Math.PI * 2 * rate * (this.def.flapRate ?? 1) * (1 - this.glideAmt * 0.85);
     const c = Math.cos(this.flap);
     const lift = c * (1 - this.glideAmt) + 0.6 * this.glideAmt; // glide: wings held up in a soaring V // 1 up, -1 down; glide holds wings level-ish
     const bob = Math.sin(this.flap) * 3.2 * (1 - this.glideAmt) + Math.sin(time / 600) * 1.5;

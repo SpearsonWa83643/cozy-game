@@ -13,6 +13,8 @@ export type MountDef = {
   /** Overall draw scale (eagle is 0.85). */
   scale: number;
   blurb: string;
+  /** Wing beat speed multiplier (bee buzzes fast). Default 1. */
+  flapRate?: number;
 };
 
 export const MOUNTS: MountDef[] = [
@@ -39,6 +41,23 @@ export const MOUNTS: MountDef[] = [
     body: 'cloud_body', wing: 'cloud_wing', wingFar: 'cloud_wing_far', icon: 'i_cloud',
     scale: 0.9,
     blurb: 'A soft puppy made of clouds!',
+  },
+  {
+    id: 'unicorn',
+    name: 'Unicorn',
+    treasure: 'rainbow_horseshoe',
+    body: 'uni_body', wing: 'uni_wing', wingFar: 'uni_wing_far', icon: 'i_unicorn',
+    scale: 0.9,
+    blurb: 'A sparkly flying unicorn!',
+  },
+  {
+    id: 'bumblebee',
+    name: 'Bumblebee',
+    treasure: 'golden_honeycomb',
+    body: 'bee_body', wing: 'bee_wing', wingFar: 'bee_wing_far', icon: 'i_bee',
+    scale: 0.85,
+    blurb: 'A fuzzy buzzy bumblebee!',
+    flapRate: 4,
   },
 ];
 

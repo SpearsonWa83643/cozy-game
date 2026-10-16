@@ -30,7 +30,7 @@ test('wild unlocks: glow scarf, ranger coat, then mount treasures; outfits weara
   await page.waitForTimeout(1200);
   await closeDialogs(page);
 
-  const expected = ['glow_scarf', 'ranger_coat', 'pterodactyl_egg', 'cloud_puppy_tuft'];
+  const expected = ['glow_scarf', 'ranger_coat', 'pterodactyl_egg', 'cloud_puppy_tuft', 'rainbow_horseshoe', 'golden_honeycomb'];
   for (const [i, id] of expected.entries()) {
     await cozy(page, `enterWild(${101 + i})`);
     await expect.poll(async () => (await wild(page)).on, { timeout: 90_000, intervals: [500] }).toBe(true);

@@ -1133,6 +1133,8 @@ import { paintAll2 } from './art2';
 import { paintEagle } from './mount/eagleArt';
 import { paintPtero } from './mount/pteroArt';
 import { paintCloudPuppy } from './mount/cloudArt';
+import { paintUnicorn } from './mount/unicornArt';
+import { paintBee } from './mount/beeArt';
 import { paintVillageArt } from './village/vart';
 
 export function paintAll(scene: Phaser.Scene) {
@@ -1238,6 +1240,8 @@ export function paintAll(scene: Phaser.Scene) {
   paintEagle(scene);
   paintPtero(scene);
   paintCloudPuppy(scene);
+  paintUnicorn(scene);
+  paintBee(scene);
   buildAtlas(scene);
   paintVillageArt(scene);
 }

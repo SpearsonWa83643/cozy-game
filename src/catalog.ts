@@ -14,12 +14,14 @@ export const TREASURES: Treasure[] = [
   { id: 'ranger_coat', name: 'Ranger Coat', icon: 'ic_ranger', blurb: 'For brave woods explorers!', hint: 'A chest in the Wild Woods.' },
   { id: 'pterodactyl_egg', name: 'Pterodactyl Egg', icon: 'ic_ptero_egg', blurb: 'Warm! Call Mount to ride a pterodactyl!', hint: 'A chest in the Wild Woods.' },
   { id: 'cloud_puppy_tuft', name: 'Cloud Tuft', icon: 'ic_cloud_tuft', blurb: 'Fluffy! Call Mount to ride a cloud puppy!', hint: 'A chest in the Wild Woods.' },
+  { id: 'rainbow_horseshoe', name: 'Rainbow Horseshoe', icon: 'ic_horseshoe', blurb: 'So shiny! Call Mount to ride a unicorn!', hint: 'A chest in the Wild Woods.' },
+  { id: 'golden_honeycomb', name: 'Golden Honeycomb', icon: 'ic_honeycomb', blurb: 'Sweet! Call Mount to ride a bumblebee!', hint: 'A chest in the Wild Woods.' },
 ];
 
 export type MinorId = 'petal' | 'shell' | 'apple' | 'acorn' | 'beetle' | 'glowmoss' | 'starshard';
 export const WILD_SET = ['acorn_cap', 'glow_scarf', 'ranger_coat'];
 /** Mounts found in Wild Woods chests after the cosmetic set. */
-export const WILD_MOUNTS = ['pterodactyl_egg', 'cloud_puppy_tuft'];
+export const WILD_MOUNTS = ['pterodactyl_egg', 'cloud_puppy_tuft', 'rainbow_horseshoe', 'golden_honeycomb'];
 export const MINORS: { id: MinorId; name: string; icon: string }[] = [
   { id: 'petal', name: 'Petals', icon: 'petal' }, { id: 'shell', name: 'Shells', icon: 'shell0' },
   { id: 'apple', name: 'Fruit', icon: 'apple' }, { id: 'acorn', name: 'Acorns', icon: 'acorn' }, { id: 'beetle', name: 'Beetles spotted', icon: 'beetle' },
