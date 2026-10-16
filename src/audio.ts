@@ -2,6 +2,7 @@
 export type VolumeLevel = 'on' | 'quiet' | 'off';
 const LEVELS: Record<VolumeLevel, number> = { on: 0.6, quiet: 0.26, off: 0 };
 
+import { CLASSIC, HALLOWEEN, type Soundscape, type Extra } from './soundscapes';
 const midi = (n: number) => 440 * Math.pow(2, (n - 69) / 12);
 
 class Synth {
@@ -10,7 +11,7 @@ class Synth {
   private out!: GainNode; // SFX bus
   private music!: GainNode; // music bus
   private wet!: GainNode;
-  private padFilter!: BiquadFilterNode;
+  private padLfo!: GainNode;
   muted = false;
   level: VolumeLevel = 'on';
   private musicTimer: number | null = null;
@@ -61,20 +62,14 @@ class Synth {
       this.wet.gain.value = 0.4;
       this.wet.connect(conv);
       conv.connect(this.master);
-      // Warm, slowly breathing low-pass for the pads.
-      this.padFilter = ctx.createBiquadFilter();
-      this.padFilter.type = 'lowpass';
-      this.padFilter.frequency.value = 950;
-      this.padFilter.Q.value = 0.4;
+      // Slowly breathing low-pass LFO for the pads (each soundscape layer has its own filter).
       const lfo = ctx.createOscillator();
-      const lfoAmt = ctx.createGain();
+      this.padLfo = ctx.createGain();
       lfo.frequency.value = 0.045;
-      lfoAmt.gain.value = 320;
-      lfo.connect(lfoAmt);
-      lfoAmt.connect(this.padFilter.frequency);
+      this.padLfo.gain.value = 320;
+      lfo.connect(this.padLfo);
       lfo.start();
-      this.padFilter.connect(this.music);
-      this.padFilter.connect(this.wet);
+      this.buildLayer(0);
       // iOS needs a sound started inside the gesture to fully unlock.
       const o = ctx.createOscillator();
       const g = ctx.createGain();
@@ -101,31 +96,108 @@ class Synth {
   }
 
   // ------------------------------------------------------------ generative ambient music
-  private static CHORDS = [
-    // [bass, pad notes, melody pool] — F major, slow and open.
-    { bass: 41, pad: [53, 57, 60, 64, 67], mel: [72, 74, 76, 79, 81, 84] },          // Fmaj9
-    { bass: 38, pad: [50, 53, 57, 60, 64], mel: [72, 74, 77, 79, 81] },              // Dm9
-    { bass: 46, pad: [50, 53, 57, 62, 64], mel: [74, 76, 77, 81, 82] },              // Bbmaj7(9)
-    { bass: 36, pad: [48, 52, 55, 57, 62], mel: [72, 74, 76, 79, 84] },              // C6/9
-    { bass: 45, pad: [52, 57, 60, 64, 67], mel: [72, 76, 79, 81, 84] },              // Am7
-    { bass: 46, pad: [50, 53, 57, 60, 65], mel: [72, 74, 77, 81] },                  // Bbmaj9
-    { bass: 43, pad: [50, 55, 58, 62, 65], mel: [74, 77, 79, 82] },                  // Gm9
-    { bass: 36, pad: [48, 53, 55, 58, 62], mel: [72, 74, 77, 79] },                  // C9sus
-  ];
-  /** Halloween: playful D minor with a wink of chromatic colour (spooky-cute, not scary). */
-  private static SPOOKY = [
-    { bass: 38, pad: [50, 53, 57, 64], mel: [74, 77, 81, 76, 69] },                 // Dm(add9)
-    { bass: 46, pad: [50, 53, 58, 62], mel: [74, 77, 82, 81] },                     // Bb
-    { bass: 43, pad: [50, 55, 58, 64], mel: [74, 76, 79, 82] },                     // Gm6
-    { bass: 45, pad: [49, 52, 55, 57, 61], mel: [73, 76, 79, 81] },                 // A7
-    { bass: 38, pad: [50, 53, 57, 60], mel: [72, 74, 77, 81] },                     // Dm7
-    { bass: 44, pad: [48, 51, 56, 60], mel: [72, 75, 80, 79] },                     // Ab (a cheeky twist)
-    { bass: 43, pad: [50, 55, 58, 62], mel: [74, 79, 82, 77] },                     // Gm
-    { bass: 45, pad: [52, 55, 57, 61], mel: [76, 73, 79, 81] },                     // A7sus->A
-  ];
-  private spooky = false;
+  // ------------------------------------------------------------ theme soundscapes
+  /** Active soundscape; each has its own layer (gain + pad filter) so a switch crossfades. */
+  private scape: Soundscape = CLASSIC;
+  private layer: { gain: GainNode; pad: BiquadFilterNode; windSrc?: AudioBufferSourceNode } | null = null;
+  private extraAt: number[] = [];
   festival = false;
-  setTheme(t: 'classic' | 'spooky') { this.spooky = t === 'spooky'; }
+  get soundscape() { return this.scape.id; }
+  setSoundscape(sc: Soundscape) {
+    if (sc === this.scape && this.layer) return;
+    this.scape = sc;
+    if (!this.ctx) return; // built on unlock
+    this.buildLayer(3);
+  }
+  private buildLayer(fade: number) {
+    const ctx = this.ctx!, t = ctx.currentTime, sc = this.scape;
+    const old = this.layer;
+    if (old) {
+      old.gain.gain.cancelScheduledValues(t);
+      old.gain.gain.setValueAtTime(old.gain.gain.value, t);
+      old.gain.gain.linearRampToValueAtTime(0.0001, t + fade);
+      window.setTimeout(() => { try { old.windSrc?.stop(); old.gain.disconnect(); old.pad.disconnect(); } catch { /* already gone */ } }, (fade + 12) * 1000);
+    }
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(1, t + (old ? fade : 0.05));
+    gain.connect(this.music);
+    const pad = ctx.createBiquadFilter();
+    pad.type = 'lowpass'; pad.Q.value = 0.4;
+    pad.frequency.value = this.mood.cut * sc.bright;
+    this.padLfo.connect(pad.frequency);
+    pad.connect(gain); pad.connect(this.wet);
+    const layer: { gain: GainNode; pad: BiquadFilterNode; windSrc?: AudioBufferSourceNode } = { gain, pad };
+    if (sc.wind > 0) {
+      // Soft, slowly breathing wind bed: looped noise through a wandering band-pass.
+      const src = this.noise(6); src.loop = true;
+      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 420; f.Q.value = 0.9;
+      const fl = ctx.createOscillator(); fl.frequency.value = 0.07;
+      const fa = ctx.createGain(); fa.gain.value = 220; fl.connect(fa); fa.connect(f.frequency);
+      const g = ctx.createGain(); g.gain.value = 0.016 * sc.wind;
+      const gl = ctx.createOscillator(); gl.frequency.value = 0.11;
+      const ga = ctx.createGain(); ga.gain.value = 0.009 * sc.wind; gl.connect(ga); ga.connect(g.gain);
+      src.connect(f); f.connect(g); g.connect(gain);
+      src.start(t); fl.start(t); gl.start(t);
+      src.onended = () => { try { fl.stop(); gl.stop(); } catch { /* */ } };
+      layer.windSrc = src;
+    }
+    this.layer = layer;
+    this.extraAt = sc.extras.map((e) => t + 4 + Math.random() * e.every[0]);
+    // Start the new music right away; the old chord rings out on the fading layer.
+    if (old) this.nextChordAt = t + 0.2;
+  }
+  private playExtra(e: Extra, at: number) {
+    const v = e.vol, ctx = this.ctx!;
+    const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+    if (pan) pan.pan.value = (Math.random() < 0.5 ? -1 : 1) * (0.4 + Math.random() * 0.5);
+    const dest: AudioNode = pan ?? this.layer!.gain;
+    if (pan) { pan.connect(this.layer!.gain); pan.connect(this.wet); }
+    const tone = (f0: number, f1: number, w: number, d: number, vol: number, type: OscillatorType = 'sine') => {
+      const o = ctx.createOscillator(); o.type = type;
+      o.frequency.setValueAtTime(f0, at + w); o.frequency.linearRampToValueAtTime(f1, at + w + d);
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, at + w);
+      g.gain.linearRampToValueAtTime(vol, at + w + Math.min(0.08, d * 0.3)); g.gain.exponentialRampToValueAtTime(0.0001, at + w + d);
+      o.connect(g); g.connect(dest); o.start(at + w); o.stop(at + w + d + 0.05);
+    };
+    if (e.kind === 'owl') {
+      // Distant, soft "hoo... hoo-hoo".
+      for (const [w, d] of [[0, 0.42], [0.62, 0.22], [0.9, 0.5]]) { tone(400, 372, w, d, 0.022 * v); tone(800, 744, w, d, 0.004 * v, 'triangle'); }
+    } else if (e.kind === 'creak') {
+      // A friendly old-gate creak, filtered and quiet.
+      const o = ctx.createOscillator(); o.type = 'sawtooth';
+      o.frequency.setValueAtTime(130, at); o.frequency.linearRampToValueAtTime(175, at + 0.45); o.frequency.linearRampToValueAtTime(120, at + 0.9);
+      const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 650; f.Q.value = 5;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(0.014 * v, at + 0.15); g.gain.exponentialRampToValueAtTime(0.0001, at + 0.95);
+      o.connect(f); f.connect(g); g.connect(dest); o.start(at); o.stop(at + 1);
+    } else {
+      // Tiny wind chimes in D minor.
+      const ns = [86, 89, 93, 88, 91];
+      for (let i = 0; i < 4; i++) this.musicbox(midi(ns[Math.floor(Math.random() * ns.length)]), at + i * (0.16 + Math.random() * 0.1), 0.012 * v, dest);
+    }
+  }
+  /** Music box / celesta: bright sine with a soft octave-and-a-bit shimmer, quick bloom, long fade. */
+  private musicbox(freq: number, t: number, vol: number, dest?: AudioNode) {
+    const ctx = this.ctx!;
+    let out = dest;
+    if (!out) {
+      const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+      if (pan) { pan.pan.value = Math.random() * 0.8 - 0.4; pan.connect(this.layer!.gain); pan.connect(this.wet); }
+      out = pan ?? this.layer!.gain;
+    }
+    for (const [m, a, d] of [[1, 1, 1.5], [2, 0.18, 0.6], [4.07, 0.08, 0.22]] as const) {
+      const o = ctx.createOscillator();
+      o.frequency.value = freq * m;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol * a, t + 0.006);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+      o.connect(g); g.connect(out);
+      o.start(t); o.stop(t + d + 0.05);
+    }
+  }
+  /** Back-compat for older callers. */
+  setTheme(t: 'classic' | 'spooky') { this.setSoundscape(t === 'spooky' ? HALLOWEEN : CLASSIC); }
   private static CHORD_LEN = 8.5;
   /** Per-area mood: transposition (semitones), melody density and pad brightness. */
   private static MOODS: Record<string, { tr: number; dens: number; cut: number }> = {
@@ -138,7 +210,7 @@ class Synth {
   setArea(a: string) {
     this.area = a;
     this.mood = Synth.MOODS[a] ?? Synth.MOODS.glade;
-    if (this.ctx && this.padFilter) this.padFilter.frequency.linearRampToValueAtTime(this.mood.cut, this.ctx.currentTime + 4);
+    if (this.ctx && this.layer) this.layer.pad.frequency.linearRampToValueAtTime(this.mood.cut * this.scape.bright, this.ctx.currentTime + 4);
   }
 
   startMusic() {
@@ -152,6 +224,13 @@ class Synth {
         this.scheduleChord(this.nextChordAt);
         this.nextChordAt += Synth.CHORD_LEN;
       }
+      // Occasional ambient extras (owls, creaks, chimes) for this soundscape.
+      const now = this.ctx.currentTime;
+      this.scape.extras.forEach((e, i) => {
+        if (this.extraAt[i] === undefined || now < this.extraAt[i]) return;
+        this.playExtra(e, now + 0.1);
+        this.extraAt[i] = now + e.every[0] + Math.random() * (e.every[1] - e.every[0]);
+      });
     };
     tick();
     this.musicTimer = window.setInterval(tick, 400);
@@ -159,7 +238,7 @@ class Synth {
 
   private scheduleChord(t: number) {
     const ctx = this.ctx!;
-    const set = this.spooky ? Synth.SPOOKY : Synth.CHORDS;
+    const sc = this.scape, set = sc.chords, layer = this.layer!;
     const base = set[this.chordIdx % set.length];
     const tr = this.mood.tr + (this.festival ? 2 : 0);
     const chord = { bass: base.bass + tr, pad: base.pad.map((n) => n + tr), mel: base.mel.map((n) => n + tr) };
@@ -173,12 +252,12 @@ class Synth {
         o.frequency.value = midi(n);
         o.detune.value = det + (Math.random() * 4 - 2);
         const g = ctx.createGain();
-        const peak = (det < 0 ? 0.03 : 0.014) * (k === 0 ? 1.1 : 1);
+        const peak = (det < 0 ? 0.03 : 0.014) * (k === 0 ? 1.1 : 1) * sc.pad;
         g.gain.setValueAtTime(0.0001, t);
         g.gain.linearRampToValueAtTime(peak, t + 2.8 + k * 0.25);
         g.gain.setValueAtTime(peak, t + L - 0.5);
         g.gain.linearRampToValueAtTime(0.0001, t + L + 3.5);
-        o.connect(g); g.connect(this.padFilter);
+        o.connect(g); g.connect(layer.pad);
         o.start(t); o.stop(t + L + 3.7);
       }
     });
@@ -190,20 +269,25 @@ class Synth {
       g.gain.setValueAtTime(0.0001, t);
       g.gain.linearRampToValueAtTime(0.07, t + 1.6);
       g.gain.linearRampToValueAtTime(0.0001, t + L + 1.5);
-      o.connect(g); g.connect(this.music);
+      o.connect(g); g.connect(layer.gain);
       o.start(t); o.stop(t + L + 1.6);
     }
     // Sparse kalimba melody on a 0.71 s grid, mostly stepwise.
     const beat = L / 12;
     for (let i = 1; i < 12; i++) {
-      if (Math.random() > (this.festival ? 0.75 : this.mood.dens)) continue;
+      if (Math.random() > (this.festival ? 0.75 : Math.min(0.8, this.mood.dens * sc.dens))) continue;
       const pool = chord.mel;
       const near = pool.filter((p) => Math.abs(p - this.lastMelody) <= 5);
       const src = near.length && Math.random() < 0.8 ? near : pool;
       const n = src[Math.floor(Math.random() * src.length)];
       this.lastMelody = n;
-      this.kalimba(midi(n), t + i * beat + (Math.random() * 0.06), 0.035 + Math.random() * 0.035);
-      if (Math.random() < 0.15) this.kalimba(midi(n + 12), t + i * beat + 0.18, 0.015);
+      if (sc.lead === 'musicbox') {
+        this.musicbox(midi(n + 12), t + i * beat + (Math.random() * 0.05), 0.022 + Math.random() * 0.02);
+        if (Math.random() < 0.2) this.musicbox(midi(n + 7), t + i * beat + 0.12, 0.01);
+      } else {
+        this.kalimba(midi(n), t + i * beat + (Math.random() * 0.06), 0.035 + Math.random() * 0.035);
+        if (Math.random() < 0.15) this.kalimba(midi(n + 12), t + i * beat + 0.18, 0.015);
+      }
     }
   }
 
@@ -211,8 +295,8 @@ class Synth {
     const ctx = this.ctx!;
     const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
     if (pan) pan.pan.value = Math.random() * 0.8 - 0.4;
-    const dest: AudioNode = pan ?? this.music;
-    if (pan) { pan.connect(this.music); pan.connect(this.wet); }
+    const dest: AudioNode = pan ?? this.layer!.gain;
+    if (pan) { pan.connect(this.layer!.gain); pan.connect(this.wet); }
     for (const [m, a, d] of [[1, 1, 1.8], [3.0, 0.1, 0.35], [5.4, 0.05, 0.18]] as const) {
       const o = ctx.createOscillator();
       o.frequency.value = freq * m;
@@ -452,6 +536,13 @@ class Synth {
     const arp = [1046.5, 1318.5, 1568, 2093, 2637];
     arp.forEach((f, i) => this.bell(f, i * 0.06, 0.08, 1.4));
     [523.25, 783.99, 1046.5].forEach((f, i) => this.bell(f, 0.45 + i * 0.18, 0.14, 3));
+  }
+
+  /** A tiny "hee-hee-hee" for jack-o'-lanterns and peekaboo ghosts. */
+  giggle() {
+    if (!this.ready) return;
+    const base = 740 + Math.random() * 120;
+    [1, 1.12, 1.26, 1.19].forEach((m, i) => { this.voice(base * m, i * 0.085, 0.045, 0.09, 'triangle', 0.01); this.voice(base * m * 2, i * 0.085, 0.012, 0.07, 'sine', 0.01); });
   }
 
   blip() {

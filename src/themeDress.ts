@@ -3,9 +3,15 @@ import Phaser from 'phaser';
 import { atlasOf, frameScale, ALL_PATHS, mulberry32 } from './art';
 import { theme, themeEvents, Theme } from './theme';
 import { sfx } from './audio';
-import { COTTAGE, SHRINE, VILLAGE_SIGN, PIER, POND, WINDMILL, BRIDGES, VILLAGE } from './layout';
+import { COTTAGE, SHRINE, VILLAGE_SIGN, PIER, POND, WINDMILL, BRIDGES, VILLAGE, PLAYER_START } from './layout';
 import { waterAt } from './geo';
 import type { WorldScene } from './scenes/World';
+
+type Jack = { img: Phaser.GameObjects.Image; glow: Phaser.GameObjects.Image; gs: number; flare: number };
+type FlyBat = { img: Phaser.GameObjects.Image; t: number; a: number; spin: number; r: number };
+type BatTree = { tree: Phaser.GameObjects.Image; x: number; y: number; nap: Phaser.GameObjects.Image[]; fly: FlyBat[]; until: number };
+type Peek = { ghost: Phaser.GameObjects.Image; x: number; y: number; up: number; target: number; next: number; wave: number };
+const CANDY = [0xff7fa8, 0xffd84d, 0x7fd0ff, 0xb48cff, 0x9be07a];
 
 type Orig = { frame: string; tex: string; ox: number; oy: number; sx: number; sy: number };
 
@@ -17,6 +23,14 @@ export class ThemeDresser {
   glows: { img: Phaser.GameObjects.Image; base: number; ph: number }[] = [];
   ghosts: { img: Phaser.GameObjects.Image; hx: number; hy: number; ph: number; spin: number }[] = [];
   built = false;
+  /** Interactive Halloween decorations (preview). */
+  jacks: Jack[] = [];
+  pumpkins: Phaser.GameObjects.Image[] = [];
+  batTrees: BatTree[] = [];
+  peeks: Peek[] = [];
+  orchardBats: { img: Phaser.GameObjects.Image; ph: number }[] = [];
+  wisps: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
+  taps = { jack: 0, pumpkin: 0, bats: 0, peek: 0, candy: 0 };
 
   constructor(private w: WorldScene) {
     this.sky = w.add.image(0, 0, atlasOf('sky_halloween'), 'sky_halloween').setScrollFactor(0).setDepth(8700).setBlendMode(Phaser.BlendModes.MULTIPLY).setVisible(false);
@@ -34,15 +48,18 @@ export class ThemeDresser {
     this.built = true;
     const w = this.w;
     const rng = mulberry32(1031);
-    const add = (x: number, y: number, frame: string, scale: number, glow = false) => {
-      if (waterAt(x, y, 10) || w.nav.isBlocked(...w.nav.cellOf(x, y))) return;
+    const add = (x: number, y: number, frame: string, scale: number, glow = false): Phaser.GameObjects.Image | null => {
+      if (waterAt(x, y, 10) || w.nav.isBlocked(...w.nav.cellOf(x, y))) return null;
       const img = w.add.image(x, y, atlasOf(frame), frame).setOrigin(0.5, 1).setScale(scale / (frameScale[frame] ?? 2.5)).setDepth(y);
       this.props.push(img);
       if (glow) {
-        const g = w.fx(x, y - 12, 'glow', 0.32).setBlendMode('ADD').setTint(0xffa040).setAlpha(0.6).setDepth(y + 1);
+        const gs = 0.32 * (scale / 0.75);
+        const g = w.fx(x, y - 12 * scale / 0.75, 'glow', gs).setBlendMode('ADD').setTint(0xffa040).setAlpha(0.6).setDepth(y + 1);
         this.props.push(g);
         this.glows.push({ img: g, base: 0.55, ph: rng() * 6 });
-      }
+        if (frame === 'h_jack') this.jack(img, g);
+      } else if (frame === 'h_pumpkin') this.pumpkin(img);
+      return img;
     };
     // Pumpkins along the paths, alternating sides.
     for (const path of ALL_PATHS) {
@@ -60,6 +77,30 @@ export class ThemeDresser {
     for (const [x, y] of spots) for (let k = 0; k < 3; k++) add(x + (k - 1) * 14 + rng() * 4, y + (k % 2) * 6, 'h_candle', 0.5 + rng() * 0.25, k === 1);
     add(COTTAGE.x - 70, COTTAGE.y + 8, 'h_jack', 0.95, true);
     add(COTTAGE.x + 75, COTTAGE.y + 8, 'h_pumpkin', 0.85);
+    // Bat trees: bare curly trees with snoozing bats; tap and they flutter out, then come home.
+    const batSpots: [number, number][][] = [
+      [[PLAYER_START.x + 150, PLAYER_START.y - 40], [PLAYER_START.x - 150, PLAYER_START.y - 30], [PLAYER_START.x + 170, PLAYER_START.y + 60]],
+      [[COTTAGE.x + 190, COTTAGE.y + 60], [COTTAGE.x - 170, COTTAGE.y + 80]],
+      [[3050, 1980], [3420, 2140], [2800, 1930]],
+    ];
+    for (const cands of batSpots) {
+      const at = cands.find(([x, y]) => !waterAt(x, y, 30) && !w.nav.isBlocked(...w.nav.cellOf(x, y)) && !w.nav.isBlocked(...w.nav.cellOf(x, y - 40)));
+      if (at) this.batTree(at[0], at[1], 1.15);
+    }
+    // Peekaboo pumpkin patch near the start: a shy ghost hides behind it and pops up to wave.
+    const peekSpots: [number, number][] = [[PLAYER_START.x - 75, PLAYER_START.y - 70], [PLAYER_START.x - 120, PLAYER_START.y + 70], [PLAYER_START.x + 120, PLAYER_START.y + 90], [PLAYER_START.x - 140, PLAYER_START.y - 120]];
+    const ps = peekSpots.find(([x, y]) => !waterAt(x, y, 30) && !w.nav.isBlocked(...w.nav.cellOf(x, y)));
+    if (ps) this.peekPatch(ps[0], ps[1]);
+    // Orchard: spooky-cute touches (mini jack-o'-lanterns at the trunks, a few snoozing bats).
+    w.reacts.fruitTrees.forEach((t, k) => {
+      if (k % 4 === 0) add(t.x + (k % 8 ? 26 : -26), t.y + 10, 'h_jack', 0.42, true);
+      if (k % 6 === 1) {
+        const b = w.add.image(t.x + t.displayWidth * (k % 2 ? 0.22 : -0.24), t.y - t.displayHeight * 0.42, atlasOf('h_batnap'), 'h_batnap')
+          .setOrigin(0.5, 0).setScale(0.55 / 2.5).setDepth(t.depth + 2);
+        this.props.push(b);
+        this.orchardBats.push({ img: b, ph: rng() * 6 });
+      }
+    });
     // Ghost friends: shy, giggly, and they spin when tapped.
     const homes: [number, number][] = [[POND.x - 120, POND.y + 210], [VILLAGE.x + 300, VILLAGE.y + 380], [3300, 900], [3000, 2000], [700, 2000], [1500, 1200]];
     for (const [hx, hy] of homes) {
@@ -79,11 +120,141 @@ export class ThemeDresser {
     }
   }
 
+  private jack(img: Phaser.GameObjects.Image, glow: Phaser.GameObjects.Image) {
+    const w = this.w;
+    const j: Jack = { img, glow, gs: glow.scaleX, flare: 0 };
+    this.jacks.push(j);
+    const sx = img.scaleX, sy = img.scaleY;
+    w.tappables.push({
+      x: () => img.x, y: () => img.y - 14, r: 34, enabled: () => img.visible,
+      tap: () => {
+        j.flare = 1; this.taps.jack++; w.life.reactions++;
+        sfx.giggle();
+        w.floatText(img.x, img.y - 44, ['Hee hee!', 'Tee hee!', 'Happy Halloween!'][Math.floor(Math.random() * 3)], '#ffd27a');
+        w.burst(img.x, img.y - 18, 0xffb347, 8, 'spark');
+        w.tweens.killTweensOf(img);
+        img.setScale(sx * 1.18, sy * 0.82);
+        w.tweens.add({ targets: img, scaleX: sx, scaleY: sy, duration: 650, ease: 'Elastic.easeOut' });
+      },
+    });
+  }
+
+  private pumpkin(img: Phaser.GameObjects.Image) {
+    const w = this.w;
+    this.pumpkins.push(img);
+    let cool = 0;
+    w.tappables.push({
+      x: () => img.x, y: () => img.y - 14, r: 34, enabled: () => img.visible,
+      tap: () => {
+        this.taps.pumpkin++; w.life.reactions++;
+        w.tweens.killTweensOf(img);
+        img.setAngle(-16);
+        w.tweens.add({ targets: img, angle: 0, duration: 900, ease: 'Elastic.easeOut' });
+        if (w.time.now < cool) { sfx.tock(); return; }
+        cool = w.time.now + 700;
+        sfx.pickup();
+        this.popCandy(img.x, img.y - 30);
+      },
+    });
+  }
+
+  /** A wrapped sweet hops out of a pumpkin with a sparkle (just for fun, nothing to collect). */
+  private popCandy(x: number, y: number) {
+    const w = this.w;
+    this.taps.candy++;
+    const tint = CANDY[Math.floor(Math.random() * CANDY.length)];
+    const c = w.add.image(x, y, atlasOf('h_candy'), 'h_candy').setScale(0.9 / 2.5).setTint(tint).setDepth(9550);
+    const dx = (Math.random() < 0.5 ? -1 : 1) * (18 + Math.random() * 16);
+    w.tweens.add({ targets: c, x: x + dx, angle: dx * 8, duration: 900, ease: 'Linear' });
+    w.tweens.add({ targets: c, y: { from: y, to: y - 46 }, duration: 420, ease: 'Quad.easeOut', yoyo: true, hold: 60 });
+    w.tweens.add({ targets: c, alpha: 0, delay: 1000, duration: 350, onComplete: () => c.destroy() });
+    w.burst(x, y, tint, 8, 'spark');
+    w.floatText(x, y - 30, ['Treat!', 'Candy!', 'Yay!'][Math.floor(Math.random() * 3)], '#ffe6f2');
+  }
+
+  private batTree(x: number, y: number, scale: number) {
+    const w = this.w;
+    const tree = w.add.image(x, y, atlasOf('h_tree2'), 'h_tree2').setOrigin(0.5, 192 / 200).setScale(scale / (frameScale.h_tree2 ?? 2)).setDepth(y);
+    this.props.push(tree);
+    const sh = w.fx(x, y, 'shadow', 70 / 64).setAlpha(0.5).setDepth(-500);
+    this.props.push(sh);
+    const s = scale;
+    const tips: [number, number][] = [[-30, -66], [26, -72], [-6, -88]];
+    const nap = tips.map(([dx, dy]) => {
+      const b = w.add.image(x + dx * s, y + dy * s, atlasOf('h_batnap'), 'h_batnap').setOrigin(0.5, 0).setScale(0.7 / 2.5).setDepth(y + 2);
+      this.props.push(b);
+      return b;
+    });
+    const fly: FlyBat[] = [];
+    for (let i = 0; i < 5; i++) {
+      const img = w.add.image(x, y, atlasOf('h_bat0'), 'h_bat0').setScale(0.7 / 2.5).setDepth(9500).setVisible(false);
+      fly.push({ img, t: -1, a: 0, spin: 1, r: 0 });
+    }
+    const bt: BatTree = { tree, x, y, nap, fly, until: 0 };
+    this.batTrees.push(bt);
+    w.tappables.push({
+      x: () => x, y: () => y - 60 * s, r: 56, enabled: () => tree.visible,
+      tap: () => this.releaseBats(bt),
+    });
+  }
+
+  private releaseBats(bt: BatTree) {
+    const w = this.w;
+    this.taps.bats++; w.life.reactions++;
+    const sw = w.tweens;
+    sw.killTweensOf(bt.tree);
+    bt.tree.setAngle(-3);
+    sw.add({ targets: bt.tree, angle: 0, duration: 700, ease: 'Elastic.easeOut' });
+    if (bt.fly.some((f) => f.t >= 0)) { sfx.rustle(); return; }
+    sfx.rustle(); sfx.chirp();
+    w.time.delayedCall(260, () => sfx.chirp());
+    for (const n of bt.nap) n.setVisible(false);
+    bt.fly.forEach((f, i) => {
+      f.t = -i * 0.08; f.a = (i / bt.fly.length) * Math.PI * 2 + Math.random() * 0.6; f.spin = Math.random() < 0.5 ? -1 : 1; f.r = 70 + Math.random() * 50;
+      f.img.setPosition(bt.x, bt.y - 75).setAlpha(0).setVisible(true);
+    });
+    w.floatText(bt.x, bt.y - 120, 'Flap flap!', '#e8dcff');
+  }
+
+  private peekPatch(x: number, y: number) {
+    const w = this.w;
+    const ghost = w.add.image(x, y - 6, atlasOf('h_ghost'), 'h_ghost').setOrigin(0.5, 1).setScale(0.8 / 2.5).setDepth(y - 3).setAlpha(0);
+    this.props.push(ghost);
+    const big = w.add.image(x, y, atlasOf('h_pumpkin'), 'h_pumpkin').setOrigin(0.5, 1).setScale(1.3 / 2.5).setDepth(y);
+    const l = w.add.image(x - 30, y + 8, atlasOf('h_pumpkin'), 'h_pumpkin').setOrigin(0.5, 1).setScale(0.75 / 2.5).setDepth(y + 8);
+    const r = w.add.image(x + 32, y + 6, atlasOf('h_jack'), 'h_jack').setOrigin(0.5, 1).setScale(0.7 / 2.5).setDepth(y + 6);
+    this.props.push(big, l, r);
+    const p: Peek = { ghost, x, y, up: 0, target: 0, next: 2.5, wave: 0 }; // next: seconds until the ghost changes its mind
+    this.peeks.push(p);
+    w.tappables.push({
+      x: () => x, y: () => y - 28, r: 46, enabled: () => big.visible,
+      tap: () => {
+        this.taps.peek++; w.life.reactions++;
+        p.target = 1; p.wave = 1.6; p.next = 2.6;
+        sfx.giggle();
+        w.floatText(x, y - 92, ['Peekaboo!', 'Hi there!', 'You found me!'][Math.floor(Math.random() * 3)], '#efe6ff');
+        w.burst(x, y - 60, 0xe8dcff, 10, 'spark');
+      },
+    });
+  }
+
   apply(live: boolean) {
     const t: Theme = theme;
     const w = this.w;
     if (t.props) this.buildProps();
     for (const p of this.props) p.setVisible(t.props);
+    for (const b of this.batTrees) for (const f of b.fly) { f.t = -1; f.img.setVisible(false); }
+    if (t.props && !this.wisps) {
+      // Dusk wisps: a handful of soft glowing motes drifting up around the view (kept small for iPad).
+      this.wisps = w.add.particles(0, 0, atlasOf('glow'), {
+        frame: 'glow', emitZone: { type: 'random', source: new Phaser.Geom.Rectangle(-100, 100, 1400, 900) as any },
+        lifespan: { min: 5000, max: 8000 }, frequency: 650, maxAliveParticles: 12,
+        speedX: { min: -8, max: 8 }, speedY: { min: -18, max: -6 },
+        scale: { min: 0.05, max: 0.09 }, alpha: { values: [0, 0.7, 0.4, 0.75, 0] } as any,
+        tint: [0xffb347, 0xffd36b, 0xd8b0ff], blendMode: 'ADD',
+      } as any).setDepth(8003);
+    }
+    if (this.wisps) { this.wisps.setVisible(t.props); if (t.props) this.wisps.start(); else this.wisps.stop(true); }
     // Trees: swap round trees for themed ones, tint the rest.
     let i = 0;
     for (const img of w.canopies) {
@@ -98,11 +269,11 @@ export class ThemeDresser {
       if (t.trees && round) {
         const nf = t.trees[(i * 7 + Math.floor(img.x)) % t.trees.length];
         const dw = (img.width * o.sx);
-        img.setTexture(atlasOf(nf), nf).setOrigin(0.5, 0.97);
+        img.setTexture(atlasOf(nf), nf).setOrigin(0.5, 192 / 200); // trunk base = ground point
         img.setScale((dw * 1.05) / img.width).clearTint();
       } else {
         if (img.frame.name !== f) img.setTexture(o.tex, f).setOrigin(o.ox, o.oy).setScale(o.sx, o.sy);
-        if (t.id === 'halloween') img.setTint(fruity ? 0xffcf96 : f.startsWith('pine') ? 0x9c88c0 : f.startsWith('birch') ? 0xffc27a : t.foliage ?? 0xffffff);
+        if (t.id === 'halloween') img.setTint(fruity ? 0xf7c0a0 : f.startsWith('pine') ? 0x9c88c0 : f.startsWith('birch') ? 0xffc27a : t.foliage ?? 0xffffff);
         else img.clearTint();
       }
     }
@@ -126,7 +297,7 @@ export class ThemeDresser {
     if (w.life.catTail) { if (t.critters.cat) w.life.catTail.setTint(t.critters.cat); else w.life.catTail.clearTint(); }
     for (const f of w.life.flies) { if (t.critters.butterflies) f.img.setTint(t.critters.butterflies); else f.img.clearTint(); }
     for (const g of w.windowGlows) g.setTint(t.glow);
-    sfx.setTheme(t.music);
+    sfx.setSoundscape(t.soundscape);
     if (live) {
       w.ground.restyle();
       w.cameras.main.flash(400, t.id === 'halloween' ? 120 : 255, t.id === 'halloween' ? 80 : 245, t.id === 'halloween' ? 160 : 220);
@@ -147,7 +318,47 @@ export class ThemeDresser {
       }
     }
     if (!theme.props) return;
+    if (this.wisps) this.wisps.setPosition(cam.worldView.x, cam.worldView.y);
     for (const g of this.glows) g.img.setAlpha(g.base + Math.sin(time / 140 + g.ph) * 0.12 + Math.sin(time / 53 + g.ph) * 0.06);
+    for (const j of this.jacks) {
+      if (j.flare <= 0) continue;
+      j.flare = Math.max(0, j.flare - dt * 0.7);
+      const f = Math.sin(j.flare * Math.PI * 0.5);
+      j.glow.setAlpha(Math.min(1, j.glow.alpha + f * 0.5) * (0.92 + Math.random() * 0.08)).setScale(j.gs * (1 + f * 0.9));
+      j.img.setTint(Phaser.Display.Color.GetColor(255, 255, Math.round(255 - f * 60)));
+      if (j.flare === 0) { j.glow.setScale(j.gs); j.img.clearTint(); }
+    }
+    for (const b of this.batTrees) {
+      let flying = false;
+      for (const f of b.fly) {
+        if (f.t === -1 && !f.img.visible) continue;
+        f.t += dt;
+        if (f.t < 0) continue;
+        const k = f.t / 2.6;
+        if (k >= 1) { f.t = -1; f.img.setVisible(false); continue; }
+        flying = true;
+        // Out in a loopy circle and back home.
+        const out = Math.sin(k * Math.PI);
+        const a = f.a + f.spin * k * Math.PI * 2.2;
+        const px = b.x + Math.cos(a) * f.r * out, py = b.y - 75 + Math.sin(a) * f.r * 0.55 * out - out * 40 + Math.sin(f.t * 9) * 4;
+        f.img.setFlipX(px < f.img.x).setPosition(px, py).setAlpha(Math.min(1, k * 8, (1 - k) * 6));
+        const fr = Math.sin(time / 45 + f.a * 3) > 0 ? 'h_bat0' : 'h_bat1';
+        if (f.img.frame.name !== fr) f.img.setFrame(fr);
+      }
+      if (!flying && !b.nap[0].visible) {
+        for (const n of b.nap) { n.setVisible(true).setAlpha(0); this.w.tweens.add({ targets: n, alpha: 1, duration: 400 }); }
+      }
+      for (let i = 0; i < b.nap.length; i++) b.nap[i].setAngle(Math.sin(time / 700 + i * 1.7) * 6);
+    }
+    for (const o of this.orchardBats) o.img.setAngle(Math.sin(time / 800 + o.ph) * 7);
+    for (const p of this.peeks) {
+      p.next -= dt;
+      if (p.next <= 0 && p.target === 0 && w.cameras.main.worldView.contains(p.x, p.y)) { p.target = 0.55; p.wave = 1.2; p.next = 1.8; }
+      else if (p.next <= 0) { p.target = 0; p.next = 4 + Math.random() * 3; }
+      p.up += (p.target - p.up) * Math.min(1, dt * 9);
+      p.wave = Math.max(0, p.wave - dt * 0.6);
+      p.ghost.setAlpha(Math.min(0.95, p.up * 5)).setPosition(p.x + Math.sin(time / 400) * 2, p.y - 6 - p.up * 46).setAngle(p.wave > 0 ? Math.sin(time / 110) * 12 * Math.min(1, p.wave) : 0);
+    }
     for (const g of this.ghosts) {
       const t = time / 1000 + g.ph;
       g.spin = Math.max(0, g.spin - dt * 1.2);
