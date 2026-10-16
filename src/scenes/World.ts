@@ -139,6 +139,31 @@ export class WorldScene extends Phaser.Scene {
   puzzles!: Puzzles;
   fishing!: Fishing;
   ambient: Phaser.GameObjects.Particles.ParticleEmitter[] = [];
+  /** The active theme's drifting petal/leaf emitter (see makePetals). */
+  petals!: Phaser.GameObjects.Particles.ParticleEmitter;
+  /** Petal/leaf emitters by frame. Each is built on the texture that really holds its frame and is
+   * never re-textured: swapping a live emitter's texture made Phaser re-resolve its frame on the
+   * other atlas page, so Halloween "leaves" came out as whole spooky-tree canopies (h_tree0). */
+  petalBy = new Map<string, Phaser.GameObjects.Particles.ParticleEmitter>();
+  makePetals(frame: string, tint: number[] | null, frequency: number) {
+    let e = this.petalBy.get(frame);
+    if (e) return e;
+    const tex = atlasOf(frame);
+    if (!this.textures.get(tex).has(frame)) throw new Error(`petal frame ${frame} missing from ${tex}`);
+    e = this.add.particles(0, 0, tex, {
+      frame,
+      emitZone: { type: 'random', source: new Phaser.Geom.Rectangle(-200, -200, 1500, 1100) as any },
+      lifespan: 6000, frequency,
+      speedX: { min: 10, max: 30 }, speedY: { min: 8, max: 20 },
+      rotate: { min: 0, max: 360 },
+      scale: { min: 0.22, max: 0.34 },
+      alpha: { values: [0, 0.9, 0.9, 0] } as any,
+      ...(tint ? { tint } : {}),
+    } as any).setDepth(8002);
+    this.petalBy.set(frame, e);
+    this.ambient.push(e);
+    return e;
+  }
   mist: Phaser.GameObjects.Image[] = [];
   fireflies: Phaser.GameObjects.Particles.ParticleEmitter[] = [];
   village!: Village;
@@ -727,16 +752,8 @@ export class WorldScene extends Phaser.Scene {
         blendMode: 'ADD',
       } as any).setDepth(8001));
     }
-    // Falling petals from the blossom trees region.
-    this.ambient.push(this.add.particles(0, 0, ATLAS, {
-      frame: 'petal',
-      emitZone: viewZone(),
-      lifespan: 6000, frequency: 700,
-      speedX: { min: 10, max: 30 }, speedY: { min: 8, max: 20 },
-      rotate: { min: 0, max: 360 },
-      scale: { min: 0.22, max: 0.34 },
-      alpha: { values: [0, 0.9, 0.9, 0] } as any,
-    } as any).setDepth(8002));
+    // Falling petals (Classic) / leaves (Halloween): one emitter per theme frame, made by themeDress.
+    this.petals = this.makePetals('petal', null, 700);
     // Sunbeams.
     const beamSpots: [number, number, number][] = [[2900, 500, 1.2], [3600, 900, 1.0], [3300, 2100, 1.1], [1200, 2000, 1.2], [600, 2300, 1.0], [2150, 1200, 0.9], [600, 300, 1.0], [1150, 650, 1.3], [1000, 160, 0.8], [400, 1000, 1.1], [1600, 900, 1.0], [800, 1300, 0.9]];
     for (const [x, y, s] of beamSpots) {
@@ -873,7 +890,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   burst(x: number, y: number, tint: number, n: number, key = 'spark') {
-    const e = this.add.particles(x, y, ATLAS, {
+    const e = this.add.particles(x, y, atlasOf(key), {
       frame: key,
       speed: { min: 40, max: 160 },
       lifespan: { min: 700, max: 1400 },
@@ -1377,6 +1394,18 @@ export class WorldScene extends Phaser.Scene {
       setRes: (r: { food?: number; wood?: number; stone?: number }) => { Object.assign(save.village.res, r); self.game.events.emit('res', null, 0); },
       setNeeds: (id: number, n: { food?: number; sleep?: number; fun?: number }) => { const q = self.village.villagers.find((x) => x.data.id === id); if (q) Object.assign(q.data, n); },
       setTheme: (id: 'classic' | 'halloween') => setTheme(id),
+      /** Every live particle's frame, per emitter, in the world + wild scenes (art-management checks). */
+      particleFrames() {
+        const out: { scene: string; tex: string; frame: string; frameTex: string }[] = [];
+        for (const sc of [self, self.scene.get('wild')] as any[]) {
+          if (!sc?.children || !sc.sys.isActive()) continue;
+          for (const e of sc.children.list as any[]) {
+            if (e.type !== 'ParticleEmitter') continue;
+            for (const p of e.alive) out.push({ scene: sc.sys.settings.key, tex: e.texture.key, frame: p.frame.name, frameTex: p.frame.texture?.key ?? p.frame.source?.texture?.key });
+          }
+        }
+        return out;
+      },
       /** Halloween decorations: positions (world) + live state, and tap counters. */
       halloween() {
         const d = self.dresser;

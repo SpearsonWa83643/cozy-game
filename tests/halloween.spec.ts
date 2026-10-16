@@ -15,6 +15,16 @@ const tap = async (page: Page, x: number, y: number) => { const p = await toScre
 const near = <T extends number[]>(list: any[], x: number, y: number) => [...list].sort((a: T, b: T) => Math.hypot(a[0] - x, a[1] - y) - Math.hypot(b[0] - x, b[1] - y))[0];
 const teleport = (page: Page, x: number, y: number) => page.evaluate(([x, y]) => (window as any).__cozy.teleport(x, y), [x, y]);
 
+/** Particles must never draw tree art, and every particle frame must live on its emitter's texture. */
+const TREE_FRAME = /^(h_)?tree|^pine|^birch|^apple|^stump|canopy/;
+async function checkParticles(page: Page, label: string) {
+  await page.waitForTimeout(4000); // let the ambient emitters fill the view
+  const ps: { scene: string; tex: string; frame: string; frameTex: string }[] = await cozy(page, 'particleFrames()');
+  expect(ps.length, `${label}: some live particles`).toBeGreaterThan(10);
+  const bad = ps.filter((p) => TREE_FRAME.test(p.frame) || p.frameTex !== p.tex || p.frame === '__BASE');
+  expect(bad, `${label}: particles drawing tree/wrong-atlas frames`).toEqual([]);
+}
+
 test('halloween: interactive decorations respond to taps', async ({ page }) => {
   test.setTimeout(300_000);
   const errors: string[] = [];
@@ -28,10 +38,12 @@ test('halloween: interactive decorations respond to taps', async ({ page }) => {
   // Close any intro dialog / what's-new card.
   for (let i = 0; i < 6 && (await cozy(page, 'state')).dialogOpen; i++) { await page.touchscreen.tap(590, 700); await page.waitForTimeout(400); }
 
+  await checkParticles(page, 'classic');
   expect((await cozy(page, 'state')).soundscape).toBe('classic');
   await cozy(page, "setTheme('halloween')");
   await page.waitForTimeout(1500);
   expect((await cozy(page, 'state')).soundscape).toBe('halloween');
+  await checkParticles(page, 'halloween');
   let h = await hw(page);
   expect(h.jacks.length).toBeGreaterThan(4);
   expect(h.pumpkins.length).toBeGreaterThan(4);
@@ -88,6 +100,7 @@ test('halloween: interactive decorations respond to taps', async ({ page }) => {
   // Classic: decorations hidden, taps there do nothing.
   await cozy(page, "setTheme('classic')");
   expect((await cozy(page, 'state')).soundscape).toBe('classic');
+  await checkParticles(page, 'classic again');
   await teleport(page, (bt[0] + pk[0]) / 2, (bt[1] + pk[1]) / 2 + 60);
   await page.waitForTimeout(1200);
   h = await hw(page);
