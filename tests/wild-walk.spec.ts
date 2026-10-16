@@ -55,17 +55,33 @@ test('wild woods: same touch controls + movement as the glade', async ({ page })
   await expect.poll(async () => (await wild(page)).path, { timeout: 10_000 }).toBeGreaterThan(1);
   await expect.poll(async () => { const p = (await wild(page)).player; return Math.hypot(p[0] - leg!.b[0], p[1] - leg!.b[1]); }, { timeout: 60_000 }).toBeLessThan(24);
 
-  // 2. Drag to steer: floating joystick, glade speed (175).
+  // 2. Drag to steer: floating joystick, glade speed (175), on open ground (nothing to bump into).
+  const open = await page.evaluate(() => {
+    const w = (window as any).__game.scene.getScene('wild');
+    const free = (x: number, y: number) => { const [c, r] = w.nav.cellOf(x, y); return !w.nav.isBlocked(c, r); };
+    for (let y = 400; y < w.map.h - 400; y += 40) for (let x = 400; x < w.map.w - 700; x += 40) {
+      if (free(x, y) && w.nav.clearLine(x, y, x + 320, y) && w.nav.clearLine(x, y - 24, x + 320, y - 24) && w.nav.clearLine(x, y + 24, x + 320, y + 24)) return [x, y];
+    }
+    return null;
+  });
+  expect(open, 'an open stretch of ground to steer across').not.toBeNull();
+  await page.evaluate(([x, y]) => (window as any).__cozy.wildTeleport(x, y), open!);
+  await page.waitForTimeout(1500);
   const cdp = await page.context().newCDPSession(page);
   const pt = (x: number, y: number) => [{ x, y, id: 1, radiusX: 8, radiusY: 8, force: 1 }];
   const p0 = (await wild(page)).player;
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: pt(500, 500) });
   for (let i = 1; i <= 6; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: pt(500 + i * 15, 500) }); await page.waitForTimeout(50); }
   let top = 0;
-  for (let i = 0; i < 20; i++) { await page.waitForTimeout(150); const s = await wild(page); top = Math.max(top, s.speed); expect(s.stick).toBe(true); }
+  const samples: string[] = [];
+  for (let i = 0; i < 20; i++) {
+    await page.waitForTimeout(150);
+    const s = await wild(page); top = Math.max(top, s.speed); expect(s.stick).toBe(true);
+    samples.push(await page.evaluate(() => { const w = (window as any).__game.scene.getScene('wild'); const b = w.body; return `${Math.round(w.feet.x)},${Math.round(w.feet.y)} v=${Math.round(b.velocity.x)},${Math.round(b.velocity.y)} blk=${JSON.stringify(b.blocked)} fps=${Math.round(w.game.loop.actualFps)}`; }));
+  }
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
   await cdp.detach();
-  expect(top).toBeGreaterThan(150);
+  expect(top, samples.join('\n')).toBeGreaterThan(150);
   expect(top).toBeLessThan(185);
   await expect.poll(async () => (await wild(page)).stick).toBe(false);
   const p1 = (await wild(page)).player;
