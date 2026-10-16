@@ -27,12 +27,12 @@ test('spring: legacy classic save migrates to Spring with its own soundscape', a
   await page.waitForTimeout(3000);
   await page.screenshot({ path: `${SHOTS}/spring-legacy-save.png` });
 
-  // Preview shots: the start meadow / glade and the village edge, with blossoms + petals.
+  // Preview shots: the start meadow / glade and the pond, with blossoms + petals.
   const tp = (x: number, y: number) => page.evaluate(([x, y]) => (window as any).__cozy.teleport(x, y), [x, y]);
   await tp(905, 1330);
   await page.waitForTimeout(5000);
   await page.screenshot({ path: `${SHOTS}/spring-preview-01.png` });
-  await tp(700, 1700);
+  await tp(1310, 1090); // pond's south shore
   await page.waitForTimeout(5000);
   await page.screenshot({ path: `${SHOTS}/spring-preview-02.png` });
 
