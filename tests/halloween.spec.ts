@@ -28,8 +28,10 @@ test('halloween: interactive decorations respond to taps', async ({ page }) => {
   // Close any intro dialog / what's-new card.
   for (let i = 0; i < 6 && (await cozy(page, 'state')).dialogOpen; i++) { await page.touchscreen.tap(590, 700); await page.waitForTimeout(400); }
 
+  expect((await cozy(page, 'state')).soundscape).toBe('classic');
   await cozy(page, "setTheme('halloween')");
   await page.waitForTimeout(1500);
+  expect((await cozy(page, 'state')).soundscape).toBe('halloween');
   let h = await hw(page);
   expect(h.jacks.length).toBeGreaterThan(4);
   expect(h.pumpkins.length).toBeGreaterThan(4);
@@ -85,6 +87,7 @@ test('halloween: interactive decorations respond to taps', async ({ page }) => {
 
   // Classic: decorations hidden, taps there do nothing.
   await cozy(page, "setTheme('classic')");
+  expect((await cozy(page, 'state')).soundscape).toBe('classic');
   await teleport(page, (bt[0] + pk[0]) / 2, (bt[1] + pk[1]) / 2 + 60);
   await page.waitForTimeout(1200);
   h = await hw(page);

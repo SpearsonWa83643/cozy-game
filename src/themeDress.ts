@@ -174,7 +174,7 @@ export class ThemeDresser {
 
   private batTree(x: number, y: number, scale: number) {
     const w = this.w;
-    const tree = w.add.image(x, y, atlasOf('h_tree2'), 'h_tree2').setOrigin(0.5, 0.97).setScale(scale / (frameScale.h_tree2 ?? 2)).setDepth(y);
+    const tree = w.add.image(x, y, atlasOf('h_tree2'), 'h_tree2').setOrigin(0.5, 192 / 200).setScale(scale / (frameScale.h_tree2 ?? 2)).setDepth(y);
     this.props.push(tree);
     const sh = w.fx(x, y, 'shadow', 70 / 64).setAlpha(0.5).setDepth(-500);
     this.props.push(sh);
@@ -269,7 +269,7 @@ export class ThemeDresser {
       if (t.trees && round) {
         const nf = t.trees[(i * 7 + Math.floor(img.x)) % t.trees.length];
         const dw = (img.width * o.sx);
-        img.setTexture(atlasOf(nf), nf).setOrigin(0.5, 0.97);
+        img.setTexture(atlasOf(nf), nf).setOrigin(0.5, 192 / 200); // trunk base = ground point
         img.setScale((dw * 1.05) / img.width).clearTint();
       } else {
         if (img.frame.name !== f) img.setTexture(o.tex, f).setOrigin(o.ox, o.oy).setScale(o.sx, o.sy);
@@ -297,7 +297,7 @@ export class ThemeDresser {
     if (w.life.catTail) { if (t.critters.cat) w.life.catTail.setTint(t.critters.cat); else w.life.catTail.clearTint(); }
     for (const f of w.life.flies) { if (t.critters.butterflies) f.img.setTint(t.critters.butterflies); else f.img.clearTint(); }
     for (const g of w.windowGlows) g.setTint(t.glow);
-    sfx.setTheme(t.music);
+    sfx.setSoundscape(t.soundscape);
     if (live) {
       w.ground.restyle();
       w.cameras.main.flash(400, t.id === 'halloween' ? 120 : 255, t.id === 'halloween' ? 80 : 245, t.id === 'halloween' ? 160 : 220);

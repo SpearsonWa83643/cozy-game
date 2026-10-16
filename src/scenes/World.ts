@@ -1272,7 +1272,7 @@ export class WorldScene extends Phaser.Scene {
           area: self.area, fishing: self.fishing.state, tiles: self.ground.tiles.size, paintMs: [...self.ground.paintMs], puzzles: { ...save.puzzles },
           treasures: [...save.treasures], fish: Object.keys(save.fish), look: { ...save.look }, minor: { ...save.minor },
           reactions: self.life?.reactions ?? 0, snacks: save.snacks, fed: self.fed,
-          followers: self.life?.followers() ?? 0,
+          followers: self.life?.followers() ?? 0, soundscape: sfx.soundscape,
           dialogOpen: !!self.registry.get('dialogOpen'),
           mount: self.mount.phase,
         };

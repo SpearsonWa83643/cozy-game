@@ -2,6 +2,7 @@
 // painter read the active theme and listen for changes, so a switch happens live.
 import Phaser from 'phaser';
 import { save, persist, ThemeId } from './save';
+import { CLASSIC, HALLOWEEN, type Soundscape } from './soundscapes';
 
 export type Theme = {
   id: ThemeId;
@@ -26,7 +27,8 @@ export type Theme = {
   /** Window/lamp glow colour. */
   glow: number;
   ui: { accent: number; accentDark: number; css: string; tab: number; tabOn: number };
-  music: 'classic' | 'spooky';
+  /** The theme's own soundscape (music + ambience). Every theme must have its own. */
+  soundscape: Soundscape;
   /** Entry (name + birthday) screen look. A new theme just fills this in. */
   entry: EntryLook;
 };
@@ -52,7 +54,7 @@ const classic: Theme = {
   critters: { cat: null, bats: false, ghosts: false, butterflies: null },
   props: false, glow: 0xffd27a,
   ui: { accent: 0xf2a93b, accentDark: 0xc9802a, css: '#f2a93b', tab: 0xf3e6cc, tabOn: 0xf2a93b },
-  music: 'classic',
+  soundscape: CLASSIC,
   entry: {
     sky: ['rgba(126,178,196,0.78)', 'rgba(150,196,120,0.72)', 'rgba(52,86,48,0.86)'],
     title: '#fff6dc', titleEdge: '#5b3d24',
@@ -76,7 +78,7 @@ const halloween: Theme = {
   critters: { cat: 0x4a4058, bats: true, ghosts: true, butterflies: 0xffa64d },
   props: true, glow: 0xffa040,
   ui: { accent: 0xb072e0, accentDark: 0x7f4ab0, css: '#b072e0', tab: 0xefe2f7, tabOn: 0xb072e0 },
-  music: 'spooky',
+  soundscape: HALLOWEEN,
   entry: {
     sky: ['rgba(38,24,64,0.86)', 'rgba(84,48,104,0.78)', 'rgba(28,20,36,0.92)'],
     title: '#ffcf7a', titleEdge: '#3a1d4a',

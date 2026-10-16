@@ -332,8 +332,29 @@ function paintSpooky(kind: number) {
   return (c: Ctx, w: number, h: number) => {
     const cx = w / 2, by = h - 8;
     const rng = mulberry32(900 + kind);
+    // Planted on the ground (Walker: trees looked like they floated): a soft contact shadow,
+    // a root flare that curves into the earth like the Classic trees, and a few grass tufts.
+    const shade = (rx: number) => {
+      c.fillStyle = 'rgba(28,16,40,0.34)'; c.beginPath(); c.ellipse(cx + 4, by + 1, rx, rx * 0.2, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = 'rgba(28,16,40,0.22)'; c.beginPath(); c.ellipse(cx + 2, by, rx * 0.62, rx * 0.13, 0, 0, Math.PI * 2); c.fill();
+    };
+    const tufts = (dx: number) => {
+      c.lineCap = 'round'; c.strokeStyle = '#4f3f66'; c.lineWidth = 2.4;
+      for (const sx of [-dx, dx * 0.8]) { c.beginPath(); c.moveTo(cx + sx - 4, by + 1); c.lineTo(cx + sx - 6, by - 7); c.moveTo(cx + sx, by + 1); c.lineTo(cx + sx + 1, by - 9); c.moveTo(cx + sx + 4, by + 1); c.lineTo(cx + sx + 7, by - 6); c.stroke(); }
+    };
+    const flare = (tw: number, topY: number, col: string) => {
+      c.beginPath(); c.moveTo(cx - tw * 2.1, by + 1);
+      c.quadraticCurveTo(cx - tw * 0.9, by - 8, cx - tw * 0.85, by - 26); c.quadraticCurveTo(cx - tw * 0.6, by - 60, cx - tw * 0.5, topY);
+      c.lineTo(cx + tw * 0.5, topY); c.quadraticCurveTo(cx + tw * 0.6, by - 60, cx + tw * 0.85, by - 26);
+      c.quadraticCurveTo(cx + tw * 0.9, by - 8, cx + tw * 2.1, by + 1); c.quadraticCurveTo(cx, by + 6, cx - tw * 2.1, by + 1); c.closePath(); fo(c, col, 3.5);
+      // Root lines so the flare reads as roots, not a skirt.
+      c.strokeStyle = 'rgba(40,24,48,0.55)'; c.lineWidth = 2; c.lineCap = 'round';
+      c.beginPath(); c.moveTo(cx - tw * 0.6, by - 14); c.quadraticCurveTo(cx - tw * 1.1, by - 3, cx - tw * 1.6, by); c.moveTo(cx + tw * 0.6, by - 14); c.quadraticCurveTo(cx + tw * 1.1, by - 3, cx + tw * 1.6, by); c.stroke();
+    };
     if (kind < 2) {
-      c.beginPath(); c.moveTo(cx - 12, by); c.quadraticCurveTo(cx - 8, by - 50, cx - 6, by - 80); c.lineTo(cx + 6, by - 80); c.quadraticCurveTo(cx + 8, by - 50, cx + 12, by); c.closePath(); fo(c, '#7a4a5a', 3.5);
+      shade(44);
+      flare(12, by - 80, '#7a4a5a');
+      tufts(30);
       const cols = kind ? ['#ff8c2e', '#ffb347', '#e8604c'] : ['#c46be0', '#ff8c2e', '#ffb347'];
       const blobs: [number, number, number][] = [[cx, by - 120, 46], [cx - 36, by - 96, 32], [cx + 36, by - 96, 32], [cx - 18, by - 146, 28], [cx + 20, by - 144, 28]];
       for (const [x, y, r] of blobs) circ(c, x, y, r, cols[0], 4);
@@ -349,7 +370,10 @@ function paintSpooky(kind: number) {
         if (depth > 0) { branch(x2, y2, a - 0.55 + rr(rng, -0.1, 0.1), len * 0.68, wd * 0.62, depth - 1); branch(x2, y2, a + 0.5 + rr(rng, -0.1, 0.1), len * 0.66, wd * 0.6, depth - 1); }
         else { c.beginPath(); c.arc(x2 + 4, y2, 5, Math.PI, Math.PI * 2.6); c.lineWidth = 3; c.strokeStyle = '#6a5a7a'; c.stroke(); if (rng() < 0.6) circ(c, x2, y2 + 4, 4, rng() < 0.5 ? '#ff8c2e' : '#c46be0', 1.6); }
       };
-      branch(cx, by, -Math.PI / 2, 70, 16, 3);
+      shade(40);
+      flare(9, by - 46, '#6a5a7a');
+      branch(cx, by - 20, -Math.PI / 2, 52, 16, 3);
+      tufts(26);
       // Sleepy face on the trunk.
       c.strokeStyle = INK; c.lineWidth = 2.2; c.beginPath(); c.arc(cx - 5, by - 34, 3, 0.2, Math.PI - 0.2); c.moveTo(cx + 8, by - 34); c.arc(cx + 5, by - 34, 3, 0.2, Math.PI - 0.2); c.stroke();
       c.beginPath(); c.ellipse(cx, by - 25, 3, 2.2, 0, 0, Math.PI * 2); c.fillStyle = INK; c.fill();
