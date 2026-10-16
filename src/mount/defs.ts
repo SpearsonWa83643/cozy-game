@@ -88,6 +88,15 @@ export const MOUNTS: MountDef[] = [
     blurb: 'Zoom! A little red airplane!',
     style: 'prop', propAt: [61, 5],
   },
+  {
+    id: 'pumpkin',
+    name: 'Pumpkin',
+    treasure: 'pumpkin_seed',
+    body: 'pump_body', wing: 'pump_wing', wingFar: 'pump_wing_far', icon: 'i_pumpkin',
+    scale: 0.85,
+    blurb: 'A happy flying jack-o\'-lantern!',
+    flapRate: 1.3,
+  },
 ];
 
 export function mountById(id: string): MountDef {
