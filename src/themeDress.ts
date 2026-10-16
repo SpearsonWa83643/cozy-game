@@ -286,11 +286,11 @@ export class ThemeDresser {
         bl = [];
         const rnd = mulberry32(Math.floor(img.x * 13 + img.y * 7));
         const b = img.getBounds();
-        const n = 10 + Math.floor(rnd() * 6);
+        const n = 16 + Math.floor(rnd() * 8);
         for (let k = 0; k < n; k++) {
           const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * 0.42;
           const x = b.centerX + Math.cos(a) * r * b.width, y = b.y + b.height * 0.34 + Math.sin(a) * r * b.height * 0.5;
-          const sz = (0.07 + rnd() * 0.05) * b.width;
+          const sz = (0.08 + rnd() * 0.06) * b.width;
           const p = w.add.image(x, y, atlasOf('petal'), 'petal').setDisplaySize(sz, sz * 0.8).setRotation(rnd() * 6.3)
             .setTint(t.blossom.tints[k % t.blossom.tints.length]).setAlpha(0.92).setDepth(img.depth + 0.01);
           bl.push(p);
