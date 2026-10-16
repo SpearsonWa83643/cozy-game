@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { stickInput, steerBody, stepPath, pulseTapMarker, slideOutOfWater } from '../controls';
 import { S, ATLAS, atlasOf, frameScale, mulberry32, pondValue, distToPaths, pathDist, ALL_PATHS , TREE_SCALE} from '../art';
 import { GroundStreamer } from '../ground';
 import { waterBlocks, areaAt, waterAt } from '../geo';
@@ -78,7 +79,6 @@ type Lantern = {
 
 export type Prompt = { x: number; y: number; label: string } | null;
 
-const SPEED = 175;
 
 export class WorldScene extends Phaser.Scene {
   feet!: Phaser.GameObjects.Zone;
@@ -1033,9 +1033,7 @@ export class WorldScene extends Phaser.Scene {
     this.pathLastD = Infinity;
     const end = this.path[this.path.length - 1];
     if (end) {
-      this.tapMarker.setPosition(end[0], end[1]).setAlpha(0.8).setScale(0.18 / frameScale.ripple);
-      this.tweens.killTweensOf(this.tapMarker);
-      this.tweens.add({ targets: this.tapMarker, scale: 0.6 / frameScale.ripple, alpha: 0, duration: 700, ease: 'Sine.easeOut' });
+      pulseTapMarker(this, this.tapMarker, end[0], end[1]);
     }
   }
 
@@ -1049,29 +1047,16 @@ export class WorldScene extends Phaser.Scene {
       t.action();
       return [0, 0];
     }
-    const [wx, wy] = this.path[0];
-    const dx = wx - this.feet.x;
-    const dy = wy - this.feet.y;
-    const d = Math.hypot(dx, dy);
-    const last = this.path.length === 1;
-    if (d < (last ? 6 : 16)) {
-      this.path.shift();
-      if (!this.path.length) {
-        const t = this.pathTarget;
-        this.pathTarget = null;
-        const cb = this.pathArrive;
-        this.pathArrive = null;
-        if (cb) cb();
-        if (t && Math.hypot(t.x - this.feet.x, (t.y - this.feet.y) * 1.3) < t.r * 1.4) t.action();
-      }
-      return this.followPath(dt);
-    }
-    // Stuck detection: if we stop closing in, give up gracefully.
-    if (d > this.pathLastD - 0.5) this.pathStuck += dt; else this.pathStuck = Math.max(0, this.pathStuck - dt);
-    this.pathLastD = d;
-    if (this.pathStuck > 0.9) { this.path = []; this.pathTarget = null; this.pathArrive = null; return [0, 0]; }
-    const ease = last ? Math.min(1, d / 40 + 0.25) : 1;
-    return [(dx / d) * ease, (dy / d) * ease];
+    const { dir, arrived } = stepPath(this, this.feet.x, this.feet.y, dt);
+    if (arrived) {
+      const t = this.pathTarget;
+      this.pathTarget = null;
+      const cb = this.pathArrive;
+      this.pathArrive = null;
+      if (cb) cb();
+      if (t && Math.hypot(t.x - this.feet.x, (t.y - this.feet.y) * 1.3) < t.r * 1.4) t.action();
+    } else if (!this.path.length) { this.pathTarget = null; this.pathArrive = null; } // gave up (stuck)
+    return dir;
   }
 
   nearestInteractable(): Interactable | null {
@@ -1114,28 +1099,16 @@ export class WorldScene extends Phaser.Scene {
     }
     let len = Math.hypot(ix, iy);
     if (len) { ix /= len; iy /= len; len = 1; }
-    else if (!frozen && this.stick) {
-      const m = Math.min(1, Math.hypot(this.stick.x, this.stick.y));
-      if (m > 0.12) {
-        const k2 = Math.min(1, (m - 0.12) / 0.6) * 0.75 + 0.25; // analog, with a gentle floor
-        ix = (this.stick.x / m) * k2; iy = (this.stick.y / m) * k2; len = k2;
-      }
-    } else if (!frozen && this.path.length) {
+    else if (!frozen && this.stick) [ix, iy, len] = stickInput(this.stick); else if (!frozen && this.path.length) {
       [ix, iy] = this.followPath(dt);
       len = Math.hypot(ix, iy);
     }
     const v = this.body.velocity;
-    const blend = 1 - Math.exp(-dt * (len ? 12 : 16));
-    if (!carried) this.body.setVelocity(v.x + (ix * SPEED - v.x) * blend, v.y + (iy * SPEED - v.y) * blend);
+    if (!carried) steerBody(this.body, ix, iy, len, dt);
 
     // Pond: collide against the painted shoreline shape, sliding along it.
-    if (!carried && waterBlocks(this.feet.x, this.feet.y)) {
-      const [lx, ly] = this.lastSafe;
-      if (!waterBlocks(this.feet.x, ly)) this.feet.setPosition(this.feet.x, ly);
-      else if (!waterBlocks(lx, this.feet.y)) this.feet.setPosition(lx, this.feet.y);
-      else this.feet.setPosition(lx, ly);
-    }
-    this.lastSafe = [this.feet.x, this.feet.y];
+    if (!carried) slideOutOfWater(this.feet, this.lastSafe, waterBlocks);
+    else this.lastSafe = [this.feet.x, this.feet.y];
 
     // Facing + animation.
     const speed = carried ? 0 : Math.hypot(v.x, v.y);
@@ -1312,7 +1285,7 @@ export class WorldScene extends Phaser.Scene {
           player: [Math.round(wl.feet.x), Math.round(wl.feet.y)], exit: [wl.map.exit.x, wl.map.exit.y], ...(wl.testState?.() ?? {}) } : { on: false, inWild: self.inWild };
       },
       wildTap(x: number, y: number) { const wl = self.scene.get('wild') as any; wl.tapAt(x, y); },
-      wildTeleport(x: number, y: number) { const wl = self.scene.get('wild') as any; wl.feet.setPosition(x, y); wl.body.reset(x, y); wl.target = null; },
+      wildTeleport(x: number, y: number) { const wl = self.scene.get('wild') as any; wl.feet.setPosition(x, y); wl.body.reset(x, y); wl.path = []; wl.chase = null; wl.lastSafe = [x, y]; wl.cameras.main.centerOn(x, y); },
       wildToScreen(x: number, y: number) { const c = (self.scene.get('wild') as any).cameras.main; return { x: (x - c.worldView.x) * c.zoom / DPR, y: (y - c.worldView.y) * c.zoom / DPR }; },
       wildSave: () => JSON.parse(JSON.stringify(save.wild)),
       tapWorld: (x: number, y: number) => self.tapWorld(x, y),
