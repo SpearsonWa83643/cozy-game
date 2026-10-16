@@ -39,6 +39,10 @@ test('wild woods combat: bop, loot, hearts, home, wardrobe, theme', async ({ pag
   }
   await expect.poll(async () => (await wild(page)).on, { timeout: 60_000, intervals: [500] }).toBe(true);
   const w1 = await wild(page);
+  // Diagnostics: remember why we ever left the woods / lost hearts (shown if a check below fails).
+  await page.evaluate(() => { const w = (window as any).__game.scene.getScene('wild'); const log: string[] = ((window as any).__wildLog = []); const at = () => `${Math.round(w.feet.x)},${Math.round(w.feet.y)}`;
+    w.events.on('leaving', (why: string) => log.push(`leaving:${why}@${at()}`)); w.events.on('hearts', (h: number) => log.push(`hearts:${h}@${at()}`)); });
+  const wildLog = () => page.evaluate(() => ((window as any).__wildLog ?? []).join(' | '));
   expect(w1.props).toBeGreaterThan(80);
   expect(w1.clearings).toBeGreaterThanOrEqual(5);
   expect((await cozy(page, 'wildSave()')).visits).toBe(1);
@@ -90,6 +94,8 @@ test('wild woods combat: bop, loot, hearts, home, wardrobe, theme', async ({ pag
   expect((await wild(page)).on).toBe(true);
 
   // 5a. Loot: walk over a drop, then open the wild treasure chest.
+  // Hearts were checked above; keep wandering monsters from bumping us into a nap mid-loot (flaky at ~4fps).
+  await page.evaluate(() => { (window as any).__game.scene.getScene('wild').invulnT = 1e9; });
   await expect.poll(async () => (await wild(page)).pickups.length + Object.values((await wild(page)).bag as Record<string, number>).reduce((a, b) => a + b, 0), { timeout: 30_000 }).toBeGreaterThan(0);
   for (let i = 0; i < 6; i++) {
     const p = (await wild(page)).pickups.find((q: any) => q.kind !== 'heart') ?? (await wild(page)).pickups[0];
@@ -99,13 +105,14 @@ test('wild woods combat: bop, loot, hearts, home, wardrobe, theme', async ({ pag
   }
   const bag = (await wild(page)).bag;
   expect(bag.glowmoss + bag.starshard).toBeGreaterThan(0);
+  expect((await wild(page)).on, `still in the woods before the chest: ${await wildLog()}`).toBe(true);
   const chest = (await wild(page)).chests[0];
   await page.evaluate(([x, y]) => (window as any).__cozy.wildTeleport(x, y + 90), [chest.x, chest.y]);
   await page.waitForTimeout(600);
   const cp = await page.evaluate(([x, y]) => (window as any).__cozy.wildToScreen(x, y - 20), [chest.x, chest.y]);
   await page.touchscreen.tap(cp.x, cp.y);
   for (let t = 0; t < 4 && !(await wild(page)).found?.length; t++) { await page.waitForTimeout(2500); if (!(await wild(page)).found?.length) await page.touchscreen.tap(cp.x, cp.y); }
-  await expect.poll(async () => (await wild(page)).found, { timeout: 30_000 }).toContain('acorn_cap');
+  await expect.poll(async () => (await wild(page)).found, { timeout: 30_000, message: `chest loot (log: ${await wildLog()})` }).toContain('acorn_cap');
   await page.waitForTimeout(1200);
   await page.screenshot({ path: `${SHOTS}/hd-ipad-v8-03-loot-home.png` });
   const banked = bag.glowmoss + bag.starshard;
