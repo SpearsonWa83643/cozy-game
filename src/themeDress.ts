@@ -17,6 +17,8 @@ type Orig = { frame: string; tex: string; ox: number; oy: number; sx: number; sy
 
 export class ThemeDresser {
   orig = new Map<Phaser.GameObjects.Image, Orig>();
+  /** Spring blossom clusters painted over some round canopies (made once, shown per theme). */
+  blooms = new Map<Phaser.GameObjects.Image, Phaser.GameObjects.Image[]>();
   sky: Phaser.GameObjects.Image;
   fog: { img: Phaser.GameObjects.Image; ox: number; oy: number; v: number }[] = [];
   props: Phaser.GameObjects.Image[] = [];
@@ -274,8 +276,28 @@ export class ThemeDresser {
       } else {
         if (img.frame.name !== f) img.setTexture(o.tex, f).setOrigin(o.ox, o.oy).setScale(o.sx, o.sy);
         if (t.id === 'halloween') img.setTint(fruity ? 0xf7c0a0 : f.startsWith('pine') ? 0x9c88c0 : f.startsWith('birch') ? 0xffc27a : t.foliage ?? 0xffffff);
+        else if (t.blossom && round && i % t.blossom.every === 0) img.setTint(0xfff2f4);
         else img.clearTint();
       }
+      // Spring blossoms: soft pink/white flower clusters dotted over every few round canopies.
+      const bloom = !!t.blossom && round && !t.trees && i % (t.blossom?.every ?? 3) === 0;
+      let bl = this.blooms.get(img);
+      if (bloom && !bl && t.blossom) {
+        bl = [];
+        const rnd = mulberry32(Math.floor(img.x * 13 + img.y * 7));
+        const b = img.getBounds();
+        const n = 10 + Math.floor(rnd() * 6);
+        for (let k = 0; k < n; k++) {
+          const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * 0.42;
+          const x = b.centerX + Math.cos(a) * r * b.width, y = b.y + b.height * 0.34 + Math.sin(a) * r * b.height * 0.5;
+          const sz = (0.07 + rnd() * 0.05) * b.width;
+          const p = w.add.image(x, y, atlasOf('petal'), 'petal').setDisplaySize(sz, sz * 0.8).setRotation(rnd() * 6.3)
+            .setTint(t.blossom.tints[k % t.blossom.tints.length]).setAlpha(0.92).setDepth(img.depth + 0.01);
+          bl.push(p);
+        }
+        this.blooms.set(img, bl);
+      }
+      if (bl) for (const p of bl) p.setVisible(bloom);
     }
     w.reacts.restyleStumps();
     for (const b of w.reacts.foliage) { if (t.foliage) b.setTint(t.foliage); else b.clearTint(); }
@@ -287,7 +309,7 @@ export class ThemeDresser {
     const [pollen] = w.ambient;
     pollen?.updateConfig({ tint: t.particles.pollen } as any);
     // Each theme's petal/leaf frame has its own emitter on the right atlas page; only one runs.
-    const petals = w.makePetals(t.particles.petal, t.particles.petalTint, t.id === 'halloween' ? 300 : 700);
+    const petals = w.makePetals(t.particles.petal, t.particles.petalTint, t.id === 'halloween' ? 300 : t.id === 'spring' ? 380 : 700);
     for (const [f, e] of w.petalBy) { const on = e === petals; e.emitting = on; if (!on) e.killAll(); e.setVisible(on); }
     w.petals = petals;
     for (const e of w.fireflies) e.updateConfig({ tint: t.particles.firefly } as any);
@@ -300,7 +322,7 @@ export class ThemeDresser {
     if (live) {
       w.ground.restyle();
       w.cameras.main.flash(400, t.id === 'halloween' ? 120 : 255, t.id === 'halloween' ? 80 : 245, t.id === 'halloween' ? 160 : 220);
-      w.burst(w.feet.x, w.feet.y - 30, t.id === 'halloween' ? 0xffa040 : 0x9be07a, 30, t.id === 'halloween' ? 'spark' : 'leaf');
+      w.burst(w.feet.x, w.feet.y - 30, t.id === 'halloween' ? 0xffa040 : t.id === 'spring' ? 0xffc4dc : 0x9be07a, 30, t.id === 'halloween' ? 'spark' : 'leaf');
     }
   }
 
@@ -308,6 +330,12 @@ export class ThemeDresser {
     const w = this.w;
     const cam = w.cameras.main;
     if (this.sky.visible) this.sky.setPosition(cam.width / 2, cam.height / 2).setDisplaySize(cam.width / cam.zoom * 1.2, cam.height / cam.zoom * 1.2);
+    // Blossoms follow their canopy (chopped trees lose them, see-through fades carry over).
+    if (theme.blossom) for (const [img, bl] of this.blooms) {
+      const on = img.active && img.visible && bl[0]?.visible !== undefined;
+      const a = on ? 0.92 * img.alpha : 0;
+      if (bl[0] && bl[0].alpha !== a) for (const p of bl) p.setAlpha(a);
+    }
     if (theme.fog) {
       const v = cam.worldView;
       for (const f of this.fog) {
