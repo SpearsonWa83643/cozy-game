@@ -87,6 +87,9 @@ export class Mount {
     this.body.setTexture(atlasOf(def.body), def.body).setScale(sc(def.body));
     this.wing.setTexture(atlasOf(def.wing), def.wing).setScale(sc(def.wing));
     this.wingFar.setTexture(atlasOf(def.wingFar), def.wingFar).setScale(sc(def.wingFar));
+    const prop = def.style === 'prop';
+    this.wing.setOrigin(0.5, prop ? 0.5 : 0.96).setDepth(prop ? DEPTH + 0.2 : DEPTH + 0.5);
+    this.wingFar.setOrigin(0.5, prop ? 0.5 : 0.96);
     this.applyTheme();
   }
 
@@ -409,6 +412,14 @@ export class Mount {
     this.wing.setPosition(nx, ny).setScale(ws, sy).setRotation(-sweep + tilt).setFlipX(d < 0);
     const [fx, fy] = at(3 * this.SCALE, -10 * this.SCALE);
     this.wingFar.setPosition(fx, fy).setScale(ws * 0.9, sy * 0.88).setRotation(-sweep * 1.15 + tilt).setFlipX(d < 0);
+    if (this.def.style === 'prop') {
+      // Propeller at the nose: spins by squashing its height; a faint blur disc sits behind it.
+      const [pa, pb] = this.def.propAt ?? [60, 0];
+      const [px, py] = at(pa * this.SCALE, pb * this.SCALE);
+      const spin = time / (fast ? 18 : 30);
+      this.wing.setPosition(px, py).setScale(ws * 0.6, ws * (0.15 + 0.85 * Math.abs(Math.cos(spin)))).setRotation(tilt).setFlipX(d < 0);
+      this.wingFar.setPosition(px, py).setScale(ws * 0.9, ws).setRotation(tilt).setFlipX(d < 0);
+    }
     // Shadow shrinks and fades with height.
     const k = 1 / (1 + this.alt / 140);
     this.shadow.setPosition(this.gx, this.gy + 4).setScale((96 * k / 64) / (frameScale.shadow ?? 1)).setAlpha((0.35 + 0.5 * k) * this.body.alpha);

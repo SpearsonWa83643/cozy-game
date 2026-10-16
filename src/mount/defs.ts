@@ -15,6 +15,9 @@ export type MountDef = {
   blurb: string;
   /** Wing beat speed multiplier (bee buzzes fast). Default 1. */
   flapRate?: number;
+  /** 'prop' = no flapping wings: `wing` is a propeller spun at the nose (propAt, body units from centre). */
+  style?: 'wings' | 'prop';
+  propAt?: [number, number];
 };
 
 export const MOUNTS: MountDef[] = [
@@ -58,6 +61,32 @@ export const MOUNTS: MountDef[] = [
     scale: 0.85,
     blurb: 'A fuzzy buzzy bumblebee!',
     flapRate: 4,
+  },
+  {
+    id: 'snail',
+    name: 'Lantern Snail',
+    treasure: 'glow_pearl',
+    body: 'snail_body', wing: 'snail_wing', wingFar: 'snail_wing_far', icon: 'i_snail',
+    scale: 0.85,
+    blurb: 'A slow, glowy lantern snail that can fly!',
+    flapRate: 0.8,
+  },
+  {
+    id: 'teacup',
+    name: 'Flying Teacup',
+    treasure: 'sugar_cube',
+    body: 'cup_body', wing: 'cup_wing', wingFar: 'cup_wing_far', icon: 'i_teacup',
+    scale: 0.85,
+    blurb: 'Hop in the teacup and fly!',
+  },
+  {
+    id: 'airplane',
+    name: 'Toy Airplane',
+    treasure: 'toy_propeller',
+    body: 'plane_body', wing: 'plane_prop', wingFar: 'plane_prop_far', icon: 'i_plane',
+    scale: 0.85,
+    blurb: 'Zoom! A little red airplane!',
+    style: 'prop', propAt: [61, 5],
   },
 ];
 

@@ -1135,6 +1135,9 @@ import { paintPtero } from './mount/pteroArt';
 import { paintCloudPuppy } from './mount/cloudArt';
 import { paintUnicorn } from './mount/unicornArt';
 import { paintBee } from './mount/beeArt';
+import { paintSnail } from './mount/snailArt';
+import { paintTeacup } from './mount/teacupArt';
+import { paintPlane } from './mount/planeArt';
 import { paintVillageArt } from './village/vart';
 
 export function paintAll(scene: Phaser.Scene) {
@@ -1242,6 +1245,9 @@ export function paintAll(scene: Phaser.Scene) {
   paintCloudPuppy(scene);
   paintUnicorn(scene);
   paintBee(scene);
+  paintSnail(scene);
+  paintTeacup(scene);
+  paintPlane(scene);
   buildAtlas(scene);
   paintVillageArt(scene);
 }

@@ -124,6 +124,65 @@ test('mount picker: eagle alone skips picker; pterodactyl unlock shows picker', 
   });
   await expect.poll(async () => (await mount(page)).phase, { timeout: 120_000, intervals: [300] }).toBe('off');
 
+  // 4d) Lantern Snail: grant glow pearl; ride it.
+  await page.evaluate(() => (window as any).__cozy.giveTreasure('glow_pearl'));
+  await page.waitForTimeout(300);
+  await tapRect(page, 'mount');
+  await expect.poll(() => page.evaluate(() => !!(window as any).__vui.rects['mountPick:snail']), { timeout: 10_000, intervals: [100] }).toBe(true);
+  
+  await tapRect(page, 'mountPick:snail');
+  await expect.poll(async () => (await mount(page)).id, { timeout: 10_000, intervals: [100] }).toBe('snail');
+  await expect.poll(async () => (await mount(page)).phase, { timeout: 90_000, intervals: [200] }).toBe('ride');
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${SHOTS}/mount-snail-riding-classic.png` });
+  await page.evaluate(() => (window as any).__cozy.setTheme('halloween'));
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: `${SHOTS}/mount-snail-riding-halloween.png` });
+  await page.evaluate(() => (window as any).__cozy.setTheme('classic'));
+  await page.evaluate(() => {
+    const m = (window as any).__cozy.mount();
+    (window as any).__cozy.mountTap(m.ground[0] + 120, m.ground[1] + 80);
+  });
+  await expect.poll(async () => (await mount(page)).phase, { timeout: 120_000, intervals: [300] }).toBe('off');
+
+  // 4e) Flying Teacup: grant sugar cube; ride it.
+  await page.evaluate(() => (window as any).__cozy.giveTreasure('sugar_cube'));
+  await page.waitForTimeout(300);
+  await tapRect(page, 'mount');
+  await expect.poll(() => page.evaluate(() => !!(window as any).__vui.rects['mountPick:teacup']), { timeout: 10_000, intervals: [100] }).toBe(true);
+  await page.screenshot({ path: `${SHOTS}/mount-picker7-classic.png` });
+  await tapRect(page, 'mountPick:teacup');
+  await expect.poll(async () => (await mount(page)).id, { timeout: 10_000, intervals: [100] }).toBe('teacup');
+  await expect.poll(async () => (await mount(page)).phase, { timeout: 90_000, intervals: [200] }).toBe('ride');
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${SHOTS}/mount-teacup-riding-classic.png` });
+  await page.evaluate(() => (window as any).__cozy.setTheme('halloween'));
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: `${SHOTS}/mount-teacup-riding-halloween.png` });
+  await page.evaluate(() => (window as any).__cozy.setTheme('classic'));
+  await page.evaluate(() => {
+    const m = (window as any).__cozy.mount();
+    (window as any).__cozy.mountTap(m.ground[0] + 120, m.ground[1] + 80);
+  });
+  await expect.poll(async () => (await mount(page)).phase, { timeout: 120_000, intervals: [300] }).toBe('off');
+
+  // 4f) Toy Airplane: grant the toy propeller; ride it (propeller spins at the nose).
+  await page.evaluate(() => (window as any).__cozy.giveTreasure('toy_propeller'));
+  await page.waitForTimeout(300);
+  await tapRect(page, 'mount');
+  await expect.poll(() => page.evaluate(() => !!(window as any).__vui.rects['mountPick:airplane']), { timeout: 10_000, intervals: [100] }).toBe(true);
+  await page.screenshot({ path: `${SHOTS}/mount-picker8-classic.png` });
+  await tapRect(page, 'mountPick:airplane');
+  await expect.poll(async () => (await mount(page)).id, { timeout: 10_000, intervals: [100] }).toBe('airplane');
+  await expect.poll(async () => (await mount(page)).phase, { timeout: 90_000, intervals: [200] }).toBe('ride');
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${SHOTS}/mount-airplane-riding-classic.png` });
+  await page.evaluate(() => {
+    const m = (window as any).__cozy.mount();
+    (window as any).__cozy.mountTap(m.ground[0] + 120, m.ground[1] + 80);
+  });
+  await expect.poll(async () => (await mount(page)).phase, { timeout: 120_000, intervals: [300] }).toBe('off');
+
   // 5) Satchel Treasures tab lists the mount treasures (two rows of big tiles).
   await page.evaluate(() => (window as any).__menu.show('treasures'));
   await expect.poll(() => page.evaluate(() => (window as any).__menu.open), { timeout: 30_000 }).toBe(true);
@@ -133,6 +192,9 @@ test('mount picker: eagle alone skips picker; pterodactyl unlock shows picker', 
   expect(treasures.includes('cloud_puppy_tuft')).toBe(true);
   expect(treasures.includes('rainbow_horseshoe')).toBe(true);
   expect(treasures.includes('golden_honeycomb')).toBe(true);
+  expect(treasures.includes('glow_pearl')).toBe(true);
+  expect(treasures.includes('sugar_cube')).toBe(true);
+  expect(treasures.includes('toy_propeller')).toBe(true);
   await page.screenshot({ path: `${SHOTS}/mount-treasures-tab.png` });
   expect(errors).toEqual([]);
 });
