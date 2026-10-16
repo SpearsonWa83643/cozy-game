@@ -2,7 +2,6 @@
 // south-east edge of the map; the big Home button (WildUI) or the exit portal brings you back.
 import Phaser from 'phaser';
 import { ATLAS, S, atlasOf, frameScale, TREE_SCALE, PICKUP_BUBBLE, PICKUP_ICON } from '../art';
-import { DPR } from '../dpr';
 import { save, addTreasure, hasTreasure, addMinor } from '../save';
 import { TREASURES, WILD_SET, WILD_MOUNTS } from '../catalog';
 import { sfx } from '../audio';
@@ -11,6 +10,8 @@ import { generateWild, inPond, WildMap, WILD_W, WILD_H } from '../wild/gen';
 import { paintWildArt, ATLAS3 } from '../wild/wart';
 import type { WorldScene } from './World';
 import { Monster, SWING_RANGE } from '../wild/monsters';
+import { NavGrid } from '../pathfind';
+import { stickInput, steerBody, stepPath, pulseTapMarker, slideOutOfWater } from '../controls';
 
 const TREE_FRAMES = ['tree0', 'tree1', 'tree2', 'tree3', 'tree4', 'tree5'];
 
@@ -29,8 +30,15 @@ export class WildScene extends Phaser.Scene {
   deco!: Phaser.GameObjects.Graphics;
   trees: { img: Phaser.GameObjects.Image; v: number; pine: boolean }[] = [];
   portal!: Phaser.GameObjects.Container;
-  target: { x: number; y: number } | null = null;
-  holdPointer: Phaser.Input.Pointer | null = null;
+  // Movement: the exact same model as the glade (shared src/controls.ts).
+  nav!: NavGrid;
+  path: [number, number][] = [];
+  pathStuck = 0;
+  pathLastD = Infinity;
+  stick: { x: number; y: number } | null = null;
+  tapMarker!: Phaser.GameObjects.Image;
+  lastSafe: [number, number] = [0, 0];
+  chaseT = 0;
   facing = 0; flip = false; stepT = 0;
   leaving = false;
   ready = false;
@@ -62,7 +70,7 @@ export class WildScene extends Phaser.Scene {
 
   create() {
     paintWildArt(this);
-    this.leaving = false; this.trees = []; this.target = null; this.monsters = []; this.hearts = this.maxHearts; this.invulnT = 0; this.chase = null; this.runPoofs = 0; this.swings = 0; this.bag = { glowmoss: 0, starshard: 0 }; this.found = []; this.pickups = []; this.chests = [];
+    this.leaving = false; this.trees = []; this.path = []; this.stick = null; this.monsters = []; this.hearts = this.maxHearts; this.invulnT = 0; this.chase = null; this.runPoofs = 0; this.swings = 0; this.bag = { glowmoss: 0, starshard: 0 }; this.found = []; this.pickups = []; this.chests = [];
     this.map = generateWild(this.seed);
     const m = this.map;
     this.physics.world.setBounds(0, 0, WILD_W, WILD_H);
@@ -106,6 +114,9 @@ export class WildScene extends Phaser.Scene {
     this.body = this.feet.body as Phaser.Physics.Arcade.Body;
     this.body.setCircle(9, 1, -3).setCollideWorldBounds(true);
     this.physics.add.collider(this.feet, this.solids);
+    this.lastSafe = [m.start.x, m.start.y];
+    this.buildNav();
+    this.tapMarker = this.add.image(0, 0, atlasOf('ripple'), 'ripple').setBlendMode('ADD').setAlpha(0).setDepth(-300);
     this.playerShadow = this.add.image(m.start.x, m.start.y, ATLAS, 'shadow').setScale(34 / 64 / (frameScale.shadow ?? 1)).setDepth(-500).setAlpha(0.9);
     this.playerImg = this.add.image(m.start.x, m.start.y, this.world.heroKey, '0_0').setOrigin(0.5, 1).setScale(1 / S);
 
@@ -116,9 +127,7 @@ export class WildScene extends Phaser.Scene {
     cam.fadeIn(500, 255, 250, 235);
     this.scale.on('resize', this.onResize, this);
 
-    // Touch: tap to walk, hold to keep walking toward your finger.
-    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => { if ((this.scene.get('wildui') as any)?.hit?.(p.x / DPR, p.y / DPR)) return; this.holdPointer = p; this.tapAt(p.worldX, p.worldY); });
-    this.input.on('pointerup', () => { this.holdPointer = null; });
+    // Touch: handled by WildUI's shared TouchStick (tap to walk, drag to steer), same as the glade.
 
     themeEvents.on('change', this.onTheme);
     this.events.once('shutdown', () => { themeEvents.off('change', this.onTheme); this.scale.off('resize', this.onResize, this); });
@@ -190,20 +199,71 @@ export class WildScene extends Phaser.Scene {
     this.events.emit('theme');
   }
 
-  tapAt(x: number, y: number) {
-    if (this.leaving) return;
-    // Tapped a monster? Walk over and give it a bop.
-    let best: Monster | null = null, bd = 56;
+  /** Nav grid over the woods: every solid collider plus the ponds, exactly like the glade. */
+  buildNav() {
+    const nav = new NavGrid(WILD_W, WILD_H, 20);
+    const PAD = 9;
+    for (const z of this.solids.getChildren() as Phaser.GameObjects.Zone[]) {
+      const b = z.body as Phaser.Physics.Arcade.StaticBody;
+      if (!b || !b.enable) continue;
+      if (b.isCircle) nav.blockCircle(b.center.x, b.center.y, b.halfWidth, PAD);
+      else nav.blockRect(b.x, b.y, b.width, b.height, PAD);
+    }
+    nav.blockWhere((x, y) => this.waterBlocks(x, y) || x < 10 || y < 10 || x > WILD_W - 10 || y > WILD_H - 10);
+    this.nav = nav;
+  }
+
+  waterBlocks(x: number, y: number) { return inPond(this.map.ponds, x, y, 8); }
+
+  /** Joystick from WildUI (screen-space, magnitude 0..1), or null when released. */
+  setStick(v: { x: number; y: number } | null) {
+    if (this.leaving) v = null;
+    this.stick = v;
+    if (v) { this.path = []; this.chase = null; }
+  }
+
+  tapScreen(px: number, py: number) {
+    const p = this.cameras.main.getWorldPoint(px, py);
+    this.tapAt(p.x, p.y);
+  }
+
+  walkTo(gx: number, gy: number, marker = true) {
+    const path = this.nav.find(this.feet.x, this.feet.y, gx, gy);
+    this.path = path ?? [];
+    this.pathStuck = 0;
+    this.pathLastD = Infinity;
+    const end = this.path[this.path.length - 1];
+    if (end && marker) pulseTapMarker(this, this.tapMarker, end[0], end[1]);
+  }
+
+  /** The live monster whose sprite is actually under the tap (a little padding for fingers). */
+  monsterAt(x: number, y: number): Monster | null {
+    let best: Monster | null = null, bd = Infinity;
     for (const mo of this.monsters) {
       if (!mo.alive) continue;
-      const d = Math.min(Math.hypot(mo.x - x, mo.y - y), Math.hypot(mo.x - x, mo.y - 22 - y));
+      const b = mo.img.getBounds();
+      const pad = 10;
+      if (x < b.left - pad || x > b.right + pad || y < b.top - pad || y > b.bottom + pad) continue;
+      const d = Math.hypot(b.centerX - x, b.centerY - y);
       if (d < bd) { bd = d; best = mo; }
     }
-    const ch = this.chests.find((c) => !c.opened && Math.hypot(c.x - x, c.y - 20 - y) < 50);
-    if (ch) { this.chase = null; if (Math.hypot(ch.x - this.feet.x, ch.y + 20 - this.feet.y) < 130) { this.target = null; this.openChest(ch); } else this.target = { x: ch.x, y: ch.y + 30 }; return; }
-    if (best) { this.chase = best; this.holdPointer = null; if (Math.hypot(best.x - this.feet.x, best.y - this.feet.y) < SWING_RANGE) this.swing(); return; }
+    return best;
+  }
+
+  tapAt(x: number, y: number) {
+    if (this.leaving) return;
     this.chase = null;
-    this.target = { x, y };
+    // Tapped a monster (its sprite, not just nearby ground)? Walk over and give it a bop.
+    const mo = this.monsterAt(x, y);
+    if (mo) {
+      this.chase = mo; this.chaseT = 0;
+      if (Math.hypot(mo.x - this.feet.x, mo.y - this.feet.y) < SWING_RANGE) { this.path = []; this.swing(); }
+      else this.walkTo(mo.x, mo.y + 10);
+      return;
+    }
+    const ch = this.chests.find((c) => !c.opened && Math.hypot(c.x - x, c.y - 20 - y) < 50);
+    if (ch) { if (Math.hypot(ch.x - this.feet.x, ch.y + 20 - this.feet.y) < 130) { this.path = []; this.openChest(ch); } else this.walkTo(ch.x, ch.y + 30); return; }
+    this.walkTo(x, y);
   }
 
   /** Swing the stick (or wand, in Halloween): bops every monster in a clear circle around you. */
@@ -326,6 +386,7 @@ export class WildScene extends Phaser.Scene {
 
   testState() {
     return {
+      path: this.path.length, chasing: !!this.chase, speed: Math.round(Math.hypot(this.body.velocity.x, this.body.velocity.y)), stick: !!this.stick,
       hearts: this.hearts, bag: { ...this.bag }, found: [...this.found], pickups: this.pickups.filter((p) => !p.taken).map((p) => ({ kind: p.kind, x: Math.round(p.x), y: Math.round(p.y) })), chests: this.chests.map((c) => ({ x: c.x, y: c.y, opened: c.opened })), monsters: this.monsters.filter((m) => m.alive).length, total: this.monsters.length, poofs: this.runPoofs, swings: this.swings,
       mons: this.monsters.filter((m) => m.alive).map((m) => ({ id: m.id, x: Math.round(m.x), y: Math.round(m.y), kind: m.kind, hp: m.hp })),
     };
@@ -334,7 +395,7 @@ export class WildScene extends Phaser.Scene {
   goHome(why: 'button' | 'portal' | 'faint') {
     if (this.leaving) return;
     this.leaving = true;
-    this.target = null; this.body.setVelocity(0, 0);
+    this.path = []; this.stick = null; this.chase = null; this.body.setVelocity(0, 0);
     sfx.chimes();
     this.events.emit('leaving', why);
     this.cameras.main.fadeOut(600, 255, 250, 235);
@@ -348,13 +409,13 @@ export class WildScene extends Phaser.Scene {
 
   update(_t: number, dt: number) {
     if (!this.ready) return;
-    if (this.holdPointer?.isDown && !this.leaving) { this.holdPointer.updateWorldPoint(this.cameras.main); this.target = { x: this.holdPointer.worldX, y: this.holdPointer.worldY }; }
     this.swingCd = Math.max(0, this.swingCd - dt);
     if (this.invulnT > 0) { this.invulnT -= dt; this.playerImg.setAlpha(this.invulnT > 0 && Math.floor(this.invulnT / 120) % 2 ? 0.45 : 1); }
     if (this.chase) {
+      // Only ever set by tapping a monster; walking/steering cancels it.
       if (!this.chase.alive) this.chase = null;
-      else if (Math.hypot(this.chase.x - this.feet.x, this.chase.y - this.feet.y) < SWING_RANGE - 10) { this.target = null; this.swing(); }
-      else this.target = { x: this.chase.x, y: this.chase.y + 10 };
+      else if (Math.hypot(this.chase.x - this.feet.x, this.chase.y - this.feet.y) < SWING_RANGE - 10) { this.path = []; this.swing(); }
+      else if ((this.chaseT -= dt) <= 0 || !this.path.length) { this.chaseT = 250; this.walkTo(this.chase.x, this.chase.y + 10, false); }
     }
     for (const mo of this.monsters) {
       mo.update(dt, this.feet.x, this.feet.y);
@@ -367,17 +428,18 @@ export class WildScene extends Phaser.Scene {
       else if (d < 90 && p.kind !== 'heart') { p.x += (this.feet.x - p.x) * 0.08; p.y += (this.feet.y - p.y) * 0.08; p.img.setPosition(p.x, p.y - 8); p.bub.setPosition(p.x, p.y); p.glow.setPosition(p.x, p.y - 10); }
     }
     for (const c of this.chests) if (!c.opened && Math.hypot(c.x - this.feet.x, c.y + 20 - this.feet.y) < 60) this.openChest(c);
-    let vx = 0, vy = 0;
-    if (this.target && !this.leaving) {
-      const dx = this.target.x - this.feet.x, dy = this.target.y - this.feet.y, d = Math.hypot(dx, dy);
-      if (d < 8) this.target = null;
-      else { vx = (dx / d) * 150; vy = (dy / d) * 150; }
+    // Same steering as the glade: joystick, else path following; same speed + acceleration blend.
+    const sec = Math.min(dt, 50) / 1000;
+    let ix = 0, iy = 0, len = 0;
+    if (!this.leaving && this.stick) [ix, iy, len] = stickInput(this.stick);
+    else if (!this.leaving && this.path.length) {
+      [ix, iy] = stepPath(this, this.feet.x, this.feet.y, sec).dir;
+      len = Math.hypot(ix, iy);
     }
-    // Ponds are soft walls.
-    const nx = this.feet.x + vx * dt / 1000, ny = this.feet.y + vy * dt / 1000;
-    if (inPond(this.map.ponds, nx, ny, 8)) { vx = 0; vy = 0; this.target = null; }
-    this.body.setVelocity(vx, vy);
-    const moving = Math.hypot(this.body.velocity.x, this.body.velocity.y) > 10;
+    steerBody(this.body, ix, iy, len, sec);
+    // Ponds: slide along the shore instead of stopping dead.
+    slideOutOfWater(this.feet, this.lastSafe, (x, y) => this.waterBlocks(x, y));
+    const moving = Math.hypot(this.body.velocity.x, this.body.velocity.y) > 25;
     if (moving) {
       const a = Math.atan2(this.body.velocity.y, this.body.velocity.x);
       const sector = (Math.round(a / (Math.PI / 4)) + 8) % 8;

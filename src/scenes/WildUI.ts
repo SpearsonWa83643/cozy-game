@@ -6,6 +6,7 @@ import { safeInsets } from '../device';
 import { theme, themeEvents } from '../theme';
 import { ATLAS3 } from '../wild/wart';
 import { WILD_COMBAT, type WildScene } from './Wild';
+import { TouchStick } from '../controls';
 
 const FONT = 'Nunito, "Trebuchet MS", sans-serif';
 const INK = '#4a3426';
@@ -26,6 +27,8 @@ export class WildUIScene extends Phaser.Scene {
   atkBg!: Phaser.GameObjects.Graphics;
   bagC!: Phaser.GameObjects.Container;
   bagTexts: Record<string, Phaser.GameObjects.Text> = {};
+  /** The same floating joystick + tap-to-walk as the glade's UI. */
+  stick!: TouchStick;
 
   constructor() { super('wildui'); }
   get wild() { return this.scene.get('wild') as WildScene; }
@@ -34,6 +37,13 @@ export class WildUIScene extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.setOrigin(0, 0).setZoom(DPR);
     this.rects = {};
+
+    // Walking: tap to go, drag to steer (shared with the glade). HUD buttons keep their taps.
+    this.stick = new TouchStick(this, { onTap: (px, py) => this.wild.tapScreen(px, py), onStick: (v) => this.wild.setStick(v) });
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      if (this.stick.pointer || this.wild.leaving || this.hit(p.x / DPR, p.y / DPR)) return;
+      this.stick.begin(p);
+    });
 
     // Home button: big, round, top-left.
     this.homeC = this.add.container(0, 0);
@@ -160,4 +170,6 @@ export class WildUIScene extends Phaser.Scene {
     this.tweens.add({ targets: this.toastC, alpha: 1, y: 60 + safeInsets().top, duration: 220 });
     this.tweens.add({ targets: this.toastC, alpha: 0, delay: 2200, duration: 400 });
   }
+
+  update() { this.stick?.update(); }
 }

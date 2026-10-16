@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { TouchStick } from '../controls';
 import { S, ATLAS, frameScale, atlasOf } from '../art';
 import { NumBadge, SeqCard } from '../seq';
 import { DPR } from '../dpr';
@@ -21,10 +22,8 @@ export class UIScene extends Phaser.Scene {
   insets = { top: 0, right: 0, bottom: 0, left: 0 };
   touchMode = IS_TOUCH;
   // Floating joystick.
-  stickBase!: Phaser.GameObjects.Graphics;
-  stickKnob!: Phaser.GameObjects.Graphics;
-  stickPointer: Phaser.Input.Pointer | null = null;
-  stickOrigin = { x: 0, y: 0 };
+  /** Shared floating joystick + tap-to-walk (same module the Wild Woods uses). */
+  stick!: TouchStick;
   stickStart = { x: 0, y: 0 };
   stickDownAt = 0;
   stickActive = false;
@@ -483,19 +482,7 @@ export class UIScene extends Phaser.Scene {
   get world() { return this.scene.get('world') as WorldScene; }
 
   buildTouchControls() {
-    this.input.addPointer(2);
-    this.stickBase = this.add.graphics().setVisible(false);
-    this.stickBase.fillStyle(0xfff6e2, 0.16);
-    this.stickBase.fillCircle(0, 0, 62);
-    this.stickBase.lineStyle(3, 0xfff6e2, 0.55);
-    this.stickBase.strokeCircle(0, 0, 62);
-    this.stickKnob = this.add.graphics().setVisible(false);
-    this.stickKnob.fillStyle(0x2f2219, 0.25);
-    this.stickKnob.fillCircle(0, 3, 28);
-    this.stickKnob.fillStyle(0xfff3d6, 0.9);
-    this.stickKnob.fillCircle(0, 0, 27);
-    this.stickKnob.lineStyle(3, 0xf2a93b, 1);
-    this.stickKnob.strokeCircle(0, 0, 27);
+    this.stick = new TouchStick(this, { onTap: (px, py) => this.world.tapScreen(px, py), onStick: (v) => this.world.setStick(v) });
 
     // Big contextual action button (96 px), bottom-right inside the safe area.
     this.actionBg = this.add.graphics();
@@ -522,7 +509,7 @@ export class UIScene extends Phaser.Scene {
       if (this.registry.get('dialogOpen')) { this.world.tryInteract(); return; }
       const fs = this.world.fishing?.state;
       if (fs === 'bite' || fs === 'reel') { this.world.fishing.tap(p.downTime); return; }
-      if (this.stickPointer || this.dragP) return;
+      if (this.stick.pointer || this.dragP) return;
       // Press on a villager: drag them onto a building (or just tap for their card).
       const vg = this.world.village;
       if (vg && !vg.building && !this.world.fishing.active && !this.world.mount?.carrying) {
@@ -531,11 +518,7 @@ export class UIScene extends Phaser.Scene {
         if (v) { this.dragP = p; this.dragV = v; this.dragOn = false; this.stickStart = { x: p.x / DPR, y: p.y / DPR }; this.stickDownAt = this.time.now; return; }
       }
       if (vg?.building) { this.dragP = p; this.dragV = null; this.dragOn = false; this.stickStart = { x: p.x / DPR, y: p.y / DPR }; this.stickDownAt = this.time.now; return; }
-      this.stickPointer = p;
-      this.stickStart = { x: p.x / DPR, y: p.y / DPR };
-      this.stickOrigin = { ...this.stickStart };
-      this.stickDownAt = this.time.now;
-      this.stickActive = false;
+      this.stick.begin(p);
     });
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
       if (p === this.dragP && p.isDown) {
@@ -548,29 +531,6 @@ export class UIScene extends Phaser.Scene {
         if (this.dragOn) { if (this.dragV) vg.dragTo(this.dragV, wp.x, wp.y); else vg.dragGhost(wp.x, wp.y); }
         return;
       }
-      if (p !== this.stickPointer || !p.isDown) return;
-      const x = p.x / DPR;
-      const y = p.y / DPR;
-      let dx = x - this.stickOrigin.x;
-      let dy = y - this.stickOrigin.y;
-      let d = Math.hypot(dx, dy);
-      if (!this.stickActive && Math.hypot(x - this.stickStart.x, y - this.stickStart.y) > 12) {
-        this.stickActive = true;
-        this.stickBase.setVisible(true).setAlpha(0);
-        this.stickKnob.setVisible(true).setAlpha(0);
-        this.tweens.add({ targets: [this.stickBase, this.stickKnob], alpha: 1, duration: 120 });
-      }
-      if (!this.stickActive) return;
-      const R = 62;
-      if (d > R) {
-        // Floating stick: the base follows the thumb so it never runs out of travel.
-        this.stickOrigin.x += (dx / d) * (d - R);
-        this.stickOrigin.y += (dy / d) * (d - R);
-        dx = x - this.stickOrigin.x; dy = y - this.stickOrigin.y; d = R;
-      }
-      this.stickBase.setPosition(this.stickOrigin.x, this.stickOrigin.y);
-      this.stickKnob.setPosition(this.stickOrigin.x + dx, this.stickOrigin.y + dy);
-      this.world.setStick({ x: dx / R, y: dy / R });
     });
     const release = (p: Phaser.Input.Pointer) => {
       if (p === this.dragP) {
@@ -580,16 +540,9 @@ export class UIScene extends Phaser.Scene {
         this.dragP = null; this.dragV = null; this.dragOn = false;
         return;
       }
-      if (p !== this.stickPointer) return;
-      if (!this.stickActive && this.time.now - this.stickDownAt < 400) this.world.tapScreen(p.x, p.y);
-      this.stickPointer = null;
-      this.stickActive = false;
-      this.world.setStick(null);
-      this.tweens.add({ targets: [this.stickBase, this.stickKnob], alpha: 0, duration: 160, onComplete: () => { this.stickBase.setVisible(false); this.stickKnob.setVisible(false); } });
     };
     this.input.on('pointerup', release);
     this.input.on('pointerupoutside', release);
-    this.input.on('gameout', () => { if (this.stickPointer) release(this.stickPointer); });
   }
 
   buildVolumeButton() {
@@ -704,7 +657,7 @@ export class UIScene extends Phaser.Scene {
   dragOn = false;
   update(time: number, delta: number) {
     // A release can be swallowed by an overlay scene; never leave the stick or a drag stuck.
-    if (this.stickPointer && !this.stickPointer.isDown) this.input.emit('pointerup', this.stickPointer);
+    this.stick.update();
     if (this.dragP && !this.dragP.isDown) this.input.emit('pointerup', this.dragP);
     this.updateFps(time);
     this.updateFishUI(time);
