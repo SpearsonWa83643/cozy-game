@@ -602,13 +602,13 @@ export class Village {
     v.face.setPosition(v.x, fy).setVisible(v.task !== 'drag');
     // Urgency colours: amber halo when so-so, a soft coral pulse when they really need care.
     const urg = v.urgency();
-    const fs = 0.42 / (frameScale.f_happy ?? 2.5), rs = 0.72 / (frameScale.f_ring ?? 2.5);
+    const fs = 0.42 / (frameScale.f_happy ?? 2.5), rs = 1.0 / (frameScale.f_ring ?? 2.5);
     if (urg === 0 || v.task === 'drag') { v.ring.setVisible(false); v.face.setScale(fs); }
     else {
       const p = urg === 2 ? 0.5 + 0.5 * Math.sin(time / 220 + d.id) : 0.5;
       v.ring.setVisible(true).setPosition(v.x, fy).setTint(urg === 2 ? 0xff6a5a : 0xffc04d)
-        .setAlpha(urg === 2 ? 0.55 + 0.4 * p : 0.55).setScale(rs * (urg === 2 ? 1 + 0.18 * p : 1));
-      v.face.setScale(fs * (urg === 2 ? 1 + 0.08 * p : 1));
+        .setAlpha(urg === 2 ? 0.75 + 0.25 * p : 0.8).setScale(rs * (urg === 2 ? 1 + 0.22 * p : 1));
+      v.face.setScale(fs * (urg === 2 ? 1.08 + 0.1 * p : 1.04));
     }
     if (v.bubble) v.bubble.setPosition(v.x, v.y + bob - 108 + Math.sin(time / 260 + d.id) * 3).setVisible(v.task !== 'drag' && !this.building);
   }
