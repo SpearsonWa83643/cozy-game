@@ -9,7 +9,7 @@ import { save, persist, BuildingType, Res } from '../save';
 import { theme, themeEvents } from '../theme';
 import { BUILD, BUILD_ORDER, isUnlockedB, canAfford, Village, Villager, Building, ResId, Alert } from '../village/village';
 import type { WorldScene } from './World';
-import { unlockedMounts, directMount, themeDefaultMount, mountById, type MountDef } from '../mount/defs';
+import { unlockedMounts, directMount, currentPick, mountById, type MountDef } from '../mount/defs';
 
 const INK = '#3d2c20';
 const FONT = 'Nunito, "Trebuchet MS", sans-serif';
@@ -267,7 +267,7 @@ export class VillageUIScene extends Phaser.Scene {
         this.world.mount.call(m.id);
       }, 20, `mountPick:${m.id}`);
       c.add([bg, z]);
-      if (m.id === (save.mountPick ?? themeDefaultMount())) {
+      if (m.id === currentPick()) {
         // Your pick (or the theme's default) gets a bold ring.
         const ring = this.add.graphics(); ring.lineStyle(6, theme.ui.accentDark, 1); ring.strokeRoundedRect(x - 4, y - 4, tile + 8, tile + 8, 24); c.add(ring);
       }
@@ -299,7 +299,7 @@ export class VillageUIScene extends Phaser.Scene {
     g.fillStyle(riding ? theme.ui.accent : 0xfbf1dc, 0.97); g.fillCircle(0, 0, 44);
     g.lineStyle(4, riding ? theme.ui.accentDark : theme.ui.accent, 1); g.strokeCircle(0, 0, 40);
     this.mountLabel.setText(riding ? 'Land' : 'Call Mount').setFontSize(riding ? 15 : 13);
-    const ik = riding && m ? m.def.icon : mountById(directMount() ?? save.mountPick ?? themeDefaultMount()).icon;
+    const ik = riding && m ? m.def.icon : mountById(directMount() ?? currentPick()).icon;
     if (this.mountIcon.frame.name !== ik) this.mountIcon.setTexture(atlasOf(ik), ik).setDisplaySize(50, 50);
     this.mountC.setAlpha(ok ? 1 : 0.5);
   }

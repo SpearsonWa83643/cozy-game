@@ -121,6 +121,16 @@ export function unlockedMounts(): MountDef[] {
 }
 
 /**
+ * Your own saved pick if it is still unlocked here, else the theme's default. (A pumpkin picked
+ * in Halloween is not unlocked in Classic/Spring without the seed, so it must not stick there.)
+ */
+export function currentPick(): string {
+  const pick = save.mountPick;
+  if (pick && unlockedMounts().some((m) => m.id === pick)) return pick;
+  return themeDefaultMount();
+}
+
+/**
  * What Call Mount summons straight away, or null to open the picker. With no treasure mounts
  * (beyond the free eagle and the theme's default) it is your own last pick if you made one,
  * otherwise the theme's default. With treasure mounts the picker opens (your pick is marked).
@@ -130,7 +140,5 @@ export function directMount(): string | null {
   const list = unlockedMounts();
   const extras = list.filter((m) => m.id !== def && m.id !== 'eagle');
   if (extras.length) return null;
-  const pick = save.mountPick;
-  if (pick && list.some((m) => m.id === pick)) return pick;
-  return def;
+  return currentPick();
 }
