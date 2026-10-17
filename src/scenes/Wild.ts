@@ -14,6 +14,8 @@ import { NavGrid } from '../pathfind';
 import { stickInput, steerBody, stepPath, pulseTapMarker, slideOutOfWater } from '../controls';
 
 const TREE_FRAMES = ['tree0', 'tree1', 'tree2', 'tree3', 'tree4', 'tree5'];
+/** Round tree frame for a variant; Spring swaps the autumn-amber tree4 for its fresh-green twin. */
+const treeFrame = (v: number) => { const f = TREE_FRAMES[v % TREE_FRAMES.length]; return theme.id === 'spring' && f === 'tree4' ? 'tree4s' : f; };
 
 /** Gentle monsters, bopping and loot in the Wild Woods. */
 export const WILD_COMBAT = true;
@@ -83,7 +85,7 @@ export class WildScene extends Phaser.Scene {
     for (const p of m.props) {
       if (p.kind === 'tree' || p.kind === 'pine') {
         const pine = p.kind === 'pine';
-        const f = pine ? `pine${p.v % 2}` : TREE_FRAMES[p.v % TREE_FRAMES.length];
+        const f = pine ? `pine${p.v % 2}` : treeFrame(p.v);
         const im = this.img(p.x, p.y, f, (pine ? 0.95 : 0.9 + (p.v % 3) * 0.08) * TREE_SCALE).setDepth(p.y).setOrigin(0.5, pine ? 182 / 190 : 202 / 210);
         this.trees.push({ img: im, v: p.v, pine });
         this.add.image(p.x, p.y - 2, ATLAS, 'shadow').setScale(70 * TREE_SCALE / 64 / (frameScale.shadow ?? 1)).setDepth(-500).setAlpha(0.8);
@@ -191,7 +193,7 @@ export class WildScene extends Phaser.Scene {
     const tf = theme.trees;
     for (const t of this.trees) {
       if (!t.pine && tf) { const f = tf[t.v % tf.length]; t.img.setTexture(atlasOf(f), f).setOrigin(0.5, 192 / 200).setScale(TREE_SCALE / (frameScale[f] ?? S)); }
-      else if (!t.pine) { const f = TREE_FRAMES[t.v % TREE_FRAMES.length]; t.img.setTexture(atlasOf(f), f).setOrigin(0.5, 202 / 210).setScale((0.9 + (t.v % 3) * 0.08) * TREE_SCALE / (frameScale[f] ?? S)); }
+      else if (!t.pine) { const f = treeFrame(t.v); t.img.setTexture(atlasOf(f), f).setOrigin(0.5, 202 / 210).setScale((0.9 + (t.v % 3) * 0.08) * TREE_SCALE / (frameScale[f] ?? S)); }
       if (theme.foliage !== null && t.pine) t.img.setTint(theme.foliage); else t.img.clearTint();
     }
     this.cameras.main.setBackgroundColor(hal ? '#20262a' : '#3c5a32');

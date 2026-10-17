@@ -24,6 +24,12 @@ test('spring: legacy classic save migrates to Spring with its own soundscape', a
 
   expect((await cozy(page, 'village()')).theme).toBe('spring');
   expect((await cozy(page, 'state')).soundscape).toBe('spring');
+  // Polish: no autumn-amber trees in Spring (tree4 -> fresh-green tree4s) and finer 5-petal blossoms.
+  const sp = await cozy(page, 'spring()');
+  expect(sp.frames.tree4 ?? 0).toBe(0);
+  expect(sp.frames.tree4s ?? 0).toBeGreaterThan(0);
+  expect(sp.blooms).toBeGreaterThan(20);
+  expect(sp.bloomFrame).toBe('bloom');
   await page.waitForTimeout(3000);
   await page.screenshot({ path: `${SHOTS}/spring-legacy-save.png` });
 
@@ -44,6 +50,11 @@ test('spring: legacy classic save migrates to Spring with its own soundscape', a
   await page.waitForTimeout(1000);
   expect((await cozy(page, 'state')).soundscape).toBe('spring');
   expect((await cozy(page, 'village()')).theme).toBe('spring');
+  // Back from Halloween, the fresh-green twin returns (Halloween swaps round trees for spooky ones).
+  const sp2 = await cozy(page, 'spring()');
+  expect(sp2.frames.tree4 ?? 0).toBe(0);
+  expect(sp2.frames.tree4s ?? 0).toBeGreaterThan(0);
+  expect(sp2.blooms).toBeGreaterThan(20);
   // Saved as 'spring' from now on.
   await page.waitForTimeout(600);
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('cozy.save.v2') || '{}').theme);

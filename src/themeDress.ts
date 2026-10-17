@@ -274,7 +274,12 @@ export class ThemeDresser {
         img.setTexture(atlasOf(nf), nf).setOrigin(0.5, 192 / 200); // trunk base = ground point
         img.setScale((dw * 1.05) / img.width).clearTint();
       } else {
-        if (img.frame.name !== f) img.setTexture(o.tex, f).setOrigin(o.ox, o.oy).setScale(o.sx, o.sy);
+        // Spring has no autumn trees: the amber tree4 becomes its fresh-green twin (same silhouette).
+        const want = t.id === 'spring' && f === 'tree4' ? 'tree4s' : f;
+        if (img.frame.name !== want) {
+          if (want === f) img.setTexture(o.tex, f).setOrigin(o.ox, o.oy).setScale(o.sx, o.sy);
+          else img.setTexture(atlasOf(want), want).setOrigin(o.ox, o.oy).setScale(o.sx, o.sy);
+        }
         if (t.id === 'halloween') img.setTint(fruity ? 0xf7c0a0 : f.startsWith('pine') ? 0x9c88c0 : f.startsWith('birch') ? 0xffc27a : t.foliage ?? 0xffffff);
         else if (t.blossom && round && i % t.blossom.every === 0) img.setTint(0xfff2f4);
         else img.clearTint();
@@ -286,12 +291,13 @@ export class ThemeDresser {
         bl = [];
         const rnd = mulberry32(Math.floor(img.x * 13 + img.y * 7));
         const b = img.getBounds();
-        const n = 16 + Math.floor(rnd() * 8);
+        // Finer blossoms: many small 5-petal flowers instead of a few big petal blobs.
+        const n = 26 + Math.floor(rnd() * 10);
         for (let k = 0; k < n; k++) {
           const a = rnd() * Math.PI * 2, r = Math.sqrt(rnd()) * 0.42;
           const x = b.centerX + Math.cos(a) * r * b.width, y = b.y + b.height * 0.34 + Math.sin(a) * r * b.height * 0.5;
-          const sz = (0.08 + rnd() * 0.06) * b.width;
-          const p = w.add.image(x, y, atlasOf('petal'), 'petal').setDisplaySize(sz, sz * 0.8).setRotation(rnd() * 6.3)
+          const sz = (0.045 + rnd() * 0.035) * b.width;
+          const p = w.add.image(x, y, atlasOf('bloom'), 'bloom').setDisplaySize(sz, sz).setRotation(rnd() * 6.3)
             .setTint(t.blossom.tints[k % t.blossom.tints.length]).setAlpha(0.92).setDepth(img.depth + 0.01);
           bl.push(p);
         }

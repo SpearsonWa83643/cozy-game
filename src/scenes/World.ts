@@ -1393,6 +1393,17 @@ export class WorldScene extends Phaser.Scene {
           orchardBats: d.orchardBats.length,
         };
       },
+      /** Spring dressing: canopy frames in use + visible blossom flowers (art checks). */
+      spring() {
+        const d = self.dresser;
+        const frames: Record<string, number> = {};
+        for (const c of self.canopies) if (c.visible) frames[c.frame.name] = (frames[c.frame.name] ?? 0) + 1;
+        let blooms = 0, bloomFrame = '';
+        for (const bl of d.blooms.values()) for (const p of bl) if (p.visible) { blooms++; bloomFrame = p.frame.name; }
+        const wildFrames: Record<string, number> = {};
+        for (const t of ((self.scene.get('wild') as any)?.trees ?? []) as { img: Phaser.GameObjects.Image }[]) wildFrames[t.img.frame.name] = (wildFrames[t.img.frame.name] ?? 0) + 1;
+        return { frames, blooms, bloomFrame, wildFrames };
+      },
       villageEvent: (e: 'merchant' | 'rain' | 'festival') => self.village.start(e),
       mount: () => self.mount.snapshot(),
       callMount: (id?: string) => self.mount.call(id),
