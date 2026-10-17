@@ -84,11 +84,11 @@ test('numbered sequences: sign cards, object badges, step checks, both themes', 
 
   // 4. Bells carry their tune order; the sign shows 4 cards. Back to Classic (live toggle).
   expect((await badges(page)).bells.length).toBe(4);
-  await cozy(page, "setTheme('classic')");
+  await cozy(page, "setTheme('spring')");
   await teleport(page, 3470, 2150);
   await readSign(page, 3470, 2080);
   await expect.poll(() => seqCards(page), { timeout: 10_000 }).toBe(4);
   await closeDialogs(page);
-  expect((await cozy(page, 'village()')).theme).toBe('classic');
+  expect((await cozy(page, 'village()')).theme).toBe('spring');
   expect(errors).toEqual([]);
 });

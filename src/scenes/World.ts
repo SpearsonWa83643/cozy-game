@@ -1366,7 +1366,7 @@ export class WorldScene extends Phaser.Scene {
       villageSpeed: (n: number) => { self.village.speed = n; },
       setRes: (r: { food?: number; wood?: number; stone?: number }) => { Object.assign(save.village.res, r); self.game.events.emit('res', null, 0); },
       setNeeds: (id: number, n: { food?: number; sleep?: number; fun?: number }) => { const q = self.village.villagers.find((x) => x.data.id === id); if (q) Object.assign(q.data, n); },
-      setTheme: (id: 'classic' | 'halloween') => setTheme(id),
+      setTheme: (id: 'spring' | 'halloween' | 'classic') => setTheme(id),
       /** Every live particle's frame, per emitter, in the world + wild scenes (art-management checks). */
       particleFrames() {
         const out: { scene: string; tex: string; frame: string; frameTex: string }[] = [];
@@ -1392,6 +1392,17 @@ export class WorldScene extends Phaser.Scene {
           wisps: d.wisps ? d.wisps.getAliveParticleCount() : 0,
           orchardBats: d.orchardBats.length,
         };
+      },
+      /** Spring dressing: canopy frames in use + visible blossom flowers (art checks). */
+      spring() {
+        const d = self.dresser;
+        const frames: Record<string, number> = {};
+        for (const c of self.canopies) if (c.visible) frames[c.frame.name] = (frames[c.frame.name] ?? 0) + 1;
+        let blooms = 0, bloomFrame = '';
+        for (const bl of d.blooms.values()) for (const p of bl) if (p.visible) { blooms++; bloomFrame = p.frame.name; }
+        const wildFrames: Record<string, number> = {};
+        for (const t of ((self.scene.get('wild') as any)?.trees ?? []) as { img: Phaser.GameObjects.Image }[]) wildFrames[t.img.frame.name] = (wildFrames[t.img.frame.name] ?? 0) + 1;
+        return { frames, blooms, bloomFrame, wildFrames };
       },
       villageEvent: (e: 'merchant' | 'rain' | 'festival') => self.village.start(e),
       mount: () => self.mount.snapshot(),

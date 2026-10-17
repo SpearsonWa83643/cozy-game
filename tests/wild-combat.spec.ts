@@ -83,7 +83,7 @@ test('wild woods combat: bop, loot, hearts, home, wardrobe, theme', async ({ pag
   }
   expect((await wild(page)).poofs).toBeGreaterThan(poof1);
   expect((await cozy(page, 'wildSave()')).poofs).toBeGreaterThanOrEqual(2);
-  await cozy(page, "setTheme('classic')");
+  await cozy(page, "setTheme('spring')");
 
   // 4b. Get bumped once: a heart goes away, you get a little safe moment.
   expect((await wild(page)).on, 'still in the woods after bopping').toBe(true);

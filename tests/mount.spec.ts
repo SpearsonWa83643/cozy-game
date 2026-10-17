@@ -51,7 +51,7 @@ test('mount: call eagle, ride, tap eagle for whoosh, tap ground to hop off', asy
   await page.evaluate(() => (window as any).__cozy.setTheme('halloween'));
   await page.waitForTimeout(2500);
   await page.screenshot({ path: `${SHOTS}/mount-riding-halloween.png` });
-  await page.evaluate(() => (window as any).__cozy.setTheme('classic'));
+  await page.evaluate(() => (window as any).__cozy.setTheme('spring'));
   expect((await mount(page)).phase).toBe('ride');
 
   // 3) Tap the eagle: a few seconds of whoosh. Tapping again right away does nothing (cooldown).

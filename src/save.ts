@@ -5,7 +5,10 @@ export type OutfitId = 'teal' | 'moss' | 'sea' | 'koi' | 'ranger';
 export type BackId = 'none' | 'backpack' | 'staff';
 export type Look = { hat: HatId; scarf: ScarfId; outfit: OutfitId; back: BackId; feather: boolean; shells: boolean };
 
-export type ThemeId = 'classic' | 'halloween';
+/** Seasonal + holiday themes. 'classic' was the original look; it became Spring (old saves migrate). */
+export type ThemeId = 'spring' | 'halloween';
+/** Read any stored theme id (incl. legacy 'classic') as a current ThemeId. */
+export const normTheme = (t: unknown): ThemeId => (t === 'halloween' ? 'halloween' : 'spring');
 export type Res = { food: number; wood: number; stone: number };
 export type BuildingType = 'home' | 'garden' | 'kitchen' | 'workshop' | 'fishhut' | 'flowerbed' | 'lamp' | 'well' | 'bench' | 'statue';
 export type BuildingSave = { id: number; type: BuildingType; gx: number; gy: number };
@@ -43,7 +46,7 @@ export function freshVillage(): VillageSave {
 }
 
 function fresh(): SaveData {
-  return { v: 2, theme: 'classic', village: freshVillage(), puzzles: {}, treasures: [], fish: {}, minor: {}, look: { ...DEFAULT_LOOK }, visited: ['glade'], chests: [], snacks: 0, tips: [], wild: { visits: 0, poofs: 0, loot: {} } };
+  return { v: 2, theme: 'spring', village: freshVillage(), puzzles: {}, treasures: [], fish: {}, minor: {}, look: { ...DEFAULT_LOOK }, visited: ['glade'], chests: [], snacks: 0, tips: [], wild: { visits: 0, poofs: 0, loot: {} } };
 }
 
 export const save: SaveData = (() => {
@@ -57,7 +60,7 @@ export const save: SaveData = (() => {
         const f = fresh();
         const v = { ...f.village, ...(d.village ?? {}) };
         v.res = { ...f.village.res, ...(v.res ?? {}) };
-        return { ...f, ...d, v: 2, snacks: Math.max(0, Math.min(9, Number(d.snacks) || 0)), tips: Array.isArray(d.tips) ? d.tips : [], wild: { ...f.wild, ...(d.wild ?? {}), loot: { ...(d.wild?.loot ?? {}) } }, theme: d.theme === 'halloween' ? 'halloween' : 'classic', village: v, look: { ...DEFAULT_LOOK, ...(d.look ?? {}) } };
+        return { ...f, ...d, v: 2, snacks: Math.max(0, Math.min(9, Number(d.snacks) || 0)), tips: Array.isArray(d.tips) ? d.tips : [], wild: { ...f.wild, ...(d.wild ?? {}), loot: { ...(d.wild?.loot ?? {}) } }, theme: normTheme(d.theme), village: v, look: { ...DEFAULT_LOOK, ...(d.look ?? {}) } };
       }
     }
   } catch { /* storage unavailable or corrupt */ }

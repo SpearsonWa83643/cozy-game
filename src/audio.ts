@@ -2,7 +2,7 @@
 export type VolumeLevel = 'on' | 'quiet' | 'off';
 const LEVELS: Record<VolumeLevel, number> = { on: 0.6, quiet: 0.26, off: 0 };
 
-import { CLASSIC, HALLOWEEN, type Soundscape, type Extra } from './soundscapes';
+import { SPRING, HALLOWEEN, type Soundscape, type Extra } from './soundscapes';
 const midi = (n: number) => 440 * Math.pow(2, (n - 69) / 12);
 
 class Synth {
@@ -98,7 +98,7 @@ class Synth {
   // ------------------------------------------------------------ generative ambient music
   // ------------------------------------------------------------ theme soundscapes
   /** Active soundscape; each has its own layer (gain + pad filter) so a switch crossfades. */
-  private scape: Soundscape = CLASSIC;
+  private scape: Soundscape = SPRING;
   private layer: { gain: GainNode; pad: BiquadFilterNode; windSrc?: AudioBufferSourceNode } | null = null;
   private extraAt: number[] = [];
   festival = false;
@@ -170,6 +170,23 @@ class Synth {
       const f = ctx.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 650; f.Q.value = 5;
       const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(0.014 * v, at + 0.15); g.gain.exponentialRampToValueAtTime(0.0001, at + 0.95);
       o.connect(f); f.connect(g); g.connect(dest); o.start(at); o.stop(at + 1);
+    } else if (e.kind === 'birds') {
+      // A little songbird: a few quick chirps, sometimes a trill (soft, high, sweeping).
+      const base = 2600 + Math.random() * 1400, n = 2 + Math.floor(Math.random() * 4);
+      let w = 0;
+      for (let i = 0; i < n; i++) {
+        const up = Math.random() < 0.6, d = 0.06 + Math.random() * 0.07, f = base * (0.9 + Math.random() * 0.25);
+        tone(up ? f * 0.8 : f * 1.15, up ? f * 1.2 : f * 0.85, w, d, 0.011 * v);
+        w += d + 0.03 + Math.random() * 0.06;
+      }
+      if (Math.random() < 0.4) for (let i = 0; i < 6; i++) tone(base * 1.1, base * 1.25, w + 0.1 + i * 0.045, 0.04, 0.007 * v); // trill
+    } else if (e.kind === 'cuckoo') {
+      // Far-off cuckoo: two soft falling notes (a major third), muffled.
+      for (const [w, f] of [[0, 760], [0.42, 604]]) { tone(f, f * 0.98, w, 0.34, 0.018 * v); tone(f * 2, f * 1.96, w, 0.2, 0.002 * v, 'triangle'); }
+    } else if (e.kind === 'drops') {
+      // A few fresh raindrops dripping off leaves: tiny quick downward plinks.
+      const k = 2 + Math.floor(Math.random() * 3);
+      for (let i = 0; i < k; i++) { const f = 1300 + Math.random() * 900; tone(f, f * 0.55, i * (0.18 + Math.random() * 0.3), 0.07, 0.012 * v); }
     } else {
       // Tiny wind chimes in D minor.
       const ns = [86, 89, 93, 88, 91];
@@ -197,7 +214,7 @@ class Synth {
     }
   }
   /** Back-compat for older callers. */
-  setTheme(t: 'classic' | 'spooky') { this.setSoundscape(t === 'spooky' ? HALLOWEEN : CLASSIC); }
+  setTheme(t: 'classic' | 'spring' | 'spooky') { this.setSoundscape(t === 'spooky' ? HALLOWEEN : SPRING); }
   private static CHORD_LEN = 8.5;
   /** Per-area mood: transposition (semitones), melody density and pad brightness. */
   private static MOODS: Record<string, { tr: number; dens: number; cut: number }> = {
@@ -281,7 +298,9 @@ class Synth {
       const src = near.length && Math.random() < 0.8 ? near : pool;
       const n = src[Math.floor(Math.random() * src.length)];
       this.lastMelody = n;
-      if (sc.lead === 'musicbox') {
+      if (sc.lead === 'flute') {
+        this.flute(midi(n), t + i * beat + (Math.random() * 0.05), 0.02 + Math.random() * 0.014, beat * (Math.random() < 0.3 ? 2.2 : 1.3));
+      } else if (sc.lead === 'musicbox') {
         this.musicbox(midi(n + 12), t + i * beat + (Math.random() * 0.05), 0.022 + Math.random() * 0.02);
         if (Math.random() < 0.2) this.musicbox(midi(n + 7), t + i * beat + 0.12, 0.01);
       } else {
@@ -289,6 +308,29 @@ class Synth {
         if (Math.random() < 0.15) this.kalimba(midi(n + 12), t + i * beat + 0.18, 0.015);
       }
     }
+  }
+
+  /** Airy little flute (Spring): soft sine + a breath of octave, gentle swell and a light vibrato. */
+  private flute(freq: number, t: number, vol: number, len: number) {
+    const ctx = this.ctx!;
+    const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+    if (pan) pan.pan.value = Math.random() * 0.6 - 0.3;
+    const dest: AudioNode = pan ?? this.layer!.gain;
+    if (pan) { pan.connect(this.layer!.gain); pan.connect(this.wet); }
+    const lfo = ctx.createOscillator(); lfo.frequency.value = 4.8 + Math.random();
+    const lg = ctx.createGain(); lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(freq * 0.006, t + len * 0.6);
+    lfo.connect(lg);
+    for (const [m, a] of [[1, 1], [2, 0.12], [3, 0.03]] as const) {
+      const o = ctx.createOscillator(); o.frequency.value = freq * m; lg.connect(o.frequency);
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(vol * a, t + 0.09);
+      g.gain.setValueAtTime(vol * a * 0.85, t + len * 0.7);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + len + 0.35);
+      o.connect(g); g.connect(dest);
+      o.start(t); o.stop(t + len + 0.4);
+    }
+    lfo.start(t); lfo.stop(t + len + 0.4);
   }
 
   private kalimba(freq: number, t: number, vol: number) {

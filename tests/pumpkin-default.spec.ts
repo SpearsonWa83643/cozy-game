@@ -45,7 +45,7 @@ test('pumpkin carriage is the Halloween default mount; eagle in Classic; your pi
   await land(page);
 
   // Classic: the bald eagle.
-  await cozy(page, "setTheme('classic')");
+  await cozy(page, "setTheme('spring')");
   await page.waitForTimeout(1200);
   await expect.poll(async () => (await mount(page)).phase === 'off' && (await page.evaluate(() => (window as any).__game.scene.getScene('world').mount.canCall())), { timeout: 60_000, intervals: [300] }).toBe(true);
   await tapRect(page, 'mount');

@@ -3,12 +3,12 @@
 
 export type Chord = { bass: number; pad: number[]; mel: number[] };
 /** An occasional ambient sound and how often it plays (seconds between, random in range). */
-export type Extra = { kind: 'owl' | 'creak' | 'chimes'; every: [number, number]; vol: number };
+export type Extra = { kind: 'owl' | 'creak' | 'chimes' | 'birds' | 'cuckoo' | 'drops'; every: [number, number]; vol: number };
 export type Soundscape = {
   id: string;
   chords: Chord[];
-  /** Melody instrument: warm kalimba (Classic) or a twinkly music box / celesta. */
-  lead: 'kalimba' | 'musicbox';
+  /** Melody instrument: warm kalimba (Classic), twinkly music box / celesta (Halloween), airy flute (Spring). */
+  lead: 'kalimba' | 'musicbox' | 'flute';
   /** Melody density multiplier (1 = the area's normal density). */
   dens: number;
   /** Pad level multiplier and low-pass brightness multiplier. */
@@ -18,7 +18,7 @@ export type Soundscape = {
   extras: Extra[];
 };
 
-/** Classic: the original F-major glade music, unchanged. */
+/** Classic: the original F-major glade music (kept for reference / a future theme; Spring replaced it). */
 export const CLASSIC: Soundscape = {
   id: 'classic', lead: 'kalimba', dens: 1, pad: 1, bright: 1, wind: 0, extras: [],
   chords: [
@@ -50,5 +50,27 @@ export const HALLOWEEN: Soundscape = {
     { bass: 44, pad: [48, 51, 56, 60], mel: [72, 75, 80, 79] },                     // Ab (a cheeky twist)
     { bass: 43, pad: [50, 55, 58, 62], mel: [74, 79, 82, 77] },                     // Gm
     { bass: 45, pad: [52, 55, 57, 61], mel: [76, 73, 79, 81] },                     // A7sus->A
+  ],
+};
+
+/** Spring (replaces Classic): bright G-major, an airy little flute over soft pads, songbirds
+ *  trilling, a far-off cuckoo and the odd fresh raindrop. Lighter and more open than Classic. */
+export const SPRING: Soundscape = {
+  id: 'spring', lead: 'flute', dens: 1.1, pad: 0.85, bright: 1.25, wind: 0.25,
+  extras: [
+    { kind: 'birds', every: [5, 12], vol: 0.6 },
+    { kind: 'birds', every: [9, 20], vol: 0.4 },
+    { kind: 'cuckoo', every: [26, 48], vol: 0.45 },
+    { kind: 'drops', every: [16, 30], vol: 0.5 },
+  ],
+  chords: [
+    { bass: 43, pad: [55, 59, 62, 66, 69], mel: [74, 76, 78, 79, 81, 83] },          // Gmaj9
+    { bass: 40, pad: [52, 55, 59, 62, 66], mel: [74, 76, 79, 81, 83] },              // Em9
+    { bass: 36, pad: [52, 55, 59, 62, 64], mel: [72, 74, 76, 79, 81] },              // Cmaj7(9)
+    { bass: 38, pad: [50, 54, 57, 60, 64], mel: [74, 76, 78, 81] },                  // D9
+    { bass: 47, pad: [54, 59, 62, 66], mel: [74, 78, 79, 83] },                      // Bm7
+    { bass: 36, pad: [52, 55, 60, 64, 67], mel: [72, 76, 79, 84] },                  // C6/9
+    { bass: 45, pad: [52, 57, 60, 64, 67], mel: [72, 76, 79, 81] },                  // Am9
+    { bass: 38, pad: [50, 55, 57, 60, 66], mel: [74, 76, 78, 81] },                  // Dsus -> D
   ],
 };

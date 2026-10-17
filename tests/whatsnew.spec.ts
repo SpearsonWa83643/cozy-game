@@ -24,12 +24,13 @@ test("what's new: after entry, shows once, closes, stays closed; none when empty
   await page.waitForSelector('#whatsnew .w-ok', { timeout: 10_000 });
   await expect(page.locator('#entry')).toHaveCount(0);
   await expect(page.locator('#whatsnew h2')).toContainText("What's new");
-  await expect(page.locator('#whatsnew li')).toHaveCount(1);
-  await expect(page.locator('#whatsnew li').first()).toContainText('Call Mount button now shows the right ride');
+  await expect(page.locator('#whatsnew li')).toHaveCount(2);
+  await expect(page.locator('#whatsnew li').first()).toContainText('Spring is here! Blossoms, birdsong and fresh green trees.');
+  await expect(page.locator('#whatsnew li').nth(1)).toContainText('Call Mount button now shows the right ride');
   const ok = await page.locator('#whatsnew .w-ok').boundingBox();
   expect(ok!.height).toBeGreaterThanOrEqual(70);
   await page.waitForTimeout(700);
-  await page.screenshot({ path: 'test-results/whatsnew-classic.png' });
+  await page.screenshot({ path: 'test-results/whatsnew-spring.png' });
 
   // Taps on the note must not reach game buttons underneath.
   await page.locator('#whatsnew li').first().tap();

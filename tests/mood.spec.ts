@@ -44,7 +44,7 @@ test('mood faces: urgency halo colours follow needs', async ({ page }) => {
   await page.evaluate(() => (window as any).__cozy.setTheme('halloween'));
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${SHOTS}/mood-urgency-halloween.png` });
-  await page.evaluate(() => (window as any).__cozy.setTheme('classic'));
+  await page.evaluate(() => (window as any).__cozy.setTheme('spring'));
 
   // Cared for: halo goes away.
   await page.evaluate(([ia, ib]) => { (window as any).__cozy.setNeeds(ia, { food: 1 }); (window as any).__cozy.setNeeds(ib, { fun: 1 }); }, [a.id, b.id] as const);

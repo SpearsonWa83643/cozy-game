@@ -78,7 +78,7 @@ test('fruit trees deplete, show no fruit, then regrow', async ({ page }) => {
   expect((await treeAt(page, ax, ay))![4]).toBe(0);
   expect((await treeAt(page, bx, by))![4]).toBe(4);
   await page.screenshot({ path: `${SHOTS}/fruit-deplete-halloween.png` });
-  await cozy(page, "setTheme('classic')");
+  await cozy(page, "setTheme('spring')");
 
   // Regrow (shortened timer): one fruit at a time until the tree is full again.
   await cozy(page, 'setFruitRegrowMs(2500)');
