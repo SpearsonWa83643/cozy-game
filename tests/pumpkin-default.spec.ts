@@ -63,4 +63,24 @@ test('pumpkin carriage is the Halloween default mount; eagle in Classic; your pi
   await tapRect(page, 'mountPick:eagle');
   await expect.poll(async () => (await mount(page)).id, { timeout: 10_000, intervals: [100] }).toBe('eagle');
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('cozy.save.v2') ?? '{}').mountPick), { timeout: 10_000 }).toBe('eagle');
+  await expect.poll(async () => (await mount(page)).phase, { timeout: 90_000, intervals: [200] }).toBe('ride');
+  await land(page);
+
+  // Pick the pumpkin in Halloween, then go back to Classic (no seed): the pumpkin pick must not
+  // stick there. The button shows the eagle and the picker rings the eagle.
+  await expect.poll(async () => page.evaluate(() => (window as any).__game.scene.getScene('world').mount.canCall()), { timeout: 60_000, intervals: [300] }).toBe(true);
+  await tapRect(page, 'mount');
+  await expect.poll(() => page.evaluate(() => !!(window as any).__vui.rects['mountPick:pumpkin']), { timeout: 10_000, intervals: [100] }).toBe(true);
+  await tapRect(page, 'mountPick:pumpkin');
+  await expect.poll(async () => (await mount(page)).id, { timeout: 10_000, intervals: [100] }).toBe('pumpkin');
+  await expect.poll(async () => (await mount(page)).phase, { timeout: 90_000, intervals: [200] }).toBe('ride');
+  await land(page);
+  await cozy(page, "setTheme('classic')");
+  await page.waitForTimeout(1200);
+  await expect.poll(() => page.evaluate(() => (window as any).__vui.mountIcon.frame.name), { timeout: 10_000, intervals: [200] }).toBe('i_eagle');
+  await expect.poll(async () => page.evaluate(() => (window as any).__game.scene.getScene('world').mount.canCall()), { timeout: 60_000, intervals: [300] }).toBe(true);
+  await tapRect(page, 'mount');
+  await expect.poll(() => page.evaluate(() => !!(window as any).__vui.rects['mountPick:eagle']), { timeout: 10_000, intervals: [100] }).toBe(true);
+  expect(await page.evaluate(() => !!(window as any).__vui.rects['mountPick:pumpkin'])).toBe(false);
+  await page.screenshot({ path: 'test-results/mount-picker-classic-after-pumpkin-pick.png' });
 });
