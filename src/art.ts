@@ -247,7 +247,7 @@ export function pondHit(x: number, y: number) {
 
 // ---------------------------------------------------------------- props
 
-export type TreeKind = 'oak' | 'blossom' | 'amber' | 'teal' | 'apple' | 'pear';
+export type TreeKind = 'oak' | 'blossom' | 'amber' | 'teal' | 'apple' | 'pear' | 'fresh';
 const TREE_PALETTES: Record<TreeKind, { h: number; s: number; dark: number; mid: number; light: number; hi: [number, number, number] }> = {
   oak: { h: 100, s: 45, dark: 24, mid: 38, light: 52, hi: [70, 70, 70] },
   teal: { h: 150, s: 38, dark: 20, mid: 32, light: 45, hi: [95, 55, 62] },
@@ -255,6 +255,8 @@ const TREE_PALETTES: Record<TreeKind, { h: number; s: number; dark: number; mid:
   amber: { h: 32, s: 75, dark: 38, mid: 52, light: 64, hi: [48, 95, 75] },
   apple: { h: 92, s: 48, dark: 28, mid: 42, light: 56, hi: [65, 75, 72] },
   pear: { h: 78, s: 50, dark: 30, mid: 44, light: 58, hi: [58, 80, 74] },
+  /** Spring's stand-in for the amber tree: fresh light new-leaf green. */
+  fresh: { h: 86, s: 58, dark: 36, mid: 50, light: 64, hi: [64, 80, 82] },
 };
 
 /** `fruit: false` leaves the canopy bare: fruit trees get live fruit sprites on top (they deplete and regrow). */
@@ -1146,6 +1148,8 @@ export function paintAll(scene: Phaser.Scene) {
   const trees: [TreeKind, number][] = [['oak', 1], ['oak', 2], ['teal', 3], ['blossom', 4], ['amber', 5], ['teal', 6]];
   // tree0 is the round fruit tree: painted bare, its fruit are live sprites (see Reacts.fruit).
   trees.forEach(([k, seed], i) => canvasTex(scene, `tree${i}`, 170, 210, (c) => paintTree(c, 170, 210, k, seed, i !== 0)));
+  // Spring swaps the autumn-amber tree4 for this fresh-green twin (same seed = same silhouette).
+  canvasTex(scene, 'tree4s', 170, 210, (c) => paintTree(c, 170, 210, 'fresh', 5, true));
   for (let i = 0; i < 2; i++) canvasTex(scene, `pine${i}`, 110, 190, (c) => paintPine(c, 110, 190, 20 + i));
   canvasTex(scene, 'bush0', 70, 56, (c) => paintBush(c, 70, 56, 31, null));
   canvasTex(scene, 'bush1', 70, 56, (c) => paintBush(c, 70, 56, 32, 350));
@@ -1195,6 +1199,14 @@ export function paintAll(scene: Phaser.Scene) {
     paintSoft(c, 24, 0.8, 0.4);
   }, 2);
   canvasTex(scene, 'leaf', 12, 8, (c) => { dab(c, 6, 4, 5, 2.5, 0.3, hsl(95, 55, 50)); dab(c, 5, 3.4, 3, 1, 0.3, hsl(80, 60, 70)); }, 3);
+  // A tiny 5-petal blossom (painted near-white so a tint colours it); Spring scatters these over canopies.
+  canvasTex(scene, 'bloom', 10, 10, (c) => {
+    for (let i = 0; i < 5; i++) {
+      const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+      dab(c, 5 + Math.cos(a) * 2.3, 5 + Math.sin(a) * 2.3, 2.3, 1.8, a, i % 2 ? '#ffffff' : '#fbf3f6');
+    }
+    dab(c, 5, 5, 1.2, 1.2, 0, '#fff0b8');
+  }, 3);
   canvasTex(scene, 'petal', 10, 8, (c) => { dab(c, 5, 4, 4, 2.4, 0.4, hsl(340, 75, 85)); dab(c, 4.4, 3.4, 2, 1, 0.4, '#fff'); }, 3);
   canvasTex(scene, 'smoke', 64, 64, (c) => paintSoft(c, 64, 0.7, 1.2), 1);
   canvasTex(scene, 'ray', 64, 512, (c) => {
