@@ -88,6 +88,11 @@ export const PSTONES: { x: number; y: number; n: number }[] = [
 ];
 export const PSTONE_SIGN = { x: 2700, y: 860 };
 export const PSTONE_CHEST = { x: 2915, y: 1040 };
+/** Order 18: deer tracks to follow from the sign, east Mistbirch Wood. The last point is the treasure spot. */
+export const TRACKS: [number, number][] = [
+  [3935, 995], [3888, 1018], [3840, 1040], [3792, 1060], [3744, 1078], [3696, 1094], [3648, 1108], [3600, 1120],
+];
+export const TRACK_SIGN = { x: 4000, y: 965 };
 export const TRAILHEAD = { x: 4080, y: 2720 }; // the way into the Wild Woods
 export const DIG = { x: 560, y: 2100 };
 export const DIG_SIGN = { x: 820, y: 1965 };

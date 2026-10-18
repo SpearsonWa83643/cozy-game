@@ -14,7 +14,7 @@ import { Puzzles, resetStone } from '../puzzles';
 import { Fishing } from '../fishing';
 import { Reacts } from '../react';
 import {
-  WORLD_W, WORLD_H, GLADE_W, GLADE_H, AREA_NAMES, AreaId, VILLAGE, PLAYER_START, POND, COTTAGE, GARDEN, WALL_Y, GATE, SHRINE, SHRINE_CLEARING, SIGN,
+  WORLD_W, WORLD_H, GLADE_W, GLADE_H, AREA_NAMES, AreaId, VILLAGE, TRACKS, PLAYER_START, POND, COTTAGE, GARDEN, WALL_Y, GATE, SHRINE, SHRINE_CLEARING, SIGN,
   LANTERNS, LANTERN_ORDER, LanternId,
   TRAILHEAD,
 } from '../layout';
@@ -1302,7 +1302,9 @@ export class WorldScene extends Phaser.Scene {
       pots: () => self.puzzles.pots.map((p) => p.color),
       resetStones: () => self.resetStones,
       tiles: () => self.puzzles.tiles.map((t) => t.rot),
-      chests: () => ({ pots: self.puzzles.potChest.revealed, bells: self.puzzles.bellChest.revealed, tiles: self.puzzles.tileChest.revealed, dig: self.puzzles.digChest.revealed, stones: self.puzzles.stoneChest.revealed }),
+      chests: () => ({ pots: self.puzzles.potChest.revealed, bells: self.puzzles.bellChest.revealed, tiles: self.puzzles.tileChest.revealed, dig: self.puzzles.digChest.revealed, stones: self.puzzles.stoneChest.revealed, trail: self.puzzles.trailChest.revealed }),
+      /** Order 18 footprint trail: prints found so far, the print positions, and the chest. */
+      trail: () => ({ step: self.puzzles.trailStep, prints: self.puzzles.tracks.length, pts: TRACKS, glow: self.puzzles.trailGlow.alpha, opened: self.puzzles.trailChest.opened }),
       /** Order 18 pressure stones: [x, y, number, pressed] plus the next number to step on. */
       pstones: () => ({ next: self.puzzles.stoneNext, stones: self.puzzles.stones.map((s) => [s.x, s.y, s.n, s.down]), chest: [self.puzzles.stoneChest.x, self.puzzles.stoneChest.y], opened: self.puzzles.stoneChest.opened }),
       /** Fruit trees near a point, nearest first: [x, tapY, baseY, stock, fruitShowing]. */
