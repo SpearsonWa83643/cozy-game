@@ -70,9 +70,13 @@ test('care hints: nearest food/bed, destination icon, Snack Crate near homes', a
   await page.evaluate(([i, x, y]) => { (window as any).__cozy.setNeeds(i, { food: 1 }); (window as any).__cozy.moveVillager(i, x, y); }, [id, home.x, home.y + 70] as const);
   await page.waitForTimeout(600);
   await page.evaluate((i) => (window as any).__cozy.setNeeds(i, { food: 0.1 }), id);
-  await expect.poll(async () => (await village(page)).villagers[0].mark?.icon ?? null, { timeout: 30_000 }).toBe('i_food');
-  expect(Math.abs((await village(page)).villagers[0].mark.x - crate.x)).toBeLessThan(40);
-  await page.waitForTimeout(500);
+  // The crate is close, so the walk can finish between polls: accept the icon over the crate or eating at it.
+  await expect.poll(async () => {
+    const q = (await village(page)).villagers[0];
+    if (q.mark) return q.mark.icon === 'i_food' && Math.abs(q.mark.x - crate.x) < 40;
+    return q.task === 'eat' && Math.abs(q.x - crate.x) < 50;
+  }, { timeout: 30_000, intervals: [100] }).toBe(true);
+  await page.waitForTimeout(300);
   await page.screenshot({ path: `${SHOTS}/care-03-crate-near-home.png` });
 
   // 4. Sleepy near the kitchen: a bed icon marks the (only) home, and goes away on arrival.
