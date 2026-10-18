@@ -10,7 +10,7 @@ export type ThemeId = 'spring' | 'halloween';
 /** Read any stored theme id (incl. legacy 'classic') as a current ThemeId. */
 export const normTheme = (t: unknown): ThemeId => (t === 'halloween' ? 'halloween' : 'spring');
 export type Res = { food: number; wood: number; stone: number };
-export type BuildingType = 'home' | 'garden' | 'kitchen' | 'workshop' | 'fishhut' | 'flowerbed' | 'lamp' | 'well' | 'bench' | 'statue';
+export type BuildingType = 'home' | 'garden' | 'kitchen' | 'workshop' | 'fishhut' | 'flowerbed' | 'lamp' | 'well' | 'bench' | 'statue' | 'pantry';
 export type BuildingSave = { id: number; type: BuildingType; gx: number; gy: number };
 export type VillagerSave = { id: number; name: string; trait: string; kind: number; job: number | null; food: number; sleep: number; fun: number };
 export type VillageSave = { res: Res; buildings: BuildingSave[]; villagers: VillagerSave[]; nextId: number; wanderer: number; events: number };

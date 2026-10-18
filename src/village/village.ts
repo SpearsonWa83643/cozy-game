@@ -3,7 +3,7 @@
 import Phaser from 'phaser';
 import { atlasOf, frameScale, mulberry32 } from '../art';
 import { VILLAGE, VILLAGE_SIGN, VILLAGE_ENTRY, MERCHANT_SPOT, COTTAGE } from '../layout';
-import { save, persist, hasTreasure, BuildingType, BuildingSave, VillagerSave, Res } from '../save';
+import { save, persist, hasTreasure, tipOnce, BuildingType, BuildingSave, VillagerSave, Res } from '../save';
 import { sfx } from '../audio';
 import { theme, themeEvents } from '../theme';
 import { KINDS } from './vart';
@@ -25,9 +25,10 @@ export const BUILD: Record<BuildingType, BuildDef> = {
   lamp: { name: 'Lamp', frame: 'd_lamp', w: 1, h: 1, cost: { stone: 1 }, job: null, makes: null, every: 0, amount: 0, beds: 0, fun: true, unlock: { treasure: 'golden_feather' }, blurb: 'A warm, happy light.', hint: 'Find the Golden Feather.' },
   well: { name: 'Well', frame: 'd_well', w: 1, h: 1, cost: { stone: 3 }, job: null, makes: null, every: 0, amount: 0, beds: 0, fun: true, unlock: { treasure: 'rusty_key' }, blurb: 'Make a wish!', hint: 'Find the Rusty Key.' },
   bench: { name: 'Bench', frame: 'd_bench', w: 1, h: 1, cost: { wood: 2 }, job: null, makes: null, every: 0, amount: 0, beds: 0, fun: true, unlock: { treasure: 'shell_necklace' }, blurb: 'A comfy seat.', hint: 'Find the Shell Necklace.' },
+  pantry: { name: 'Snack Crate', frame: 'd_pantry', w: 1, h: 1, cost: { wood: 2 }, job: null, makes: null, every: 0, amount: 0, beds: 0, fun: false, unlock: null, blurb: 'Snacks close to home! Hungry friends eat here.', hint: '' },
   statue: { name: 'Fox Statue', frame: 'd_statue', w: 1, h: 1, cost: { stone: 2 }, job: null, makes: null, every: 0, amount: 0, beds: 0, fun: true, unlock: { treasure: 'fox_hood' }, blurb: 'A brave little fox.', hint: 'Find the Fox-ear Hood.' },
 };
-export const BUILD_ORDER: BuildingType[] = ['home', 'garden', 'kitchen', 'workshop', 'fishhut', 'flowerbed', 'lamp', 'well', 'bench', 'statue'];
+export const BUILD_ORDER: BuildingType[] = ['home', 'garden', 'kitchen', 'pantry', 'workshop', 'fishhut', 'flowerbed', 'lamp', 'well', 'bench', 'statue'];
 
 const NAMES = ['Pip', 'Mo', 'Bea', 'Juniper', 'Tuck', 'Hazel', 'Olive', 'Bram', 'Poppy', 'Wren', 'Fig', 'Clover', 'Moss', 'Tilly', 'Basil', 'Daisy', 'Pebble', 'Sunny'];
 const TRAITS = ['Loves naps', 'Always humming', 'Tells silly jokes', 'Loves flowers', 'Super speedy', 'Bakes the best pie', 'Collects shiny pebbles', 'Counts the stars', 'Gives big hugs', 'Brave explorer'];
@@ -91,12 +92,22 @@ export class Villager {
     return m > 0.55 ? 'f_happy' : m > 0.25 ? 'f_ok' : 'f_meh';
   }
   speed() { return this.data.trait === 'Super speedy' ? 78 : 56; }
+  /** Order 17 care hint: a bobbing food / bed icon over where a hungry or sleepy friend is heading. */
+  mark: Phaser.GameObjects.Image | null = null;
+  markAt: [number, number] = [0, 0];
   goTo(x: number, y: number, then: Task) {
     const p = this.v.w.nav.find(this.x, this.y, x, y);
     this.path = p && p.length ? p : [[x, y]];
     this.task = 'walk'; this.next = then; this.walkT = 0;
+    this.clearMark();
+    if (then === 'eat' || then === 'sleep') {
+      const k = then === 'eat' ? 'i_food' : 'i_sleep';
+      this.markAt = [x, y];
+      this.mark = this.v.w.add.image(x, y - 70, atlasOf(k), k).setScale(0.62 / (frameScale[k] ?? 2.5)).setDepth(8990).setAlpha(0.95);
+    }
   }
-  destroy() { this.img.destroy(); this.shadow.destroy(); this.face.destroy(); this.ring.destroy(); this.bubble?.destroy(); }
+  clearMark() { this.mark?.destroy(); this.mark = null; }
+  destroy() { this.img.destroy(); this.shadow.destroy(); this.face.destroy(); this.ring.destroy(); this.bubble?.destroy(); this.clearMark(); }
 }
 
 export type Building = { data: BuildingSave; img: Phaser.GameObjects.Image; x: number; y: number; cx: number; cy: number; worker: Villager | null; prog: number; alt: number; bar: Phaser.GameObjects.Graphics };
@@ -170,6 +181,18 @@ export class Village {
   }
   firstFree(t: BuildingType): [number, number] | null {
     const d = BUILD[t];
+    // Order 17: a Snack Crate starts right next to the homes, so food is close to beds.
+    const homes = this.buildings.filter((b) => b.data.type === 'home');
+    if (t === 'pantry' && homes.length) {
+      let best: [number, number] | null = null, bd = Infinity;
+      for (let gy = 0; gy <= VILLAGE.rows - d.h; gy++) for (let gx = 0; gx <= VILLAGE.cols - d.w; gx++) {
+        if (!this.canPlace(t, gx, gy)) continue;
+        const f = this.footprint(t, gx, gy);
+        const dist = Math.min(...homes.map((h) => Math.hypot(h.cx - f.cx, h.y - f.by)));
+        if (dist < bd) { bd = dist; best = [gx, gy]; }
+      }
+      return best;
+    }
     for (let gy = 0; gy <= VILLAGE.rows - d.h; gy++) for (let gx = 0; gx <= VILLAGE.cols - d.w; gx++) if (this.canPlace(t, gx, gy)) return [gx, gy];
     return null;
   }
@@ -180,6 +203,22 @@ export class Village {
     if (h) return [h.cx + ((id % 3) - 1) * 18, h.y + 16];
     const r = mulberry32(id * 31)();
     return [VILLAGE.x + 120 + r * 420, VILLAGE.y + VILLAGE.rows * VILLAGE.cell + 20];
+  }
+
+  /** Nearest place to eat (Kitchen or Snack Crate), else the picnic spot by the sign. */
+  foodSpot(v: Villager): { x: number; y: number; b: Building | null } {
+    const spots = this.buildings.filter((b) => b.data.type === 'kitchen' || b.data.type === 'pantry');
+    let b: Building | null = null, bd = Infinity;
+    for (const s of spots) { const dd = Math.hypot(s.cx - v.x, s.y - v.y); if (dd < bd) { bd = dd; b = s; } }
+    if (!b) return { x: VILLAGE_SIGN.x - 50, y: VILLAGE_SIGN.y + 30, b: null };
+    return { x: b.cx + (Math.random() - 0.5) * (BUILD[b.data.type].w * 20), y: b.y + 16, b };
+  }
+  /** Nearest home for a nap, else the friend's usual spot. */
+  bedSpot(v: Villager): [number, number] {
+    const homes = this.buildings.filter((b) => b.data.type === 'home');
+    if (!homes.length) return this.homeSpot(v.data.id);
+    const h = homes.reduce((a, b) => (Math.hypot(b.cx - v.x, b.y - v.y) < Math.hypot(a.cx - v.x, a.y - v.y) ? b : a));
+    return [h.cx + ((v.data.id % 3) - 1) * 18, h.y + 16];
   }
 
   // ------------------------------------------------------------ resources
@@ -610,6 +649,10 @@ export class Village {
         .setAlpha(urg === 2 ? 0.75 + 0.25 * p : 0.8).setScale(rs * (urg === 2 ? 1 + 0.22 * p : 1));
       v.face.setScale(fs * (urg === 2 ? 1.08 + 0.1 * p : 1.04));
     }
+    if (v.mark) {
+      if (v.task !== 'walk' || (v.next !== 'eat' && v.next !== 'sleep')) v.clearMark();
+      else v.mark.setPosition(v.markAt[0], v.markAt[1] - 70 - Math.abs(Math.sin(time / 240 + d.id)) * 10).setVisible(!this.building);
+    }
     if (v.bubble) v.bubble.setPosition(v.x, v.y + bob - 108 + Math.sin(time / 260 + d.id) * 3).setVisible(v.task !== 'drag' && !this.building);
   }
 
@@ -624,11 +667,19 @@ export class Village {
     const low = Math.min(d.food, d.sleep, d.fun);
     if (low < 0.3) {
       if (d.food === low) {
-        const k = this.buildings.find((b) => b.data.type === 'kitchen');
-        const [x, y] = k ? [k.cx + (Math.random() - 0.5) * 40, k.y + 16] : [VILLAGE_SIGN.x - 50, VILLAGE_SIGN.y + 30];
-        v.goTo(x, y, 'eat'); return;
+        const f = this.foodSpot(v);
+        v.goTo(f.x, f.y, 'eat');
+        // A far walk for a snack: suggest a Snack Crate near the homes (once).
+        if (Math.hypot(f.x - v.x, f.y - v.y) > 380 && !this.buildings.some((b) => b.data.type === 'pantry') && tipOnce('pantry')) {
+          this.w.game.events.emit('toast', `${d.name} walks far to eat. Build a Snack Crate near the homes!`);
+        }
+        return;
       }
-      if (d.sleep === low) { const [x, y] = this.homeSpot(d.id); v.goTo(x, y, 'sleep'); return; }
+      if (d.sleep === low) {
+        const [x, y] = this.bedSpot(v); v.goTo(x, y, 'sleep');
+        if (Math.hypot(x - v.x, y - v.y) > 520 && tipOnce('nearbed')) this.w.game.events.emit('toast', `${d.name} walks far to nap. More homes = closer beds!`);
+        return;
+      }
       const decor = this.buildings.filter((b) => BUILD[b.data.type].fun);
       const p = decor.length ? decor[Math.floor(Math.random() * decor.length)] : null;
       const [x, y] = p ? [p.cx + (Math.random() - 0.5) * 40, p.y + 14] : [VILLAGE.x + Math.random() * VILLAGE.cols * VILLAGE.cell, VILLAGE.y + VILLAGE.rows * VILLAGE.cell + 24];

@@ -169,6 +169,21 @@ function paintBench(c: Ctx, w: number, h: number) {
   // Shells on the backrest.
   for (const dx of [-18, 0, 18]) { c.beginPath(); c.arc(cx + dx, by - 48, 5, Math.PI, 0); fo(c, '#ffd3c4', 1.6); }
 }
+/** Order 17: a wooden snack crate heaped with apples, carrots and a loaf. */
+function paintPantry(c: Ctx, w: number, h: number) {
+  const cx = w / 2, by = h - 6;
+  groundShadow(c, cx, by, 34);
+  // Food peeking over the rim (drawn first so the crate overlaps it).
+  circ(c, cx - 18, by - 36, 9, '#ff5a4f', 2.5); hi(c, cx - 21, by - 39, 2.5, 3.5, 0.55);
+  circ(c, cx + 2, by - 40, 9, '#ff7a3c', 2.5);
+  ell(c, cx + 20, by - 37, 11, 7, '#e8b56a', 2.5); c.beginPath(); c.moveTo(cx + 15, by - 41); c.lineTo(cx + 17, by - 35); c.moveTo(cx + 21, by - 42); c.lineTo(cx + 23, by - 36); c.lineWidth = 1.6; c.strokeStyle = INK; c.stroke();
+  ell(c, cx - 6, by - 46, 4, 2.5, '#5fbf4a', 1.8, -0.5);
+  // Crate.
+  rect(c, cx - 32, by - 32, 64, 32, 4, '#c98f5a');
+  for (const y of [by - 22, by - 11]) { c.beginPath(); c.moveTo(cx - 30, y); c.lineTo(cx + 30, y); c.lineWidth = 2; c.strokeStyle = 'rgba(59,42,53,0.55)'; c.stroke(); }
+  for (const dx of [-32, 26]) rect(c, cx + dx, by - 34, 6, 34, 2, '#a8703f', 2.5);
+  hi(c, cx - 14, by - 27, 8, 2.5, 0.35);
+}
 function paintStatue(c: Ctx, w: number, h: number) {
   const cx = w / 2, by = h - 6;
   groundShadow(c, cx, by, 26);
@@ -407,7 +422,7 @@ function paintSkyGrad(c: Ctx, w: number, h: number) {
   c.fillStyle = g; c.fillRect(0, 0, w, h);
 }
 
-export const BUILD_FRAMES = ['b_home', 'b_garden', 'b_garden0', 'b_kitchen', 'b_workshop', 'b_fishhut', 'd_flowerbed', 'd_lamp', 'd_well', 'd_bench', 'd_statue'];
+export const BUILD_FRAMES = ['b_home', 'b_garden', 'b_garden0', 'b_kitchen', 'b_workshop', 'b_fishhut', 'd_flowerbed', 'd_lamp', 'd_well', 'd_bench', 'd_statue', 'd_pantry'];
 
 export function paintVillageArt(scene: Phaser.Scene) {
   atlasTarget(ATLAS2);
@@ -424,6 +439,7 @@ export function paintVillageArt(scene: Phaser.Scene) {
   T('d_well', 80, 104, (c, w, h) => paintWell(c, w, h), B);
   T('d_bench', 80, 62, (c, w, h) => paintBench(c, w, h), B);
   T('d_statue', 80, 92, (c, w, h) => paintStatue(c, w, h), B);
+  T('d_pantry', 80, 72, (c, w, h) => paintPantry(c, w, h), B);
   T('v_sign', 90, 76, (c, w, h) => paintSign(c, w, h), B);
   T('v_cart', 120, 96, (c, w, h) => paintCart(c, w, h), B);
   KINDS.forEach((k, i) => { for (let f = 0; f < 2; f++) T(`vil${i}_${f}`, 44, 76, paintVillager(k, f), 3); });
