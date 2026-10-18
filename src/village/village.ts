@@ -400,7 +400,22 @@ export class Village {
   }
   addTap(v: Villager) {
     this.w.tappables.push({ x: () => v.x, y: () => v.y - 108, r: 34, enabled: () => !!v.bubble && this.villagers.includes(v) && !this.building, tap: () => this.acceptSuggestion(v) });
-    this.w.tappables.push({ x: () => v.x, y: () => v.y - 26, r: 32, enabled: () => this.villagers.includes(v) && !this.building, tap: () => this.w.game.events.emit('card', { kind: 'villager', v }) });
+    // Order 19: with fruit in the basket, tapping a friend who isn't full feeds them (same toss as animals);
+    // a full (or sleeping) friend opens their card as before.
+    this.w.tappables.push({ x: () => v.x, y: () => v.y - 26, r: 32, enabled: () => this.villagers.includes(v) && !this.building,
+      tap: () => this.w.game.events.emit('card', { kind: 'villager', v }),
+      canFeed: () => v.data.food < 0.9 && v.task !== 'sleep' && v.task !== 'drag', feed: () => this.feedFruit(v), fedMsg: `Yum! Thank you, ${v.data.name}!` });
+  }
+  /** Fruit from your basket: a friend is full again (and a little happier), and stops walking off to eat. */
+  fruitFed = 0;
+  feedFruit(v: Villager) {
+    const d = v.data;
+    d.food = 1; d.fun = Math.min(1, d.fun + 0.15);
+    if (v.task === 'eat' || (v.task === 'walk' && v.next === 'eat')) { v.path = []; v.task = 'idle'; v.think = 1.2; v.clearMark(); }
+    v.hop = 0;
+    this.fruitFed++;
+    persist();
+    this.checkT = 0;
   }
   villagerAt(wx: number, wy: number): Villager | null {
     let best: Villager | null = null, bd = 38;
@@ -572,7 +587,10 @@ export class Village {
   care(v: Villager, need: 'food' | 'sleep' | 'fun') {
     const d = v.data;
     v.path = [];
-    if (need === 'food') { if (save.village.res.food > 0) { save.village.res.food--; this.w.game.events.emit('res', null, 0); } d.food = 1; this.w.floatText(v.x, v.y - 70, 'Yum!'); v.task = 'idle'; v.think = 1; }
+    if (need === 'food') {
+      if (save.village.res.food > 0) { save.village.res.food--; this.w.game.events.emit('res', null, 0); }
+      else if (save.snacks > 0) { save.snacks--; this.w.game.events.emit('snacks', save.snacks); }
+      d.food = 1; this.w.floatText(v.x, v.y - 70, 'Yum!'); v.task = 'idle'; v.think = 1; }
     if (need === 'sleep') { v.task = 'sleep'; v.timer = 3; this.w.floatText(v.x, v.y - 60, 'Zzz'); }
     if (need === 'fun') { v.task = 'play'; v.timer = 3; d.fun = Math.max(d.fun, 0.5); this.w.floatText(v.x, v.y - 70, 'Wheee!'); }
     this.w.life.hearts.emitParticleAt(v.x, v.y - 50, 4);

@@ -39,8 +39,10 @@ export type Interactable = {
 };
 
 /** soft: scenery (trees, bushes...) that yields to walking when the tap lands on a path. */
-/** feed: an animal that can be fed from your fruit basket (hearts, then it follows you). */
-export type Tappable = { x: () => number; y: () => number; r: number; tap: () => void; enabled?: () => boolean; soft?: boolean; feed?: () => void };
+/** feed: an animal (or village friend) that can be fed from your fruit basket (hearts, then it follows you).
+ *  canFeed: when set, feeding only happens while it returns true (e.g. a friend who isn't full); otherwise tap() runs.
+ *  fedMsg: the toast after feeding (default: the animal-friend one). */
+export type Tappable = { x: () => number; y: () => number; r: number; tap: () => void; enabled?: () => boolean; soft?: boolean; feed?: () => void; canFeed?: () => boolean; fedMsg?: string };
 
 /** Hides static decoration far from the camera (cheap on iPad with thousands of props). */
 class CullGrid {
@@ -977,7 +979,7 @@ export class WorldScene extends Phaser.Scene {
       if (d < bestD) { bestD = d; target = it; }
     }
     if (tb && (!target || tbD < bestD * 0.8)) {
-      if (tb.feed && save.snacks > 0) this.feedTap(tb); else tb.tap();
+      if (tb.feed && save.snacks > 0 && (!tb.canFeed || tb.canFeed())) this.feedTap(tb); else tb.tap();
       return;
     }
     // Already standing next to it (or within its reach): just use it.
@@ -1000,7 +1002,7 @@ export class WorldScene extends Phaser.Scene {
     this.feedAnimal(tb);
   }
   feedAnimal(tb: Tappable) {
-    if (save.snacks <= 0 || !tb.feed) { tb.tap(); return; }
+    if (save.snacks <= 0 || !tb.feed || (tb.canFeed && !tb.canFeed())) { tb.tap(); return; }
     save.snacks--;
     persist();
     this.game.events.emit('snacks', save.snacks);
@@ -1018,7 +1020,7 @@ export class WorldScene extends Phaser.Scene {
         tb.feed!();
         this.fed++;
         this.game.events.emit('fed');
-        this.game.events.emit('toast', save.snacks > 0 ? 'Yum! Now you are friends!' : 'Yum! Tap a fruit tree for more.');
+        this.game.events.emit('toast', save.snacks > 0 ? (tb.fedMsg ?? 'Yum! Now you are friends!') : 'Yum! Tap a fruit tree for more.');
       },
     });
   }
@@ -1363,7 +1365,7 @@ export class WorldScene extends Phaser.Scene {
           buildings: v.buildings.map((b) => ({ id: b.data.id, type: b.data.type, x: Math.round(b.cx), y: Math.round(b.y - b.img.displayHeight * 0.45), worker: b.worker?.data.id ?? null })),
           villagers: v.villagers.map((q) => ({ id: q.data.id, name: q.data.name, x: Math.round(q.x), y: Math.round(q.y - 26), job: q.data.job, task: q.task, need: { food: q.data.food, sleep: q.data.sleep, fun: q.data.fun }, urg: q.urgency(), ring: q.ring.visible ? q.ring.tintTopLeft : 0, suggest: q.suggest ? (q.suggest.kind === 'assign' ? { kind: 'assign', b: q.suggest.b.data.id } : { kind: 'build', t: q.suggest.t }) : null, bubble: q.bubble ? [Math.round(q.bubble.x), Math.round(q.bubble.y)] : null, mark: q.mark ? { icon: q.mark.frame.name, x: Math.round(q.markAt[0]), y: Math.round(q.markAt[1]), on: q.mark.visible } : null })),
           tips: [...save.tips],
-          alert: v.alert ? { id: v.alert.id, text: v.alert.text } : null, gifts: v.gifts,
+          alert: v.alert ? { id: v.alert.id, text: v.alert.text } : null, gifts: v.gifts, fruitFed: v.fruitFed,
           guest: v.wanderer ? { name: v.wanderer.data.name, x: Math.round(v.wanderer.x), y: Math.round(v.wanderer.y - 26) } : null,
           produced: v.produced, rain: v.rain > 0, festival: v.festival > 0, merchant: !!v.cart, theme: save.theme,
         };

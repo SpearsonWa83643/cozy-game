@@ -169,7 +169,7 @@ export class VillageUIScene extends Phaser.Scene {
     const ic = this.add.image(28, 26, atlasOf('apple'), 'apple'); ic.setScale(34 / Math.max(ic.width, ic.height));
     const t = this.text(52, 26, `${save.snacks}`, 24).setOrigin(0, 0.5);
     const z = this.add.zone(0, 0, 92, 52).setOrigin(0, 0).setInteractive();
-    z.on('pointerup', () => this.game.events.emit('toast', 'Fruit! Tap an animal to feed it.'));
+    z.on('pointerup', () => this.game.events.emit('toast', 'Fruit! Tap an animal or a hungry friend to feed them.'));
     this.snackC = this.add.container(x, y, [g, ic, t, z]);
     this.rects.snacks = { x, y, w: 92, h: 52 };
     if (bump) this.tweens.add({ targets: this.snackC, scale: { from: 1.2, to: 1 }, duration: 300, ease: 'Back.easeOut' });

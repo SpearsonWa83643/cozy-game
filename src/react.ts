@@ -384,7 +384,7 @@ export class Reacts {
           save.snacks = Math.min(9, save.snacks + 1);
           persist();
           this.w.game.events.emit('snacks', save.snacks);
-          if (tipOnce('feed')) this.w.game.events.emit('toast', 'Yum! Tap an animal to feed it.');
+          if (tipOnce('feed')) this.w.game.events.emit('toast', 'Yum! Tap an animal or a hungry friend to feed them.');
         }
         p.img.destroy();
       },
