@@ -3,7 +3,7 @@
 import Phaser from 'phaser';
 import { atlasOf, frameScale, mulberry32 } from '../art';
 import { VILLAGE, VILLAGE_SIGN, VILLAGE_ENTRY, MERCHANT_SPOT, COTTAGE } from '../layout';
-import { save, persist, hasTreasure, tipOnce, BuildingType, BuildingSave, VillagerSave, Res } from '../save';
+import { save, persist, hasTreasure, tipOnce, takeFruit, BuildingType, BuildingSave, VillagerSave, Res } from '../save';
 import { sfx } from '../audio';
 import { theme, themeEvents } from '../theme';
 import { KINDS } from './vart';
@@ -589,7 +589,7 @@ export class Village {
     v.path = [];
     if (need === 'food') {
       if (save.village.res.food > 0) { save.village.res.food--; this.w.game.events.emit('res', null, 0); }
-      else if (save.snacks > 0) { save.snacks--; this.w.game.events.emit('snacks', save.snacks); }
+      else if (save.snacks > 0) { const k = takeFruit(); if (k === 'berry') this.w.berriesFed++; this.w.game.events.emit('snacks', save.snacks); }
       d.food = 1; this.w.floatText(v.x, v.y - 70, 'Yum!'); v.task = 'idle'; v.think = 1; }
     if (need === 'sleep') { v.task = 'sleep'; v.timer = 3; this.w.floatText(v.x, v.y - 60, 'Zzz'); }
     if (need === 'fun') { v.task = 'play'; v.timer = 3; d.fun = Math.max(d.fun, 0.5); this.w.floatText(v.x, v.y - 70, 'Wheee!'); }

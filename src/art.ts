@@ -1154,6 +1154,8 @@ export function paintAll(scene: Phaser.Scene) {
   canvasTex(scene, 'bush0', 70, 56, (c) => paintBush(c, 70, 56, 31, null));
   canvasTex(scene, 'bush1', 70, 56, (c) => paintBush(c, 70, 56, 32, 350));
   canvasTex(scene, 'bush2', 70, 56, (c) => paintBush(c, 70, 56, 33, 210));
+  // Order 19 berry bush: a rounder, fuller bush painted bare; its berries are live sprites (see Reacts.fruit).
+  canvasTex(scene, 'berrybush', 80, 64, (c) => paintBush(c, 80, 64, 36, null));
   const flowers: [number, number, number][] = [[340, 75, 76], [48, 90, 64], [270, 55, 76], [0, 0, 96], [18, 85, 66]];
   flowers.forEach(([h, s, l], i) => canvasTex(scene, `flower${i}`, 30, 34, (c) => paintFlowers(c, 30, 34, 40 + i, h, s, l)));
   for (let i = 0; i < 3; i++) canvasTex(scene, `tuft${i}`, 24, 20, (c) => paintTuft(c, 24, 20, 50 + i));

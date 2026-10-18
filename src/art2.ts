@@ -343,6 +343,15 @@ function paintPickup(kind: string) {
       dab(ctx, cx - 1.5, cy - 0.5, 1.4, 1.4, 0, hsl(fh, 80, 86));
       ctx.strokeStyle = hsl(28, 40, 28); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(cx, cy - h * 0.3); ctx.lineTo(cx + 1, 0.5); ctx.stroke();
       dab(ctx, cx + 2.2, 1.4, 1.8, 0.9, -0.4, hsl(110, 50, 40));
+    } else if (kind === 'berry') {
+      // Order 19: a bold little cluster of three shiny berries with a leaf on top (kid-readable at a glance).
+      const r = w * 0.25;
+      const spots: [number, number][] = [[cx - r * 0.95, cy + r * 0.55], [cx + r * 0.95, cy + r * 0.55], [cx, cy - r * 0.35]];
+      for (const [x, y] of spots) dab(ctx, x, y + 0.6, r + 0.5, r + 0.5, 0, hsl(330, 60, 30));
+      for (const [x, y] of spots) dab(ctx, x, y, r, r, 0, hsl(336, 78, 54));
+      for (const [x, y] of spots) dab(ctx, x - r * 0.35, y - r * 0.35, r * 0.32, r * 0.32, 0, hsl(340, 90, 88));
+      dab(ctx, cx + 1.6, cy - r * 1.35, 2.2, 1.1, -0.5, hsl(110, 55, 40));
+      dab(ctx, cx - 1.4, cy - r * 1.3, 1.8, 1, 0.5, hsl(100, 55, 46));
     } else if (kind === 'acorn') {
       dab(ctx, cx, cy + 1.5, w * 0.32, h * 0.36, 0, hsl(32, 60, 48));
       dab(ctx, cx, cy - 1.5, w * 0.4, h * 0.2, 0, hsl(25, 30, 30));
@@ -568,7 +577,7 @@ export function paintAll2(scene: Phaser.Scene) {
     ['deer_graze', 60, 40], ['deer_alert', 60, 54], ['crab', 26, 16], ['owl', 24, 28], ['owl_blink', 24, 28], ['sparrow', 16, 11], ['beetle', 10, 7],
   ];
   for (const [k, w, h] of creatures) { const f = paintCreature(k); canvasTex(scene, k, w, h, (c) => f(c, w, h)); }
-  const pickups: [string, number, number][] = [['shell0', 12, 10], ['shell1', 12, 10], ['starfish', 14, 14], ['apple', 11, 12], ['pear', 11, 13], ['acorn', 9, 11]];
+  const pickups: [string, number, number][] = [['shell0', 12, 10], ['shell1', 12, 10], ['starfish', 14, 14], ['apple', 11, 12], ['pear', 11, 13], ['acorn', 9, 11], ['berry', 12, 12]];
   for (const [k, w, h] of pickups) { const f = paintPickup(k); canvasTex(scene, k, w, h, (c) => f(c, w, h)); }
   for (const k of ['ic_key', 'ic_crown', 'ic_shells', 'ic_hood', 'ic_star']) { const f = paintIcon(k); canvasTex(scene, k, 48, 48, (c) => f(c, 48, 48), 2); }
   canvasTex(scene, 'mist', 128, 64, (c) => { c.save(); c.scale(1, 0.5); paintSoft(c, 128, 0.6, 1.4); c.restore(); }, 1);
