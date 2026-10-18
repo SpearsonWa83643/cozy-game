@@ -162,16 +162,23 @@ export class VillageUIScene extends Phaser.Scene {
     this.snackC?.destroy(); this.snackC = null; delete this.rects.snacks;
     if (save.snacks <= 0) return;
     const x = this.bar.x + 312 + 12, y = this.bar.y;
+    // Order 19: the basket shows each fruit kind with its own picture and count (tree fruit, berries).
+    const kinds = ([['apple', save.snacks - save.berries], ['berry', save.berries]] as [string, number][]).filter(([, n]) => n > 0);
+    const W = 20 + kinds.length * 72;
     const g = this.add.graphics();
-    g.fillStyle(0x2a1d14, 0.25); g.fillRoundedRect(2, 5, 92, 52, 26);
-    g.fillStyle(0xfbf1dc, 0.95); g.fillRoundedRect(0, 0, 92, 52, 26);
-    g.lineStyle(3, 0xe8604c, 1); g.strokeRoundedRect(1.5, 1.5, 89, 49, 25);
-    const ic = this.add.image(28, 26, atlasOf('apple'), 'apple'); ic.setScale(34 / Math.max(ic.width, ic.height));
-    const t = this.text(52, 26, `${save.snacks}`, 24).setOrigin(0, 0.5);
-    const z = this.add.zone(0, 0, 92, 52).setOrigin(0, 0).setInteractive();
-    z.on('pointerup', () => this.game.events.emit('toast', 'Fruit! Tap an animal or a hungry friend to feed them.'));
-    this.snackC = this.add.container(x, y, [g, ic, t, z]);
-    this.rects.snacks = { x, y, w: 92, h: 52 };
+    g.fillStyle(0x2a1d14, 0.25); g.fillRoundedRect(2, 5, W, 52, 26);
+    g.fillStyle(0xfbf1dc, 0.95); g.fillRoundedRect(0, 0, W, 52, 26);
+    g.lineStyle(3, 0xe8604c, 1); g.strokeRoundedRect(1.5, 1.5, W - 3, 49, 25);
+    const parts: Phaser.GameObjects.GameObject[] = [g];
+    kinds.forEach(([k, n], i) => {
+      const ic = this.add.image(28 + i * 72, 26, atlasOf(k), k); ic.setScale((k === 'berry' ? 38 : 34) / Math.max(ic.width, ic.height));
+      parts.push(ic, this.text(52 + i * 72, 26, `${n}`, 24).setOrigin(0, 0.5));
+    });
+    const z = this.add.zone(0, 0, W, 52).setOrigin(0, 0).setInteractive();
+    z.on('pointerup', () => this.game.events.emit('toast', save.berries > 0 ? 'Fruit and berries! Tap an animal or a hungry friend to feed them.' : 'Fruit! Tap an animal or a hungry friend to feed them.'));
+    parts.push(z);
+    this.snackC = this.add.container(x, y, parts);
+    this.rects.snacks = { x, y, w: W, h: 52 };
     if (bump) this.tweens.add({ targets: this.snackC, scale: { from: 1.2, to: 1 }, duration: 300, ease: 'Back.easeOut' });
   }
   alertC: Phaser.GameObjects.Container | null = null;

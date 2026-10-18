@@ -3,7 +3,7 @@ import { stickInput, steerBody, stepPath, pulseTapMarker, slideOutOfWater } from
 import { S, ATLAS, atlasOf, frameScale, mulberry32, pondValue, distToPaths, pathDist, ALL_PATHS , TREE_SCALE} from '../art';
 import { GroundStreamer } from '../ground';
 import { waterBlocks, areaAt, waterAt } from '../geo';
-import { save, persist, setPuzzle, addTreasure, hasTreasure, visit } from '../save';
+import { save, persist, setPuzzle, addTreasure, hasTreasure, visit, takeFruit } from '../save';
 import { buildHeroSheet } from '../hero';
 import { buildAreas } from '../areas';
 import { Village } from '../village/village';
@@ -419,8 +419,10 @@ export class WorldScene extends Phaser.Scene {
     this.solidRect(gx, gy - 20, gw, 14);
     this.solidRect(gx - 8, gy - 20, 10, gh + 34);
     // Bushes hugging the cottage.
-    const bushes: [number, number, number][] = [[x - 165, y - 4, 1], [x + 165, y - 6, 0], [x + 128, y + 16, 2], [x - 128, y + 18, 0]];
+    // Order 19: two of them are berry bushes (v = -1), right by home where kids find them first.
+    const bushes: [number, number, number][] = [[x - 165, y - 4, -1], [x + 165, y - 6, 0], [x + 128, y + 16, -1], [x - 128, y + 18, 0]];
     for (const [bx, by, v] of bushes) {
+      if (v < 0) { this.berryBush(bx, by, 1); continue; }
       const b = this.img(bx, by, `bush${v}`).setDepth(by);
       this.shadow(bx, by - 3, 80, 0.6);
       this.solidCircle(bx, by - 10, 16);
@@ -584,13 +586,15 @@ export class WorldScene extends Phaser.Scene {
         this.reacts.flower(f);
       }
     }
-    // Bushes + rocks dotted around.
+    // Bushes + rocks dotted around (the first bush is a berry bush, out in the open glade).
+    let berry = 1;
     for (let i = 0; i < 26; i++) {
       const x = rng() * GLADE_W;
       const y = rng() * GLADE_H;
       if (!ok(x, y, 60)) continue;
       if (LANTERNS.some((l) => Math.hypot(l.x - x, l.y - y) < 70)) continue;
       if (rng() < 0.65) {
+        if (berry > 0) { berry--; this.berryBush(x, y, 0.95 + rng() * 0.2); continue; }
         const b = this.img(x, y, `bush${i % 3}`, 0.5, 1, 0.9 + rng() * 0.3).setDepth(y);
         this.shadow(x + 4, y - 3, 76, 0.6);
         this.solidCircle(x, y - 10, 15);
@@ -994,7 +998,19 @@ export class WorldScene extends Phaser.Scene {
     this.walkTo(gx, gy, target);
   }
 
+  /** Order 19: a berry bush (tap to pick berries for your basket; they grow back). */
+  berryBush(x: number, y: number, scale: number) {
+    const b = this.img(x, y, 'berrybush', 0.5, 1, scale).setDepth(y);
+    this.shadow(x + 4, y - 3, 86 * scale, 0.6);
+    this.solidCircle(x, y - 10, 16);
+    this.sway(b, 0.02, 0.85);
+    this.reacts.berryBush(b);
+    return b;
+  }
+
   fed = 0;
+  /** Order 19: berries tossed to animals and friends (test hook). */
+  berriesFed = 0;
   /** Feed an animal: walk over if it is far, toss a fruit, hearts, and it tags along. */
   feedTap(tb: Tappable) {
     const x = tb.x(), y = tb.y();
@@ -1003,11 +1019,11 @@ export class WorldScene extends Phaser.Scene {
   }
   feedAnimal(tb: Tappable) {
     if (save.snacks <= 0 || !tb.feed || (tb.canFeed && !tb.canFeed())) { tb.tap(); return; }
-    save.snacks--;
-    persist();
+    const kind = takeFruit() ?? 'apple';
+    this.berriesFed += kind === 'berry' ? 1 : 0;
     this.game.events.emit('snacks', save.snacks);
     const x = tb.x(), y = tb.y();
-    const fruit = this.add.image(this.feet.x, this.feet.y - 40, atlasOf('apple'), 'apple').setScale(1 / (frameScale.apple ?? S)).setDepth(9500);
+    const fruit = this.add.image(this.feet.x, this.feet.y - 40, atlasOf(kind), kind).setScale((kind === 'berry' ? 1.2 : 1) / (frameScale[kind] ?? S)).setDepth(9500);
     this.tweens.add({ targets: fruit, x, duration: 380, ease: 'Linear' });
     this.tweens.add({
       targets: fruit, y: { from: this.feet.y - 40, to: y - 6 }, duration: 380, ease: 'Quad.easeOut',
@@ -1020,7 +1036,7 @@ export class WorldScene extends Phaser.Scene {
         tb.feed!();
         this.fed++;
         this.game.events.emit('fed');
-        this.game.events.emit('toast', save.snacks > 0 ? (tb.fedMsg ?? 'Yum! Now you are friends!') : 'Yum! Tap a fruit tree for more.');
+        this.game.events.emit('toast', save.snacks > 0 ? (tb.fedMsg ?? 'Yum! Now you are friends!') : 'Yum! Tap a fruit tree or berry bush for more.');
       },
     });
   }
@@ -1263,7 +1279,7 @@ export class WorldScene extends Phaser.Scene {
           pathLen: self.path.length, catPets: self.catPets, ducks: self.life?.ducks.length ?? 0,
           area: self.area, fishing: self.fishing.state, tiles: self.ground.tiles.size, paintMs: [...self.ground.paintMs], puzzles: { ...save.puzzles },
           treasures: [...save.treasures], fish: Object.keys(save.fish), look: { ...save.look }, minor: { ...save.minor },
-          reactions: self.life?.reactions ?? 0, snacks: save.snacks, fed: self.fed,
+          reactions: self.life?.reactions ?? 0, snacks: save.snacks, berries: save.berries, berriesFed: self.berriesFed, fed: self.fed,
           followers: self.life?.followers() ?? 0, soundscape: sfx.soundscape,
           dialogOpen: !!self.registry.get('dialogOpen'),
           mount: self.mount.phase,
@@ -1314,6 +1330,13 @@ export class WorldScene extends Phaser.Scene {
         return self.reacts.fruitTrees.map((t) => {
           const f = self.reacts.fruit.get(t);
           return [Math.round(t.x), Math.round(t.y - t.displayHeight * 0.58), Math.round(t.y), f?.stock ?? 0, f ? f.dots.filter((d) => d.on && d.img.visible).length : 0];
+        }).sort((a, b) => Math.hypot(a[0] - x, a[2] - y) - Math.hypot(b[0] - x, b[2] - y)).slice(0, 5);
+      },
+      /** Order 19 berry bushes near a point, nearest first: [x, tapY, baseY, stock, berriesShowing]. */
+      berryBushes(x: number, y: number) {
+        return self.reacts.berryBushes.map((b) => {
+          const f = self.reacts.fruit.get(b);
+          return [Math.round(b.x), Math.round(b.y - b.displayHeight * 0.45), Math.round(b.y), f?.stock ?? 0, f ? f.dots.filter((d) => d.on && d.img.visible).length : 0];
         }).sort((a, b) => Math.hypot(a[0] - x, a[2] - y) - Math.hypot(b[0] - x, b[2] - y)).slice(0, 5);
       },
       /** Shorten (or restore) how long one fruit takes to grow back on a fruit tree. */
