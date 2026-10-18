@@ -194,7 +194,7 @@ export class Reacts {
     // Tree: a short wobble, then it shrinks down into the stump while fading out.
     w.retire(t);
     const cy = y - t.displayHeight * 0.55;
-    const leafTint = theme.id === 'halloween' ? 0xffa64d : kind === 'birch' ? 0xf0d36a : 0x8fcf6a;
+    const leafTint = theme.id === 'halloween' ? 0xffa64d : theme.id === 'fall' ? 0xff8a3a : kind === 'birch' ? 0xf0d36a : 0x8fcf6a;
     w.time.delayedCall(260, () => {
       sfx.rustle(); sfx.tock();
       w.burst(x, cy, leafTint, 24, 'leaf');

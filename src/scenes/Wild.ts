@@ -194,9 +194,10 @@ export class WildScene extends Phaser.Scene {
     for (const t of this.trees) {
       if (!t.pine && tf) { const f = tf[t.v % tf.length]; t.img.setTexture(atlasOf(f), f).setOrigin(0.5, 192 / 200).setScale(TREE_SCALE / (frameScale[f] ?? S)); }
       else if (!t.pine) { const f = treeFrame(t.v); t.img.setTexture(atlasOf(f), f).setOrigin(0.5, 202 / 210).setScale((0.9 + (t.v % 3) * 0.08) * TREE_SCALE / (frameScale[f] ?? S)); }
-      if (theme.foliage !== null && t.pine) t.img.setTint(theme.foliage); else t.img.clearTint();
+      if (theme.autumn) t.img.setTint(t.pine ? theme.autumn.pine : theme.autumn.tints[t.v % theme.autumn.tints.length]);
+      else if (theme.foliage !== null && t.pine) t.img.setTint(theme.foliage); else t.img.clearTint();
     }
-    this.cameras.main.setBackgroundColor(hal ? '#20262a' : '#3c5a32');
+    this.cameras.main.setBackgroundColor(hal ? '#20262a' : theme.id === 'fall' ? '#5a5430' : '#3c5a32');
     for (const mo of this.monsters) mo.retheme();
     this.events.emit('theme');
   }

@@ -2,7 +2,7 @@
 // painter read the active theme and listen for changes, so a switch happens live.
 import Phaser from 'phaser';
 import { save, persist, normTheme, ThemeId } from './save';
-import { SPRING, HALLOWEEN, type Soundscape } from './soundscapes';
+import { SPRING, HALLOWEEN, FALL, type Soundscape } from './soundscapes';
 
 export type Theme = {
   id: ThemeId;
@@ -14,6 +14,8 @@ export type Theme = {
   foliage: number | null;
   /** Swap round trees for these frames (null = keep). */
   trees: string[] | null;
+  /** Fall: multiply tints cycled over leafy trees (red / orange / gold canopies), null = none. */
+  autumn?: { tints: number[]; birch: number; pine: number; fruit: number } | null;
   /** Blossom tint for every few round leafy trees (Spring cherry/apple blossom), null = none. */
   blossom: { tints: number[]; every: number } | null;
   /** Camera-space colour wash: gradient frame + alpha (null = none). */
@@ -97,9 +99,34 @@ const halloween: Theme = {
   },
 };
 
+const fall: Theme = {
+  id: 'fall', name: 'Fall', icon: 'i_maple',
+  // Cozy autumn: greens turn to warm golden-olive grass and dry a little; paths go a touch toastier.
+  ground: (h, s, l) => (h > 60 && h < 170 ? [Math.max(48, h - 38), s * 0.78, Math.min(l * 1.02, 84)] : [h - 3, s * 1.02, l * 0.98]),
+  foliage: 0xf2b060, trees: null, blossom: null,
+  autumn: { tints: [0xff9a4a, 0xf2603a, 0xffc24a, 0xe8843a, 0xffd870], birch: 0xffd04a, pine: 0xd8d0a0, fruit: 0xffe0b0 },
+  sky: null,
+  fog: { tint: 0xffe6c4, alpha: 0.08 }, // a soft golden haze
+  particles: { pollen: [0xffd9a0, 0xffc070, 0xfff0d0], firefly: [0xffc04a, 0xffe08a], petal: 'p_maple', petalTint: [0xf2603a, 0xff9a4a, 0xffc24a, 0xd8482a, 0xffd870] },
+  critters: { cat: null, bats: false, ghosts: false, butterflies: 0xffb060 },
+  props: false, glow: 0xffb04a,
+  ui: { accent: 0xe0803a, accentDark: 0xb05a24, css: '#e0803a', tab: 0xf8e8d4, tabOn: 0xe0803a },
+  soundscape: FALL,
+  entry: {
+    sky: ['rgba(250,206,150,0.78)', 'rgba(232,150,90,0.72)', 'rgba(120,70,40,0.86)'],
+    title: '#fff6e8', titleEdge: '#8a4a1e',
+    card: 'rgba(253,244,230,0.96)', cardEdge: '#e8b888',
+    ink: '#4a2e1a', soft: '#8a6440',
+    accent: '#e0803a', accentDark: '#b05a24', field: '#fffaf2',
+    drift: { shape: 'leaf', colors: ['#f2603a', '#ff9a4a', '#ffc24a', '#d8482a'], count: 16 },
+    glow: { colors: ['#ffc04a', '#ffe08a'], count: 10 },
+    iconSvg: '<svg viewBox="0 0 40 40"><path d="M20 4 L23 12 L30 9 L28 17 L36 18 L29 23 L32 30 L23 27 L21 35 L19 35 L17 27 L8 30 L11 23 L4 18 L12 17 L10 9 L17 12 Z" fill="#ff8a3a" stroke="#b5481a" stroke-width="1.8" stroke-linejoin="round"/><path d="M20 14 L20 37" stroke="#9a3a14" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  },
+};
+
 // Ready for more: Summer, Fall, Winter and holiday themes each add one entry here + a soundscape.
-export const THEMES: Record<ThemeId, Theme> = { spring, halloween };
-export const THEME_ORDER: ThemeId[] = ['spring', 'halloween'];
+export const THEMES: Record<ThemeId, Theme> = { spring, halloween, fall };
+export const THEME_ORDER: ThemeId[] = ['spring', 'fall', 'halloween'];
 
 export const themeEvents = new Phaser.Events.EventEmitter();
 export let theme: Theme = THEMES[normTheme(save.theme)] ?? spring;

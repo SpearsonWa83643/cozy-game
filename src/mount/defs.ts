@@ -98,15 +98,25 @@ export const MOUNTS: MountDef[] = [
     blurb: 'A happy flying jack-o\'-lantern!',
     flapRate: 1.3,
   },
+  {
+    // Fall's default mount (free in Fall; geese fly south in autumn).
+    id: 'goose',
+    name: 'Canada Goose',
+    treasure: 'goose_feather',
+    body: 'goose_body', wing: 'goose_wing', wingFar: 'goose_wing_far', icon: 'i_goose',
+    scale: 0.85,
+    blurb: 'Honk honk! A friendly goose flying south!',
+    flapRate: 1.1,
+  },
 ];
 
 export function mountById(id: string): MountDef {
   return MOUNTS.find((m) => m.id === id) ?? MOUNTS[0];
 }
 
-/** The theme's own default mount: the pumpkin carriage in Halloween, the bald eagle otherwise. */
+/** The theme's own default mount: pumpkin carriage in Halloween, Canada goose in Fall, bald eagle otherwise. */
 export function themeDefaultMount(): string {
-  return theme.id === 'halloween' ? 'pumpkin' : 'eagle';
+  return theme.id === 'halloween' ? 'pumpkin' : theme.id === 'fall' ? 'goose' : 'eagle';
 }
 
 export function isMountUnlocked(m: MountDef): boolean {

@@ -187,6 +187,18 @@ class Synth {
       // A few fresh raindrops dripping off leaves: tiny quick downward plinks.
       const k = 2 + Math.floor(Math.random() * 3);
       for (let i = 0; i < k; i++) { const f = 1300 + Math.random() * 900; tone(f, f * 0.55, i * (0.18 + Math.random() * 0.3), 0.07, 0.012 * v); }
+    } else if (e.kind === 'geese') {
+      // A far-off V of geese: a few soft, nasal "honk"s at slightly different pitches.
+      const k = 3 + Math.floor(Math.random() * 3);
+      for (let i = 0; i < k; i++) {
+        const f = 330 + Math.random() * 70, w = i * (0.32 + Math.random() * 0.22);
+        tone(f, f * 0.9, w, 0.16, 0.012 * v, 'triangle'); tone(f * 2, f * 1.8, w, 0.12, 0.003 * v, 'square');
+      }
+    } else if (e.kind === 'crackle') {
+      // A cozy fireside crackle: a quick run of tiny, quiet pops.
+      const k = 5 + Math.floor(Math.random() * 7);
+      let w = 0;
+      for (let i = 0; i < k; i++) { const f = 900 + Math.random() * 2200; tone(f, f * 0.4, w, 0.018 + Math.random() * 0.02, 0.008 * v, 'square'); w += 0.04 + Math.random() * 0.16; }
     } else {
       // Tiny wind chimes in D minor.
       const ns = [86, 89, 93, 88, 91];
