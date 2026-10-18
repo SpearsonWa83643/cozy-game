@@ -2,7 +2,7 @@
 // the lake-shore riddle. Each has a clue sign and reveals a chest with a treasure.
 import Phaser from 'phaser';
 import { ATLAS, frameScale, S } from './art';
-import { POTS, POT_SIGN, POT_CHEST, BELLS, BELL_SIGN, BELL_CHEST, SONGBIRD, TILES, TILE_SIGN, TILE_CHEST, DIG, DIG_SIGN } from './layout';
+import { POTS, POT_SIGN, POT_CHEST, BELLS, BELL_SIGN, BELL_CHEST, SONGBIRD, TILES, TILE_SIGN, TILE_CHEST, DIG, DIG_SIGN, PSTONES, PSTONE_SIGN, PSTONE_CHEST, TRACKS, TRACK_SIGN } from './layout';
 import { sfx } from './audio';
 import { save, setPuzzle, addTreasure, hasTreasure, persist } from './save';
 import { TREASURES } from './catalog';
@@ -82,7 +82,7 @@ class Chest {
     this.opened = true;
     const w = this.w;
     this.img.setTexture(ATLAS, 'chest_open');
-    if (hasTreasure(this.treasure)) { w.puzzleBonus(this.x, this.y - 40); return; }
+    if (!this.treasure || hasTreasure(this.treasure)) { w.puzzleBonus(this.x, this.y - 40); this.onOpened?.(); return; }
     addTreasure(this.treasure);
     sfx.sparkle();
     w.cameras.main.shake(200, 0.002);
@@ -109,6 +109,8 @@ export class Puzzles {
     if (id === 'pots') return this.pots.some((p, i) => p.color !== [4, 2, 0, 1][i]);
     if (id === 'bells') return this.bellInput.length > 0;
     if (id === 'tiles') return this.tiles.some((t, q) => t.rot !== [1, 2, 3, 1][q]);
+    if (id === 'stones') return this.stoneNext > 1;
+    if (id === 'trail') return this.trailStep > 0;
     return false;
   }
   pots: { img: Phaser.GameObjects.Image; flower: Phaser.GameObjects.Image; color: number; pl: ReturnType<typeof plate>; badge: NumBadge }[] = [];
@@ -124,13 +126,28 @@ export class Puzzles {
   tileGlow!: Phaser.GameObjects.Image;
   digChest: Chest;
   digImg!: Phaser.GameObjects.Image;
+  /** Order 18 pressure stones: step on 1, 2, 3, 4. */
+  stones: { x: number; y: number; n: number; g: Phaser.GameObjects.Graphics; badge: NumBadge; down: boolean }[] = [];
+  stoneNext = 1;
+  stoneOn = -1;
+  stoneChest: Chest;
+  /** Order 18 footprint trail: deer tracks light up one by one as you follow them. */
+  tracks: Phaser.GameObjects.Graphics[] = [];
+  trailStep = 0;
+  trailChest: Chest;
+  trailGlow!: Phaser.GameObjects.Image;
 
   constructor(private w: WorldScene) {
     this.potChest = new Chest(w, POT_CHEST.x, POT_CHEST.y, 'flower_crown');
     this.bellChest = new Chest(w, BELL_CHEST.x, BELL_CHEST.y, 'rusty_key', () => w.game.events.emit('toast', 'A key! It opens the north gate.'));
     this.tileChest = new Chest(w, TILE_CHEST.x, TILE_CHEST.y, 'fox_hood');
     this.digChest = new Chest(w, DIG.x, DIG.y + 6, 'shell_necklace');
+    this.stoneChest = new Chest(w, PSTONE_CHEST.x, PSTONE_CHEST.y, '');
+    const end = TRACKS[TRACKS.length - 1];
+    this.trailChest = new Chest(w, end[0], end[1] + 8, '');
     this.buildPots();
+    this.buildTrail();
+    this.buildStones();
     this.buildBells();
     this.buildTiles();
     this.buildDig();
@@ -138,6 +155,18 @@ export class Puzzles {
     resetStone(w, BELL_SIGN.x - 10, BELL_SIGN.y + 80, 'bells', () => this.resetBells());
     resetStone(w, TILE_SIGN.x, TILE_SIGN.y + 70, 'tiles', () => this.resetTiles());
     resetStone(w, DIG_SIGN.x + 70, DIG_SIGN.y + 20, 'dig', () => this.resetDig());
+    resetStone(w, PSTONE_SIGN.x, PSTONE_SIGN.y + 70, 'stones', () => this.resetStones());
+    resetStone(w, TRACK_SIGN.x + 60, TRACK_SIGN.y + 40, 'trail', () => this.resetTrail());
+  }
+  resetTrail() {
+    this.trailStep = 0;
+    this.drawTracks();
+    this.trailChest.reset();
+  }
+  resetStones() {
+    this.stoneNext = 1;
+    for (const st of this.stones) this.setStone(st, false);
+    this.stoneChest.reset();
   }
 
   // ------------------------------------------------------------ replay: reset stones
@@ -396,7 +425,124 @@ export class Puzzles {
     });
   }
 
+  // ------------------------------------------------------------ Order 18: footprint trail
+  buildTrail() {
+    const w = this.w;
+    const solved = !!save.puzzles.trail;
+    for (let i = 0; i < TRACKS.length; i++) this.tracks.push(w.add.graphics().setDepth(-358));
+    const end = TRACKS[TRACKS.length - 1];
+    this.trailGlow = w.fx(end[0], end[1] - 6, 'glow', 0.35).setBlendMode('ADD').setTint(0xfff1a8).setAlpha(0).setDepth(-350);
+    w.tweens.add({ targets: this.trailGlow, scale: this.trailGlow.scale * 1.3, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.trailStep = solved ? TRACKS.length : 0;
+    this.drawTracks();
+    this.sign(TRACK_SIGN.x, TRACK_SIGN.y, [
+      'Deer tracks!',
+      'Walk on the glowing hoofprint.',
+      'Follow them to a surprise!',
+    ]);
+    this.trailChest.set(solved, solved);
+  }
+  /** Found prints are golden, the next one glows, later ones are hidden. */
+  private drawTracks() {
+    const n = TRACKS.length;
+    for (let i = 0; i < n - 1; i++) {
+      const g = this.tracks[i]; g.clear();
+      const [x, y] = TRACKS[i], [nx, ny] = TRACKS[i + 1];
+      const a = Math.atan2(ny - y, nx - x);
+      const state = i < this.trailStep ? 'found' : i === this.trailStep ? 'next' : 'hidden';
+      if (state === 'hidden') continue;
+      if (state === 'next') { g.fillStyle(0xfff1a8, 0.55); g.fillCircle(x, y, 26); }
+      const col = state === 'found' ? 0xe0a83a : 0x5a3a2a;
+      // Two little split-hoof prints, side by side, pointing along the trail.
+      for (const side of [-1, 1]) {
+        const ox = x + Math.cos(a + Math.PI / 2) * 9 * side + Math.cos(a) * (side * 6), oy = y + Math.sin(a + Math.PI / 2) * 9 * side + Math.sin(a) * (side * 6);
+        for (const half of [-1, 1]) {
+          const hx = ox + Math.cos(a + Math.PI / 2) * 3.2 * half, hy = oy + Math.sin(a + Math.PI / 2) * 3.2 * half;
+          g.fillStyle(col, state === 'found' ? 0.9 : 0.75); g.fillEllipse(hx, hy, 6, 10);
+        }
+      }
+    }
+    // The end spot sparkles once every print is found.
+    const done = this.trailStep >= n - 1;
+    this.trailGlow.setAlpha(done && !save.puzzles.trail ? 0.75 : 0);
+  }
+  private trailCheck() {
+    if (save.puzzles.trail) return;
+    const n = TRACKS.length, w = this.w;
+    const [x, y] = TRACKS[Math.min(this.trailStep, n - 1)];
+    if (Math.hypot(w.feet.x - x, w.feet.y - y) > 38) return;
+    if (this.trailStep < n - 1) {
+      this.trailStep++;
+      sfx.tock();
+      w.burst(x, y - 4, 0xffe08a, 8, 'spark');
+      this.drawTracks();
+      if (this.trailStep === n - 1) w.game.events.emit('toast', 'Something sparkles ahead!');
+      return;
+    }
+    this.trailStep = n;
+    setPuzzle('trail');
+    this.drawTracks();
+    w.time.delayedCall(300, () => { this.trailChest.reveal(); w.game.events.emit('toast', 'The deer left you a present!'); });
+  }
+
+  // ------------------------------------------------------------ Order 18: pressure stones
+  buildStones() {
+    const w = this.w;
+    const solved = !!save.puzzles.stones;
+    for (const p of PSTONES) {
+      const g = w.add.graphics().setDepth(-360);
+      const badge = new NumBadge(w, p.x, p.y - 46, p.n, 15).setDepth(8400 + p.y * 0.001);
+      const st = { x: p.x, y: p.y, n: p.n, g, badge, down: false };
+      this.stones.push(st);
+      this.setStone(st, solved, false);
+    }
+    if (solved) this.stoneNext = 5;
+    this.sign(PSTONE_SIGN.x, PSTONE_SIGN.y, [
+      'Stepping stones!',
+      'Walk on them in order:',
+      '1, 2, 3, 4.',
+    ], () => [1, 2, 3, 4].map((n): SeqCard => ({ n, icon: 'q_stone', label: `Stone ${n}`, done: this.stoneNext > n })));
+    this.stoneChest.set(solved, solved);
+  }
+  /** Draw a stepping stone up (grey) or pressed down (mossy green glow). */
+  private setStone(st: Puzzles['stones'][number], down: boolean, anim = true) {
+    st.down = down;
+    const g = st.g; g.clear();
+    const dy = down ? 3 : 0;
+    g.fillStyle(0x2a2030, 0.22); g.fillEllipse(st.x + 3, st.y + 4, 64, 24);
+    if (down) { g.fillStyle(0xbff59a, 0.45); g.fillEllipse(st.x, st.y + dy, 74, 32); }
+    g.fillStyle(down ? 0x8fc27a : 0xb9b4ae, 1); g.fillEllipse(st.x, st.y + dy, 60, 24);
+    g.lineStyle(3, 0x3b2a35, 1); g.strokeEllipse(st.x, st.y + dy, 60, 24);
+    g.fillStyle(0xffffff, down ? 0.25 : 0.4); g.fillEllipse(st.x - 10, st.y - 4 + dy, 22, 7);
+    st.badge.set(down ? 'done' : 'todo', anim);
+  }
+  private stepOn(i: number) {
+    const w = this.w, st = this.stones[i];
+    if (save.puzzles.stones || st.down) return;
+    if (st.n === this.stoneNext) {
+      this.setStone(st, true);
+      this.stoneNext++;
+      sfx.tock();
+      w.burst(st.x, st.y - 6, 0xbff59a, 10, 'spark');
+      if (this.stoneNext > 4) {
+        setPuzzle('stones');
+        w.time.delayedCall(500, () => { this.stoneChest.reveal(); w.game.events.emit('toast', 'All four! A chest pops up!'); });
+      }
+      return;
+    }
+    // Wrong stone: everything pops back up. Gentle, no penalty.
+    for (const s of this.stones) if (s.down) this.setStone(s, false);
+    this.stoneNext = 1;
+    sfx.softFail();
+    w.game.events.emit('toast', `That was ${st.n}. Start again at 1!`);
+  }
+
   update(_time: number, _dt: number) {
+    // Pressure stones: trigger once each time your feet land on a stone.
+    let on = -1;
+    for (let i = 0; i < this.stones.length; i++) { const s = this.stones[i]; if (Math.abs(this.w.feet.x - s.x) < 30 && Math.abs(this.w.feet.y - s.y) < 18) { on = i; break; } }
+    if (on !== this.stoneOn) { this.stoneOn = on; if (on >= 0) this.stepOn(on); }
+    this.trailCheck();
     // The songbird sings once on its own when you first wander close.
     if (!this.birdSang && !save.puzzles.bells && Math.hypot(this.w.feet.x - SONGBIRD.x, this.w.feet.y - SONGBIRD.y) < 260) this.sing();
   }

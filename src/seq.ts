@@ -127,6 +127,14 @@ export function paintSeqArt(scene: Phaser.Scene) {
     c.beginPath(); for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 4 : 9; c.lineTo(42 + Math.cos(a) * r, 12 + Math.sin(a) * r); } c.closePath(); fo(c, '#ffd84a', 2);
   }, 3);
   const T = (k: string, fn: (c: Ctx) => void) => canvasTex(scene, k, 56, 56, fn, 3);
+  // Order 18: a flat stepping stone with a little foot on it.
+  T('q_stone', (c) => {
+    c.fillStyle = 'rgba(40,28,20,0.22)'; c.beginPath(); c.ellipse(29, 40, 22, 6, 0, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.ellipse(28, 34, 22, 11, 0, 0, Math.PI * 2); fo(c, '#b9b4ae', 3);
+    c.fillStyle = 'rgba(255,255,255,0.45)'; c.beginPath(); c.ellipse(20, 30, 8, 3, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#6fb85a'; c.beginPath(); c.ellipse(30, 22, 6, 9, 0.2, 0, Math.PI * 2); c.fill();
+    for (const [x, y] of [[24, 11], [29, 9], [34, 10], [38, 13]]) { c.beginPath(); c.arc(x, y, 2.4, 0, Math.PI * 2); c.fill(); }
+  });
   T('q_dawn', paintDawn); T('q_noon', paintNoon); T('q_dusk', paintDusk);
   POT_COLORS.forEach((col, i) => T(`q_flower${i}`, paintFlower(col)));
   RIBBONS.forEach((col, i) => T(`q_bell${i}`, paintBell(col)));
