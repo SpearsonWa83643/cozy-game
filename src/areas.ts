@@ -4,7 +4,7 @@ import Phaser from 'phaser';
 import { mulberry32, pondValue, pathDist, ATLAS , TREE_SCALE } from './art';
 import {
   WORLD_W, WORLD_H, GLADE_W, GLADE_H, LAKE, BRIDGES, BRIDGE_GATE, PIER, WINDMILL, FOREST_EDGE_Y, RIDGE_X,
-  TILES, OWL, BELLS, DIG, DIG_STONES, DIG_SIGN, BELL_SIGN, TILE_SIGN, POTS, POT_SIGN, SONGBIRD, VILLAGE, VILLAGE_SIGN, MERCHANT_SPOT,
+  TILES, OWL, BELLS, DIG, DIG_STONES, DIG_SIGN, BELL_SIGN, TILE_SIGN, POTS, POT_SIGN, SONGBIRD, VILLAGE, VILLAGE_SIGN, MERCHANT_SPOT, PSTONES, PSTONE_SIGN, PSTONE_CHEST,
 } from './layout';
 import { riverXAt, riverDist, riverHalfAt, lakeValue, waterAt, RIVER } from './geo';
 import { sfx } from './audio';
@@ -21,6 +21,7 @@ export function buildAreas(w: WorldScene) {
     ...BELLS.map((b) => [b.x, b.y, 60] as [number, number, number]), [3700, 2250, 60],
     [BRIDGE_GATE.x, BRIDGE_GATE.y, 70], [PIER.x, PIER.y0, 60], [3900, 1050, 160],
     ...Object.values(BRIDGES).map((b) => [b.x, b.y, b.half + 40] as [number, number, number]),
+    ...PSTONES.map((p) => [p.x, p.y, 90] as [number, number, number]), [2915, 970, 200], [2915, 1150, 150], [PSTONE_SIGN.x, PSTONE_SIGN.y, 60], [PSTONE_CHEST.x, PSTONE_CHEST.y, 70], [PSTONE_SIGN.x, PSTONE_SIGN.y + 70, 50],
   ];
   const free = (x: number, y: number, pad: number) => {
     if (x < 20 || y < 20 || x > WORLD_W - 20 || y > WORLD_H - 10) return false;

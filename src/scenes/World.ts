@@ -1302,7 +1302,9 @@ export class WorldScene extends Phaser.Scene {
       pots: () => self.puzzles.pots.map((p) => p.color),
       resetStones: () => self.resetStones,
       tiles: () => self.puzzles.tiles.map((t) => t.rot),
-      chests: () => ({ pots: self.puzzles.potChest.revealed, bells: self.puzzles.bellChest.revealed, tiles: self.puzzles.tileChest.revealed, dig: self.puzzles.digChest.revealed }),
+      chests: () => ({ pots: self.puzzles.potChest.revealed, bells: self.puzzles.bellChest.revealed, tiles: self.puzzles.tileChest.revealed, dig: self.puzzles.digChest.revealed, stones: self.puzzles.stoneChest.revealed }),
+      /** Order 18 pressure stones: [x, y, number, pressed] plus the next number to step on. */
+      pstones: () => ({ next: self.puzzles.stoneNext, stones: self.puzzles.stones.map((s) => [s.x, s.y, s.n, s.down]), chest: [self.puzzles.stoneChest.x, self.puzzles.stoneChest.y], opened: self.puzzles.stoneChest.opened }),
       /** Fruit trees near a point, nearest first: [x, tapY, baseY, stock, fruitShowing]. */
       fruitTrees(x: number, y: number) {
         return self.reacts.fruitTrees.map((t) => {
