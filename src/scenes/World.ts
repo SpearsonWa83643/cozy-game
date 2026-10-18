@@ -1414,7 +1414,7 @@ export class WorldScene extends Phaser.Scene {
       fall() {
         const tints = theme.autumn?.tints ?? [];
         let autumn = 0;
-        for (const c of self.canopies) if (c.visible && tints.includes((c as any).tintTopLeft ?? (c as any).tint)) autumn++;
+        for (const c of self.canopies) if (c.visible && c.frame.name === 'tree4' && tints.includes((c as any).tintTopLeft ?? (c as any).tint)) autumn++;
         let petal = '';
         for (const [f, e] of self.petalBy) if (e.emitting) petal = f;
         return { theme: theme.id, autumn, petal, soundscape: theme.soundscape.id };

@@ -275,7 +275,8 @@ export class ThemeDresser {
         img.setScale((dw * 1.05) / img.width).clearTint();
       } else {
         // Spring has no autumn trees: the amber tree4 becomes its fresh-green twin (same silhouette).
-        const want = t.id === 'spring' && f === 'tree4' ? 'tree4s' : f;
+        // Fall turns every leafy round tree into the amber autumn tree4 (tinted red/orange/gold below).
+        const want = t.id === 'spring' && f === 'tree4' ? 'tree4s' : t.autumn && round && f.startsWith('tree') ? 'tree4' : f;
         if (img.frame.name !== want) {
           if (want === f) img.setTexture(o.tex, f).setOrigin(o.ox, o.oy).setScale(o.sx, o.sy);
           else img.setTexture(atlasOf(want), want).setOrigin(o.ox, o.oy).setScale(o.sx, o.sy);

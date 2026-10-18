@@ -104,7 +104,8 @@ const fall: Theme = {
   // Cozy autumn: greens turn to warm golden-olive grass and dry a little; paths go a touch toastier.
   ground: (h, s, l) => (h > 60 && h < 170 ? [Math.max(48, h - 38), s * 0.78, Math.min(l * 1.02, 84)] : [h - 3, s * 1.02, l * 0.98]),
   foliage: 0xf2b060, trees: null, blossom: null,
-  autumn: { tints: [0xff9a4a, 0xf2603a, 0xffc24a, 0xe8843a, 0xffd870], birch: 0xffd04a, pine: 0xd8d0a0, fruit: 0xffe0b0 },
+  // Tints multiply the amber autumn tree4 that Fall puts on every leafy round tree: amber, red, gold, rust, honey.
+  autumn: { tints: [0xffffff, 0xff9a86, 0xfff0a0, 0xffb894, 0xffe0b0], birch: 0xffd04a, pine: 0xd8d0a0, fruit: 0xffd8a0 },
   sky: null,
   fog: { tint: 0xffe6c4, alpha: 0.08 }, // a soft golden haze
   particles: { pollen: [0xffd9a0, 0xffc070, 0xfff0d0], firefly: [0xffc04a, 0xffe08a], petal: 'p_maple', petalTint: [0xf2603a, 0xff9a4a, 0xffc24a, 0xd8482a, 0xffd870] },

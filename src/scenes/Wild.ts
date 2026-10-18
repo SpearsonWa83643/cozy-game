@@ -15,7 +15,7 @@ import { stickInput, steerBody, stepPath, pulseTapMarker, slideOutOfWater } from
 
 const TREE_FRAMES = ['tree0', 'tree1', 'tree2', 'tree3', 'tree4', 'tree5'];
 /** Round tree frame for a variant; Spring swaps the autumn-amber tree4 for its fresh-green twin. */
-const treeFrame = (v: number) => { const f = TREE_FRAMES[v % TREE_FRAMES.length]; return theme.id === 'spring' && f === 'tree4' ? 'tree4s' : f; };
+const treeFrame = (v: number) => { const f = TREE_FRAMES[v % TREE_FRAMES.length]; return theme.id === 'spring' && f === 'tree4' ? 'tree4s' : theme.id === 'fall' ? 'tree4' : f; };
 
 /** Gentle monsters, bopping and loot in the Wild Woods. */
 export const WILD_COMBAT = true;
