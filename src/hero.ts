@@ -12,10 +12,11 @@ const OUTFITS: Record<string, { a: [number, number, number]; b: [number, number,
   sea: { a: [205, 58, 60], b: [218, 55, 40], arm: [210, 50, 48] },
   koi: { a: [35, 40, 94], b: [28, 30, 80], arm: [30, 35, 86] },
   ranger: { a: [28, 55, 40], b: [32, 45, 28], arm: [30, 50, 34] },
+  fawn: { a: [30, 52, 64], b: [24, 44, 46], arm: [28, 48, 56] },
 };
 const SCARVES: Record<string, [[number, number, number], [number, number, number]] | null> = {
   red: [[10, 78, 56], [18, 85, 66]], sunny: [[44, 90, 56], [50, 95, 72]], petal: [[340, 70, 72], [345, 85, 84]],
-  silver: [[210, 14, 76], [210, 25, 92]], moss: [[150, 60, 46], [120, 80, 70]], none: null,
+  silver: [[210, 14, 76], [210, 25, 92]], moss: [[150, 60, 46], [120, 80, 70]], sky: [[202, 70, 58], [194, 85, 78]], none: null,
 };
 
 /** Paints one frame. dir: 0 S, 1 SE, 2 E, 3 NE, 4 N; step: 0 idle, 1/2 stride. */

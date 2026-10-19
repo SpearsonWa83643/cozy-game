@@ -142,9 +142,9 @@ export class Puzzles {
     this.bellChest = new Chest(w, BELL_CHEST.x, BELL_CHEST.y, 'rusty_key', () => w.game.events.emit('toast', 'A key! It opens the north gate.'));
     this.tileChest = new Chest(w, TILE_CHEST.x, TILE_CHEST.y, 'fox_hood');
     this.digChest = new Chest(w, DIG.x, DIG.y + 6, 'shell_necklace');
-    this.stoneChest = new Chest(w, PSTONE_CHEST.x, PSTONE_CHEST.y, '');
+    this.stoneChest = new Chest(w, PSTONE_CHEST.x, PSTONE_CHEST.y, 'sky_pebble');
     const end = TRACKS[TRACKS.length - 1];
-    this.trailChest = new Chest(w, end[0], end[1] + 8, '');
+    this.trailChest = new Chest(w, end[0], end[1] + 8, 'fawn_bell');
     this.buildPots();
     this.buildTrail();
     this.buildStones();

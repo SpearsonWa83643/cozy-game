@@ -372,6 +372,32 @@ function paintIcon(kind: string) {
         ctx.beginPath(); ctx.arc(cx - 10, cy, 8, Math.PI, Math.PI * 1.6); ctx.stroke();
         for (let i = 0; i < 6; i++) dab(ctx, cx - 4 + i * 4, cy - 2 + (i % 2) * 3, 1.4, 1, 0, hsl(20, 60, 38, 0.6));
         break;
+      case 'ic_skypebble': {
+        // A smooth sky-blue pebble with a soft shine and a little sparkle.
+        dab(ctx, cx, cy + 12, 15, 4, 0, hsl(210, 30, 20, 0.25));
+        const g = ctx.createRadialGradient(cx - 5, cy - 4, 2, cx, cy, 17);
+        g.addColorStop(0, hsl(196, 90, 88)); g.addColorStop(0.55, hsl(202, 72, 62)); g.addColorStop(1, hsl(212, 58, 42));
+        ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx, cy + 2, 16, 12, -0.15, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = hsl(214, 50, 34); ctx.lineWidth = 1.6; ctx.stroke();
+        dab(ctx, cx - 6, cy - 3, 5, 2.4, -0.4, 'rgba(255,255,255,0.75)');
+        ctx.fillStyle = hsl(50, 100, 82);
+        ctx.beginPath(); ctx.moveTo(cx + 12, cy - 16); ctx.lineTo(cx + 14, cy - 11); ctx.lineTo(cx + 19, cy - 9); ctx.lineTo(cx + 14, cy - 7); ctx.lineTo(cx + 12, cy - 2); ctx.lineTo(cx + 10, cy - 7); ctx.lineTo(cx + 5, cy - 9); ctx.lineTo(cx + 10, cy - 11); ctx.closePath(); ctx.fill();
+        break;
+      }
+      case 'ic_fawnbell': {
+        // A little golden bell on a fawn-brown ribbon.
+        ctx.strokeStyle = hsl(26, 46, 44); ctx.lineWidth = 3.4; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(cx - 13, cy - 16); ctx.quadraticCurveTo(cx, cy - 8, cx + 13, cy - 16); ctx.stroke();
+        const g = ctx.createLinearGradient(cx - 12, 0, cx + 12, 0);
+        g.addColorStop(0, hsl(40, 80, 44)); g.addColorStop(0.4, hsl(48, 95, 70)); g.addColorStop(1, hsl(36, 76, 40));
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.moveTo(cx - 12, cy + 10); ctx.quadraticCurveTo(cx - 12, cy - 11, cx, cy - 11); ctx.quadraticCurveTo(cx + 12, cy - 11, cx + 12, cy + 10); ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = hsl(34, 60, 30); ctx.lineWidth = 1.6; ctx.stroke();
+        ctx.fillStyle = hsl(40, 70, 40); ctx.beginPath(); ctx.ellipse(cx, cy + 10, 14, 3.2, 0, 0, Math.PI * 2); ctx.fill();
+        dab(ctx, cx, cy + 14, 3, 3, 0, hsl(34, 60, 32));
+        dab(ctx, cx - 5, cy - 3, 2, 5, 0.2, 'rgba(255,255,255,0.6)');
+        break;
+      }
       case 'ic_crown': {
         for (let i = 0; i < 9; i++) {
           const a = Math.PI + (i / 8) * Math.PI;
@@ -579,7 +605,7 @@ export function paintAll2(scene: Phaser.Scene) {
   for (const [k, w, h] of creatures) { const f = paintCreature(k); canvasTex(scene, k, w, h, (c) => f(c, w, h)); }
   const pickups: [string, number, number][] = [['shell0', 12, 10], ['shell1', 12, 10], ['starfish', 14, 14], ['apple', 11, 12], ['pear', 11, 13], ['acorn', 9, 11], ['berry', 12, 12]];
   for (const [k, w, h] of pickups) { const f = paintPickup(k); canvasTex(scene, k, w, h, (c) => f(c, w, h)); }
-  for (const k of ['ic_key', 'ic_crown', 'ic_shells', 'ic_hood', 'ic_star']) { const f = paintIcon(k); canvasTex(scene, k, 48, 48, (c) => f(c, 48, 48), 2); }
+  for (const k of ['ic_key', 'ic_crown', 'ic_shells', 'ic_hood', 'ic_star', 'ic_skypebble', 'ic_fawnbell']) { const f = paintIcon(k); canvasTex(scene, k, 48, 48, (c) => f(c, 48, 48), 2); }
   canvasTex(scene, 'mist', 128, 64, (c) => { c.save(); c.scale(1, 0.5); paintSoft(c, 128, 0.6, 1.4); c.restore(); }, 1);
   void softCircle;
 }
