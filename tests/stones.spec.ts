@@ -56,14 +56,17 @@ test('pressure stones: 1-2-3-4, wrong stone resets, chest appears', async ({ pag
   await page.waitForTimeout(900);
   await page.screenshot({ path: `${SHOTS}/stones-02-solved.png` });
 
-  // 4. Open the chest: a wood + stone bonus for the village.
+  // 4. Open the chest: the first time it gives the Sky Pebble (Sky scarf).
   const wood0 = (await cozy(page, 'village()')).res.wood;
   const [cx, cy] = s0.chest;
   await tp(page, cx, cy + 40);
   await expect.poll(async () => (await cozy(page, 'state')).prompt, { timeout: 10_000 }).toBe('Open');
   await tapWorld(page, cx, cy - 25);
   await expect.poll(async () => (await ps(page)).opened, { timeout: 15_000 }).toBe(true);
-  await expect.poll(async () => (await cozy(page, 'village()')).res.wood, { timeout: 10_000 }).toBe(wood0 + 3);
+  await expect.poll(async () => (await cozy(page, 'state')).treasures, { timeout: 10_000 }).toContain('sky_pebble');
+  expect((await cozy(page, 'village()')).res.wood).toBe(wood0);
+  await page.waitForTimeout(1600);
+  await page.screenshot({ path: `${SHOTS}/stones-03-sky-pebble.png` });
 
   // 5. Solved stays solved after reload.
   await page.waitForTimeout(600);

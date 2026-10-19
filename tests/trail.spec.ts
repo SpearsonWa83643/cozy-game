@@ -53,7 +53,7 @@ test('footprint trail: follow the prints in order, chest at the end', async ({ p
   await expect.poll(async () => (await cozy(page, 'chests()')).trail, { timeout: 15_000 }).toBe(true);
   expect((await cozy(page, 'state')).puzzles.trail).toBe(true);
 
-  // 4. Open the chest for a village bonus.
+  // 4. Open the chest: the first time it gives the Fawn Bell (Fawn cloak).
   const wood0 = (await cozy(page, 'village()')).res.wood;
   await tp(page, pts[n - 1][0], pts[n - 1][1] + 50);
   await expect.poll(async () => (await cozy(page, 'state')).prompt, { timeout: 10_000 }).toBe('Open');
@@ -61,7 +61,10 @@ test('footprint trail: follow the prints in order, chest at the end', async ({ p
   await page.screenshot({ path: `${SHOTS}/trail-03-chest.png` });
   await tapWorld(page, pts[n - 1][0], pts[n - 1][1] - 20);
   await expect.poll(async () => (await tr(page)).opened, { timeout: 15_000 }).toBe(true);
-  await expect.poll(async () => (await cozy(page, 'village()')).res.wood, { timeout: 10_000 }).toBe(wood0 + 3);
+  await expect.poll(async () => (await cozy(page, 'state')).treasures, { timeout: 10_000 }).toContain('fawn_bell');
+  expect((await cozy(page, 'village()')).res.wood).toBe(wood0);
+  await page.waitForTimeout(1600);
+  await page.screenshot({ path: `${SHOTS}/trail-04-fawn-bell.png` });
 
   // 5. Stays solved after reload.
   await page.waitForTimeout(600);
