@@ -3,11 +3,12 @@
 // Keep each bullet short and simple: kids read these.
 // icon: 'wood' | 'fruit' | 'berry' | 'star' | 'heart' (a little picture beside the line).
 
-export const VERSION = '2026-10-18-treasures';
+export const VERSION = '2026-10-19-fall';
 
 export type WhatsNewItem = { icon: 'wood' | 'fruit' | 'berry' | 'star' | 'heart'; text: string };
 
 export const ITEMS: WhatsNewItem[] = [
+  { icon: 'star', text: 'Fall is here! Crunchy leaf piles, hay bales and a Canada goose ride.' },
   { icon: 'star', text: 'Move your buildings! In build mode, tap a building, then tap a new spot.' },
   { icon: 'wood', text: 'Tap a building and pick Remove. You get all your wood and stone back.' },
   { icon: 'heart', text: 'New treasures in Mistbirch Wood! The stepping stones and deer tracks hide a Sky scarf and a Fawn cloak.' },
