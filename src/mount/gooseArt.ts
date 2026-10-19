@@ -122,7 +122,49 @@ function paintMapleIcon(c: Ctx, w: number) {
   for (const a of [-Math.PI / 2, -0.4, Math.PI + 0.4]) { c.beginPath(); c.moveTo(w / 2, w / 2); c.lineTo(w / 2 + Math.cos(a) * w * 0.3, w / 2 - 2 + Math.sin(a) * w * 0.3); c.stroke(); }
 }
 
+/** A crunchy pile of fallen maple leaves (64x34): red, orange, gold and rust, heaped in a soft mound. */
+function paintLeafPile(c: Ctx, w: number, h: number) {
+  const rng = mulberry32(9071);
+  dab(c, w / 2, h - 5, w * 0.46, 5.5, 0, hsl(30, 30, 20, 0.22)); // soft shadow
+  const cols: [number, number, number][] = [[8, 78, 50], [22, 88, 54], [38, 92, 56], [16, 66, 40], [44, 86, 62], [2, 70, 46]];
+  for (let i = 0; i < 70; i++) {
+    const t = i / 70;
+    const x = w / 2 + rr(rng, -1, 1) * (w * 0.44) * (1 - t * 0.55);
+    const top = h - 7 - (1 - Math.pow((x - w / 2) / (w * 0.46), 2)) * (h * 0.62);
+    const y = rr(rng, top, h - 6);
+    const [hh, ss, ll] = cols[Math.floor(rng() * cols.length)];
+    const l = ll + (y < (top + h) / 2 ? 6 : -4);
+    leaf(c, x, y, rr(rng, 3.6, 5.6), rr(rng, 0, 6.3), hsl(hh, ss, l), hsl(hh, ss, l - 20));
+  }
+}
+
+/** A round golden hay bale (60x40) with straw strokes and two twine bands. */
+function paintHayBale(c: Ctx, w: number, h: number) {
+  const rng = mulberry32(5527);
+  dab(c, w / 2, h - 4, w * 0.47, 5, 0, hsl(30, 30, 20, 0.25));
+  const x0 = 5, y0 = 6, bw = w - 10, bh = h - 12;
+  const g = c.createLinearGradient(0, y0, 0, y0 + bh);
+  g.addColorStop(0, hsl(46, 78, 70)); g.addColorStop(0.6, hsl(42, 70, 56)); g.addColorStop(1, hsl(36, 60, 42));
+  c.fillStyle = g;
+  c.beginPath(); c.roundRect(x0, y0, bw, bh, 11); c.fill();
+  c.strokeStyle = hsl(34, 50, 34); c.lineWidth = 1.6; c.stroke();
+  // Straw strokes.
+  for (let i = 0; i < 90; i++) {
+    const x = rr(rng, x0 + 3, x0 + bw - 3), y = rr(rng, y0 + 3, y0 + bh - 3), a = rr(rng, -0.5, 0.5);
+    c.strokeStyle = rng() < 0.5 ? hsl(48, 80, 80, 0.7) : hsl(36, 60, 40, 0.5); c.lineWidth = 0.8;
+    c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * 5, y + Math.sin(a) * 5); c.stroke();
+  }
+  // Twine bands.
+  c.strokeStyle = hsl(18, 46, 36); c.lineWidth = 2.2;
+  for (const fx of [0.3, 0.7]) { c.beginPath(); c.moveTo(x0 + bw * fx, y0 + 1); c.lineTo(x0 + bw * fx + 1, y0 + bh - 1); c.stroke(); }
+  // A few loose straws on top and at the ends.
+  c.strokeStyle = hsl(48, 80, 74); c.lineWidth = 1;
+  for (let i = 0; i < 8; i++) { const x = rr(rng, x0 + 6, x0 + bw - 6); c.beginPath(); c.moveTo(x, y0 + 1); c.lineTo(x + rr(rng, -4, 4), y0 - rr(rng, 2, 5)); c.stroke(); }
+}
+
 export function paintFallArt(scene: Phaser.Scene) {
+  canvasTex(scene, 'f_leafpile', 64, 34, (c) => paintLeafPile(c, 64, 34));
+  canvasTex(scene, 'f_hay', 60, 40, (c) => paintHayBale(c, 60, 40));
   canvasTex(scene, 'goose_body', 120, 64, (c) => paintGooseBody(c, 120, 64));
   canvasTex(scene, 'goose_wing', 48, 96, (c) => paintGooseWing(c, 48, 96, false));
   canvasTex(scene, 'goose_wing_far', 48, 96, (c) => paintGooseWing(c, 48, 96, true));

@@ -28,6 +28,10 @@ export type Theme = {
   critters: { cat: number | null; bats: boolean; ghosts: boolean; butterflies: number | null };
   /** Seasonal props (pumpkins, candles...) around paths and buildings. */
   props: boolean;
+  /** Fall props: crunchy leaf piles and hay bales (tap to play). */
+  fallProps?: boolean;
+  /** Tint for the meadow's grass tufts (Fall: dry golden grass). */
+  grass?: number;
   /** Window/lamp glow colour. */
   glow: number;
   ui: { accent: number; accentDark: number; css: string; tab: number; tabOn: number };
@@ -110,7 +114,7 @@ const fall: Theme = {
   fog: { tint: 0xffe6c4, alpha: 0.08 }, // a soft golden haze
   particles: { pollen: [0xffd9a0, 0xffc070, 0xfff0d0], firefly: [0xffc04a, 0xffe08a], petal: 'p_maple', petalTint: [0xf2603a, 0xff9a4a, 0xffc24a, 0xd8482a, 0xffd870] },
   critters: { cat: null, bats: false, ghosts: false, butterflies: 0xffb060 },
-  props: false, glow: 0xffb04a,
+  props: false, fallProps: true, grass: 0xf2d07c, glow: 0xffb04a,
   ui: { accent: 0xe0803a, accentDark: 0xb05a24, css: '#e0803a', tab: 0xf8e8d4, tabOn: 0xe0803a },
   soundscape: FALL,
   entry: {

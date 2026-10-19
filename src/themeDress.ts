@@ -32,7 +32,13 @@ export class ThemeDresser {
   peeks: Peek[] = [];
   orchardBats: { img: Phaser.GameObjects.Image; ph: number }[] = [];
   wisps: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
-  taps = { jack: 0, pumpkin: 0, bats: 0, peek: 0, candy: 0 };
+  taps = { jack: 0, pumpkin: 0, bats: 0, peek: 0, candy: 0, leaves: 0, hay: 0 };
+  /** Fall: leaf piles + hay bales (made once, shown only in Fall). */
+  fallProps: Phaser.GameObjects.Image[] = [];
+  leafPiles: Phaser.GameObjects.Image[] = [];
+  hay: Phaser.GameObjects.Image[] = [];
+  fallBuilt = false;
+  tufts: Phaser.GameObjects.Image[] | null = null;
 
   constructor(private w: WorldScene) {
     this.sky = w.add.image(0, 0, atlasOf('sky_halloween'), 'sky_halloween').setScrollFactor(0).setDepth(8700).setBlendMode(Phaser.BlendModes.MULTIPLY).setVisible(false);
@@ -120,6 +126,70 @@ export class ThemeDresser {
         },
       });
     }
+  }
+
+  /** Fall props: crunchy leaf piles along the paths and under trees, hay bales (with pumpkins) at cozy spots. */
+  private buildFallProps() {
+    if (this.fallBuilt) return;
+    this.fallBuilt = true;
+    const w = this.w;
+    const rng = mulberry32(2207);
+    const free = (x: number, y: number) => !waterAt(x, y, 12) && !w.nav.isBlocked(...w.nav.cellOf(x, y));
+    const put = (x: number, y: number, frame: string, scale: number) => {
+      const img = w.add.image(x, y, atlasOf(frame), frame).setOrigin(0.5, 1).setScale(scale / (frameScale[frame] ?? 2.5)).setDepth(y);
+      this.fallProps.push(img);
+      return img;
+    };
+    const pile = (x: number, y: number, scale: number) => {
+      if (!free(x, y)) return;
+      const img = put(x, y, 'f_leafpile', scale);
+      this.leafPiles.push(img);
+      const sx = img.scaleX, sy = img.scaleY;
+      w.tappables.push({
+        x: () => img.x, y: () => img.y - 10, r: 38, enabled: () => img.visible,
+        tap: () => {
+          this.taps.leaves++; w.life.reactions++;
+          sfx.rustle();
+          w.floatText(img.x, img.y - 44, ['Crunch!', 'Wheee!', 'Swish!'][Math.floor(Math.random() * 3)], '#ffd27a');
+          w.burst(img.x, img.y - 12, 0xf2603a, 9, 'p_maple');
+          w.burst(img.x, img.y - 12, 0xffc24a, 9, 'p_maple');
+          w.tweens.killTweensOf(img);
+          img.setScale(sx * 1.25, sy * 0.55);
+          w.tweens.add({ targets: img, scaleX: sx, scaleY: sy, duration: 900, ease: 'Back.easeOut' });
+        },
+      });
+    };
+    // Leaf piles along the paths, alternating sides.
+    for (const path of ALL_PATHS) {
+      for (let i = 10; i < path.length - 2; i += 24 + Math.floor(rng() * 12)) {
+        const [x, y] = path[i], [x2, y2] = path[i + 1];
+        const a = Math.atan2(y2 - y, x2 - x) + (rng() < 0.5 ? Math.PI / 2 : -Math.PI / 2);
+        pile(x + Math.cos(a) * 62, y + Math.sin(a) * 40, 0.85 + rng() * 0.35);
+      }
+    }
+    // A few under the leafy trees near the start, the cottage and the pond.
+    for (const [x, y] of [[PLAYER_START.x + 110, PLAYER_START.y + 40], [PLAYER_START.x - 120, PLAYER_START.y - 20], [COTTAGE.x + 150, COTTAGE.y + 50], [POND.x - 160, POND.y + 170], [VILLAGE_SIGN.x + 70, VILLAGE_SIGN.y + 20]] as [number, number][]) pile(x, y, 1.05);
+    // Hay bales with a pumpkin or two at cozy spots.
+    const hay = (x: number, y: number) => {
+      if (!free(x, y)) return;
+      const img = put(x, y, 'f_hay', 0.95);
+      this.hay.push(img);
+      if (free(x + 34, y + 6)) put(x + 34, y + 6, 'h_pumpkin', 0.6);
+      const sx = img.scaleX, sy = img.scaleY;
+      w.tappables.push({
+        x: () => img.x, y: () => img.y - 16, r: 36, enabled: () => img.visible,
+        tap: () => {
+          this.taps.hay++; w.life.reactions++;
+          sfx.thump();
+          w.floatText(img.x, img.y - 50, ['Boing!', 'Hay there!', 'Soft!'][Math.floor(Math.random() * 3)], '#fff1c4');
+          w.burst(img.x, img.y - 20, 0xf2d07c, 10, 'spark');
+          w.tweens.killTweensOf(img);
+          img.setScale(sx * 1.12, sy * 0.86);
+          w.tweens.add({ targets: img, scaleX: sx, scaleY: sy, duration: 700, ease: 'Elastic.easeOut' });
+        },
+      });
+    };
+    for (const [x, y] of [[COTTAGE.x - 92, COTTAGE.y + 22], [WINDMILL.x + 80, WINDMILL.y + 34], [VILLAGE_SIGN.x - 70, VILLAGE_SIGN.y + 12], [PIER.x + 70, PIER.y0 - 24], [BRIDGES.north.x + 150, BRIDGES.north.y + 30]] as [number, number][]) hay(x, y);
   }
 
   private jack(img: Phaser.GameObjects.Image, glow: Phaser.GameObjects.Image) {
@@ -243,6 +313,12 @@ export class ThemeDresser {
   apply(live: boolean) {
     const t: Theme = theme;
     const w = this.w;
+    const fp = !!t.fallProps;
+    if (fp) this.buildFallProps();
+    for (const p of this.fallProps) p.setVisible(fp);
+    // Grass tufts: Fall dries the meadow grass to gold.
+    if (!this.tufts) this.tufts = (w.children.list as Phaser.GameObjects.Image[]).filter((o) => o.type === 'Image' && /^tuft\d$/.test(o.frame?.name ?? ''));
+    for (const tf of this.tufts) { if (t.grass) tf.setTint(t.grass); else tf.clearTint(); }
     if (t.props) this.buildProps();
     for (const p of this.props) p.setVisible(t.props);
     for (const b of this.batTrees) for (const f of b.fly) { f.t = -1; f.img.setVisible(false); }

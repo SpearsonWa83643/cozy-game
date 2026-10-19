@@ -1445,7 +1445,11 @@ export class WorldScene extends Phaser.Scene {
         for (const c of self.canopies) if (c.visible && c.frame.name === 'tree4' && tints.includes((c as any).tintTopLeft ?? (c as any).tint)) autumn++;
         let petal = '';
         for (const [f, e] of self.petalBy) if (e.emitting) petal = f;
-        return { theme: theme.id, autumn, petal, soundscape: theme.soundscape.id };
+        const d = self.dresser, r = Math.round;
+        const tufts = d.tufts ?? [];
+        return { theme: theme.id, autumn, petal, soundscape: theme.soundscape.id,
+          leafPiles: d.leafPiles.filter((p) => p.visible).map((p) => [r(p.x), r(p.y - 10)]), hay: d.hay.filter((p) => p.visible).map((p) => [r(p.x), r(p.y - 16)]),
+          goldTufts: tufts.filter((t) => t.isTinted).length, tufts: tufts.length, taps: { leaves: d.taps.leaves, hay: d.taps.hay } };
       },
       villageEvent: (e: 'merchant' | 'rain' | 'festival') => self.village.start(e),
       mount: () => self.mount.snapshot(),

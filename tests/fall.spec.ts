@@ -33,6 +33,11 @@ test('fall: autumn trees, maple leaves, own soundscape, goose default mount', as
   const f = await cozy(page, 'fall()');
   expect(f.petal).toBe('p_maple');
   expect(f.autumn).toBeGreaterThan(10);
+  // Fall polish: crunchy leaf piles and hay bales, and the meadow grass turns gold.
+  expect(f.leafPiles.length).toBeGreaterThan(5);
+  expect(f.hay.length).toBeGreaterThanOrEqual(3);
+  expect(f.tufts).toBeGreaterThan(100);
+  expect(f.goldTufts).toBe(f.tufts);
 
   // Preview shots: the glade meadow and the pond.
   const tp = (x: number, y: number) => page.evaluate(([x, y]) => (window as any).__cozy.teleport(x, y), [x, y]);
@@ -42,6 +47,20 @@ test('fall: autumn trees, maple leaves, own soundscape, goose default mount', as
   await tp(1310, 1090);
   await page.waitForTimeout(5000);
   await page.screenshot({ path: `${SHOTS}/fall-preview-02.png` });
+
+  // Touch-tap a leaf pile (Crunch!) and a hay bale (Boing!).
+  const tapWorld = async (x: number, y: number) => {
+    const p = await page.evaluate(([x, y]) => (window as any).__cozy.worldToScreen(x, y), [x, y] as const);
+    await page.touchscreen.tap(p.x, p.y);
+  };
+  for (const [kind, spot] of [['leaves', f.leafPiles[0]], ['hay', f.hay[0]]] as [string, [number, number]][]) {
+    await tp(spot[0] + 70, spot[1] + 40);
+    await page.waitForTimeout(1500);
+    await tapWorld(spot[0], spot[1]);
+    await expect.poll(async () => (await cozy(page, 'fall()')).taps[kind], { timeout: 5_000 }).toBe(1);
+    await page.waitForTimeout(250);
+    await page.screenshot({ path: `${SHOTS}/fall-${kind}-tap.png` });
+  }
 
   // Call Mount in Fall brings the Canada Goose straight away (no picker), and you ride it.
   await tp(1500, 1500);
@@ -61,6 +80,8 @@ test('fall: autumn trees, maple leaves, own soundscape, goose default mount', as
   await page.waitForTimeout(1200);
   expect((await cozy(page, 'state')).soundscape).toBe('spring');
   expect((await cozy(page, 'fall()')).autumn).toBe(0);
+  expect((await cozy(page, 'fall()')).leafPiles.length).toBe(0);
+  expect((await cozy(page, 'fall()')).goldTufts).toBe(0);
   await cozy(page, "setTheme('fall')");
   await page.waitForTimeout(1200);
   expect((await cozy(page, 'state')).soundscape).toBe('fall');
