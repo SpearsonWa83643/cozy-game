@@ -8,7 +8,7 @@ import { buildHeroSheet } from '../hero';
 import { buildAreas } from '../areas';
 import { Village } from '../village/village';
 import { ThemeDresser } from '../themeDress';
-import { setTheme } from '../theme';
+import { setTheme, theme } from '../theme';
 import { NumBadge, plate, SeqCard } from '../seq';
 import { Puzzles, resetStone } from '../puzzles';
 import { Fishing } from '../fishing';
@@ -1400,7 +1400,7 @@ export class WorldScene extends Phaser.Scene {
       setRes: (r: { food?: number; wood?: number; stone?: number }) => { Object.assign(save.village.res, r); self.game.events.emit('res', null, 0); },
       moveVillager: (id: number, x: number, y: number) => { const q = self.village.villagers.find((z) => z.data.id === id); if (q) { q.x = x; q.y = y; q.path = []; q.task = 'idle'; q.think = 0.2; q.clearMark(); } },
       setNeeds: (id: number, n: { food?: number; sleep?: number; fun?: number }) => { const q = self.village.villagers.find((x) => x.data.id === id); if (q) Object.assign(q.data, n); },
-      setTheme: (id: 'spring' | 'halloween' | 'classic') => setTheme(id),
+      setTheme: (id: 'spring' | 'halloween' | 'fall' | 'classic') => setTheme(id),
       /** Every live particle's frame, per emitter, in the world + wild scenes (art-management checks). */
       particleFrames() {
         const out: { scene: string; tex: string; frame: string; frameTex: string }[] = [];
@@ -1437,6 +1437,19 @@ export class WorldScene extends Phaser.Scene {
         const wildFrames: Record<string, number> = {};
         for (const t of ((self.scene.get('wild') as any)?.trees ?? []) as { img: Phaser.GameObjects.Image }[]) wildFrames[t.img.frame.name] = (wildFrames[t.img.frame.name] ?? 0) + 1;
         return { frames, blooms, bloomFrame, wildFrames };
+      },
+      /** Test hook (Fall): how many canopies wear an autumn tint, and which leaf emitter runs. */
+      fall() {
+        const tints = theme.autumn?.tints ?? [];
+        let autumn = 0;
+        for (const c of self.canopies) if (c.visible && c.frame.name === 'tree4' && tints.includes((c as any).tintTopLeft ?? (c as any).tint)) autumn++;
+        let petal = '';
+        for (const [f, e] of self.petalBy) if (e.emitting) petal = f;
+        const d = self.dresser, r = Math.round;
+        const tufts = d.tufts ?? [];
+        return { theme: theme.id, autumn, petal, soundscape: theme.soundscape.id,
+          leafPiles: d.leafPiles.filter((p) => p.visible).map((p) => [r(p.x), r(p.y - 10)]), hay: d.hay.filter((p) => p.visible).map((p) => [r(p.x), r(p.y - 16)]),
+          goldTufts: tufts.filter((t) => t.isTinted).length, tufts: tufts.length, taps: { leaves: d.taps.leaves, hay: d.taps.hay } };
       },
       villageEvent: (e: 'merchant' | 'rain' | 'festival') => self.village.start(e),
       mount: () => self.mount.snapshot(),

@@ -6,9 +6,9 @@ export type BackId = 'none' | 'backpack' | 'staff';
 export type Look = { hat: HatId; scarf: ScarfId; outfit: OutfitId; back: BackId; feather: boolean; shells: boolean };
 
 /** Seasonal + holiday themes. 'classic' was the original look; it became Spring (old saves migrate). */
-export type ThemeId = 'spring' | 'halloween';
+export type ThemeId = 'spring' | 'halloween' | 'fall';
 /** Read any stored theme id (incl. legacy 'classic') as a current ThemeId. */
-export const normTheme = (t: unknown): ThemeId => (t === 'halloween' ? 'halloween' : 'spring');
+export const normTheme = (t: unknown): ThemeId => (t === 'halloween' ? 'halloween' : t === 'fall' ? 'fall' : 'spring');
 export type Res = { food: number; wood: number; stone: number };
 export type BuildingType = 'home' | 'garden' | 'kitchen' | 'workshop' | 'fishhut' | 'flowerbed' | 'lamp' | 'well' | 'bench' | 'statue' | 'pantry';
 export type BuildingSave = { id: number; type: BuildingType; gx: number; gy: number };

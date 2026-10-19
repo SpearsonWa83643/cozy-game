@@ -3,7 +3,7 @@
 
 export type Chord = { bass: number; pad: number[]; mel: number[] };
 /** An occasional ambient sound and how often it plays (seconds between, random in range). */
-export type Extra = { kind: 'owl' | 'creak' | 'chimes' | 'birds' | 'cuckoo' | 'drops'; every: [number, number]; vol: number };
+export type Extra = { kind: 'owl' | 'creak' | 'chimes' | 'birds' | 'cuckoo' | 'drops' | 'geese' | 'crackle'; every: [number, number]; vol: number };
 export type Soundscape = {
   id: string;
   chords: Chord[];
@@ -72,5 +72,26 @@ export const SPRING: Soundscape = {
     { bass: 36, pad: [52, 55, 60, 64, 67], mel: [72, 76, 79, 84] },                  // C6/9
     { bass: 45, pad: [52, 57, 60, 64, 67], mel: [72, 76, 79, 81] },                  // Am9
     { bass: 38, pad: [50, 55, 57, 60, 66], mel: [74, 76, 78, 81] },                  // Dsus -> D
+  ],
+};
+
+/** Fall: warm, mellow E-flat major on the kalimba (lower and slower than Spring), a soft leafy
+ *  breeze, far-off geese honking as they fly south, a cozy fireside crackle and the odd raindrop. */
+export const FALL: Soundscape = {
+  id: 'fall', lead: 'kalimba', dens: 0.85, pad: 1.05, bright: 0.9, wind: 0.6,
+  extras: [
+    { kind: 'geese', every: [20, 40], vol: 0.55 },
+    { kind: 'crackle', every: [12, 24], vol: 0.5 },
+    { kind: 'drops', every: [24, 44], vol: 0.35 },
+  ],
+  chords: [
+    { bass: 39, pad: [51, 55, 58, 62, 65], mel: [70, 72, 75, 77, 79] },              // Ebmaj9
+    { bass: 36, pad: [48, 51, 55, 58, 62], mel: [70, 72, 75, 79] },                  // Cm9
+    { bass: 44, pad: [48, 51, 55, 58, 63], mel: [72, 75, 77, 79] },                  // Abmaj7(9)
+    { bass: 46, pad: [50, 53, 56, 60, 65], mel: [70, 74, 77, 79] },                  // Bb9sus -> Bb
+    { bass: 43, pad: [50, 55, 58, 62], mel: [70, 74, 77, 79] },                      // Gm7
+    { bass: 44, pad: [51, 56, 60, 63, 67], mel: [72, 75, 79, 80] },                  // Ab6/9
+    { bass: 41, pad: [51, 56, 60, 63], mel: [72, 75, 77, 80] },                      // Fm9
+    { bass: 46, pad: [50, 53, 58, 62, 65], mel: [70, 74, 77, 82] },                  // Bb
   ],
 };
