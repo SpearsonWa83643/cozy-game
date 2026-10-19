@@ -1384,8 +1384,8 @@ export class WorldScene extends Phaser.Scene {
         const v = self.village;
         const xy = (o: { x: number; y: number }) => [Math.round(o.x), Math.round(o.y)];
         return {
-          res: { ...save.village.res }, building: v.building, selected: v.selected, ghost: v.ghost ? { gx: v.ghost.gx, gy: v.ghost.gy, ok: v.ghost.ok, check: xy(v.ghost.check) } : null,
-          buildings: v.buildings.map((b) => ({ id: b.data.id, type: b.data.type, x: Math.round(b.cx), y: Math.round(b.y - b.img.displayHeight * 0.45), worker: b.worker?.data.id ?? null })),
+          res: { ...save.village.res }, building: v.building, selected: v.selected, moving: v.moving?.data.id ?? null, moved: v.moved, removed: v.removed, saved: save.village.buildings.map((b) => [b.id, b.type, b.gx, b.gy]), ghost: v.ghost ? { gx: v.ghost.gx, gy: v.ghost.gy, ok: v.ghost.ok, check: xy(v.ghost.check) } : null,
+          buildings: v.buildings.map((b) => ({ id: b.data.id, type: b.data.type, x: Math.round(b.cx), y: Math.round(b.y - b.img.displayHeight * 0.45), worker: b.worker?.data.id ?? null, gx: b.data.gx, gy: b.data.gy, alpha: +b.img.alpha.toFixed(2) })),
           villagers: v.villagers.map((q) => ({ id: q.data.id, name: q.data.name, x: Math.round(q.x), y: Math.round(q.y - 26), job: q.data.job, task: q.task, need: { food: q.data.food, sleep: q.data.sleep, fun: q.data.fun }, urg: q.urgency(), ring: q.ring.visible ? q.ring.tintTopLeft : 0, suggest: q.suggest ? (q.suggest.kind === 'assign' ? { kind: 'assign', b: q.suggest.b.data.id } : { kind: 'build', t: q.suggest.t }) : null, bubble: q.bubble ? [Math.round(q.bubble.x), Math.round(q.bubble.y)] : null, mark: q.mark ? { icon: q.mark.frame.name, x: Math.round(q.markAt[0]), y: Math.round(q.markAt[1]), on: q.mark.visible } : null })),
           tips: [...save.tips],
           alert: v.alert ? { id: v.alert.id, text: v.alert.text } : null, gifts: v.gifts, fruitFed: v.fruitFed,
@@ -1394,6 +1394,9 @@ export class WorldScene extends Phaser.Scene {
         };
       },
       villageSpeed: (n: number) => { self.village.speed = n; },
+      /** Centre of a village grid cell (world), for build-mode taps. */
+      villageCell: (gx: number, gy: number) => { const [x, y] = self.village.cellXY(gx, gy); return [Math.round(x + VILLAGE.cell / 2), Math.round(y + VILLAGE.cell / 2)]; },
+      villageGhostCross: () => { const g = self.village.ghost; return g ? [Math.round(g.cross.x), Math.round(g.cross.y)] : null; },
       setRes: (r: { food?: number; wood?: number; stone?: number }) => { Object.assign(save.village.res, r); self.game.events.emit('res', null, 0); },
       moveVillager: (id: number, x: number, y: number) => { const q = self.village.villagers.find((z) => z.data.id === id); if (q) { q.x = x; q.y = y; q.path = []; q.task = 'idle'; q.think = 0.2; q.clearMark(); } },
       setNeeds: (id: number, n: { food?: number; sleep?: number; fun?: number }) => { const q = self.village.villagers.find((x) => x.data.id === id); if (q) Object.assign(q.data, n); },

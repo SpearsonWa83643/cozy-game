@@ -110,7 +110,7 @@ export class Villager {
   destroy() { this.img.destroy(); this.shadow.destroy(); this.face.destroy(); this.ring.destroy(); this.bubble?.destroy(); this.clearMark(); }
 }
 
-export type Building = { data: BuildingSave; img: Phaser.GameObjects.Image; x: number; y: number; cx: number; cy: number; worker: Villager | null; prog: number; alt: number; bar: Phaser.GameObjects.Graphics };
+export type Building = { data: BuildingSave; img: Phaser.GameObjects.Image; x: number; y: number; cx: number; cy: number; worker: Villager | null; prog: number; alt: number; bar: Phaser.GameObjects.Graphics; solid: Phaser.GameObjects.Zone; gone?: boolean };
 
 export class Village {
   villagers: Villager[] = [];
@@ -119,6 +119,9 @@ export class Village {
   wanderTimer = 3;
   building = false;           // build mode
   selected: BuildingType | null = null;
+  /** Order 19: the building being moved in build mode (its ghost follows the finger; the real one waits, faded). */
+  moving: Building | null = null;
+  moved = 0; removed = 0; // test counters
   ghost: { img: Phaser.GameObjects.Image; gx: number; gy: number; ok: boolean; check: Phaser.GameObjects.Image; cross: Phaser.GameObjects.Image } | null = null;
   grid: Phaser.GameObjects.Graphics;
   rain = 0; festival = 0; merchant = 0;
@@ -168,7 +171,7 @@ export class Village {
     return { x, y, w: d.w * VILLAGE.cell, h: d.h * VILLAGE.cell, cx: x + d.w * VILLAGE.cell / 2, by: y + d.h * VILLAGE.cell - 4 };
   }
   occupied(gx: number, gy: number) {
-    return this.buildings.some((b) => { const d = BUILD[b.data.type]; return gx >= b.data.gx && gx < b.data.gx + d.w && gy >= b.data.gy && gy < b.data.gy + d.h; });
+    return this.buildings.some((b) => { if (b === this.moving) return false; const d = BUILD[b.data.type]; return gx >= b.data.gx && gx < b.data.gx + d.w && gy >= b.data.gy && gy < b.data.gy + d.h; });
   }
   canPlace(t: BuildingType, gx: number, gy: number) {
     const d = BUILD[t];
@@ -234,21 +237,21 @@ export class Village {
   }
 
   // ------------------------------------------------------------ buildings
-  spawnBuilding(b: BuildingSave, fresh: boolean) {
+  spawnBuilding(b: BuildingSave, fresh: boolean, moved = false) {
     const d = BUILD[b.type];
     const f = this.footprint(b.type, b.gx, b.gy);
-    const frame = b.type === 'garden' && fresh ? 'b_garden0' : d.frame;
+    const frame = b.type === 'garden' && fresh && !moved ? 'b_garden0' : d.frame;
     const img = this.w.add.image(f.cx, f.by, atlasOf(frame), frame).setOrigin(0.5, 1).setDepth(f.by);
     const fw = this.w.textures.getFrame(atlasOf(frame), frame).width;
     img.setScale((f.w * (d.w === 1 ? 1.1 : 1.08)) / fw);
     const bar = this.w.add.graphics().setDepth(9001);
-    const bld: Building = { data: b, img, x: f.x, y: f.y + f.h, cx: f.cx, cy: f.y + f.h / 2, worker: null, prog: 0, alt: 0, bar };
-    this.buildings.push(bld);
     // Solid lower part (the roof overhangs), blocked for walking.
     const sh = f.h * (d.w === 1 ? 0.45 : 0.55);
-    this.w.solidRect(f.x + 6, f.y + f.h - sh - 4, f.w - 12, sh);
+    const solid = this.w.solidRect(f.x + 6, f.y + f.h - sh - 4, f.w - 12, sh);
+    const bld: Building = { data: b, img, x: f.x, y: f.y + f.h, cx: f.cx, cy: f.y + f.h / 2, worker: null, prog: 0, alt: 0, bar, solid };
+    this.buildings.push(bld);
     this.w.nav.blockRect(f.x + 6, f.y + f.h - sh - 4, f.w - 12, sh, 6);
-    this.w.tappables.push({ x: () => f.cx, y: () => f.y + f.h * 0.5, r: f.w * 0.45, enabled: () => !this.building, tap: () => this.w.game.events.emit('card', { kind: 'building', b: bld }) });
+    this.w.tappables.push({ x: () => f.cx, y: () => f.y + f.h * 0.5, r: f.w * 0.45, enabled: () => !this.building && !bld.gone, tap: () => this.w.game.events.emit('card', { kind: 'building', b: bld }) });
     if (fresh) {
       const s = img.scaleX;
       img.setScale(s * 0.2, s * 0.2);
@@ -257,7 +260,7 @@ export class Village {
       this.w.burst(f.cx, f.by - 6, 0xd9b48a, 14, 'leaf');
       this.w.cameras.main.shake(160, 0.002);
       sfx.solve();
-      if (b.type === 'garden') this.w.time.delayedCall(2500, () => img.setTexture(atlasOf('b_garden'), 'b_garden'));
+      if (b.type === 'garden' && !moved) this.w.time.delayedCall(2500, () => { if (!bld.gone) img.setTexture(atlasOf('b_garden'), 'b_garden'); });
     }
     this.dress(bld);
     return bld;
@@ -265,6 +268,7 @@ export class Village {
   /** Seasonal dressing on buildings (pumpkins + candles for Halloween). */
   dressings: Phaser.GameObjects.Image[] = [];
   dress(b: Building) {
+    if (b.gone) return;
     if (!theme.props || BUILD[b.data.type].w === 1) return;
     const d1 = this.w.add.image(b.cx - 44, b.y - 2, atlasOf('h_jack'), 'h_jack').setOrigin(0.5, 1).setScale(0.55 / 2.5).setDepth(b.y + 1);
     const d2 = this.w.add.image(b.cx + 46, b.y - 4, atlasOf('h_candle'), 'h_candle').setOrigin(0.5, 1).setScale(0.6 / 2.5).setDepth(b.y + 1);
@@ -304,11 +308,12 @@ export class Village {
       g.lineStyle(2, 0xffffff, 0.55); g.strokeRoundedRect(px + 4, py + 4, c - 8, c - 8, 10);
     }
   }
-  select(t: BuildingType | null) {
+  select(t: BuildingType | null, at?: [number, number]) {
     this.selected = t;
     if (this.ghost) { this.ghost.img.destroy(); this.ghost.check.destroy(); this.ghost.cross.destroy(); this.ghost = null; }
+    if (this.moving && !at) { this.moving.img.setAlpha(1); this.moving = null; this.drawGrid(); }
     if (!t) return;
-    const spot = this.firstFree(t);
+    const spot = at ?? this.firstFree(t);
     if (!spot) { this.w.game.events.emit('toast', 'No room left! The village is full.'); this.selected = null; return; }
     const d = BUILD[t];
     const img = this.w.add.image(0, 0, atlasOf(d.frame), d.frame).setOrigin(0.5, 1).setAlpha(0.8).setDepth(9100);
@@ -341,6 +346,8 @@ export class Village {
   /** A tap in build mode: buttons first, then move the ghost to the tapped cell. */
   buildTap(wx: number, wy: number) {
     const g = this.ghost;
+    // Order 19: nothing picked yet, so a tap on a building picks it up to move it.
+    if (!g) { const b = this.buildingAt(wx, wy); if (b) this.startMove(b); return; }
     if (g) {
       if (g.check.visible && Math.hypot(wx - g.check.x, wy - g.check.y) < 34) { this.confirm(); return; }
       if (Math.hypot(wx - g.cross.x, wy - g.cross.y) < 30) { this.select(null); sfx.blip(); this.drawGrid(); return; }
@@ -352,6 +359,7 @@ export class Village {
   confirm() {
     const g = this.ghost, t = this.selected;
     if (!g || !t || !g.ok) return;
+    if (this.moving) { this.finishMove(g.gx, g.gy); return; }
     const d = BUILD[t];
     if (!canAfford(d.cost)) { this.w.game.events.emit('toast', 'Not enough yet. Gather more!'); sfx.softFail(); return; }
     this.pay(d.cost);
@@ -363,6 +371,74 @@ export class Village {
     this.drawGrid();
     this.w.game.events.emit('built', t);
     this.w.game.events.emit('toast', `You built a ${d.name}!`);
+  }
+
+  // ------------------------------------------------------------ move / remove (Order 19)
+  /** Pick a building up: it fades, and a ghost of it slides to a new spot (free, no cost). */
+  startMove(b: Building) {
+    if (b.gone) return;
+    this.enterBuild();
+    this.select(null);
+    this.moving = b;
+    b.img.setAlpha(0.3);
+    this.select(b.data.type, [b.data.gx, b.data.gy]);
+    sfx.blip();
+    this.w.game.events.emit('build-moving', b.data.type);
+  }
+  /** Take the building's sprite, wall and tap spot out of the world (its save entry is handled by the caller). */
+  private takeDown(b: Building) {
+    b.gone = true;
+    b.img.destroy(); b.bar.destroy(); b.solid.destroy();
+    this.buildings = this.buildings.filter((o) => o !== b);
+    for (const v of this.villagers) if (v.suggest?.kind === 'assign' && v.suggest.b === b) this.setBubble(v, null);
+  }
+  private finishMove(gx: number, gy: number) {
+    const b = this.moving!;
+    const same = gx === b.data.gx && gy === b.data.gy;
+    this.moving = null;
+    this.select(null);
+    if (same) { b.img.setAlpha(1); this.drawGrid(); return; }
+    const worker = b.worker;
+    this.takeDown(b);
+    b.data.gx = gx; b.data.gy = gy;
+    persist();
+    const nb = this.spawnBuilding(b.data, true, true);
+    nb.worker = worker;
+    this.w.buildNav();
+    this.restyle();
+    // Friends heading to the old spot pick a new path.
+    for (const v of this.villagers) if (v.task === 'walk' || v.task === 'work' || v.task === 'eat' || v.task === 'sleep') { v.path = []; v.clearMark(); v.task = 'idle'; v.think = 0.3; }
+    this.moved++;
+    this.drawGrid();
+    this.w.game.events.emit('built', b.data.type);
+    this.w.game.events.emit('toast', `Your ${BUILD[b.data.type].name} moved!`);
+  }
+  /** Can this building go away without leaving a friend with no bed? */
+  canRemove(b: Building) {
+    return BUILD[b.data.type].beds === 0 || save.village.villagers.length <= this.beds() - BUILD[b.data.type].beds;
+  }
+  /** Remove a building: everything it cost comes back, and its worker is free again. */
+  removeBuilding(b: Building) {
+    if (b.gone) return false;
+    if (!this.canRemove(b)) { this.w.game.events.emit('toast', 'Friends sleep here! Build another Home first.'); sfx.softFail(); return false; }
+    const d = BUILD[b.data.type];
+    if (b.worker) { b.worker.data.job = null; b.worker.task = 'idle'; b.worker.path = []; b.worker.think = 0.3; }
+    for (const v of this.villagers) if (v.data.job === b.data.id) v.data.job = null;
+    const fx = b.cx, fy = b.y;
+    this.takeDown(b);
+    save.village.buildings = save.village.buildings.filter((o) => o !== b.data);
+    for (const k of Object.keys(d.cost) as ResId[]) if (d.cost[k]) this.add(k, d.cost[k]!, fx, fy - 70);
+    persist();
+    this.w.buildNav();
+    this.restyle();
+    for (const v of this.villagers) if (v.task === 'walk' || v.task === 'eat' || v.task === 'sleep' || v.task === 'play') { v.path = []; v.clearMark(); v.task = 'idle'; v.think = 0.3; }
+    this.w.burst(fx, fy - 30, 0xfff1c4, 22, 'spark');
+    this.w.burst(fx, fy - 10, 0xd9b48a, 16, 'leaf');
+    sfx.thump();
+    this.removed++;
+    if (this.building) this.drawGrid();
+    this.w.game.events.emit('toast', `Bye-bye, ${d.name}! Your ${(Object.keys(d.cost) as ResId[]).join(' and ')} came back.`);
+    return true;
   }
 
   // ------------------------------------------------------------ villagers
