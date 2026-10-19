@@ -123,6 +123,7 @@ export class VillageUIScene extends Phaser.Scene {
     ev.on('res', this.onRes, this);
     ev.on('build-mode', (on: boolean) => { this.drawBuildBtn(); if (on) this.openTray(); else this.closeTray(); });
     ev.on('built', () => this.openTray());
+    ev.on('build-moving', () => this.openTray());
     ev.on('card', this.openCard, this);
     ev.on('build-pick', (t: BuildingType) => { if (this.village.building) this.pick(t); });
     ev.on('alert', (a: Alert | null) => this.showAlert(a));
@@ -162,16 +163,23 @@ export class VillageUIScene extends Phaser.Scene {
     this.snackC?.destroy(); this.snackC = null; delete this.rects.snacks;
     if (save.snacks <= 0) return;
     const x = this.bar.x + 312 + 12, y = this.bar.y;
+    // Order 19: the basket shows each fruit kind with its own picture and count (tree fruit, berries).
+    const kinds = ([['apple', save.snacks - save.berries], ['berry', save.berries]] as [string, number][]).filter(([, n]) => n > 0);
+    const W = 20 + kinds.length * 72;
     const g = this.add.graphics();
-    g.fillStyle(0x2a1d14, 0.25); g.fillRoundedRect(2, 5, 92, 52, 26);
-    g.fillStyle(0xfbf1dc, 0.95); g.fillRoundedRect(0, 0, 92, 52, 26);
-    g.lineStyle(3, 0xe8604c, 1); g.strokeRoundedRect(1.5, 1.5, 89, 49, 25);
-    const ic = this.add.image(28, 26, atlasOf('apple'), 'apple'); ic.setScale(34 / Math.max(ic.width, ic.height));
-    const t = this.text(52, 26, `${save.snacks}`, 24).setOrigin(0, 0.5);
-    const z = this.add.zone(0, 0, 92, 52).setOrigin(0, 0).setInteractive();
-    z.on('pointerup', () => this.game.events.emit('toast', 'Fruit! Tap an animal to feed it.'));
-    this.snackC = this.add.container(x, y, [g, ic, t, z]);
-    this.rects.snacks = { x, y, w: 92, h: 52 };
+    g.fillStyle(0x2a1d14, 0.25); g.fillRoundedRect(2, 5, W, 52, 26);
+    g.fillStyle(0xfbf1dc, 0.95); g.fillRoundedRect(0, 0, W, 52, 26);
+    g.lineStyle(3, 0xe8604c, 1); g.strokeRoundedRect(1.5, 1.5, W - 3, 49, 25);
+    const parts: Phaser.GameObjects.GameObject[] = [g];
+    kinds.forEach(([k, n], i) => {
+      const ic = this.add.image(28 + i * 72, 26, atlasOf(k), k); ic.setScale((k === 'berry' ? 38 : 34) / Math.max(ic.width, ic.height));
+      parts.push(ic, this.text(52 + i * 72, 26, `${n}`, 24).setOrigin(0, 0.5));
+    });
+    const z = this.add.zone(0, 0, W, 52).setOrigin(0, 0).setInteractive();
+    z.on('pointerup', () => this.game.events.emit('toast', save.berries > 0 ? 'Fruit and berries! Tap an animal or a hungry friend to feed them.' : 'Fruit! Tap an animal or a hungry friend to feed them.'));
+    parts.push(z);
+    this.snackC = this.add.container(x, y, parts);
+    this.rects.snacks = { x, y, w: W, h: 52 };
     if (bump) this.tweens.add({ targets: this.snackC, scale: { from: 1.2, to: 1 }, duration: 300, ease: 'Back.easeOut' });
   }
   alertC: Phaser.GameObjects.Container | null = null;
@@ -349,7 +357,7 @@ export class VillageUIScene extends Phaser.Scene {
     g.fillStyle(0xfbf1dc, 0.97); g.fillRoundedRect(tx, ty, tw, th, 24);
     g.lineStyle(3, theme.ui.accent, 1); g.strokeRoundedRect(tx + 6, ty + 6, tw - 12, th - 12, 19);
     const block = this.add.zone(tx, ty, tw, th).setOrigin(0, 0).setInteractive();
-    const tip = v.selected ? 'Tap a spot. Then tap the green check!' : 'Pick something to build!';
+    const tip = v.moving ? 'Tap a new spot. Then tap the green check!' : v.selected ? 'Tap a spot. Then tap the green check!' : 'Pick something to build! Tap a building to move it.';
     const title = this.text(tx + 22, ty + 14, tip, 18, INK, 800);
     c.add([g, block, title]);
     BUILD_ORDER.forEach((t, i) => {
@@ -427,6 +435,16 @@ export class VillageUIScene extends Phaser.Scene {
       title = d.name; portrait = d.frame; lines = [d.blurb];
       if (d.job) lines.push(b.worker ? `${b.worker.data.name} works here.` : `Drag a friend here to be the ${d.job}!`);
       if (d.beds) lines.push(`${save.village.villagers.length} friends, ${v.beds()} beds.`);
+      // Order 19: move it (free) or remove it (you get everything back). Remove asks "Sure?" first.
+      const sure = !!data.sure;
+      btns = [
+        { id: 'move', label: 'Move', icon: 'i_hammer', ok: true, tap: () => { this.closeCard(); v.startMove(b); } },
+        { id: 'remove', label: sure ? 'Sure?' : 'Remove', icon: 'i_cross', ok: v.canRemove(b), tap: () => {
+          if (!v.canRemove(b)) { v.removeBuilding(b); return; }
+          if (!sure) { sfx.blip(); this.openCard({ ...data, sure: true }); return; }
+          this.closeCard(); v.removeBuilding(b);
+        } },
+      ];
     } else if (data.kind === 'merchant') {
       title = 'Merchant'; portrait = 'v_cart'; lines = ['Want to trade?'];
       btns = Village.TRADES.map((t, i) => ({ id: `trade:${i}`, label: '', ok: canAfford(t.give), tap: () => { if (v.trade(i)) this.openCard(data); else { sfx.softFail(); this.game.events.emit('toast', 'Not enough yet!'); } } }));
@@ -476,6 +494,19 @@ export class VillageUIScene extends Phaser.Scene {
         c.add(this.text(cx, y + 28, '\u2192', 28, '#8a6a50', 900).setOrigin(0.5));
         c.add(this.icon(cx + 44, y + 28, RES_ICON[get], 34)); c.add(this.text(cx + 66, y + 28, String(t.get[get]), 22, INK, 900).setOrigin(0, 0.5));
         y += 66;
+      });
+    } else if (btns.length === 2) {
+      // Two side-by-side buttons (building card: Move + Remove).
+      const gap = 16, bw = (W - 60 - gap) / 2;
+      btns.forEach((b, i) => {
+        const bx = x0 + 30 + i * (bw + gap);
+        const warm = i === 1;
+        const fill = !b.ok ? 0xeee2cc : warm ? (b.label === 'Sure?' ? 0xf08a7a : 0xf6d2c4) : theme.ui.accent;
+        const edge = !b.ok ? 0xd9b98f : warm ? 0xc0563a : theme.ui.accentDark;
+        const [bg, z] = this.button(bx, y, bw, 60, fill, edge, b.tap, 30, `card:${b.id}`);
+        c.add([bg, z]);
+        if (b.icon) c.add(this.icon(bx + 34, y + 30, b.icon, 32).setAlpha(b.ok ? 1 : 0.5));
+        c.add(this.text(bx + bw / 2 + 16, y + 30, b.label, 22, warm || !b.ok ? INK : '#fffaf0', 900).setOrigin(0.5).setStroke(warm || !b.ok ? '#fbf1dc' : '#5a3d28', warm || !b.ok ? 0 : 4));
       });
     } else if (btns.length) {
       const b = btns[0];

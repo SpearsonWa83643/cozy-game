@@ -26,8 +26,10 @@ export type SaveData = {
   look: Look;
   visited: string[];
   chests: string[];
-  /** Fruit in your basket, for feeding animals. */
+  /** Fruit in your basket, for feeding animals (all kinds together, at most 9). */
   snacks: number;
+  /** Order 19: how many of those are berries (the rest are tree fruit). */
+  berries: number;
   /** Mount you last picked yourself in the mount picker (kept over the theme's default). */
   mountPick?: string;
   /** One-time tips already shown. */
@@ -46,7 +48,7 @@ export function freshVillage(): VillageSave {
 }
 
 function fresh(): SaveData {
-  return { v: 2, theme: 'spring', village: freshVillage(), puzzles: {}, treasures: [], fish: {}, minor: {}, look: { ...DEFAULT_LOOK }, visited: ['glade'], chests: [], snacks: 0, tips: [], wild: { visits: 0, poofs: 0, loot: {} } };
+  return { v: 2, theme: 'spring', village: freshVillage(), puzzles: {}, treasures: [], fish: {}, minor: {}, look: { ...DEFAULT_LOOK }, visited: ['glade'], chests: [], snacks: 0, berries: 0, tips: [], wild: { visits: 0, poofs: 0, loot: {} } };
 }
 
 export const save: SaveData = (() => {
@@ -60,7 +62,8 @@ export const save: SaveData = (() => {
         const f = fresh();
         const v = { ...f.village, ...(d.village ?? {}) };
         v.res = { ...f.village.res, ...(v.res ?? {}) };
-        return { ...f, ...d, v: 2, snacks: Math.max(0, Math.min(9, Number(d.snacks) || 0)), tips: Array.isArray(d.tips) ? d.tips : [], wild: { ...f.wild, ...(d.wild ?? {}), loot: { ...(d.wild?.loot ?? {}) } }, theme: normTheme(d.theme), village: v, look: { ...DEFAULT_LOOK, ...(d.look ?? {}) } };
+        const snacks = Math.max(0, Math.min(9, Number(d.snacks) || 0));
+        return { ...f, ...d, v: 2, snacks, berries: Math.max(0, Math.min(snacks, Number(d.berries) || 0)), tips: Array.isArray(d.tips) ? d.tips : [], wild: { ...f.wild, ...(d.wild ?? {}), loot: { ...(d.wild?.loot ?? {}) } }, theme: normTheme(d.theme), village: v, look: { ...DEFAULT_LOOK, ...(d.look ?? {}) } };
       }
     }
   } catch { /* storage unavailable or corrupt */ }
@@ -87,6 +90,27 @@ export function resetSave() {
 export function tipOnce(id: string) { if (save.tips.includes(id)) return false; save.tips.push(id); persist(); return true; }
 export const hasTreasure = (id: string) => save.treasures.includes(id);
 export function addTreasure(id: string) { if (!hasTreasure(id)) { save.treasures.push(id); persist(); } }
+/** Fruit kinds in the basket: tree fruit (apples, pears) and berries from berry bushes. */
+export type FruitKind = 'apple' | 'berry';
+export const BASKET_MAX = 9;
+/** Put one fruit in the basket (false when it is already full). */
+export function addFruit(kind: FruitKind) {
+  if (save.snacks >= BASKET_MAX) return false;
+  save.snacks++;
+  if (kind === 'berry') save.berries++;
+  persist();
+  return true;
+}
+/** Take one fruit out of the basket for feeding: berries first, then tree fruit (null when empty). */
+export function takeFruit(): FruitKind | null {
+  if (save.snacks <= 0) return null;
+  save.snacks--;
+  const kind: FruitKind = save.berries > 0 ? 'berry' : 'apple';
+  if (kind === 'berry') save.berries--;
+  save.berries = Math.min(save.berries, save.snacks);
+  persist();
+  return kind;
+}
 export function addMinor(id: string, n = 1) { save.minor[id] = (save.minor[id] ?? 0) + n; persist(); return save.minor[id]; }
 export function setPuzzle(id: string) { save.puzzles[id] = true; persist(); }
 export function visit(area: string) { if (!save.visited.includes(area)) { save.visited.push(area); persist(); return true; } return false; }

@@ -3,7 +3,7 @@ import Phaser from 'phaser';
 import { ATLAS, atlasOf, PICKUP_BUBBLE, PICKUP_ICON } from './art';
 import { theme } from './theme';
 import { sfx } from './audio';
-import { addMinor, save, persist, tipOnce } from './save';
+import { addMinor, addFruit, save, tipOnce } from './save';
 import type { WorldScene } from './scenes/World';
 
 /** How long a stump stays before it fades back into grass (game time, ms). */
@@ -11,10 +11,15 @@ export const STUMP_MS = 75_000;
 /** Fruit trees: how many fruit hang on a full tree, how long one takes to grow back (game time, ms),
  *  and the shortest gap between two fruit-giving taps. */
 export const FRUIT_STOCK = 4, FRUIT_REGROW_MS = 38_000, FRUIT_TAP_MS = 650;
+/** Order 19 berry bushes: berries on a full bush (they share the fruit regrow timer and tap gap). */
+export const BERRY_STOCK = 3;
+/** Where the berry clusters sit on a berry bush: x from the middle, y up from the base (fractions of the bush). */
+const BERRY_SLOTS: [number, number][] = [[-0.2, 0.5], [0.21, 0.56], [0.01, 0.74]];
 /** Where the fruit hang, as fractions of the canopy: x from the trunk (+ = right), y up from the base. */
 const FRUIT_SLOTS: [number, number][] = [[-0.21, 0.6], [0.2, 0.66], [-0.04, 0.47], [0.24, 0.49], [-0.26, 0.45], [0.02, 0.71]];
 type FruitDot = { img: Phaser.GameObjects.Image; fx: number; fy: number; size: number; k: number; on: boolean };
-export type FruitTree = { t: Phaser.GameObjects.Image; stock: number; dots: FruitDot[]; nextAt: number };
+/** A fruit tree or (Order 19) a berry bush: max is a full stock, frame the hanging/pickup sprite, minor what lands in the basket. */
+export type FruitTree = { t: Phaser.GameObjects.Image; stock: number; dots: FruitDot[]; nextAt: number; max: number; frame: string; minor: 'apple' | 'berry' };
 type TreeParts = { shadow?: Phaser.GameObjects.Image; solid?: Phaser.GameObjects.Zone; scale: number };
 export type Stump = {
   x: number; y: number; img: Phaser.GameObjects.Image; shadow?: Phaser.GameObjects.Image; solid?: Phaser.GameObjects.Zone;
@@ -24,13 +29,15 @@ export type Stump = {
 const stumpTint = () => (theme.id === 'halloween' ? 0xc8b0d8 : null);
 
 type Pickup = { img: Phaser.GameObjects.Image; kind: string; minor: string; t0: number; flying: boolean; bub?: Phaser.GameObjects.Image };
-const MINOR_LABEL: Record<string, string> = { petal: 'petal', shell: 'shell', apple: 'fruit', acorn: 'acorn', beetle: 'beetle spotted' };
+const MINOR_LABEL: Record<string, string> = { petal: 'petal', shell: 'shell', apple: 'fruit', berry: 'berry', acorn: 'acorn', beetle: 'beetle spotted' };
 
 export class Reacts {
   pickups: Pickup[] = [];
   cool = new WeakMap<object, number>();
   /** Trees that drop fruit (for the test hook). */
   fruitTrees: Phaser.GameObjects.Image[] = [];
+  /** Order 19 berry bushes (for the test hook). */
+  berryBushes: Phaser.GameObjects.Image[] = [];
   /** Leaf / birch trees that yield wood (for the test hook). */
   woodTrees: Phaser.GameObjects.Image[] = [];
   /** Remaining wood hits per tree (default 5). */
@@ -88,7 +95,7 @@ export class Reacts {
             else if (tipOnce('harvest')) this.w.game.events.emit('toast', 'Wood! Keep tapping to get more.');
           }
         }
-        if (kind === 'apple' || kind === 'pear' || kind === 'fruit') { this.pickFruit(t, kind === 'pear' ? 'pear' : 'apple'); return; }
+        if (kind === 'apple' || kind === 'pear' || kind === 'fruit') { this.pickFruit(t); return; }
         if (!this.ready(t, 6000)) return;
         if (kind === 'birch' && Math.random() < 0.3) {
           this.drop(t.x + (Math.random() * 2 - 1) * 30, cy, t.y + 14, 'acorn', 'acorn');
@@ -98,36 +105,39 @@ export class Reacts {
   }
 
   /** Hang FRUIT_STOCK fruit sprites in a fruit tree's canopy (they follow its sway, fade and theme swaps). */
-  private hangFruit(t: Phaser.GameObjects.Image, frame: 'apple' | 'pear') {
+  private hangFruit(t: Phaser.GameObjects.Image, frame: 'apple' | 'pear' | 'berry', slots = FRUIT_SLOTS, max = FRUIT_STOCK, size = 0.098) {
     const w = this.w;
     // Deterministic per tree, so the fruit sit in the same places every visit.
     let seed = (Math.floor(t.x) * 73856093) ^ (Math.floor(t.y) * 19349663);
     const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
-    const start = Math.floor(rnd() * FRUIT_SLOTS.length);
+    const start = Math.floor(rnd() * slots.length);
     const dots: FruitDot[] = [];
-    for (let i = 0; i < FRUIT_STOCK; i++) {
-      const [sx, sy] = FRUIT_SLOTS[(start + i) % FRUIT_SLOTS.length];
+    for (let i = 0; i < max; i++) {
+      const [sx, sy] = slots[(start + i) % slots.length];
       const img = w.add.image(t.x, t.y, atlasOf(frame), frame).setOrigin(0.5, 0.5).setVisible(false);
-      dots.push({ img, fx: sx + (rnd() - 0.5) * 0.06, fy: sy + (rnd() - 0.5) * 0.05, size: 0.098 + rnd() * 0.012, k: 1, on: true });
+      dots.push({ img, fx: sx + (rnd() - 0.5) * 0.06, fy: sy + (rnd() - 0.5) * 0.05, size: size + rnd() * size * 0.12, k: 1, on: true });
     }
-    this.fruit.set(t, { t, stock: FRUIT_STOCK, dots, nextAt: 0 });
+    this.fruit.set(t, { t, stock: max, dots, nextAt: 0, max, frame, minor: frame === 'berry' ? 'berry' : 'apple' });
   }
 
   /** A fruit-giving tap: the newest fruit drops from the canopy as a pickup; an empty tree just rustles. */
-  private pickFruit(t: Phaser.GameObjects.Image, frame: 'apple' | 'pear') {
+  private pickFruit(t: Phaser.GameObjects.Image) {
     const rec = this.fruit.get(t);
     if (!rec || !this.ready(rec, FRUIT_TAP_MS)) return;
+    const berry = rec.minor === 'berry';
     if (rec.stock <= 0) {
-      if (tipOnce('fruitwait')) this.w.game.events.emit('toast', 'This tree needs time to grow more fruit.');
+      if (berry ? tipOnce('berrywait') : tipOnce('fruitwait')) this.w.game.events.emit('toast', berry ? 'This bush needs time to grow more berries.' : 'This tree needs time to grow more fruit.');
       return;
     }
-    if (rec.stock >= FRUIT_STOCK) rec.nextAt = this.w.time.now + this.fruitRegrowMs;
+    if (rec.stock >= rec.max) rec.nextAt = this.w.time.now + this.fruitRegrowMs;
     rec.stock--;
     const d = rec.dots[rec.stock];
     d.on = false;
     const p = this.dotPos(t, d);
     d.img.setVisible(false);
-    this.drop(p.x, p.y, t.y + 8 + Math.random() * 22, frame, 'apple');
+    // Berries hop out in front of their bush, so the pickup never hides behind it.
+    if (berry) this.drop(p.x + (p.x < t.x ? -8 : 8), p.y, t.y + 14 + Math.random() * 14, 'berry', 'berry');
+    else this.drop(p.x, p.y, t.y + 8 + Math.random() * 22, rec.frame, 'apple');
   }
 
   /** World position of a hanging fruit, following the canopy's sway and flip. */
@@ -146,7 +156,7 @@ export class Reacts {
     d.on = true;
     d.k = 0;
     w.tweens.add({ targets: d, k: 1, duration: 520, ease: 'Back.easeOut' });
-    rec.nextAt = rec.stock < FRUIT_STOCK ? w.time.now + this.fruitRegrowMs : 0;
+    rec.nextAt = rec.stock < rec.max ? w.time.now + this.fruitRegrowMs : 0;
     if (!rec.t.visible) return;
     const p = this.dotPos(rec.t, d);
     w.burst(p.x, p.y, 0xfff2a8, 6, 'spark');
@@ -156,7 +166,7 @@ export class Reacts {
   /** Keep hanging fruit glued to their (swaying, fading, culled) trees and grow fruit back over time. */
   private updateFruit(now: number) {
     for (const rec of this.fruit.values()) {
-      if (rec.stock < FRUIT_STOCK && rec.nextAt && now >= rec.nextAt) this.regrow(rec);
+      if (rec.stock < rec.max && rec.nextAt && now >= rec.nextAt) this.regrow(rec);
       const t = rec.t;
       const show = t.visible && t.active;
       for (const d of rec.dots) {
@@ -294,6 +304,25 @@ export class Reacts {
     });
   }
 
+  /** Order 19 berry bush: tap to rustle it and a berry cluster hops off (same feel as a fruit tree);
+   *  pick it up for your basket. An empty bush just rustles; berries grow back over time. */
+  berryBush(b: Phaser.GameObjects.Image) {
+    this.foliage.push(b);
+    this.berryBushes.push(b);
+    this.hangFruit(b, 'berry', BERRY_SLOTS, BERRY_STOCK, 0.27);
+    this.w.tappables.push({
+      x: () => b.x, y: () => b.y - b.displayHeight * 0.45, r: Math.max(34, b.displayWidth * 0.5), soft: true,
+      tap: () => {
+        const sw = this.w.swayerOf.get(b);
+        if (sw) sw.shake = 1.4;
+        sfx.rustle();
+        this.count();
+        this.w.burst(b.x, b.y - 18, 0x7cc463, 8, 'leaf');
+        this.pickFruit(b);
+      },
+    });
+  }
+
   rock(r: Phaser.GameObjects.Image) {
     this.w.tappables.push({
       x: () => r.x, y: () => r.y - 10, r: 26, soft: true,
@@ -380,11 +409,11 @@ export class Reacts {
       targets: p.img, x: this.w.feet.x, y: this.w.feet.y - 30, scale: p.img.scale * 0.6, duration: 320, ease: 'Sine.easeIn',
       onComplete: () => {
         this.give(p.img.x, p.img.y - 10, p.minor);
-        if (p.minor === 'apple') {
-          save.snacks = Math.min(9, save.snacks + 1);
-          persist();
+        if (p.minor === 'apple' || p.minor === 'berry') {
+          addFruit(p.minor);
           this.w.game.events.emit('snacks', save.snacks);
-          if (tipOnce('feed')) this.w.game.events.emit('toast', 'Yum! Tap an animal to feed it.');
+          if (p.minor === 'berry' && tipOnce('berry')) this.w.game.events.emit('toast', 'Berries! Feed them to animals and friends, just like fruit.');
+          else if (tipOnce('feed')) this.w.game.events.emit('toast', 'Yum! Tap an animal or a hungry friend to feed them.');
         }
         p.img.destroy();
       },
