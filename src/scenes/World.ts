@@ -1401,7 +1401,7 @@ export class WorldScene extends Phaser.Scene {
       setRes: (r: { food?: number; wood?: number; stone?: number }) => { Object.assign(save.village.res, r); self.game.events.emit('res', null, 0); },
       moveVillager: (id: number, x: number, y: number) => { const q = self.village.villagers.find((z) => z.data.id === id); if (q) { q.x = x; q.y = y; q.path = []; q.task = 'idle'; q.think = 0.2; q.clearMark(); } },
       setNeeds: (id: number, n: { food?: number; sleep?: number; fun?: number }) => { const q = self.village.villagers.find((x) => x.data.id === id); if (q) Object.assign(q.data, n); },
-      setTheme: (id: 'spring' | 'halloween' | 'fall' | 'classic') => setTheme(id),
+      setTheme: (id: 'spring' | 'halloween' | 'fall' | 'christmas' | 'classic') => setTheme(id),
       /** Every live particle's frame, per emitter, in the world + wild scenes (art-management checks). */
       particleFrames() {
         const out: { scene: string; tex: string; frame: string; frameTex: string }[] = [];
@@ -1451,6 +1451,15 @@ export class WorldScene extends Phaser.Scene {
         return { theme: theme.id, autumn, petal, soundscape: theme.soundscape.id,
           leafPiles: d.leafPiles.filter((p) => p.visible).map((p) => [r(p.x), r(p.y - 10)]), hay: d.hay.filter((p) => p.visible).map((p) => [r(p.x), r(p.y - 16)]),
           goldTufts: tufts.filter((t) => t.isTinted).length, tufts: tufts.length, taps: { leaves: d.taps.leaves, hay: d.taps.hay } };
+      },
+      /** Test hook (Christmas): frosted canopies, which particle emitter runs, soundscape. */
+      christmas() {
+        const fr = theme.frost;
+        let frosted = 0;
+        if (fr) for (const c of self.canopies) if (c.visible && [fr.leafy, fr.pine, fr.birch, fr.fruit].includes((c as any).tintTopLeft ?? (c as any).tint)) frosted++;
+        let petal = '';
+        for (const [f, e] of self.petalBy) if (e.emitting) petal = f;
+        return { theme: theme.id, frosted, petal, soundscape: theme.soundscape.id };
       },
       villageEvent: (e: 'merchant' | 'rain' | 'festival') => self.village.start(e),
       mount: () => self.mount.snapshot(),

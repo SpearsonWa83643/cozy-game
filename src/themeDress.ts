@@ -359,6 +359,7 @@ export class ThemeDresser {
         }
         if (t.id === 'halloween') img.setTint(fruity ? 0xf7c0a0 : f.startsWith('pine') ? 0x9c88c0 : f.startsWith('birch') ? 0xffc27a : t.foliage ?? 0xffffff);
         else if (t.autumn) img.setTint(fruity ? t.autumn.fruit : f.startsWith('pine') ? t.autumn.pine : f.startsWith('birch') ? t.autumn.birch : t.autumn.tints[(i * 7 + Math.floor(img.x)) % t.autumn.tints.length]);
+        else if (t.frost) img.setTint(fruity ? t.frost.fruit : f.startsWith('pine') ? t.frost.pine : f.startsWith('birch') ? t.frost.birch : t.frost.leafy);
         else if (t.blossom && round && i % t.blossom.every === 0) img.setTint(0xfff2f4);
         else img.clearTint();
       }
@@ -393,7 +394,7 @@ export class ThemeDresser {
     const [pollen] = w.ambient;
     pollen?.updateConfig({ tint: t.particles.pollen } as any);
     // Each theme's petal/leaf frame has its own emitter on the right atlas page; only one runs.
-    const petals = w.makePetals(t.particles.petal, t.particles.petalTint, t.id === 'halloween' ? 300 : t.id === 'spring' ? 380 : t.id === 'fall' ? 260 : 700);
+    const petals = w.makePetals(t.particles.petal, t.particles.petalTint, t.id === 'halloween' ? 300 : t.id === 'spring' ? 380 : t.id === 'fall' ? 260 : t.id === 'christmas' ? 140 : 700);
     for (const [f, e] of w.petalBy) { const on = e === petals; e.emitting = on; if (!on) e.killAll(); e.setVisible(on); }
     w.petals = petals;
     for (const e of w.fireflies) e.updateConfig({ tint: t.particles.firefly } as any);
@@ -405,8 +406,8 @@ export class ThemeDresser {
     sfx.setSoundscape(t.soundscape);
     if (live) {
       w.ground.restyle();
-      w.cameras.main.flash(400, t.id === 'halloween' ? 120 : 255, t.id === 'halloween' ? 80 : t.id === 'fall' ? 200 : 245, t.id === 'halloween' ? 160 : t.id === 'fall' ? 140 : 220);
-      w.burst(w.feet.x, w.feet.y - 30, t.id === 'halloween' ? 0xffa040 : t.id === 'spring' ? 0xffc4dc : t.id === 'fall' ? 0xff9a4a : 0x9be07a, 30, t.id === 'halloween' ? 'spark' : 'leaf');
+      w.cameras.main.flash(400, t.id === 'halloween' ? 120 : 255, t.id === 'halloween' ? 80 : t.id === 'fall' ? 200 : 245, t.id === 'halloween' ? 160 : t.id === 'fall' ? 140 : t.id === 'christmas' ? 255 : 220);
+      w.burst(w.feet.x, w.feet.y - 30, t.id === 'halloween' ? 0xffa040 : t.id === 'spring' ? 0xffc4dc : t.id === 'fall' ? 0xff9a4a : t.id === 'christmas' ? 0xffffff : 0x9be07a, 30, t.id === 'halloween' ? 'spark' : t.id === 'christmas' ? 'p_snow' : 'leaf');
     }
   }
 

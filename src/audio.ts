@@ -199,6 +199,15 @@ class Synth {
       const k = 5 + Math.floor(Math.random() * 7);
       let w = 0;
       for (let i = 0; i < k; i++) { const f = 900 + Math.random() * 2200; tone(f, f * 0.4, w, 0.018 + Math.random() * 0.02, 0.008 * v, 'square'); w += 0.04 + Math.random() * 0.16; }
+    } else if (e.kind === 'sleighbells') {
+      // Sleigh bells jingling past: a soft shaken run of bright little bell tings, swelling and fading.
+      const k = 10 + Math.floor(Math.random() * 8);
+      let w = 0;
+      for (let i = 0; i < k; i++) {
+        const sw = Math.sin((i / (k - 1)) * Math.PI), f = 2600 + Math.random() * 1500;
+        tone(f, f * 0.97, w, 0.09, (0.004 + 0.008 * sw) * v, 'triangle'); tone(f * 1.5, f * 1.46, w + 0.01, 0.05, 0.002 * sw * v);
+        w += 0.06 + Math.random() * 0.07;
+      }
     } else {
       // Tiny wind chimes in D minor.
       const ns = [86, 89, 93, 88, 91];

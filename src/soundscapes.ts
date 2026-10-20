@@ -3,7 +3,7 @@
 
 export type Chord = { bass: number; pad: number[]; mel: number[] };
 /** An occasional ambient sound and how often it plays (seconds between, random in range). */
-export type Extra = { kind: 'owl' | 'creak' | 'chimes' | 'birds' | 'cuckoo' | 'drops' | 'geese' | 'crackle'; every: [number, number]; vol: number };
+export type Extra = { kind: 'owl' | 'creak' | 'chimes' | 'birds' | 'cuckoo' | 'drops' | 'geese' | 'crackle' | 'sleighbells'; every: [number, number]; vol: number };
 export type Soundscape = {
   id: string;
   chords: Chord[];
@@ -93,5 +93,26 @@ export const FALL: Soundscape = {
     { bass: 44, pad: [51, 56, 60, 63, 67], mel: [72, 75, 79, 80] },                  // Ab6/9
     { bass: 41, pad: [51, 56, 60, 63], mel: [72, 75, 77, 80] },                      // Fm9
     { bass: 46, pad: [50, 53, 58, 62, 65], mel: [70, 74, 77, 82] },                  // Bb
+  ],
+};
+
+/** Christmas: a twinkly G-major music box (like a snow globe), soft cold breeze, sleigh bells
+ *  jingling past now and then, a cozy fireside crackle and a few tiny wind chimes. */
+export const CHRISTMAS: Soundscape = {
+  id: 'christmas', lead: 'musicbox', dens: 0.9, pad: 1.0, bright: 1.05, wind: 0.45,
+  extras: [
+    { kind: 'sleighbells', every: [16, 32], vol: 0.6 },
+    { kind: 'crackle', every: [14, 26], vol: 0.5 },
+    { kind: 'chimes', every: [26, 46], vol: 0.4 },
+  ],
+  chords: [
+    { bass: 43, pad: [55, 59, 62, 66, 69], mel: [71, 74, 76, 79, 81] },              // Gmaj9
+    { bass: 40, pad: [52, 55, 59, 62, 66], mel: [71, 74, 76, 79] },                  // Em9
+    { bass: 36, pad: [52, 55, 59, 64, 67], mel: [72, 74, 76, 79] },                  // Cmaj7(9)
+    { bass: 38, pad: [50, 54, 57, 60, 64], mel: [69, 72, 74, 78] },                  // D9
+    { bass: 47, pad: [50, 55, 59, 62], mel: [71, 74, 79, 83] },                      // G/B
+    { bass: 45, pad: [52, 55, 60, 64], mel: [72, 76, 79, 81] },                      // Am7
+    { bass: 36, pad: [52, 55, 60, 64, 69], mel: [72, 76, 79, 81] },                  // C6/9
+    { bass: 38, pad: [50, 54, 57, 62, 66], mel: [69, 74, 78, 81] },                  // D
   ],
 };
