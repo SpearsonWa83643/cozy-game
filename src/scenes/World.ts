@@ -1459,7 +1459,9 @@ export class WorldScene extends Phaser.Scene {
         if (fr) for (const c of self.canopies) if (c.visible && [fr.leafy, fr.pine, fr.birch, fr.fruit].includes((c as any).tintTopLeft ?? (c as any).tint)) frosted++;
         let petal = '';
         for (const [f, e] of self.petalBy) if (e.emitting) petal = f;
-        return { theme: theme.id, frosted, petal, soundscape: theme.soundscape.id };
+        let caps = 0;
+        for (const [img, cap] of self.dresser.snowcaps) if (cap.visible && img.visible) caps++;
+        return { theme: theme.id, frosted, caps, petal, soundscape: theme.soundscape.id };
       },
       villageEvent: (e: 'merchant' | 'rain' | 'festival') => self.village.start(e),
       mount: () => self.mount.snapshot(),

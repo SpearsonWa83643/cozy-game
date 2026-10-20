@@ -1,6 +1,6 @@
 // Christmas theme art: the little Christmas-tree theme icon and the falling snowflake particle.
 import Phaser from 'phaser';
-import { Ctx, canvasTex, hsl, dab } from '../art';
+import { Ctx, canvasTex, hsl, dab, mulberry32, rr } from '../art';
 
 /** Theme toggle icon: a small decorated Christmas tree with a gold star and red/gold/blue baubles. */
 function paintXmasIcon(c: Ctx, w: number) {
@@ -41,7 +41,27 @@ function paintSnowflake(c: Ctx, w: number) {
   }
 }
 
+/** A lumpy snow cap (100x60) that sits on top of a round canopy: bright white heaps on top, soft
+ *  blue-grey shade underneath and a few drips hanging over the leaves. */
+function paintSnowCap(c: Ctx, w: number, h: number) {
+  const rng = mulberry32(7741);
+  // Under-shade first (peeks out below the white).
+  for (let i = 0; i < 12; i++) { const x = rr(rng, w * 0.14, w * 0.86); dab(c, x, h * 0.62 + rr(rng, -3, 3), rr(rng, 8, 13), rr(rng, 5, 8), 0, hsl(205, 36, 82)); }
+  // Drips hanging over the edge.
+  for (let i = 0; i < 7; i++) { const x = rr(rng, w * 0.18, w * 0.82); dab(c, x, h * 0.7 + rr(rng, 0, 6), rr(rng, 2.4, 4), rr(rng, 4, 8), 0, hsl(205, 30, 90)); }
+  // Main heaps: a dome of overlapping round lumps, brighter toward the top.
+  for (let i = 0; i < 26; i++) {
+    const t = i / 26, x = w / 2 + rr(rng, -1, 1) * w * 0.4 * (1 - t * 0.5);
+    const top = h * 0.24 + Math.pow((x - w / 2) / (w * 0.46), 2) * h * 0.3;
+    const y = rr(rng, top, h * 0.58);
+    dab(c, x, y, rr(rng, 9, 15), rr(rng, 6, 10), 0, hsl(205, 30, 93 + t * 6));
+  }
+  // Sparkly highlights.
+  for (let i = 0; i < 9; i++) dab(c, rr(rng, w * 0.25, w * 0.75), rr(rng, h * 0.25, h * 0.45), rr(rng, 3, 6), rr(rng, 1.6, 3), 0, hsl(0, 0, 100));
+}
+
 export function paintChristmasArt(scene: Phaser.Scene) {
+  canvasTex(scene, 'x_snowcap', 100, 60, (c) => paintSnowCap(c, 100, 60));
   canvasTex(scene, 'i_xmas', 48, 48, (c) => paintXmasIcon(c, 48), 2);
   canvasTex(scene, 'p_snow', 12, 12, (c) => paintSnowflake(c, 12), 3);
 }

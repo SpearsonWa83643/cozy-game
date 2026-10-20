@@ -19,6 +19,8 @@ export class ThemeDresser {
   orig = new Map<Phaser.GameObjects.Image, Orig>();
   /** Spring blossom clusters painted over some round canopies (made once, shown per theme). */
   blooms = new Map<Phaser.GameObjects.Image, Phaser.GameObjects.Image[]>();
+  /** Christmas snow caps sitting on round canopies (made once, shown per theme). */
+  snowcaps = new Map<Phaser.GameObjects.Image, Phaser.GameObjects.Image>();
   sky: Phaser.GameObjects.Image;
   fog: { img: Phaser.GameObjects.Image; ox: number; oy: number; v: number }[] = [];
   props: Phaser.GameObjects.Image[] = [];
@@ -352,7 +354,7 @@ export class ThemeDresser {
       } else {
         // Spring has no autumn trees: the amber tree4 becomes its fresh-green twin (same silhouette).
         // Fall turns every leafy round tree into the amber autumn tree4 (tinted red/orange/gold below).
-        const want = t.id === 'spring' && f === 'tree4' ? 'tree4s' : t.autumn && round && f.startsWith('tree') ? 'tree4' : f;
+        const want = t.id === 'spring' && f === 'tree4' ? 'tree4s' : t.autumn && round && f.startsWith('tree') ? 'tree4' : t.frost && round && (f === 'tree3' || f === 'tree4') ? 'tree4s' : f;
         if (img.frame.name !== want) {
           if (want === f) img.setTexture(o.tex, f).setOrigin(o.ox, o.oy).setScale(o.sx, o.sy);
           else img.setTexture(atlasOf(want), want).setOrigin(o.ox, o.oy).setScale(o.sx, o.sy);
@@ -383,6 +385,16 @@ export class ThemeDresser {
         this.blooms.set(img, bl);
       }
       if (bl) for (const p of bl) p.setVisible(bloom);
+      // Christmas: a soft white snow cap on top of every round leafy canopy.
+      const capOn = !!t.frost && round && !t.trees;
+      let cap = this.snowcaps.get(img);
+      if (capOn && !cap) {
+        const b = img.getBounds();
+        cap = w.add.image(b.centerX, b.y + b.height * 0.2, atlasOf('x_snowcap'), 'x_snowcap')
+          .setDisplaySize(b.width * 0.84, b.height * 0.34).setFlipX((Math.floor(img.x) & 1) === 1).setDepth(img.depth + 0.02);
+        this.snowcaps.set(img, cap);
+      }
+      if (cap) cap.setVisible(capOn);
     }
     w.reacts.restyleStumps();
     for (const b of w.reacts.foliage) { if (t.foliage) b.setTint(t.foliage); else b.clearTint(); }
@@ -420,6 +432,11 @@ export class ThemeDresser {
       const on = img.active && img.visible && bl[0]?.visible !== undefined;
       const a = on ? 0.92 * img.alpha : 0;
       if (bl[0] && bl[0].alpha !== a) for (const p of bl) p.setAlpha(a);
+    }
+    // Snow caps follow their canopy too (chopped trees lose them, see-through fades carry over).
+    if (theme.frost) for (const [img, cap] of this.snowcaps) {
+      const a = img.active && img.visible ? img.alpha : 0;
+      if (cap.alpha !== a) cap.setAlpha(a);
     }
     if (theme.fog) {
       const v = cam.worldView;

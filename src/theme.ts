@@ -135,9 +135,10 @@ const christmas: Theme = {
   id: 'christmas', name: 'Christmas', icon: 'i_xmas',
   // Snowy Christmas: grass is buried under soft, slightly blue-white snow; paths stay as warm
   // trodden earth so the way home still reads clearly.
-  ground: (h, s, l) => (h > 60 && h < 170 ? [205, s * 0.22, Math.min(l * 0.55 + 46, 95)] : [h - 4, s * 0.8, Math.min(l * 1.02, 88)]),
+  ground: (h, s, l) => (h > 60 && h < 170 ? [206, Math.min(30, s * 0.4 + 8), Math.min(l * 0.3 + 66, 95)] : [h - 4, s * 0.8, Math.min(l * 1.02, 88)]),
   foliage: 0xe4f2f4, trees: null, blossom: null,
-  frost: { leafy: 0xdcecf2, pine: 0x6fa888, birch: 0xf2f6f8, fruit: 0xf4f0ea },
+  frost: { leafy: 0xcfe6e0, pine: 0x6fa888, birch: 0xf2f6f8, fruit: 0xf4f0ea },
+  grass: 0xcfe4e8, // frosty, snow-dusted grass tufts
   sky: null,
   fog: { tint: 0xeaf4ff, alpha: 0.1 }, // a cold, soft snowy haze
   // Falling snowflakes; the fireflies become twinkly red/green/gold fairy lights.
