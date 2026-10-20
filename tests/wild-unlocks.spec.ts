@@ -36,7 +36,10 @@ test('wild unlocks: glow scarf, ranger coat, then mount treasures; outfits weara
     await expect.poll(async () => (await wild(page)).on, { timeout: 90_000, intervals: [500] }).toBe(true);
     await page.waitForTimeout(1500);
     await closeDialogs(page);
-    const chest = (await wild(page)).chests[0];
+    // Clothes come from the regular chest; mounts from the glowing lunchbox near the start.
+    const chests = (await wild(page)).chests;
+    const chest = id.endsWith('_cap') || id === 'glow_scarf' || id === 'ranger_coat' ? chests.find((c: any) => !c.lunchbox) : chests.find((c: any) => c.lunchbox);
+    expect(chest).toBeTruthy();
     // Standing on the chest opens it.
     await page.evaluate(([x, y]) => (window as any).__cozy.wildTeleport(x, y + 20), [chest.x, chest.y]);
     await expect.poll(async () => (await wild(page)).found, { timeout: 60_000, intervals: [400] }).toContain(id);

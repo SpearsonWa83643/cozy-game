@@ -830,6 +830,42 @@ function paintBrambles(ctx: Ctx, w: number, h: number) {
   }
 }
 
+/**
+ * Lunchbox (the glowing mount box in the Wild Woods). Body and lid are painted near-white with soft
+ * shading so each theme can tint them; the latch is gold and stays untinted. 64 x 36 body, 64 x 30 lid.
+ */
+function paintLunchboxBody(ctx: Ctx, w: number, h: number) {
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, hsl(0, 0, 100)); g.addColorStop(1, hsl(0, 0, 78));
+  ctx.beginPath(); ctx.roundRect(3, 1, w - 6, h - 4, [4, 4, 12, 12]); ctx.fillStyle = g; ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = hsl(0, 0, 45); ctx.stroke();
+  // Rim band and a cheery star sticker.
+  ctx.fillStyle = hsl(0, 0, 62); ctx.fillRect(4, 2, w - 8, 5);
+  ctx.save(); ctx.translate(w * 0.72, h * 0.56); ctx.beginPath();
+  for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 4 : 9; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); }
+  ctx.closePath(); ctx.fillStyle = hsl(0, 0, 100); ctx.fill(); ctx.lineWidth = 1.5; ctx.strokeStyle = hsl(0, 0, 55); ctx.stroke(); ctx.restore();
+  dab(ctx, w * 0.24, h * 0.5, 7, 5, 0, hsl(0, 0, 100, 0.8));
+}
+function paintLunchboxLid(ctx: Ctx, w: number, h: number) {
+  // Handle arc on top.
+  ctx.lineCap = 'round'; ctx.lineWidth = 7; ctx.strokeStyle = hsl(0, 0, 45);
+  ctx.beginPath(); ctx.moveTo(w / 2 - 14, 16); ctx.quadraticCurveTo(w / 2, -6, w / 2 + 14, 16); ctx.stroke();
+  ctx.lineWidth = 4; ctx.strokeStyle = hsl(0, 0, 92);
+  ctx.beginPath(); ctx.moveTo(w / 2 - 14, 16); ctx.quadraticCurveTo(w / 2, -6, w / 2 + 14, 16); ctx.stroke();
+  // Domed lid.
+  const g = ctx.createLinearGradient(0, 12, 0, h);
+  g.addColorStop(0, hsl(0, 0, 100)); g.addColorStop(1, hsl(0, 0, 84));
+  ctx.beginPath(); ctx.roundRect(2, 13, w - 4, h - 14, [12, 12, 3, 3]); ctx.fillStyle = g; ctx.fill();
+  ctx.lineWidth = 3; ctx.strokeStyle = hsl(0, 0, 45); ctx.stroke();
+  dab(ctx, w * 0.3, 18, 12, 2.5, 0, hsl(0, 0, 100, 0.95));
+}
+function paintLunchboxLatch(ctx: Ctx, w: number, h: number) {
+  ctx.beginPath(); ctx.roundRect(1, 1, w - 2, h - 2, 3);
+  const g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, hsl(48, 95, 70)); g.addColorStop(1, hsl(36, 85, 45));
+  ctx.fillStyle = g; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = hsl(30, 60, 28); ctx.stroke();
+  dab(ctx, w / 2, h * 0.62, 2, 2, 0, hsl(30, 60, 25));
+}
+
 function paintChest(ctx: Ctx, w: number, h: number, open: boolean) {
   const cx = w / 2;
   const bodyTop = h - 30;
@@ -1175,6 +1211,9 @@ export function paintAll(scene: Phaser.Scene) {
   canvasTex(scene, 'brambles', 130, 96, (c) => paintBrambles(c, 130, 96));
   canvasTex(scene, 'chest_closed', 60, 50, (c) => paintChest(c, 60, 50, false));
   canvasTex(scene, 'chest_open', 60, 50, (c) => paintChest(c, 60, 50, true));
+  canvasTex(scene, 'lunchbox_body', 64, 36, (c) => paintLunchboxBody(c, 64, 36));
+  canvasTex(scene, 'lunchbox_lid', 64, 30, (c) => paintLunchboxLid(c, 64, 30));
+  canvasTex(scene, 'lunchbox_latch', 14, 16, (c) => paintLunchboxLatch(c, 14, 16));
   canvasTex(scene, 'feather', 30, 44, (c) => paintFeather(c, 30, 44));
   canvasTex(scene, 'sign', 56, 64, (c) => paintSign(c, 56, 64));
   canvasTex(scene, 'fence', 52, 34, (c) => paintFence(c, 52, 34));

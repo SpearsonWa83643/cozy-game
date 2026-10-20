@@ -4,6 +4,7 @@ import Phaser from 'phaser';
 import { ATLAS, S, atlasOf, frameScale, TREE_SCALE, PICKUP_BUBBLE, PICKUP_ICON } from '../art';
 import { save, addTreasure, hasTreasure, addMinor } from '../save';
 import { TREASURES, WILD_SET, WILD_MOUNTS } from '../catalog';
+import { MOUNTS } from '../mount/defs';
 import { sfx } from '../audio';
 import { theme, themeEvents } from '../theme';
 import { generateWild, inPond, WildMap, WILD_W, WILD_H } from '../wild/gen';
@@ -19,6 +20,17 @@ const treeFrame = (v: number) => { const f = TREE_FRAMES[v % TREE_FRAMES.length]
 
 /** Gentle monsters, bopping and loot in the Wild Woods. */
 export const WILD_COMBAT = true;
+
+type WildChest = { img: Phaser.GameObjects.Image; x: number; y: number; opened: boolean; lunchbox?: { lid: Phaser.GameObjects.Image; latch: Phaser.GameObjects.Image; fx: Phaser.GameObjects.GameObject[] } };
+
+/** Lunchbox colour per theme (multiplied onto the white-painted box). */
+const LUNCHBOX_TINT: Record<string, [number, number]> = {
+  classic: [0xff6f61, 0xe0443a], spring: [0x8fdcff, 0x52b4f0], fall: [0xffa040, 0xe0702a],
+  halloween: [0xb488ff, 0x8a55e8], christmas: [0xff5a5a, 0x3fae5a], winter: [0x9fd8ff, 0x6aaee8], summer: [0xffd84a, 0xffa030],
+};
+
+/** Next mount treasure you don't own yet (and haven't found this trip). */
+const nextMountTreasure = (found: string[]) => WILD_MOUNTS.find((id) => !hasTreasure(id) && !found.includes(id));
 
 export class WildScene extends Phaser.Scene {
   map!: WildMap;
@@ -56,7 +68,7 @@ export class WildScene extends Phaser.Scene {
   bag: Record<string, number> = { glowmoss: 0, starshard: 0 };
   found: string[] = [];
   pickups: { img: Phaser.GameObjects.Image; glow: Phaser.GameObjects.Image; bub: Phaser.GameObjects.Image; kind: string; x: number; y: number; taken: boolean }[] = [];
-  chests: { img: Phaser.GameObjects.Image; x: number; y: number; opened: boolean }[] = [];
+  chests: WildChest[] = [];
   swings = 0;
 
   constructor() { super('wild'); }
@@ -109,6 +121,8 @@ export class WildScene extends Phaser.Scene {
       this.chests.push({ img, x: c.x, y: c.y, opened: false });
       this.solid(c.x, c.y - 8, 16);
     }
+    // The glowing mount lunchbox: near the arrival point every trip while a mount is still to find.
+    if (WILD_COMBAT && nextMountTreasure([])) this.buildLunchbox(m.lunchbox.x, m.lunchbox.y);
 
     // Player.
     this.feet = this.add.zone(m.start.x, m.start.y, 20, 12);
@@ -200,6 +214,54 @@ export class WildScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(hal ? '#20262a' : theme.id === 'fall' ? '#5a5430' : '#3c5a32');
     for (const mo of this.monsters) mo.retheme();
     this.events.emit('theme');
+  }
+
+  /** A bright, softly glowing lunchbox with sparkles and a little mount bubble: it always holds a new mount. */
+  buildLunchbox(x: number, y: number) {
+    const fx: Phaser.GameObjects.GameObject[] = [];
+    const [top, bot] = LUNCHBOX_TINT[theme.id] ?? LUNCHBOX_TINT.classic;
+    const SC = 1.25;
+    fx.push(this.add.image(x, y, ATLAS, 'shadow').setScale(76 / 64 / (frameScale.shadow ?? 1)).setDepth(-500).setAlpha(0.8));
+    const halo = this.add.image(x, y - 26, ATLAS, 'glow').setBlendMode('ADD').setTint(theme.id === 'halloween' ? 0xffb050 : 0xffe27a).setDepth(y - 1).setScale(2.4 / (frameScale.glow ?? 1));
+    this.tweens.add({ targets: halo, alpha: { from: 0.55, to: 1 }, scale: { from: halo.scale * 0.88, to: halo.scale * 1.08 }, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    fx.push(halo);
+    const img = this.img(x, y, 'lunchbox_body', SC).setDepth(y).setTint(top, top, bot, bot);
+    const bodyTop = y - 34 * SC;
+    const lid = this.img(x, bodyTop + 4 * SC, 'lunchbox_lid', SC).setDepth(y + 0.2).setTint(top, top, top, top);
+    const latch = this.img(x, bodyTop + 10 * SC, 'lunchbox_latch', SC).setDepth(y + 0.3);
+    // A happy little bounce so it reads as "special" from far away.
+    this.tweens.add({ targets: [img, lid, latch], y: '-=5', duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    const spark = this.add.particles(x, y - 30, ATLAS3, { frame: 'w_star', x: { min: -38, max: 38 }, y: { min: -30, max: 14 }, speedY: { min: -40, max: -15 }, lifespan: 1100, scale: { start: 0.16, end: 0 }, alpha: { start: 1, end: 0 }, frequency: 180, blendMode: 'ADD' } as any).setDepth(y + 1);
+    fx.push(spark);
+    // Thought bubble with the next mount's icon, bobbing above the handle.
+    const def = MOUNTS.find((d) => d.treasure === nextMountTreasure([]));
+    const sz = 64;
+    const by = y - 76;
+    const bub = this.add.image(x, by, atlasOf('pk_bubble'), 'pk_bubble').setOrigin(0.5, 1).setDisplaySize(sz, sz).setDepth(y + 2);
+    const icKey = def?.icon ?? 'i_eagle';
+    const ic = this.add.image(x, by - sz / 2, atlasOf(icKey), icKey).setDepth(y + 3);
+    ic.setScale(40 / Math.max(ic.width, ic.height));
+    this.tweens.add({ targets: [bub, ic], y: '-=8', duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    fx.push(bub, ic);
+    this.chests.push({ img, x, y, opened: false, lunchbox: { lid, latch, fx } });
+    this.solid(x, y - 8, 20);
+  }
+
+  /** Lid pops up and flips back, sparkles burst, then the treasure floats out (see openChest). */
+  openLunchbox(c: WildChest) {
+    const lb = c.lunchbox!;
+    this.tweens.killTweensOf([c.img, lb.lid, lb.latch]);
+    const baseY = c.y;
+    c.img.setY(baseY);
+    lb.latch.setY(baseY - 34 * 1.25 + 10 * 1.25);
+    this.tweens.add({ targets: lb.latch, y: '+=6', angle: 70, alpha: 0.9, duration: 160 });
+    lb.lid.setY(baseY - 34 * 1.25 + 4 * 1.25).setOrigin(0.5, 1);
+    this.tweens.add({ targets: lb.lid, y: '-=34', angle: -28, x: c.x - 14, duration: 260, ease: 'Back.easeOut',
+      onComplete: () => this.tweens.add({ targets: lb.lid, y: '+=14', angle: -62, x: c.x - 34, duration: 380, ease: 'Bounce.easeOut' }) });
+    this.tweens.add({ targets: c.img, scaleX: c.img.scaleX * 1.12, scaleY: c.img.scaleY * 0.9, duration: 120, yoyo: true });
+    const burst2 = this.add.particles(c.x, c.y - 40, ATLAS3, { frame: 'w_star', speed: { min: 120, max: 260 }, angle: { min: 200, max: 340 }, lifespan: 1000, scale: { start: 0.26, end: 0 }, gravityY: 160, emitting: false, blendMode: 'ADD' } as any).setDepth(9001);
+    burst2.explode(30); this.time.delayedCall(1300, () => burst2.destroy());
+    for (const o of lb.fx) { if (o instanceof Phaser.GameObjects.Particles.ParticleEmitter) o.stop(); else { this.tweens.killTweensOf(o); this.tweens.add({ targets: o, alpha: 0, duration: 600, delay: 400 }); } }
   }
 
   /** Nav grid over the woods: every solid collider plus the ponds, exactly like the glade. */
@@ -321,14 +383,20 @@ export class WildScene extends Phaser.Scene {
     }
   }
 
-  openChest(c: { img: Phaser.GameObjects.Image; x: number; y: number; opened: boolean }) {
+  openChest(c: WildChest) {
     if (c.opened) return;
     c.opened = true;
-    c.img.setTexture(atlasOf('chest_open'), 'chest_open');
+    if (c.lunchbox) this.openLunchbox(c);
+    else {
+      c.img.setTexture(atlasOf('chest_open'), 'chest_open');
+      this.tweens.add({ targets: c.img, scaleY: c.img.scaleY * 1.12, duration: 120, yoyo: true });
+    }
     sfx.sparkle();
-    this.tweens.add({ targets: c.img, scaleY: c.img.scaleY * 1.12, duration: 120, yoyo: true });
-    const next = WILD_SET.find((id) => !hasTreasure(id) && !this.found.includes(id))
-      ?? WILD_MOUNTS.find((id) => !hasTreasure(id) && !this.found.includes(id));
+    // The lunchbox always gives the next mount. Regular chests give clothes, then (once the
+    // lunchbox is open this trip) the next mount too, then star shards.
+    const mountOpened = this.chests.some((x) => x.lunchbox && x.opened) || !this.chests.some((x) => x.lunchbox);
+    const next = c.lunchbox ? nextMountTreasure(this.found)
+      : WILD_SET.find((id) => !hasTreasure(id) && !this.found.includes(id)) ?? (mountOpened ? nextMountTreasure(this.found) : undefined);
     const burst = this.add.particles(c.x, c.y - 30, ATLAS3, { frame: 'w_star', speed: { min: 60, max: 180 }, lifespan: 900, scale: { start: 0.2, end: 0 }, gravityY: 80, emitting: false } as any).setDepth(9001);
     burst.explode(20); this.time.delayedCall(1200, () => burst.destroy());
     if (next) {
@@ -338,7 +406,10 @@ export class WildScene extends Phaser.Scene {
       const ic = this.add.image(c.x, c.y - 40, atlasOf(t.icon), t.icon).setDepth(9002).setScale(1 / (frameScale[t.icon] ?? 2));
       this.tweens.add({ targets: ic, y: c.y - 110, scale: ic.scale * 1.6, duration: 700, ease: 'Back.easeOut', onComplete: () => this.tweens.add({ targets: ic, alpha: 0, delay: 1400, duration: 400, onComplete: () => ic.destroy() }) });
       const mountLoot = WILD_MOUNTS.includes(next);
-      this.events.emit('toast', mountLoot ? `${t.name}! Tap Call Mount to ride!` : `${t.name}! Try it on at home!`);
+      if (mountLoot) {
+        const def = MOUNTS.find((d) => d.treasure === next);
+        this.events.emit('newMount', { name: def?.name ?? t.name, icon: def?.icon ?? t.icon, treasure: t.name });
+      } else this.events.emit('toast', `${t.name}! Try it on at home!`);
       this.events.emit('treasure', next);
     } else {
       this.bag.starshard += 3;
@@ -390,7 +461,7 @@ export class WildScene extends Phaser.Scene {
   testState() {
     return {
       path: this.path.length, chasing: !!this.chase, speed: Math.round(Math.hypot(this.body.velocity.x, this.body.velocity.y)), stick: !!this.stick,
-      hearts: this.hearts, bag: { ...this.bag }, found: [...this.found], pickups: this.pickups.filter((p) => !p.taken).map((p) => ({ kind: p.kind, x: Math.round(p.x), y: Math.round(p.y) })), chests: this.chests.map((c) => ({ x: c.x, y: c.y, opened: c.opened })), monsters: this.monsters.filter((m) => m.alive).length, total: this.monsters.length, poofs: this.runPoofs, swings: this.swings,
+      hearts: this.hearts, bag: { ...this.bag }, found: [...this.found], pickups: this.pickups.filter((p) => !p.taken).map((p) => ({ kind: p.kind, x: Math.round(p.x), y: Math.round(p.y) })), chests: this.chests.map((c) => ({ x: c.x, y: c.y, opened: c.opened, lunchbox: !!c.lunchbox })), start: [this.map.start.x, this.map.start.y], monsters: this.monsters.filter((m) => m.alive).length, total: this.monsters.length, poofs: this.runPoofs, swings: this.swings,
       mons: this.monsters.filter((m) => m.alive).map((m) => ({ id: m.id, x: Math.round(m.x), y: Math.round(m.y), kind: m.kind, hp: m.hp })),
     };
   }

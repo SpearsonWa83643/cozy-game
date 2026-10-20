@@ -19,6 +19,8 @@ export type WildMap = {
   props: WildProp[];
   monsters: WildMonsterSpawn[];
   chests: { x: number; y: number }[];
+  /** The glowing mount lunchbox: a short, easy walk from the arrival point, just off the trail. */
+  lunchbox: { x: number; y: number };
 };
 
 /** Distance from a point to a polyline. */
@@ -116,5 +118,26 @@ export function generateWild(seed: number): WildMap {
     }
   });
   const chests = [{ x: corner.x, y: corner.y }];
-  return { seed, w: W, h: H, start, exit, paths, ponds, clearings: [...clearings, corner], props, monsters, chests };
+  const lunchbox = placeLunchbox(start, main, ponds, props);
+  return { seed, w: W, h: H, start, exit, paths, ponds, clearings: [...clearings, corner], props, monsters, chests, lunchbox };
+}
+
+/** First trail point ~170px from the start, nudged just off the trail onto open, dry ground. */
+function placeLunchbox(start: { x: number; y: number }, main: [number, number][], ponds: WildPond[], props: WildProp[]) {
+  const solid = (x: number, y: number) => props.some((p) => p.kind !== 'fern' && p.kind !== 'flower' && p.kind !== 'shroom' && Math.hypot(p.x - x, p.y - y) < 56);
+  const ok = (x: number, y: number) => x > 80 && y > 120 && x < WILD_W - 80 && y < WILD_H - 80 && !inPond(ponds, x, y, 50) && !solid(x, y);
+  for (let i = 1; i < main.length; i++) {
+    const [x, y] = main[i];
+    const d = Math.hypot(x - start.x, y - start.y);
+    if (d < 165) continue;
+    const [px, py] = main[i - 1];
+    const len = Math.hypot(x - px, y - py) || 1;
+    const nx = -(y - py) / len, ny = (x - px) / len;
+    for (const off of [-46, 46, -30, 30, 0]) {
+      const cx = Math.round(x + nx * off), cy = Math.round(y + ny * off);
+      if (ok(cx, cy)) return { x: cx, y: cy };
+    }
+    if (d > 320) break;
+  }
+  return { x: Math.round(start.x + 170), y: Math.round(start.y) };
 }

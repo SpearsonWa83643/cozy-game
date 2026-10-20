@@ -100,6 +100,7 @@ export class WildUIScene extends Phaser.Scene {
     this.toastText = this.add.text(0, 0, '', { fontFamily: FONT, fontSize: '20px', fontStyle: '800', color: INK }).setOrigin(0.5).setResolution(DPR * 2);
     this.toastC.add([this.toastBg, this.toastText]);
     this.wild.events.on('toast', this.toast, this);
+    this.wild.events.on('newMount', this.newMount, this);
 
     this.paintButtons();
     if (!WILD_COMBAT) { this.heartsC.setVisible(false); this.atkC.setVisible(false); this.bagC.setVisible(false); }
@@ -108,7 +109,7 @@ export class WildUIScene extends Phaser.Scene {
     themeEvents.on('change', this.onTheme);
     this.events.once('shutdown', () => {
       this.scale.off('resize', this.layout, this); themeEvents.off('change', this.onTheme);
-      this.wild.events.off('toast', this.toast, this); this.wild.events.off('hearts', this.setHearts, this); this.wild.events.off('bag', this.setBag, this);
+      this.wild.events.off('toast', this.toast, this); this.wild.events.off('newMount', this.newMount, this); this.wild.events.off('hearts', this.setHearts, this); this.wild.events.off('bag', this.setBag, this);
     });
     this.cameras.main.fadeIn(500);
     this.time.delayedCall(700, () => this.toast(theme.id === 'halloween' ? 'Spooky woods! Stay cozy.' : 'The Wild Woods! Explore!'));
@@ -169,6 +170,32 @@ export class WildUIScene extends Phaser.Scene {
     this.toastC.setAlpha(0).setY(48 + safeInsets().top);
     this.tweens.add({ targets: this.toastC, alpha: 1, y: 60 + safeInsets().top, duration: 220 });
     this.tweens.add({ targets: this.toastC, alpha: 0, delay: 2200, duration: 400 });
+  }
+
+  /** Big, friendly "New mount!" card in the middle of the screen. */
+  newMountC: Phaser.GameObjects.Container | null = null;
+  newMount(m: { name: string; icon: string; treasure: string }) {
+    this.newMountC?.destroy();
+    const c = this.add.container(this.w / 2, this.h * 0.2).setDepth(60);
+    const W = 460, H = 150;
+    const bg = this.add.graphics();
+    bg.fillStyle(0x000000, 0.18).fillRoundedRect(-W / 2, -H / 2 + 6, W, H, 32);
+    bg.fillStyle(0xfff6e4, 0.98).fillRoundedRect(-W / 2, -H / 2, W, H, 32);
+    bg.lineStyle(6, 0xf2b630, 1).strokeRoundedRect(-W / 2, -H / 2, W, H, 32);
+    const glow = this.add.image(-W / 2 + 80, 0, ATLAS, 'glow').setBlendMode('ADD').setTint(0xffd84a).setScale(1.6 / (frameScale.glow ?? 1));
+    const ic = this.add.image(-W / 2 + 80, 0, atlasOf(m.icon), m.icon);
+    ic.setScale(96 / Math.max(ic.width, ic.height));
+    const t1 = this.add.text(-W / 2 + 150, -26, `New mount: ${m.name}!`, { fontFamily: FONT, fontSize: '30px', fontStyle: '900', color: INK }).setOrigin(0, 0.5).setResolution(DPR * 2);
+    const t2 = this.add.text(-W / 2 + 150, 24, 'Tap Call Mount to ride.', { fontFamily: FONT, fontSize: '22px', fontStyle: '800', color: '#8a5a20' }).setOrigin(0, 0.5).setResolution(DPR * 2);
+    const tw = Math.max(t1.width, t2.width) + 180;
+    if (tw > W) { bg.setScale(tw / W, 1); glow.x = ic.x = -tw / 2 + 80; t1.x = t2.x = -tw / 2 + 150; }
+    c.add([bg, glow, ic, t1, t2]);
+    this.newMountC = c;
+    this.rects.newMount = { x: this.w / 2 - Math.max(W, tw) / 2, y: this.h * 0.2 - H / 2, w: Math.max(W, tw), h: H };
+    c.setScale(0.4).setAlpha(0);
+    this.tweens.add({ targets: c, scale: 1, alpha: 1, duration: 380, ease: 'Back.easeOut' });
+    this.tweens.add({ targets: ic, angle: { from: -8, to: 8 }, duration: 500, yoyo: true, repeat: 5, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: c, alpha: 0, scale: 0.9, delay: 3600, duration: 400, onComplete: () => { c.destroy(); if (this.newMountC === c) { this.newMountC = null; delete this.rects.newMount; } } });
   }
 
   update() { this.stick?.update(); }
