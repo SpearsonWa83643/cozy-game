@@ -10,7 +10,7 @@ export const WALK_SPEED = 175;
 /** Drag distance (CSS px) before a press turns into the joystick instead of a tap. */
 const DRAG_START = 12;
 /** A press shorter than this (ms) that never dragged counts as a tap. */
-const TAP_MS = 400;
+export const TAP_MS = 400;
 const STICK_R = 62;
 
 export type Waypoints = { path: [number, number][]; pathStuck: number; pathLastD: number };
@@ -86,7 +86,7 @@ export class TouchStick {
   active = false;
   private origin = { x: 0, y: 0 };
   private start = { x: 0, y: 0 };
-  private downAt = 0;
+  downAt = 0;
   private base: Phaser.GameObjects.Graphics;
   private knob: Phaser.GameObjects.Graphics;
 
@@ -140,6 +140,12 @@ export class TouchStick {
     if (p !== this.pointer) return;
     if (!this.active && this.scene.time.now - this.downAt < TAP_MS) this.cb.onTap(p.x, p.y);
     this.reset();
+  }
+
+  /** A press held still past the tap window (not a tap, not a drag): canvas px, else null. */
+  held(): { x: number; y: number } | null {
+    const p = this.pointer;
+    return p && p.isDown && !this.active && this.scene.time.now - this.downAt >= TAP_MS ? { x: p.x, y: p.y } : null;
   }
 
   /** Drop the stick without a tap (focus lost, scene leaving). */

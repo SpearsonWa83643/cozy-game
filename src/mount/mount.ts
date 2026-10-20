@@ -1,5 +1,6 @@
 // Mounts: call a flying friend, it swoops in, picks you up and wanders the map with you on its
-// back. Tap the ground to hop off near there; tap the mount for a few seconds of whoosh.
+// back. Drag (or hold) to steer it yourself; after ~2 s with no input it tours on its own again.
+// Tap the ground to hop off near there; tap the mount for a few seconds of whoosh.
 // Drop-off only on ground you could already walk to (no skipping gates). Art is data-driven
 // (see defs.ts) so Call Mount can pick among unlocked mounts.
 import Phaser from 'phaser';
@@ -9,6 +10,8 @@ import { sfx } from '../audio';
 import { theme, themeEvents } from '../theme';
 import type { WorldScene } from '../scenes/World';
 import { MountDef, mountById } from './defs';
+import { stickInput } from '../controls';
+import type { TouchStick } from '../controls';
 
 export type MountPhase = 'off' | 'arrive' | 'ride' | 'land' | 'hop' | 'leave';
 
@@ -19,6 +22,9 @@ const FAST_MS = 3500;
 const COOLDOWN_MS = 4000; // after fast mode ends
 const DEPTH = 9300;
 const EDGE = 70;
+/** After this long with no steering input, the mount drifts back to its own tour. */
+const IDLE_TOUR_MS = 2000;
+const STEER_SPEED = 190;
 
 /** Cubic Hermite between two points with start/end velocities (already scaled by duration). */
 function hermite(p0: number, v0: number, p1: number, v1: number, t: number) {
@@ -55,6 +61,13 @@ export class Mount {
   hopT = 0;
   hopFrom: [number, number] = [0, 0];
   riderOn = false;
+  /** Player steering: stick vector from the UI (null when released). */
+  steerIn: { x: number; y: number } | null = null;
+  /** Manual control: true while steering and for IDLE_TOUR_MS after the last input. */
+  manual = false;
+  idleMs = 0;
+  vx = 0; vy = 0;
+  steers = 0; tours = 0;
   def: MountDef = mountById('eagle');
   get SCALE() { return this.def.scale; }
 
@@ -216,6 +229,7 @@ export class Mount {
     sfx.pickup();
     this.phase = 'ride';
     this.speed = 140; this.heading = this.dir > 0 ? 0 : Math.PI;
+    this.manual = false; this.idleMs = 0; this.steerIn = null;
     this.target = this.pickWaypoint(); this.targetTime = 0;
     w.game.events.emit('mount', this.phase);
     w.game.events.emit('toast', `Wheee! Riding the ${this.def.name}! Tap the ground to hop off.`);
@@ -231,6 +245,7 @@ export class Mount {
     const vx0 = Math.cos(this.heading) * this.speed * T * 0.6, vy0 = Math.sin(this.heading) * this.speed * T * 0.6;
     this.seg = { x0: this.gx, y0: this.gy, vx0, vy0, x1: spot[0], y1: spot[1], vx1: 0, vy1: 0, a0: this.alt, a1: 16, T, t: 0, altEase: (t) => t * t * (3 - 2 * t) };
     this.fastMs = 0;
+    this.manual = false; this.steerIn = null;
     this.phase = 'land';
     this.w.tapMarker.setPosition(spot[0], spot[1]).setAlpha(0.9).setScale(0.2 / frameScale.ripple);
     this.w.tweens.killTweensOf(this.w.tapMarker);
@@ -303,6 +318,55 @@ export class Mount {
     this.w.game.events.emit('mount', this.phase);
   }
 
+  setSteer(v: { x: number; y: number } | null) { this.steerIn = v; }
+
+  /** Current steering input: drag (stick direction) or a still hold (fly toward the finger). */
+  steerInput(): [number, number, number] {
+    if (this.steerIn) return stickInput(this.steerIn);
+    const ui = this.w.scene.get('ui') as unknown as { stick?: TouchStick } | null;
+    const h = ui?.stick?.held?.();
+    if (!h) return [0, 0, 0];
+    const wp = this.w.cameras.main.getWorldPoint(h.x, h.y);
+    // The finger is on the sky picture; aim at the ground under it.
+    const dx = wp.x - this.gx, dy = wp.y + this.alt - this.gy, d = Math.hypot(dx, dy);
+    if (d < 24) return [0, 0, 0];
+    const k = Math.min(1, d / 160) * 0.75 + 0.25;
+    return [dx / d * k, dy / d * k, k];
+  }
+
+  /** Player override: ease velocity toward input * speed (same blend idea as walking). */
+  steerManual(dt: number, ix: number, iy: number, len: number) {
+    const fast = this.fastMs > 0;
+    if (!this.manual) { this.manual = true; this.steers++; this.vx = Math.cos(this.heading) * this.speed; this.vy = Math.sin(this.heading) * this.speed; }
+    const vs = fast ? FAST_SPEED : STEER_SPEED;
+    // With input: respond quickly. Coasting (no input yet, still manual): glide on and slow a little.
+    const tx = len ? ix * vs : this.vx * 0.6, ty = len ? iy * vs : this.vy * 0.6;
+    const blend = 1 - Math.exp(-dt * (len ? 5 : 0.8));
+    this.vx += (tx - this.vx) * blend; this.vy += (ty - this.vy) * blend;
+    this.gx += this.vx * dt; this.gy += this.vy * dt;
+    const cx = Phaser.Math.Clamp(this.gx, EDGE, WORLD_W - EDGE), cy = Phaser.Math.Clamp(this.gy, EDGE, WORLD_H - EDGE);
+    if (cx !== this.gx) { this.gx = cx; this.vx = 0; }
+    if (cy !== this.gy) { this.gy = cy; this.vy = 0; }
+    const sp = Math.hypot(this.vx, this.vy);
+    if (sp > 12) this.heading = Math.atan2(this.vy, this.vx);
+    this.speed = sp;
+    this.alt += (RIDE_ALT + Math.sin(this.w.time.now / 1400) * 6 - this.alt) * (1 - Math.exp(-dt * 1.5));
+  }
+
+  /** Ride step: player steering wins; after a quiet moment, back to the tour from right here. */
+  ride(dt: number) {
+    const [ix, iy, len] = this.steerInput();
+    if (len > 0) { this.idleMs = 0; this.steerManual(dt, ix, iy, len); return; }
+    if (this.manual) {
+      this.idleMs += dt * 1000;
+      if (this.idleMs < IDLE_TOUR_MS) { this.steerManual(dt, 0, 0, 0); return; }
+      // Resume touring: keep current position, heading and speed (steer() turns/accelerates smoothly).
+      this.manual = false; this.tours++;
+      this.target = this.pickWaypoint(); this.targetTime = 0;
+    }
+    this.steer(dt);
+  }
+
   // ------------------------------------------------------------ per-frame
   stepSeg(dt: number) {
     const s = this.seg!;
@@ -347,7 +411,7 @@ export class Mount {
           if (this.stepSeg(dt)) this.pickUp();
           break;
         case 'ride':
-          this.steer(dt);
+          this.ride(dt);
           break;
         case 'land':
           if (this.stepSeg(dt)) { this.phase = 'hop'; this.hopT = 0; this.hopFrom = [w.playerImg.x, w.playerImg.y]; sfx.blip(); }
@@ -456,6 +520,7 @@ export class Mount {
       phase: this.phase, riding: this.riding, carrying: this.carrying, riderOn: this.riderOn,
       fast: this.fastMs > 0, cooldown: Math.max(0, Math.round(this.cooldownMs)), ground: [Math.round(this.gx), Math.round(this.gy)],
       eagle: [Math.round(this.ex), Math.round(this.ey)], alt: Math.round(this.alt), speed: Math.round(this.speed),
+      steering: this.manual, idleMs: Math.round(this.idleMs), steers: this.steers, tours: this.tours, heading: +this.heading.toFixed(2),
       boosts: this.boosts, rides: this.rides, landings: this.landings, dropAt: this.dropAt ? this.dropAt.map(Math.round) : null,
       canCall: this.canCall(), reachable: this.reachList.length, seg: this.seg ? +this.seg.t.toFixed(2) : null,
       reachableHere: this.reach ? this.isReachable(this.w.feet.x, this.w.feet.y) : null,

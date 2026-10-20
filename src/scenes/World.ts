@@ -948,7 +948,8 @@ export class WorldScene extends Phaser.Scene {
 
   /** Analog stick from the UI (screen-space, magnitude 0..1), or null when released. */
   setStick(v: { x: number; y: number } | null) {
-    if (v && this.mount?.carrying) v = null;
+    // Riding: the same stick steers the mount instead of walking.
+    if (this.mount?.carrying) { this.mount.setSteer(this.mount.riding ? v : null); v = null; }
     this.stick = v;
     if (v) { this.path = []; this.pathTarget = null; }
   }
