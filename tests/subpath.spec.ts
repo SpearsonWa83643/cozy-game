@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-// The game must boot from a /<repo>/ subpath (GitHub Pages) with relative assets,
+// The game must boot from a /<repo>/ subpath with relative assets,
 // expose home-screen install metadata, respond to touch, and log no errors.
 test('boots under subpath with install metadata, touch works, no console errors', async ({ page, baseURL }) => {
   const errors: string[] = [];

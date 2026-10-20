@@ -1,4 +1,4 @@
-// Serves dist/ under /cozy-game/ to mimic GitHub Pages project hosting.
+// Serves dist/ under /cozy-game/ to check relative assets work under a subpath.
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';

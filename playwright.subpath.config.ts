@@ -1,7 +1,7 @@
 import { defineConfig } from '@playwright/test';
 
-// Loads the regular dist/ build under a /cozy-game/ subpath, exactly like GitHub Pages
-// project hosting. Set BASE_URL=https://spearsonwa83643.github.io/cozy-game/ to check the live site.
+// Loads the regular dist/ build under a /cozy-game/ subpath to prove relative assets work.
+// Set BASE_URL=https://willowmere-glade.pages.dev/ to check the live (Cloudflare Pages) site.
 const live = process.env.BASE_URL;
 export default defineConfig({
   testDir: './tests',

@@ -107,20 +107,21 @@ kalimba), plus butterflies, a passing flock, a duck family, fish and splash ring
 cottage step (pet it), wind gusts that ripple through grass and trees with drifting leaves, falling leaves,
 and a slow light-colour drift. Touch test: `npm run test:touch` (iPad 1180x820 @2x, hasTouch, file://).
 
-## Hosting (GitHub Pages)
+## Hosting (Cloudflare Pages)
 
-Live: https://spearsonwa83643.github.io/cozy-game/ — repo: https://github.com/SpearsonWa83643/cozy-game
+Live: https://willowmere-glade.pages.dev — repo: https://github.com/SpearsonWa83643/cozy-game
 
-- `.github/workflows/deploy.yml` builds on every push to `main` (or manual dispatch): Node 20, `npm ci`,
-  `npm run build`, then uploads `dist/` with `configure-pages@v5` / `upload-pages-artifact@v3` / `deploy-pages@v4`.
-  Pages is set to `build_type=workflow`.
-- `vite.config.ts` uses `base: './'`, so the build works under the `/cozy-game/` subpath.
+- Cloudflare Pages (project `willowmere-glade`, free plan) is Git-connected and builds on every push to `main`:
+  `npm ci && npm run build`, output `dist`, NODE_VERSION=20. Cache headers live in `public/_headers`
+  (immutable `/assets/*`, no-cache for `index.html` and the manifest).
+- GitHub Pages was retired on 2026-10-20 (deploy workflow removed, Pages site unpublished).
+- `vite.config.ts` uses `base: './'`, so the build works at the root or under any subpath.
 - `dist/` ships `manifest.webmanifest` + `icon-180.png` (relative `start_url`/`scope`) alongside the
   apple-mobile-web-app meta, so **on iPad: open the live URL in Safari → Share → Add to Home Screen** for a
   full-screen app icon.
 - `npm run test:subpath` serves `dist/` under `/cozy-game/` (`tests/subpath-server.mjs`) and checks boot,
-  install metadata, touch and console. Point it at the live site with
-  `BASE_URL=https://spearsonwa83643.github.io/cozy-game/ npx playwright test -c playwright.subpath.config.ts`.
+  install metadata, touch and console (subpath layout test). Point it at the live site with
+  `BASE_URL=https://willowmere-glade.pages.dev/ npx playwright test -c playwright.subpath.config.ts`.
 
 ## The wider world (v0.4)
 

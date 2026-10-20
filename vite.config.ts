@@ -3,7 +3,7 @@ import { viteSingleFile } from 'vite-plugin-singlefile';
 import { readFileSync } from 'node:fs';
 
 /**
- * Home-screen install support. Normal builds (GitHub Pages) emit a real manifest.webmanifest +
+ * Home-screen install support. Normal builds (Cloudflare Pages) emit a real manifest.webmanifest +
  * icon next to index.html with relative start_url/scope, so it installs correctly under
  * /<repo>/. The single-file build inlines both as data: URLs to stay self-contained.
  */
@@ -46,7 +46,7 @@ function pwa(single: boolean): Plugin {
 // `vite build --mode single` → one self-contained HTML (JS, CSS and font inlined) that
 // runs straight from disk via file://. Normal builds keep separate assets.
 export default defineConfig(({ mode }) => ({
-  base: './', // relative asset URLs so dist works under https://<user>.github.io/<repo>/
+  base: './', // relative asset URLs so dist works at the root (Cloudflare Pages) or any subpath
   plugins: [pwa(mode === 'single'), ...(mode === 'single' ? [viteSingleFile({ removeViteModuleLoader: true })] : [])],
   build: {
     target: 'es2022',
