@@ -108,15 +108,25 @@ export const MOUNTS: MountDef[] = [
     blurb: 'Honk honk! A friendly goose flying south!',
     flapRate: 1.1,
   },
+  {
+    // Christmas's default mount (free in Christmas): a flying reindeer with a glowing red nose.
+    id: 'reindeer',
+    name: 'Reindeer',
+    treasure: 'reindeer_bell',
+    body: 'deer_body', wing: 'deer_wing', wingFar: 'deer_wing_far', icon: 'i_reindeer',
+    scale: 0.85,
+    blurb: 'Jingle jingle! A flying reindeer with a glowing red nose!',
+    flapRate: 1.2,
+  },
 ];
 
 export function mountById(id: string): MountDef {
   return MOUNTS.find((m) => m.id === id) ?? MOUNTS[0];
 }
 
-/** The theme's own default mount: pumpkin carriage in Halloween, Canada goose in Fall, bald eagle otherwise. */
+/** The theme's own default mount: pumpkin in Halloween, Canada goose in Fall, reindeer in Christmas, bald eagle otherwise. */
 export function themeDefaultMount(): string {
-  return theme.id === 'halloween' ? 'pumpkin' : theme.id === 'fall' ? 'goose' : 'eagle';
+  return theme.id === 'halloween' ? 'pumpkin' : theme.id === 'fall' ? 'goose' : theme.id === 'christmas' ? 'reindeer' : 'eagle';
 }
 
 export function isMountUnlocked(m: MountDef): boolean {
