@@ -2,7 +2,8 @@ import { test, expect, type Page } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 
-// Christmas theme preview (slice 1): snowy ground, frosted trees, falling snowflakes and its own
+// Christmas theme preview (slices 1 + 3): snowy ground, frosted trees, snow-capped fruit trees, frosty
+// snow-drift meadow tufts, falling snowflakes and its own
 // 'christmas' soundscape. Switching back to Spring restores Spring's look and sound.
 const FILE = pathToFileURL(resolve('dist-single/index.html')).href;
 const SHOTS = process.env.XMAS_SHOTS ?? 'test-results';
