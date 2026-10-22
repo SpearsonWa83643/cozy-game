@@ -1460,8 +1460,11 @@ export class WorldScene extends Phaser.Scene {
         let petal = '';
         for (const [f, e] of self.petalBy) if (e.emitting) petal = f;
         let caps = 0;
-        for (const [img, cap] of self.dresser.snowcaps) if (cap.visible && img.visible) caps++;
-        return { theme: theme.id, frosted, caps, petal, soundscape: theme.soundscape.id };
+        let fruitCaps = 0;
+        for (const [img, cap] of self.dresser.snowcaps) if (cap.visible && img.visible) { caps++; if (self.reacts.fruit.has(img)) fruitCaps++; }
+        const tufts = self.dresser.tufts ?? [];
+        const snowTufts = tufts.filter((t) => /^x_tuft\d$/.test(t.frame.name)).length;
+        return { theme: theme.id, frosted, caps, fruitCaps, snowTufts, tufts: tufts.length, petal, soundscape: theme.soundscape.id };
       },
       villageEvent: (e: 'merchant' | 'rain' | 'festival') => self.village.start(e),
       mount: () => self.mount.snapshot(),

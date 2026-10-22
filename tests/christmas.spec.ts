@@ -30,6 +30,10 @@ test('christmas: snowy look, frosted trees, snowflakes, own soundscape', async (
     expect(c.petal).toBe('p_snow');
     expect(c.frosted).toBeGreaterThan(10);
     expect(c.caps).toBeGreaterThan(10);
+    // Slice 3: fruit trees wear snow caps too, and every meadow tuft is a frosty, snow-drifted tuft.
+    expect(c.fruitCaps).toBeGreaterThan(3);
+    expect(c.tufts).toBeGreaterThan(50);
+    expect(c.snowTufts).toBe(c.tufts);
 
     const tp = (x: number, y: number) => page.evaluate(([x, y]) => (window as any).__cozy.teleport(x, y), [x, y]);
     await tp(905, 1330);
@@ -38,6 +42,10 @@ test('christmas: snowy look, frosted trees, snowflakes, own soundscape', async (
     await tp(1310, 1090);
     await page.waitForTimeout(4000);
     await page.screenshot({ path: `${SHOTS}/christmas-preview-02.png` });
+    // Orchard: snow-capped fruit trees (fruit still showing) over frosty tufts.
+    await tp(3100, 2470);
+    await page.waitForTimeout(4000);
+    await page.screenshot({ path: `${SHOTS}/christmas-preview-03-orchard.png` });
 
     // Back to Spring and again to Christmas: look and sound follow live.
     await cozy(page, "setTheme('spring')");
@@ -45,11 +53,14 @@ test('christmas: snowy look, frosted trees, snowflakes, own soundscape', async (
     expect((await cozy(page, 'state')).soundscape).toBe('spring');
     expect((await cozy(page, 'christmas()')).frosted).toBe(0);
     expect((await cozy(page, 'christmas()')).caps).toBe(0);
+    expect((await cozy(page, 'christmas()')).snowTufts).toBe(0);
     await cozy(page, "setTheme('christmas')");
     await page.waitForTimeout(1200);
     expect((await cozy(page, 'state')).soundscape).toBe('christmas');
     expect((await cozy(page, 'christmas()')).frosted).toBeGreaterThan(10);
     expect((await cozy(page, 'christmas()')).petal).toBe('p_snow');
+    expect((await cozy(page, 'christmas()')).fruitCaps).toBeGreaterThan(3);
+    expect((await cozy(page, 'christmas()')).snowTufts).toBeGreaterThan(50);
     expect(errors).toEqual([]);
   } finally {
     await page.close();

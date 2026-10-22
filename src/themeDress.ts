@@ -41,6 +41,8 @@ export class ThemeDresser {
   hay: Phaser.GameObjects.Image[] = [];
   fallBuilt = false;
   tufts: Phaser.GameObjects.Image[] | null = null;
+  /** Each meadow tuft's own (Spring) frame, so Christmas can swap in its snowy twin and back. */
+  tuftFrame = new Map<Phaser.GameObjects.Image, string>();
 
   constructor(private w: WorldScene) {
     this.sky = w.add.image(0, 0, atlasOf('sky_halloween'), 'sky_halloween').setScrollFactor(0).setDepth(8700).setBlendMode(Phaser.BlendModes.MULTIPLY).setVisible(false);
@@ -318,9 +320,19 @@ export class ThemeDresser {
     const fp = !!t.fallProps;
     if (fp) this.buildFallProps();
     for (const p of this.fallProps) p.setVisible(fp);
-    // Grass tufts: Fall dries the meadow grass to gold.
+    // Grass tufts: Fall dries the meadow grass to gold; Christmas swaps in frosty tufts poking out
+    // of little snow drifts (same size and base point, so nothing shifts).
     if (!this.tufts) this.tufts = (w.children.list as Phaser.GameObjects.Image[]).filter((o) => o.type === 'Image' && /^tuft\d$/.test(o.frame?.name ?? ''));
-    for (const tf of this.tufts) { if (t.grass) tf.setTint(t.grass); else tf.clearTint(); }
+    for (const tf of this.tufts) {
+      let k = this.tuftFrame.get(tf);
+      if (k === undefined) { k = tf.frame.name; this.tuftFrame.set(tf, k); }
+      const want = t.frost ? `x_${k}` : k;
+      if (tf.frame.name !== want) {
+        const { scaleX, scaleY, originX, originY } = tf;
+        tf.setTexture(atlasOf(want), want).setOrigin(originX, originY).setScale(scaleX, scaleY);
+      }
+      if (t.frost) tf.clearTint(); else if (t.grass) tf.setTint(t.grass); else tf.clearTint();
+    }
     if (t.props) this.buildProps();
     for (const p of this.props) p.setVisible(t.props);
     for (const b of this.batTrees) for (const f of b.fly) { f.t = -1; f.img.setVisible(false); }
@@ -385,13 +397,15 @@ export class ThemeDresser {
         this.blooms.set(img, bl);
       }
       if (bl) for (const p of bl) p.setVisible(bloom);
-      // Christmas: a soft white snow cap on top of every round leafy canopy.
-      const capOn = !!t.frost && round && !t.trees;
+      // Christmas: a soft white snow cap on top of every round leafy canopy, fruit trees included
+      // (theirs sits a little higher and slimmer so the hanging fruit still pop out in front).
+      const fruitTree = fruity && w.reacts.fruit.get(img)?.minor !== 'berry';
+      const capOn = !!t.frost && (round || fruitTree) && !t.trees;
       let cap = this.snowcaps.get(img);
       if (capOn && !cap) {
         const b = img.getBounds();
-        cap = w.add.image(b.centerX, b.y + b.height * 0.2, atlasOf('x_snowcap'), 'x_snowcap')
-          .setDisplaySize(b.width * 0.84, b.height * 0.34).setFlipX((Math.floor(img.x) & 1) === 1).setDepth(img.depth + 0.02);
+        cap = w.add.image(b.centerX, b.y + b.height * (fruity ? 0.17 : 0.2), atlasOf('x_snowcap'), 'x_snowcap')
+          .setDisplaySize(b.width * (fruity ? 0.8 : 0.84), b.height * (fruity ? 0.28 : 0.34)).setFlipX((Math.floor(img.x) & 1) === 1).setDepth(img.depth + 0.02);
         this.snowcaps.set(img, cap);
       }
       if (cap) cap.setVisible(capOn);

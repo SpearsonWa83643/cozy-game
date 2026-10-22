@@ -60,7 +60,35 @@ function paintSnowCap(c: Ctx, w: number, h: number) {
   for (let i = 0; i < 9; i++) dab(c, rr(rng, w * 0.25, w * 0.75), rr(rng, h * 0.25, h * 0.45), rr(rng, 3, 6), rr(rng, 1.6, 3), 0, hsl(0, 0, 100));
 }
 
+/** A frosty meadow tuft (24x20, same footprint as tuft0-2): pale icy blades poking out of a soft
+ *  snow drift, with little clumps of snow caught on the blade tips and a glint or two. */
+function paintSnowTuft(c: Ctx, w: number, h: number, seed: number) {
+  const rng = mulberry32(seed);
+  // Frosted blades (cool sage to icy blue-white), drawn first so the drift hides their roots.
+  const tips: [number, number][] = [];
+  for (let i = 0; i < 11; i++) {
+    const x = w / 2 + rr(rng, -w * 0.3, w * 0.3);
+    const lean = rr(rng, -w * 0.22, w * 0.22);
+    const top = rr(rng, 1, h * 0.5);
+    c.fillStyle = hsl(rr(rng, 150, 196), rr(rng, 18, 32), rr(rng, 58, 80));
+    c.beginPath();
+    c.moveTo(x - 2, h);
+    c.quadraticCurveTo(x + lean * 0.3, (h + top) / 2, x + lean, top);
+    c.quadraticCurveTo(x + lean * 0.3 + 1, (h + top) / 2, x + 2, h);
+    c.fill();
+    if (rng() < 0.55) tips.push([x + lean, top + 1.4]);
+  }
+  // Snow caught on some tips.
+  for (const [x, y] of tips) dab(c, x, y, rr(rng, 1.3, 2.1), rr(rng, 1, 1.5), 0, hsl(205, 40, 97));
+  // The little drift the tuft pokes out of: blue-grey underside, bright lumpy top.
+  dab(c, w / 2, h - 2.2, w * 0.4, 3.4, 0, hsl(208, 30, 80));
+  for (let i = 0; i < 5; i++) dab(c, w / 2 + rr(rng, -w * 0.3, w * 0.3), h - 3.4 + rr(rng, -0.8, 0.8), rr(rng, 3.4, 5.2), rr(rng, 2, 2.8), 0, hsl(205, 32, 95));
+  // A couple of sparkly glints.
+  for (let i = 0; i < 2; i++) dab(c, w / 2 + rr(rng, -w * 0.25, w * 0.25), h - 4.4, 1, 0.8, 0, hsl(0, 0, 100));
+}
+
 export function paintChristmasArt(scene: Phaser.Scene) {
+  for (let i = 0; i < 3; i++) canvasTex(scene, `x_tuft${i}`, 24, 20, (c) => paintSnowTuft(c, 24, 20, 50 + i));
   canvasTex(scene, 'x_snowcap', 100, 60, (c) => paintSnowCap(c, 100, 60));
   canvasTex(scene, 'i_xmas', 48, 48, (c) => paintXmasIcon(c, 48), 2);
   canvasTex(scene, 'p_snow', 12, 12, (c) => paintSnowflake(c, 12), 3);
