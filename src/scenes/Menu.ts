@@ -12,6 +12,7 @@ import { WORLD_W, WORLD_H, AREA_NAMES, AreaId, COTTAGE, SHRINE, WINDMILL, BRIDGE
 import { areaAt, waterAt } from '../geo';
 import type { WorldScene } from './World';
 import { buildWardrobeItems, isNoneItem } from '../wardrobeArt';
+import { LANDMARKS, ensureLandmarkIcons } from '../landmarks';
 
 const INK = '#3d2c20';
 const FONT = 'Nunito';
@@ -110,7 +111,7 @@ export class MenuScene extends Phaser.Scene {
     this.root.removeAll(true);
     this.cancelDrag();
     if (this.tab !== 'wardrobe') this.newIds = null;
-    this.heroImg = null; this.playerDot = null; this.hintText = null; this.stageGlow = null;
+    this.heroImg = null; this.playerDot = null; this.hintText = null; this.hintBg = null; this.stageGlow = null;
     this.w = this.scale.width / DPR; this.h = this.scale.height / DPR;
     const si = safeInsets();
     const m = 18;
@@ -164,19 +165,48 @@ export class MenuScene extends Phaser.Scene {
 
   private hint(msg: string) {
     if (!this.hintText) {
-      this.hintText = this.text(this.box.x + this.box.w / 2, this.box.y + this.box.h - 26, '', 16, '#8a6a50', 700).setOrigin(0.5, 1);
-      this.root.add(this.hintText);
+      this.hintBg = this.add.graphics();
+      this.hintText = this.text(this.box.x + this.box.w / 2, this.box.y + this.box.h - 30, '', 17, '#5a3d28', 800).setOrigin(0.5, 1);
+      this.root.add([this.hintBg, this.hintText]);
     }
     this.hintText.setText(msg).setAlpha(1);
-    this.tweens.killTweensOf(this.hintText);
-    this.tweens.add({ targets: this.hintText, alpha: 0, delay: 2600, duration: 600 });
+    // A little paper note behind the words so they read over any scene.
+    const t = this.hintText, g = this.hintBg!, w = t.width + 36, h = t.height + 14;
+    g.clear().setAlpha(1);
+    g.fillStyle(0x2a1a0e, 0.25); g.fillRoundedRect(t.x - w / 2 + 2, t.y - h + 6, w, h, h / 2);
+    g.fillStyle(0xfff6e0, 1); g.fillRoundedRect(t.x - w / 2, t.y - h + 3, w, h, h / 2);
+    g.lineStyle(2, 0xd9b98f, 1); g.strokeRoundedRect(t.x - w / 2, t.y - h + 3, w, h, h / 2);
+    this.tweens.killTweensOf([this.hintText, g]);
+    this.tweens.add({ targets: [this.hintText, g], alpha: 0, delay: 2600, duration: 600 });
   }
+  private hintBg: Phaser.GameObjects.Graphics | null = null;
 
   // ------------------------------------------------------------ map
   renderMap(a: { x: number; y: number; w: number; h: number }) {
-    const s = Math.min(a.w / WORLD_W, (a.h - 34) / WORLD_H);
+    // 9.37 slice 1: an old paper map spread on a wooden table, with wooden pins, ribbon labels and a compass.
+    this.mapPins = {};
+    const desk = this.add.graphics();
+    {
+      // Warm table planks under everything.
+      desk.fillStyle(0x9a6a40, 1); desk.fillRoundedRect(a.x - 6, a.y - 6, a.w + 12, a.h + 12, 18);
+      const pl = 46;
+      for (let y = a.y - 6, i = 0; y < a.y + a.h + 6; y += pl, i++) {
+        const hh = Math.min(pl, a.y + a.h + 6 - y);
+        desk.fillStyle(i % 2 ? 0xa4744a : 0x93633b, 1); desk.fillRect(a.x - 6 + (i === 0 ? 0 : 0), y, a.w + 12, hh);
+        desk.lineStyle(2, 0x6e4526, 0.55); desk.lineBetween(a.x - 6, y, a.x + a.w + 6, y);
+        desk.lineStyle(1.5, 0x7a4d2b, 0.35);
+        for (let k = 0; k < 3; k++) { const gy = y + 10 + k * 12; if (gy < y + hh - 4) desk.lineBetween(a.x + 10 + ((i * 97 + k * 53) % 120), gy, a.x + a.w - 10 - ((i * 61 + k * 31) % 140), gy + ((k + i) % 2 ? 1 : -1)); }
+        // A knot here and there.
+        const kx = a.x + 80 + ((i * 263) % Math.max(1, a.w - 160));
+        if (hh > 30) { desk.lineStyle(1.5, 0x6e4526, 0.5); desk.strokeEllipse(kx, y + hh / 2, 16, 8); }
+      }
+      desk.lineStyle(3, 0x5e3a1f, 1); desk.strokeRoundedRect(a.x - 6, a.y - 6, a.w + 12, a.h + 12, 18);
+    }
+    this.content.add(desk);
+    const pad = 22, legendH = 0;
+    const s = Math.min((a.w - pad * 2) / WORLD_W, (a.h - pad * 2 - legendH) / WORLD_H);
     const mw = WORLD_W * s, mh = WORLD_H * s;
-    const mx = a.x + (a.w - mw) / 2, my = a.y + (a.h - 34 - mh) / 2;
+    const mx = a.x + (a.w - mw) / 2, my = a.y + (a.h - legendH - mh) / 2;
     this.mapGeom = { x: mx, y: my, s };
     const key = 'minimap';
     const px = Math.ceil(mw * DPR), ph = Math.ceil(mh * DPR);
@@ -184,7 +214,7 @@ export class MenuScene extends Phaser.Scene {
     canvas.width = px; canvas.height = ph;
     const c = canvas.getContext('2d')!;
     const k = px / WORLD_W;
-    const cols: Record<AreaId, string> = { glade: '#8fbf63', river: '#86c27a', forest: '#6f9e7a', orchard: '#c2c46a', lake: '#98c574', village: '#a6cf72' };
+    const cols: Record<AreaId, string> = { glade: '#a3c26e', river: '#9cc47f', forest: '#83a57c', orchard: '#c8c477', lake: '#a9c77e', village: '#b3cf7c' };
     // Sample the world coarsely into a tiny canvas, then upscale with smoothing for soft painted edges.
     const cell = 25;
     const cw = Math.ceil(WORLD_W / cell), chh = Math.ceil(WORLD_H / cell);
@@ -192,46 +222,99 @@ export class MenuScene extends Phaser.Scene {
     const lc = lo.getContext('2d')!;
     const fog = document.createElement('canvas'); fog.width = cw; fog.height = chh;
     const fc = fog.getContext('2d')!;
-    fc.fillStyle = 'rgba(243,230,204,0.93)';
+    fc.fillStyle = 'rgba(236,220,186,0.94)';
     for (let j = 0; j < chh; j++) for (let i = 0; i < cw; i++) {
       const cx = i * cell + cell / 2, cy = j * cell + cell / 2;
       const ar = areaAt(cx, cy);
       const wa = waterAt(cx, cy);
       const lake = ar === 'lake' && !wa ? Math.hypot((cx - 1050) / 700, (cy - 2480) / 330) : 9;
-      lc.fillStyle = wa ? '#5aa6c8' : lake < 1.3 ? '#e8d6a6' : cols[ar];
+      lc.fillStyle = wa ? '#6fb0c8' : lake < 1.3 ? '#e8d6a6' : cols[ar];
       lc.fillRect(i, j, 1, 1);
       if (!save.visited.includes(ar)) fc.fillRect(i, j, 1, 1);
     }
+    // Parchment base so the painted land sits on paper.
+    c.fillStyle = '#efdfb8'; c.fillRect(0, 0, px, ph);
     c.imageSmoothingEnabled = true;
     c.imageSmoothingQuality = 'high';
-    c.drawImage(lo, 0, 0, px, ph);
+    const blur = Math.max(2, Math.round((cell * k) / 2.2));
+    c.filter = `blur(${blur}px)`; c.globalAlpha = 0.92; c.drawImage(lo, 0, 0, px, ph); c.globalAlpha = 1; c.filter = 'none';
+    // Inked coast lines: a darker halo just inside the water.
     c.strokeStyle = '#e9d3a6'; c.lineWidth = 26 * k; c.lineCap = 'round'; c.lineJoin = 'round';
     for (const p of ALL_PATHS) { c.beginPath(); p.forEach(([x, y], i) => (i ? c.lineTo(x * k, y * k) : c.moveTo(x * k, y * k))); c.stroke(); }
+    // Dotted trail ink down the middle of each path.
+    c.strokeStyle = 'rgba(122,82,48,0.55)'; c.lineWidth = Math.max(1.5, 5 * k); c.setLineDash([10 * k * 2, 14 * k * 2]);
+    for (const p of ALL_PATHS) { c.beginPath(); p.forEach(([x, y], i) => (i ? c.lineTo(x * k, y * k) : c.moveTo(x * k, y * k))); c.stroke(); }
+    c.setLineDash([]);
     c.fillStyle = '#9b7146';
     for (const b of Object.values(BRIDGES)) c.fillRect((b.x - b.half) * k, (b.y - 20) * k, b.half * 2 * k, 40 * k);
     c.fillRect((PIER.x - 20) * k, PIER.y0 * k, 40 * k, (PIER.y1 - PIER.y0) * k);
+    // Little inked trees in the forest and orchard, waves on the water (deterministic scatter).
+    let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    for (let n = 0; n < 900; n++) {
+      const wx = rnd() * WORLD_W, wy = rnd() * WORLD_H, ar = areaAt(wx, wy);
+      if (!save.visited.includes(ar)) continue;
+      if (waterAt(wx, wy)) {
+        if (rnd() < 0.25) { c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = Math.max(1.2, 4 * k); c.beginPath(); c.arc(wx * k, wy * k, 14 * k * 2, Math.PI * 1.15, Math.PI * 1.85); c.stroke(); }
+      } else if ((ar === 'forest' && rnd() < 0.5) || (ar === 'orchard' && rnd() < 0.18)) {
+        const r = (ar === 'forest' ? 26 : 20) * k * 2;
+        c.fillStyle = ar === 'forest' ? 'rgba(74,112,72,0.75)' : 'rgba(150,150,70,0.7)';
+        c.beginPath(); c.arc(wx * k, wy * k, r, 0, Math.PI * 2); c.fill();
+        c.strokeStyle = 'rgba(70,50,32,0.5)'; c.lineWidth = Math.max(1, 2.5 * k); c.stroke();
+      }
+    }
     // Unvisited areas stay misty.
-    c.drawImage(fog, 0, 0, px, ph);
+    c.filter = `blur(${blur}px)`; c.drawImage(fog, 0, 0, px, ph); c.filter = 'none';
+    // Aged paper: burnt, darker edges.
+    const vg = c.createRadialGradient(px / 2, ph / 2, Math.min(px, ph) * 0.35, px / 2, ph / 2, Math.hypot(px, ph) * 0.56);
+    vg.addColorStop(0, 'rgba(120,80,40,0)'); vg.addColorStop(1, 'rgba(120,76,36,0.42)');
+    c.fillStyle = vg; c.fillRect(0, 0, px, ph);
     lo.width = lo.height = fog.width = fog.height = 1;
     if (this.textures.exists(key)) this.textures.remove(key);
     this.textures.addImage(key, canvas as unknown as HTMLImageElement);
     canvas.width = 1; canvas.height = 1;
+    // The paper sheet: a soft shadow on the table, then a deckled (torn) edge just outside the map.
+    const paper = this.add.graphics();
+    const deckle = (ox: number, oy: number, e: number) => {
+      const pts: Phaser.Math.Vector2[] = [];
+      let sd = 3; const r = () => ((sd = (sd * 48271) % 2147483647) / 2147483647);
+      const x0 = mx - e + ox, y0 = my - e + oy, x1 = mx + mw + e + ox, y1 = my + mh + e + oy, st = 14;
+      for (let x = x0; x < x1; x += st) pts.push(new Phaser.Math.Vector2(x, y0 + r() * 4));
+      for (let y = y0; y < y1; y += st) pts.push(new Phaser.Math.Vector2(x1 - r() * 4, y));
+      for (let x = x1; x > x0; x -= st) pts.push(new Phaser.Math.Vector2(x, y1 - r() * 4));
+      for (let y = y1; y > y0; y -= st) pts.push(new Phaser.Math.Vector2(x0 + r() * 4, y));
+      return pts;
+    };
+    paper.fillStyle(0x2a1a0e, 0.35); paper.fillPoints(deckle(5, 9, 12), true);
+    paper.fillStyle(0xf4e6c4, 1); paper.fillPoints(deckle(0, 0, 12), true);
+    paper.lineStyle(1.5, 0xb89564, 0.8); paper.strokePoints(deckle(0, 0, 12), true);
     const img = this.add.image(mx, my, key).setOrigin(0, 0).setScale(1 / DPR);
     const frame = this.add.graphics();
-    frame.lineStyle(3, 0xb59b7c, 1); frame.strokeRoundedRect(mx - 2, my - 2, mw + 4, mh + 4, 10);
-    this.content.add([img, frame]);
-    // Labels + landmarks.
-    const label = (wx: number, wy: number, t: string, size = 15) => this.content.add(this.text(mx + wx * s, my + wy * s, t, size, '#4a3626', 800).setOrigin(0.5).setShadow(0, 0, 'rgba(255,248,230,0.9)', 4, true, true));
+    // A thin double ink border like an old chart.
+    frame.lineStyle(2.5, 0x7a5434, 0.9); frame.strokeRect(mx, my, mw, mh);
+    frame.lineStyle(1, 0x7a5434, 0.6); frame.strokeRect(mx + 5, my + 5, mw - 10, mh - 10);
+    // Curled corners: a lighter fold with a shadow.
+    for (const [cx0, cy0, sx, sy] of [[mx + mw + 12, my + mh + 12, -1, -1], [mx - 12, my - 12, 1, 1]] as const) {
+      frame.fillStyle(0x2a1a0e, 0.18); frame.fillTriangle(cx0, cy0 + sy * 4, cx0 + sx * 30, cy0 + sy * 4, cx0, cy0 + sy * 34);
+      frame.fillStyle(0xe2cc9c, 1); frame.fillTriangle(cx0 + sx * 26, cy0, cx0, cy0 + sy * 26, cx0 + sx * 22, cy0 + sy * 22);
+      frame.lineStyle(1.5, 0xb89564, 1); frame.strokeTriangle(cx0 + sx * 26, cy0, cx0, cy0 + sy * 26, cx0 + sx * 22, cy0 + sy * 22);
+    }
+    this.content.add([paper, img, frame]);
+    this.drawCompass(mx + mw - 58, my + 62, Math.min(46, mh * 0.09));
+    // Area names on little ribbon banners.
     const centers: Record<AreaId, [number, number]> = { glade: [900, 760], river: [2120, 1150], forest: [3400, 380], orchard: [3200, 2250], lake: [700, 2250], village: [470, 1760] };
     for (const [id, [x, y]] of Object.entries(centers) as [AreaId, [number, number]][]) {
-      label(x, y, save.visited.includes(id) ? AREA_NAMES[id] : '? ? ?', 15);
+      this.ribbon(mx + x * s, my + y * s, save.visited.includes(id) ? AREA_NAMES[id] : '? ? ?', save.visited.includes(id));
     }
+    // Puzzle spots: wax seals (orange = still a puzzle, green = solved).
     const mark = (wx: number, wy: number, done: boolean, area: AreaId) => {
       if (!save.visited.includes(area)) return;
       const gg = this.add.graphics();
       const x = mx + wx * s, y = my + wy * s;
-      gg.fillStyle(done ? 0x7cc463 : 0xf2a93b, 1); gg.fillCircle(x, y, 9);
-      gg.lineStyle(2, 0xfffaf0, 1); gg.strokeCircle(x, y, 9);
+      gg.fillStyle(0x2a1a0e, 0.3); gg.fillCircle(x + 1.5, y + 3, 12);
+      const col = done ? 0x5fae4a : 0xd8732c, dark = done ? 0x3f7f30 : 0xa2501c;
+      gg.fillStyle(col, 1);
+      for (let q = 0; q < 8; q++) { const an = (q / 8) * Math.PI * 2; gg.fillCircle(x + Math.cos(an) * 8, y + Math.sin(an) * 8, 5); }
+      gg.fillCircle(x, y, 10); gg.lineStyle(2, dark, 1); gg.strokeCircle(x, y, 7);
       this.content.add([gg, this.text(x, y, done ? '\u2713' : '?', 12, '#fffaf0', 900).setOrigin(0.5)]);
     };
     mark(SHRINE.x, SHRINE.y, !!save.puzzles.lanterns, 'glade');
@@ -239,14 +322,93 @@ export class MenuScene extends Phaser.Scene {
     mark(BELL_CHEST.x, BELL_CHEST.y, !!save.puzzles.bells, 'orchard');
     mark(TILES.x, TILES.y, !!save.puzzles.tiles, 'forest');
     mark(DIG.x, DIG.y, !!save.puzzles.dig, 'lake');
-    const icon = (wx: number, wy: number, t: string) => this.content.add(this.text(mx + wx * s, my + wy * s, t, 13, '#6b4a33', 800).setOrigin(0.5));
-    icon(COTTAGE.x, COTTAGE.y - 40, '\u2302 home');
-    if (save.visited.includes('orchard')) icon(WINDMILL.x + 10, WINDMILL.y - 60, '\u2738 windmill');
-    icon(POND.x, POND.y, 'pond');
+    if (save.visited.includes('orchard')) this.content.add(this.text(mx + (WINDMILL.x + 10) * s, my + (WINDMILL.y - 60) * s, '\u2738', 18, '#6b4a33', 800).setOrigin(0.5));
+    // Landmarks: wooden pins pushed into the paper, with their big icons. Tap one to hear about it.
+    ensureLandmarkIcons(this);
+    const pinR = Math.max(20, Math.min(28, mw * 0.022));
+    for (const lm of LANDMARKS) {
+      const ar = areaAt(lm.x, lm.y);
+      if (!save.visited.includes(ar) && lm.id !== 'wild') continue;
+      if (lm.id === 'wild' && !save.visited.includes('orchard')) continue;
+      const x = mx + lm.x * s, y = my + lm.y * s - pinR * 0.9;
+      const sh = this.add.ellipse(x + 4, my + lm.y * s + 3, pinR * 1.1, pinR * 0.42, 0x2a1a0e, 0.3);
+      const g = this.add.graphics();
+      g.fillStyle(0x7a5434, 1); g.fillTriangle(-5, pinR * 0.7, 5, pinR * 0.7, 0, pinR * 1.55);
+      g.fillStyle(0x5a3d28, 0.35); g.fillCircle(2, 3, pinR + 1);
+      g.fillStyle(0xfff6e0, 1); g.fillCircle(0, 0, pinR);
+      g.lineStyle(3.5, theme.ui.accent, 1); g.strokeCircle(0, 0, pinR - 1.5);
+      const ic = this.add.image(0, -1, lm.icon).setDisplaySize(pinR * 1.6, pinR * 1.6);
+      const pin = this.add.container(x, y, [g, ic]);
+      this.content.add([sh, pin]);
+      const r = pinR + 8;
+      this.rects[`pin:${lm.id}`] = { x: x - r, y: y - r, w: r * 2, h: r * 2 };
+      this.mapPins[lm.id] = pin;
+      const z = this.add.zone(x, y, r * 2, r * 2).setInteractive();
+      z.on('pointerup', (p: Phaser.Input.Pointer) => {
+        if (p.getDistance() >= 24) return;
+        sfx.blip();
+        this.lastPin = lm.id;
+        this.tweens.killTweensOf(pin);
+        pin.setScale(1).setY(y);
+        this.tweens.add({ targets: pin, y: y - 12, scale: 1.18, duration: 140, yoyo: true, ease: 'Quad.easeOut' });
+        this.hint(`${lm.name}! Ride your mount and tap ${lm.name} to fly here.`);
+      });
+      this.content.add(z);
+    }
+    // You are here: a red pin that bobs (drawn every frame in update()).
     this.playerDot = this.add.graphics();
     this.content.add(this.playerDot);
-    const legend = this.text(a.x + 4, a.y + a.h, 'Orange: puzzle   \u00B7   Green: done!', 14, '#8a6a50', 700).setOrigin(0, 1);
-    this.content.add(legend);
+    // Legend on a paper tag pinned to the corner.
+    const lx = mx + 16, ly = my + mh - 46;
+    const tag = this.add.graphics();
+    tag.fillStyle(0x2a1a0e, 0.25); tag.fillRoundedRect(lx + 3, ly + 4, 236, 36, 8);
+    tag.fillStyle(0xfff6e0, 1); tag.fillRoundedRect(lx, ly, 236, 36, 8);
+    tag.lineStyle(1.5, 0xb89564, 1); tag.strokeRoundedRect(lx, ly, 236, 36, 8);
+    tag.fillStyle(0xd8732c, 1); tag.fillCircle(lx + 18, ly + 18, 7);
+    tag.fillStyle(0x5fae4a, 1); tag.fillCircle(lx + 116, ly + 18, 7);
+    this.content.add([tag, this.text(lx + 30, ly + 18, 'Puzzle', 14, '#6b4a33', 800).setOrigin(0, 0.5), this.text(lx + 128, ly + 18, 'Solved!', 14, '#6b4a33', 800).setOrigin(0, 0.5)]);
+    // Unfold: the paper settles onto the table.
+    for (const o of [paper, img, frame]) { o.setAlpha(0); this.tweens.add({ targets: o, alpha: 1, duration: 260, ease: 'Quad.easeOut' }); }
+  }
+
+  mapPins: Record<string, Phaser.GameObjects.Container> = {};
+  /** Last landmark pin tapped on the map (for tests). */
+  lastPin = '';
+
+  /** A hand-inked compass rose. */
+  private drawCompass(x: number, y: number, r: number) {
+    const g = this.add.graphics();
+    g.fillStyle(0xfff6e0, 0.85); g.fillCircle(x, y, r * 0.78);
+    g.lineStyle(2, 0x7a5434, 1); g.strokeCircle(x, y, r * 0.78); g.strokeCircle(x, y, r * 0.66);
+    const star = (len: number, wid: number, rot: number, c1: number, c2: number) => {
+      for (let q = 0; q < 4; q++) {
+        const an = rot + (q * Math.PI) / 2, ca = Math.cos(an), sa = Math.sin(an), cb = Math.cos(an + Math.PI / 2), sb = Math.sin(an + Math.PI / 2);
+        g.fillStyle(c1, 1); g.fillTriangle(x, y, x + ca * len, y + sa * len, x + cb * wid, y + sb * wid);
+        g.fillStyle(c2, 1); g.fillTriangle(x, y, x + ca * len, y + sa * len, x - cb * wid, y - sb * wid);
+      }
+    };
+    star(r * 0.62, r * 0.14, Math.PI / 4, 0xc9a777, 0x9b7146);
+    star(r * 1.0, r * 0.2, -Math.PI / 2, theme.ui.accent, theme.ui.accentDark);
+    g.fillStyle(0xfff6e0, 1); g.fillCircle(x, y, r * 0.1);
+    this.content.add([g, this.text(x, y - r * 1.0 - 10, 'N', 16, '#6b4a33', 900).setOrigin(0.5)]);
+  }
+
+  /** An area name on a little cloth ribbon with folded tails. */
+  private ribbon(x: number, y: number, label: string, known: boolean) {
+    const t = this.text(x, y, label, 15, known ? '#fffaf0' : '#8a6a50', 900).setOrigin(0.5);
+    const w = t.width + 26, h = 26;
+    const g = this.add.graphics();
+    const col = known ? theme.ui.accent : 0xe2d2b0, dark = known ? theme.ui.accentDark : 0xbfa982;
+    // Tails.
+    g.fillStyle(dark, 1);
+    g.fillTriangle(x - w / 2 - 14, y - h / 2 + 6, x - w / 2 + 4, y - h / 2 + 6, x - w / 2 + 4, y + h / 2 + 6);
+    g.fillTriangle(x - w / 2 - 14, y + h / 2 + 6, x - w / 2 + 4, y + h / 2 + 6, x - w / 2 - 6, y + 6);
+    g.fillTriangle(x + w / 2 + 14, y - h / 2 + 6, x + w / 2 - 4, y - h / 2 + 6, x + w / 2 - 4, y + h / 2 + 6);
+    g.fillTriangle(x + w / 2 + 14, y + h / 2 + 6, x + w / 2 - 4, y + h / 2 + 6, x + w / 2 + 6, y + 6);
+    g.fillStyle(0x2a1a0e, 0.22); g.fillRoundedRect(x - w / 2 + 2, y - h / 2 + 3, w, h, 5);
+    g.fillStyle(col, 1); g.fillRoundedRect(x - w / 2, y - h / 2, w, h, 5);
+    g.lineStyle(1.5, 0xfff6e0, 0.6); g.strokeRoundedRect(x - w / 2 + 3, y - h / 2 + 3, w - 6, h - 6, 3);
+    this.content.add([g, t]);
   }
 
   // ------------------------------------------------------------ wardrobe
@@ -739,9 +901,14 @@ export class MenuScene extends Phaser.Scene {
       const px = x + this.world.feet.x * s, py = y + this.world.feet.y * s;
       const g = this.playerDot;
       g.clear();
-      g.fillStyle(0xffffff, 0.5); g.fillCircle(px, py, 11 + Math.sin(time / 200) * 3);
-      g.fillStyle(0xe85d3a, 1); g.fillCircle(px, py, 7);
-      g.lineStyle(2, 0xffffff, 1); g.strokeCircle(px, py, 7);
+      // A red "you are here" pin that bobs over a pulsing ring.
+      const bob = Math.abs(Math.sin(time / 300)) * 6;
+      g.lineStyle(2.5, 0xe85d3a, 0.55); g.strokeEllipse(px, py, 26 + Math.sin(time / 200) * 6, 11 + Math.sin(time / 200) * 2.5);
+      g.fillStyle(0x2a1a0e, 0.3); g.fillEllipse(px + 2, py + 1, 14 - bob * 0.6, 6 - bob * 0.2);
+      g.fillStyle(0xb8402a, 1); g.fillTriangle(px - 6, py - 14 - bob, px + 6, py - 14 - bob, px, py - bob);
+      g.fillStyle(0xe85d3a, 1); g.fillCircle(px, py - 20 - bob, 10);
+      g.lineStyle(2.5, 0xffffff, 1); g.strokeCircle(px, py - 20 - bob, 10);
+      g.fillStyle(0xffffff, 0.8); g.fillCircle(px - 3, py - 23 - bob, 3);
     }
   }
 }

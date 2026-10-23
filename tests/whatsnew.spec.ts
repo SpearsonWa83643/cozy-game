@@ -25,7 +25,7 @@ test("what's new: after entry, shows once, closes, stays closed; none when empty
   await expect(page.locator('#entry')).toHaveCount(0);
   await expect(page.locator('#whatsnew h2')).toContainText("What's new");
   await expect(page.locator('#whatsnew li')).toHaveCount(4);
-  await expect(page.locator('#whatsnew li').first()).toContainText('brand-new wardrobe');
+  await expect(page.locator('#whatsnew li').first()).toContainText('paper map');
   await expect(page.locator('#whatsnew li').nth(1)).toContainText('Fish from your boat!');
   await expect(page.locator('#whatsnew li').nth(2)).toContainText('Row, row, row your boat!');
   await expect(page.locator('#whatsnew li').nth(3)).toContainText('Fly anywhere!');
