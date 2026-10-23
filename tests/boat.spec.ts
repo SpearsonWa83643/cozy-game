@@ -42,8 +42,8 @@ async function tryWater(page: Page, idx: number, shot: string | null) {
   const s2 = await st(page);
   const onWater = await page.evaluate(([x, y]) => (window as any).__cozy.waterAt(x, y), [s2.x, s2.y]);
   expect(onWater).toBe(b0.water);
-  const b2 = (await boat(page)).boats[idx];
-  expect(Math.hypot(b2.x - s2.x, b2.y - s2.y)).toBeLessThan(4); // the boat carries you
+  // The boat carries you (once you've come to a stop; while moving it is drawn with the player sprite, a frame behind physics).
+  await expect.poll(() => page.evaluate((i) => { const c = (window as any).__cozy; const b = c.boat().boats[i]; const s = c.state; return Math.hypot(b.x - s.x, b.y - s.y); }, idx), { timeout: 20_000, intervals: [300] }).toBeLessThan(4);
   if (shot) await page.screenshot({ path: `${SHOTS}/${shot}` });
   // Tap a far land point (beyond the water): row to the edge and hop out on dry land.
   await tapWorld(page, b0.stand[0], b0.stand[1]);

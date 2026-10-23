@@ -64,7 +64,8 @@ export class Boats {
   constructor(private w: WorldScene) {
     ensureBoatArt(w);
     this.add('pond', [POND.x, POND.y + POND.ry + 60], [0, -1]);
-    this.add('lake', [PIER.x, PIER.y1 - 10], [1, 0.15]);
+    // Beside the pier's shore end, not its deep tip: easy to walk up to.
+    this.add('lake', [PIER.x + 120, PIER.y0], [0, 1]);
   }
 
   get active() { return !!this.riding; }
@@ -84,7 +85,7 @@ export class Boats {
     const b: Boat = {
       water, x, y, flip: dir[0] < 0, back, front, shadow, dock: stand,
       it: {
-        x, y, r: 96, label: 'Boat', promptY: 70, approach: [stand[0] - x, stand[1] - y],
+        x, y, r: 120, label: 'Boat', promptY: 70, approach: [stand[0] - x, stand[1] - y],
         enabled: () => !this.riding && !this.hopping && !w.inWild && !w.mount.carrying && !w.village?.building,
         action: () => this.board(b),
       },

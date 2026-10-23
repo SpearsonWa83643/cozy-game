@@ -1200,7 +1200,8 @@ export class WorldScene extends Phaser.Scene {
     this.playerImg.setTexture(this.heroKey, `${this.facing}_${stepFrame}`).setFlipX(this.flip);
     const bob = speed > 25 ? Math.abs(Math.sin(this.walkPhase * Math.PI / 2)) * 2.4 : 0;
     const breathe = speed > 25 ? 0 : Math.sin(time / 420) * 0.018;
-    this.playerImg.setPosition(this.feet.x, this.feet.y + 6 - bob);
+    // In a boat you sit up on the seat so your top half shows over the side.
+    this.playerImg.setPosition(this.feet.x, this.feet.y + 6 - bob - (boating ? 34 - Math.sin(time / 520) * 1.6 : 0));
     this.playerImg.setScale((1 / S) * (1 - breathe * 0.5), (1 / S) * (1 + breathe));
     this.playerImg.setDepth(this.feet.y + 6);
     this.playerShadow.setPosition(this.feet.x, this.feet.y + 5).setScale((34 / 64) * (1 - bob * 0.03) / frameScale.shadow);
