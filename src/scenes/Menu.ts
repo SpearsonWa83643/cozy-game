@@ -34,6 +34,12 @@ export class MenuScene extends Phaser.Scene {
     fromHero: boolean; live: boolean; done: boolean;
   } = null;
   private stageGlow: Phaser.GameObjects.Graphics | null = null;
+  /** 9.36 slice 3: squash & stretch for the hero's reactions (update() applies it on top of the breathing). */
+  heroSquash = { x: 1, y: 1 };
+  private heroBase = 1;
+  /** Last reaction played, for tests: 'hat' | 'scarf' | 'outfit' | 'extras' | 'off'. */
+  lastReaction = '';
+  private reactChain: Phaser.Tweens.TweenChain | null = null;
   playerDot: Phaser.GameObjects.Graphics | null = null;
   mapGeom = { x: 0, y: 0, s: 1 };
   resetArmed = 0;
@@ -261,6 +267,7 @@ export class MenuScene extends Phaser.Scene {
     const key = this.world.heroKey;
     const sc = Math.min((ph * 0.8) / (HERO_H * S), (pw * 0.95) / (HERO_W * S));
     this.heroImg = this.add.image(a.x + pw / 2, floorY + 8, key, `${this.heroDir}_0`).setOrigin(0.5, 1).setScale(sc);
+    this.heroBase = sc; this.heroSquash.x = 1; this.heroSquash.y = 1;
     this.content.add(this.heroImg);
     this.rects.hero = { x: a.x, y: a.y, w: pw, h: ph };
     const turn = this.add.zone(a.x, a.y, pw, ph).setOrigin(0, 0).setInteractive();
@@ -363,8 +370,58 @@ export class MenuScene extends Phaser.Scene {
     this.game.events.emit('equipped', c.id);
     this.render();
     // A little hop for the hero, and the name of what you picked.
-    if (this.heroImg) { const hy = this.heroImg.y; this.tweens.add({ targets: this.heroImg, y: hy - 18, duration: 140, yoyo: true, ease: 'Sine.easeOut' }); }
-    this.hint(isEquipped(c, save.look) ? c.name : `${c.name} off`);
+    const on = isEquipped(c, save.look) && !isNoneItem(c);
+    this.react(on ? c.slot : 'off');
+    this.hint(on || isEquipped(c, save.look) ? c.name : `${c.name} off`);
+  }
+
+  /** The hero reacts to a change: a happy hop + sparkles + a sound for everything, plus a pose per category:
+   *  hat = a proud stretch, scarf = a wiggle, outfit = a twirl all the way round, extras = a double bounce. */
+  private react(kind: string) {
+    const h = this.heroImg; if (!h) return;
+    this.lastReaction = kind === 'back' || kind === 'feather' || kind === 'shells' ? 'extras' : kind;
+    const k = this.lastReaction, hy = h.y, sq = this.heroSquash;
+    this.tweens.killTweensOf([h, sq]); this.reactChain?.stop(); this.reactChain = null;
+    h.setAngle(0); sq.x = 1; sq.y = 1;
+    if (k === 'off') {
+      // A little shrug: squash down and back.
+      sfx.blip();
+      this.tweens.add({ targets: sq, x: 1.08, y: 0.9, duration: 120, yoyo: true, ease: 'Sine.easeOut', onComplete: () => { sq.x = 1; sq.y = 1; } });
+      return;
+    }
+    sfx.sparkle();
+    this.sparkles(h.x, hy - h.displayHeight * 0.55, h.displayWidth * 0.55);
+    // Anticipation squash, then a hop with a stretch.
+    this.reactChain = this.tweens.chain({ targets: sq, tweens: [
+      { x: 1.12, y: 0.86, duration: 90, ease: 'Quad.easeOut' },
+      { x: 0.92, y: k === 'hat' ? 1.18 : 1.1, duration: k === 'hat' ? 220 : 140, ease: 'Quad.easeOut' },
+      { x: 1, y: 1, duration: 220, ease: 'Back.easeOut' },
+    ], onComplete: () => { sq.x = 1; sq.y = 1; } });
+    this.tweens.add({ targets: h, y: hy - (k === 'hat' ? 30 : 22), duration: 170, delay: 90, yoyo: true, ease: 'Sine.easeOut',
+      repeat: k === 'extras' ? 1 : 0, onComplete: () => h.setY(hy) });
+    if (k === 'scarf') {
+      this.tweens.add({ targets: h, angle: { from: -7, to: 7 }, duration: 110, yoyo: true, repeat: 2, delay: 120, ease: 'Sine.easeInOut', onComplete: () => h.setAngle(0) });
+    } else if (k === 'outfit') {
+      // Twirl: spin through every facing and back to the front.
+      const order = [1, 2, 3, 4, 0];
+      order.forEach((dir, i) => this.time.delayedCall(110 + i * 85, () => { if (this.heroImg === h) { h.setFrame(`${dir}_0`); if (i === order.length - 1) this.heroDir = 0; } }));
+    }
+  }
+
+  /** A burst of little four-point stars around the hero. */
+  private sparkles(x: number, y: number, rad: number) {
+    const colors = [0xffe27a, 0xfff6c8, 0xf2a93b, theme.ui.accent ?? 0x9ad07a];
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2 + Math.random() * 0.4, d = rad * (0.7 + Math.random() * 0.6), sz = 5 + Math.random() * 6;
+      const g = this.add.graphics({ x, y });
+      g.fillStyle(colors[i % colors.length], 1);
+      g.fillTriangle(-sz * 0.3, 0, sz * 0.3, 0, 0, -sz); g.fillTriangle(-sz * 0.3, 0, sz * 0.3, 0, 0, sz);
+      g.fillTriangle(0, -sz * 0.3, 0, sz * 0.3, -sz, 0); g.fillTriangle(0, -sz * 0.3, 0, sz * 0.3, sz, 0);
+      g.setScale(0.3);
+      this.content.add(g);
+      this.tweens.add({ targets: g, x: x + Math.cos(a) * d, y: y + Math.sin(a) * d * 1.2, scale: 1, angle: 90, duration: 380 + Math.random() * 160, ease: 'Quad.easeOut',
+        onComplete: () => this.tweens.add({ targets: g, alpha: 0, scale: 0.2, duration: 260, onComplete: () => g.destroy() }) });
+    }
   }
 
   /** Finger down on an item: it becomes a drag once the finger travels a little (a short press stays a tap). */
@@ -417,7 +474,7 @@ export class MenuScene extends Phaser.Scene {
           if (!isEquipped(d.c, save.look)) { this.wear(d.c); return; }
           // Already wearing it: just a happy hop.
           this.render(); this.hint(d.c.name);
-          if (this.heroImg) { const hy = this.heroImg.y; this.tweens.add({ targets: this.heroImg, y: hy - 18, duration: 140, yoyo: true, ease: 'Sine.easeOut' }); }
+          this.react(d.c.slot);
         } });
       return;
     }
@@ -587,7 +644,7 @@ export class MenuScene extends Phaser.Scene {
       d.vx = d.vx * 0.6 + (nx - d.ghost.x) * 0.4;
       d.ghost.setPosition(nx, d.ghost.y + (d.ty - d.ghost.y) * k).setAngle(Phaser.Math.Clamp(d.vx * 1.6, -22, 22));
     }
-    if (this.heroImg) this.heroImg.setScale(this.heroImg.scaleX, this.heroImg.scaleX * (1 + Math.sin(time / 420) * 0.018));
+    if (this.heroImg) this.heroImg.setScale(this.heroBase * this.heroSquash.x, this.heroBase * this.heroSquash.y * (1 + Math.sin(time / 420) * 0.018));
     if (this.playerDot) {
       const { x, y, s } = this.mapGeom;
       const px = x + this.world.feet.x * s, py = y + this.world.feet.y * s;

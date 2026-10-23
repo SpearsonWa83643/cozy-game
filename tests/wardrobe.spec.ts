@@ -8,6 +8,7 @@ const FILE = pathToFileURL(resolve('dist-single/index.html')).href;
 const SHOTS = process.env.WARDROBE_SHOTS ?? '/workspace/cozy-game/screenshots';
 const look = (page: Page) => page.evaluate(() => (window as any).__cozy.state.look);
 const rect = (page: Page, k: string) => page.evaluate((k) => (window as any).__menu.rects[k], k);
+const reaction = (page: Page) => page.evaluate(() => (window as any).__menu.lastReaction);
 const tapRect = async (page: Page, r: { x: number; y: number; w: number; h: number }) => page.touchscreen.tap(r.x + r.w / 2, r.y + r.h / 2);
 
 test('wardrobe: big hero, illustrated wardrobe, tap to wear', async ({ playwright: _pw }, info) => {
@@ -49,9 +50,21 @@ test('wardrobe: big hero, illustrated wardrobe, tap to wear', async ({ playwrigh
       expect((await look(page)).outfit).toBe('teal');
       await tapRect(page, await rect(page, 'outfit:moss'));
       await expect.poll(async () => (await look(page)).outfit, { timeout: 20_000 }).toBe('moss');
+      expect(await reaction(page)).toBe('outfit');
       await page.waitForTimeout(600);
       await tapRect(page, await rect(page, 'hat:none'));
       await expect.poll(async () => (await look(page)).hat, { timeout: 20_000 }).toBe('none');
+      expect(await reaction(page)).toBe('off');
+      await page.waitForTimeout(600);
+      // 9.36 slice 3: a scarf makes the hero wiggle (with sparkles).
+      await tapRect(page, await rect(page, 'scarf:none'));
+      await expect.poll(async () => (await look(page)).scarf, { timeout: 20_000 }).toBe('none');
+      await page.waitForTimeout(600);
+      await tapRect(page, await rect(page, 'scarf:red'));
+      await expect.poll(async () => (await look(page)).scarf, { timeout: 20_000 }).toBe('red');
+      expect(await reaction(page)).toBe('scarf');
+      await page.waitForTimeout(250);
+      await page.screenshot({ path: `${SHOTS}/wardrobe-react.png` });
       await page.waitForTimeout(600);
       // Locked: nothing changes.
       await tapRect(page, await rect(page, 'scarf:petal'));
@@ -59,6 +72,12 @@ test('wardrobe: big hero, illustrated wardrobe, tap to wear', async ({ playwrigh
       expect((await look(page)).scarf).toBe('red');
       await tapRect(page, await rect(page, 'hat:straw'));
       await expect.poll(async () => (await look(page)).hat, { timeout: 20_000 }).toBe('straw');
+      expect(await reaction(page)).toBe('hat');
+      await page.waitForTimeout(1500);
+      // After the reaction the hero settles back to normal.
+      const sq = await page.evaluate(() => (window as any).__menu.heroSquash);
+      expect(Math.abs(sq.x - 1)).toBeLessThan(0.02);
+      expect(Math.abs(sq.y - 1)).toBeLessThan(0.02);
       expect(errors).toEqual([]);
     } finally { await page.close(); }
   } finally { await browser.close(); }
