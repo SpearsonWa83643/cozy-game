@@ -1305,6 +1305,10 @@ export class WorldScene extends Phaser.Scene {
       },
       lanterns: LANTERNS,
       enterWild: (seed?: number) => self.enterWild(seed),
+      themeHud() {
+        const tp = (self.scene.get('ui') as any).themePick;
+        return tp ? { open: tp.open, current: theme.id, rects: JSON.parse(JSON.stringify(tp.rects)) } : null;
+      },
       zoomInfo() {
         const inW = self.scene.isActive('wild');
         const sc = (inW ? self.scene.get('wild') : self) as any;

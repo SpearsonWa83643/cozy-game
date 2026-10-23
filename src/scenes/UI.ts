@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { TouchStick, ZoomButtons } from '../controls';
+import { ThemePicker } from '../themePicker';
 import { S, ATLAS, frameScale, atlasOf } from '../art';
 import { NumBadge, SeqCard } from '../seq';
 import { DPR } from '../dpr';
@@ -56,6 +57,7 @@ export class UIScene extends Phaser.Scene {
   typing = false;
   // HUD.
   hudC!: Phaser.GameObjects.Container;
+  themePick!: ThemePicker;
   hudIcons: { id: LanternId; ring: Phaser.GameObjects.Graphics; sym: Phaser.GameObjects.Image; glow: Phaser.GameObjects.Image; badge: NumBadge }[] = [];
   feather!: Phaser.GameObjects.Image;
   // Toast.
@@ -204,6 +206,8 @@ export class UIScene extends Phaser.Scene {
     this.bagZone.setPosition(this.bagC.x, this.bagC.y);
     // Left column, stacked above Call Mount / Build (same spot in the Wild).
     this.zoomBtns?.layout(68 + si.left, this.h - 340 - si.bottom);
+    // Under the lantern sigils, top-left; the choices fan out to the right.
+    this.themePick?.layout(22 + si.left + 34, 106 + si.top);
     this.layoutFishUI();
     const abx = this.w - 74 - si.right;
     const aby = this.h - 78 - si.bottom;
@@ -492,6 +496,9 @@ export class UIScene extends Phaser.Scene {
     // Big + / - zoom buttons for anyone who can't pinch.
     this.zoomBtns = new ZoomButtons(this, (dir) => { if (this.registry.get('menuOpen')) return; sfx.unlock(); if (this.world.zoom?.step(dir)) sfx.blip(); else sfx.tock(); });
 
+    // Theme picker: one button showing the current look; tap to fan out the others.
+    this.themePick = new ThemePicker(this, () => !this.registry.get('menuOpen') && !this.world.locked);
+
     // Big contextual action button (96 px), bottom-right inside the safe area.
     this.actionBg = this.add.graphics();
     this.actionBg.fillStyle(0x2a1d14, 0.3);
@@ -512,7 +519,8 @@ export class UIScene extends Phaser.Scene {
     this.input.on('pointerdown', (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (p.wasTouch && !this.touchMode) { this.touchMode = true; this.applyTouchMode(); }
       if (this.registry.get('menuOpen') || this.registry.get('vcard')) return;
-      if (over.some((o) => this.zoomBtns.zones.includes(o as Phaser.GameObjects.Zone) || o === this.volZone || o === this.mapZone || o === this.bagZone || (o === this.actionZone && this.actionShown))) return;
+      if (this.themePick.open && !over.some((o) => this.themePick.zones.includes(o as Phaser.GameObjects.Zone))) { this.themePick.close(); return; }
+      if (over.some((o) => this.themePick.zones.includes(o as Phaser.GameObjects.Zone) || this.zoomBtns.zones.includes(o as Phaser.GameObjects.Zone) || o === this.volZone || o === this.mapZone || o === this.bagZone || (o === this.actionZone && this.actionShown))) return;
       if (this.cardOpen) { this.closeCard(); return; }
       if (this.registry.get('dialogOpen')) { this.world.tryInteract(); return; }
       const fs = this.world.fishing?.state;
