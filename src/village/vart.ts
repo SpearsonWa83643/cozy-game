@@ -508,6 +508,43 @@ function paintLanterns(c: Ctx, w: number, h: number) {
     rect(c, x - 3, y + 17, 6, 2.5, 1, '#3b2a35', 1);
   }
 }
+function blossom(c: Ctx, x: number, y: number, r: number, col: string) {
+  for (let k = 0; k < 5; k++) { const a = (k / 5) * Math.PI * 2 - Math.PI / 2; c.beginPath(); c.ellipse(x + Math.cos(a) * r * 0.62, y + Math.sin(a) * r * 0.62, r * 0.5, r * 0.36, a, 0, Math.PI * 2); fo(c, col, 1.1); }
+  circ(c, x, y, r * 0.3, '#ffd84a', 0.9);
+}
+/** 11.8 Spring: a leafy vine swagged under the eave, dotted with pink and white blossoms. */
+function paintGarland(c: Ctx, w: number, h: number) {
+  const swag = (x0: number, x1: number) => (t: number) => [x0 + (x1 - x0) * t, 5 + Math.sin(t * Math.PI) * 11] as [number, number];
+  const segs = 3;
+  c.beginPath(); c.moveTo(3, 5);
+  for (let i = 0; i < segs; i++) { const x0 = 3 + ((w - 6) * i) / segs, x1 = 3 + ((w - 6) * (i + 1)) / segs; c.quadraticCurveTo((x0 + x1) / 2, 27, x1, 5); }
+  c.lineWidth = 3.2; c.strokeStyle = INK; c.stroke(); c.lineWidth = 1.8; c.strokeStyle = '#5fae4a'; c.stroke();
+  const cols = ['#ffb3cf', '#ffffff', '#ff8fb8', '#ffe0ec'];
+  let n = 0;
+  for (let i = 0; i < segs; i++) {
+    const f = swag(3 + ((w - 6) * i) / segs, 3 + ((w - 6) * (i + 1)) / segs);
+    for (const t of [0.12, 0.3, 0.5, 0.7, 0.88]) {
+      const [x, y] = f(t);
+      c.fillStyle = '#4f9a3c'; c.beginPath(); c.ellipse(x + 3, y + 3, 3.2, 1.6, 0.6, 0, Math.PI * 2); c.fill();
+      blossom(c, x, y + 1, t === 0.5 ? 5.4 : 4.4, cols[n++ % 4]);
+    }
+  }
+}
+/** 11.8 Spring: a wooden flower box with tulips and daisies. */
+function paintFlowerbox(c: Ctx, w: number, h: number) {
+  const by = h - 2;
+  const tul = ['#ff5a7a', '#ffd84d', '#ff9ac0', '#b48cff', '#ff7a4a'];
+  for (let i = 0; i < 5; i++) {
+    const x = 9 + i * ((w - 18) / 4), top = 6 + (i % 2) * 5;
+    c.beginPath(); c.moveTo(x, by - 12); c.lineTo(x, top + 6); c.lineWidth = 2.2; c.strokeStyle = '#3f8a3a'; c.stroke();
+    c.fillStyle = '#5fae4a'; c.beginPath(); c.ellipse(x + 3, by - 16, 3.4, 1.6, -0.6, 0, Math.PI * 2); c.fill();
+    if (i % 2) blossom(c, x, top + 4, 5, '#ffffff');
+    else { c.beginPath(); c.moveTo(x - 4.5, top + 8); c.lineTo(x - 4.5, top + 2); c.lineTo(x - 1.5, top + 4.5); c.lineTo(x, top); c.lineTo(x + 1.5, top + 4.5); c.lineTo(x + 4.5, top + 2); c.lineTo(x + 4.5, top + 8); c.quadraticCurveTo(x, top + 12, x - 4.5, top + 8); fo(c, tul[i], 1.3); }
+  }
+  rect(c, 2, by - 14, w - 4, 14, 3, '#c98f5a', 2);
+  c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(5, by - 12, w - 10, 2.5);
+  c.fillStyle = 'rgba(80,50,30,0.35)'; for (const x of [w / 3, (2 * w) / 3]) c.fillRect(x, by - 12, 1.5, 10);
+}
 function paintGourds(c: Ctx, w: number, h: number) {
   const by = h - 3;
   // Leafy base, a big pumpkin, a gourd and a little squash.
@@ -567,6 +604,8 @@ export function paintVillageArt(scene: Phaser.Scene) {
   T('vd_lights', 140, 22, paintLights, 2);
   T('vd_wreath', 34, 40, paintWreath, 2.5);
   T('vd_lanterns', 140, 34, paintLanterns, 2);
+  T('vd_garland', 140, 30, paintGarland, 2);
+  T('vd_flowerbox', 52, 34, paintFlowerbox, 2.5);
   T('vd_gourds', 56, 30, paintGourds, 2.5);
   T('vd_corn', 24, 50, paintCorn, 2.5);
   T('p_drop', 4, 12, paintDrop, 2);

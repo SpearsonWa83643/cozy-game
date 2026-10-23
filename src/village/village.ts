@@ -282,7 +282,7 @@ export class Village {
     return bld;
   }
   goInside(b: Building) { this.w.game.events.emit('interior', { id: b.data.id, type: b.data.type, name: BUILD[b.data.type].name }); }
-  /** 11.7: the village dresses up for the theme (bunting, gourds, lanterns, wreaths, icicles). */
+  /** 11.7/11.8: the village dresses up for the theme (garlands, bunting, gourds, lanterns, wreaths, icicles). */
   dressings: Phaser.GameObjects.Image[] = [];
   /** Building id -> dressing frame keys currently shown (for tests). */
   dressKeys = new Map<number, string[]>();
@@ -312,6 +312,12 @@ export class Village {
       add(key, x, y, 0.5, 0).setDisplaySize((2 * s.hw - inset) * k, artH * k);
     };
     switch (theme.id) {
+      case 'spring': {
+        // 11.8: blossom garland under the eave + a flower box by the door.
+        strip('vd_garland', 30, 0, 6);
+        const [x, y] = P(s.gourd, 0); add('vd_flowerbox', x, y, 0.5, 1).setDisplaySize(52 * k * 0.9, 34 * k * 0.9);
+        break;
+      }
       case 'summer': {
         const [x, y] = P(0, s.eave - 2); const w = 2 * s.hw * k;
         add('f_bunting', x, y, 0.5, 0.2).setDisplaySize(w, w * 0.2);
