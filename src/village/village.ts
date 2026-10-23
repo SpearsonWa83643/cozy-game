@@ -6,6 +6,7 @@ import { VILLAGE, VILLAGE_SIGN, VILLAGE_ENTRY, MERCHANT_SPOT, COTTAGE } from '..
 import { save, persist, hasTreasure, tipOnce, takeFruit, BuildingType, BuildingSave, VillagerSave, Res } from '../save';
 import { sfx } from '../audio';
 import { theme, themeEvents } from '../theme';
+import { Weather, WEATHER_TEXT } from './weather';
 import { KINDS } from './vart';
 import type { WorldScene } from '../scenes/World';
 
@@ -143,6 +144,8 @@ export class Village {
   bunting: Phaser.GameObjects.Image[] = [];
   rainFx: Phaser.GameObjects.Particles.ParticleEmitter;
   rainTint: Phaser.GameObjects.Rectangle;
+  /** 11.85: how the rainy-day event looks in the current theme. */
+  weather: Weather;
   produced = 0;
   speed = 1; // test hook only
 
@@ -159,6 +162,7 @@ export class Village {
       scale: { min: 0.5, max: 0.8 }, alpha: { min: 0.4, max: 0.75 }, emitting: false,
     } as any).setDepth(8900);
     this.rainTint = w.add.rectangle(0, 0, 10, 10, 0x6d7f9e, 0).setOrigin(0).setScrollFactor(0).setDepth(8800);
+    this.weather = new Weather(w, this.rainFx, this.rainTint);
     for (const b of save.village.buildings) this.spawnBuilding(b, false);
     for (const d of save.village.villagers) {
       const [x, y] = this.homeSpot(d.id);
@@ -174,7 +178,7 @@ export class Village {
       const n = { junk: 0, common: 1, uncommon: 2, rare: 3 }[d.species.rarity as 'common'] ?? 1;
       if (n) this.add('food', n, w.feet.x, w.feet.y - 60);
     });
-    themeEvents.on('change', () => this.restyle());
+    themeEvents.on('change', () => { this.restyle(); this.weather.retheme(); });
   }
 
   // ------------------------------------------------------------ grid helpers
@@ -893,12 +897,8 @@ export class Village {
     const w = this.w;
     if (this.rain > 0) {
       this.rain -= dt;
-      const v = w.cameras.main.worldView;
-      (this.rainFx as any).emitZone?.length; // keep type quiet
-      this.rainFx.setPosition(v.x, v.y - 40);
-      (this.rainFx.emitZones[0] as any).source.setTo(0, 0, v.width + 200, 20);
-      this.rainTint.setSize(this.w.scale.width, this.w.scale.height).setFillStyle(0x6d7f9e, Math.min(0.22, this.rain * 0.1));
-      if (this.rain <= 0) { this.rainFx.stop(); this.rainTint.setFillStyle(0x6d7f9e, 0); w.game.events.emit('toast', 'The rain stopped. Hello, sun!'); }
+      this.weather.update(this.rain, dt);
+      if (this.rain <= 0) { const k = this.weather.end(); w.game.events.emit('toast', WEATHER_TEXT[k ?? 'rain'][1]); }
     }
     if (this.festival > 0) {
       this.festival -= dt;
@@ -924,8 +924,8 @@ export class Village {
     save.village.events++;
     if (e === 'rain' && this.rain <= 0) {
       this.rain = 70;
-      this.rainFx.start();
-      w.game.events.emit('toast', 'Rainy day! Plants love rain.');
+      const k = this.weather.begin();
+      w.game.events.emit('toast', WEATHER_TEXT[k][0]);
     } else if (e === 'festival' && this.festival <= 0) {
       this.festival = 50;
       sfx.festival = true;

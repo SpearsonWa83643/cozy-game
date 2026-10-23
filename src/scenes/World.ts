@@ -1489,7 +1489,7 @@ export class WorldScene extends Phaser.Scene {
           tips: [...save.tips],
           alert: v.alert ? { id: v.alert.id, text: v.alert.text } : null, gifts: v.gifts, fruitFed: v.fruitFed,
           guest: v.wanderer ? { name: v.wanderer.data.name, x: Math.round(v.wanderer.x), y: Math.round(v.wanderer.y - 26) } : null,
-          produced: v.produced, rain: v.rain > 0, festival: v.festival > 0, merchant: !!v.cart, theme: save.theme,
+          produced: v.produced, rain: v.rain > 0, weather: v.weather.kind, rainbows: v.weather.rainbows, rainbow: !!v.weather.rainbow, festival: v.festival > 0, merchant: !!v.cart, theme: save.theme,
         };
       },
       villageSpeed: (n: number) => { self.village.speed = n; },
@@ -1580,6 +1580,8 @@ export class WorldScene extends Phaser.Scene {
         return { snowballs: d.snowballs.filter((p) => p.visible).map((p) => [r(p.x), r(p.y - 22)]), taps: { snowball: d.taps.snowball } };
       },
       villageEvent: (e: 'merchant' | 'rain' | 'festival') => self.village.start(e),
+      /** 11.85: fast-forward the rainy-day event to N seconds left. */
+      weatherLeft: (n: number) => { if (self.village.rain > 0) self.village.rain = n; },
       mount: () => self.mount.snapshot(),
       callMount: (id?: string) => self.mount.call(id),
       /** Test hook: grant a treasure (e.g. a mount egg) without the trip. */
