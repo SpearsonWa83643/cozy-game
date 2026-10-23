@@ -534,7 +534,7 @@ export class ThemeDresser {
     const [pollen] = w.ambient;
     pollen?.updateConfig({ tint: t.particles.pollen } as any);
     // Each theme's petal/leaf frame has its own emitter on the right atlas page; only one runs.
-    const petals = w.makePetals(t.particles.petal, t.particles.petalTint, t.id === 'halloween' ? 300 : t.id === 'spring' ? 380 : t.id === 'fall' ? 260 : t.id === 'christmas' ? 140 : t.id === 'winter' ? 100 : 700);
+    const petals = w.makePetals(t.particles.petal, t.particles.petalTint, t.id === 'halloween' ? 300 : t.id === 'spring' ? 380 : t.id === 'fall' ? 260 : t.id === 'christmas' ? 140 : t.id === 'winter' ? 100 : t.id === 'summer' ? 520 : 700);
     for (const [f, e] of w.petalBy) { const on = e === petals; e.emitting = on; if (!on) e.killAll(); e.setVisible(on); }
     w.petals = petals;
     for (const e of w.fireflies) e.updateConfig({ tint: t.particles.firefly } as any);
@@ -547,7 +547,7 @@ export class ThemeDresser {
     if (live) {
       w.ground.restyle();
       w.cameras.main.flash(400, t.id === 'halloween' ? 120 : 255, t.id === 'halloween' ? 80 : t.id === 'fall' ? 200 : 245, t.id === 'halloween' ? 160 : t.id === 'fall' ? 140 : t.frost ? 255 : 220);
-      w.burst(w.feet.x, w.feet.y - 30, t.id === 'halloween' ? 0xffa040 : t.id === 'spring' ? 0xffc4dc : t.id === 'fall' ? 0xff9a4a : t.frost ? 0xffffff : 0x9be07a, 30, t.id === 'halloween' ? 'spark' : t.frost ? 'p_snow' : 'leaf');
+      w.burst(w.feet.x, w.feet.y - 30, t.id === 'halloween' ? 0xffa040 : t.id === 'spring' ? 0xffc4dc : t.id === 'fall' ? 0xff9a4a : t.frost ? 0xffffff : t.id === 'summer' ? 0xffd84a : 0x9be07a, 30, t.id === 'halloween' ? 'spark' : t.frost ? 'p_snow' : 'leaf');
     }
   }
 

@@ -42,12 +42,13 @@ export function ensureBoatArt(scene: Phaser.Scene) {
 }
 
 /** Each theme gets its own boat paint: hull colour, stripe, and a little picture on the bow. */
-const SKINS: Record<ThemeId, { hull: string; stripe: string; rim: string; badge: 'flower' | 'leaf' | 'pumpkin' | 'star' }> = {
+const SKINS: Record<ThemeId, { hull: string; stripe: string; rim: string; badge: 'flower' | 'leaf' | 'pumpkin' | 'star' | 'sun' }> = {
   spring: { hull: '#d9604c', stripe: '#fbe3c0', rim: '#ffd9a0', badge: 'flower' },
   fall: { hull: '#c9772f', stripe: '#ffe0a0', rim: '#ffd27a', badge: 'leaf' },
   halloween: { hull: '#6b4a8c', stripe: '#ff9a3c', rim: '#c9a6f0', badge: 'pumpkin' },
   christmas: { hull: '#2f8a4e', stripe: '#ffffff', rim: '#b8f0c8', badge: 'star' },
   winter: { hull: '#3f7fc0', stripe: '#ffffff', rim: '#cfe8ff', badge: 'star' },
+  summer: { hull: '#1fa6b8', stripe: '#ffe27a', rim: '#bff4f0', badge: 'sun' },
 };
 export const boatFrontKey = (id: ThemeId) => `boat_front_${id}`;
 
@@ -71,6 +72,10 @@ function paintFront(scene: Phaser.Scene, id: ThemeId) {
     g.fillStyle = '#ffe27a'; g.beginPath();
     for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 4 : 9; g.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
     g.closePath(); g.fill(); g.stroke();
+  } else if (k.badge === 'sun') {
+    g.strokeStyle = '#f2a623'; g.lineWidth = 2.5; g.lineCap = 'round';
+    for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; g.beginPath(); g.moveTo(cx + Math.cos(a) * 8, cy + Math.sin(a) * 8); g.lineTo(cx + Math.cos(a) * 12, cy + Math.sin(a) * 12); g.stroke(); }
+    g.strokeStyle = INK; g.fillStyle = '#ffd84a'; g.beginPath(); g.arc(cx, cy, 6.5, 0, Math.PI * 2); g.fill(); g.stroke();
   } else if (k.badge === 'flower') {
     g.fillStyle = '#ffe9f0';
     for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * Math.PI * 2 / 5; g.beginPath(); g.arc(cx + Math.cos(a) * 5.5, cy + Math.sin(a) * 5.5, 4.2, 0, Math.PI * 2); g.fill(); g.stroke(); }

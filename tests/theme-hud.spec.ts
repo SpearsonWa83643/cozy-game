@@ -32,13 +32,13 @@ test('HUD theme picker: fan out, switch, fold away', async ({ page }) => {
     // Clear of the zoom buttons and other HUD buttons.
     for (const b of (await cozy(page, 'zoomInfo()')).buttons as R[]) expect(overlap(h.rects.btn, b)).toBe(false);
 
-    // Tap: the four other themes fan out.
+    // Tap: the five other themes fan out.
     await tapRect(page, h.rects.btn);
     await expect.poll(async () => (await hud(page)).open, { timeout: 10_000 }).toBe(true);
     await page.waitForTimeout(500);
     h = await hud(page);
-    expect(Object.keys(h.rects).filter((k) => k !== 'btn').sort()).toEqual(['christmas', 'fall', 'halloween', 'winter']);
-    for (const k of ['christmas', 'fall', 'halloween', 'winter']) expect(h.rects[k].w).toBeGreaterThanOrEqual(64);
+    expect(Object.keys(h.rects).filter((k) => k !== 'btn').sort()).toEqual(['christmas', 'fall', 'halloween', 'summer', 'winter']);
+    for (const k of ['christmas', 'fall', 'halloween', 'summer', 'winter']) expect(h.rects[k].w).toBeGreaterThanOrEqual(64);
     await page.screenshot({ path: `${SHOTS}/theme-hud-open.png` });
 
     // Pick Halloween: theme switches, picker folds.
@@ -52,7 +52,7 @@ test('HUD theme picker: fan out, switch, fold away', async ({ page }) => {
     await tapRect(page, h.rects.btn);
     await expect.poll(async () => (await hud(page)).open, { timeout: 10_000 }).toBe(true);
     h = await hud(page);
-    expect(Object.keys(h.rects).filter((k) => k !== 'btn').sort()).toEqual(['christmas', 'fall', 'spring', 'winter']);
+    expect(Object.keys(h.rects).filter((k) => k !== 'btn').sort()).toEqual(['christmas', 'fall', 'spring', 'summer', 'winter']);
     const s0 = await cozy(page, 'state');
     await page.touchscreen.tap(700, 600);
     await expect.poll(async () => (await hud(page)).open, { timeout: 10_000 }).toBe(false);

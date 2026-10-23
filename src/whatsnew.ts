@@ -3,13 +3,13 @@
 // Keep each bullet short and simple: kids read these.
 // icon: 'wood' | 'fruit' | 'berry' | 'star' | 'heart' (a little picture beside the line).
 
-export const VERSION = '2026-10-23-winter1';
+export const VERSION = '2026-10-23-summer1';
 
 export type WhatsNewItem = { icon: 'wood' | 'fruit' | 'berry' | 'star' | 'heart'; text: string };
 
 export const ITEMS: WhatsNewItem[] = [
+  { icon: 'heart', text: 'A new Summer theme! Tap the sun to make the glade bright and sunny. Watch the yellow butterflies and listen to the happy summer music.' },
   { icon: 'star', text: 'A new Winter theme! Tap the snowflake to make the whole glade snowy and quiet. Say hi to the snowmen and listen to the soft winter music.' },
   { icon: 'berry', text: 'Go inside the Garden shed and the Fishing Hut! Water the flower pots and pick the blooms, or tap the fishing hole to cast your line and catch a fish.' },
   { icon: 'wood', text: 'Build toys in the Workshop! Tap your Workshop, then Go inside! Tap the workbench, pick a toy boat, birdhouse, frog or horsey, then tap tap tap to hammer it. Uses your wood and stone.' },
-  { icon: 'fruit', text: 'Cook in the Kitchen! Build a Kitchen, tap it, then Go inside! Tap the stove to make pancakes or eggs, and tap the coffee maker to brew a hot cup.' },
 ];

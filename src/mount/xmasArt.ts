@@ -208,8 +208,20 @@ function paintWinterIcon(c: Ctx, w: number) {
   c.fillStyle = '#ffffff'; c.beginPath(); c.arc(cx, cx, 3, 0, Math.PI * 2); c.fill();
 }
 
+/** Summer theme icon: a bold, smiling-free sun with chunky rays. */
+function paintSummerIcon(c: Ctx, w: number) {
+  const cx = w / 2, r = w * 0.24;
+  dab(c, cx, w - 4, w * 0.32, 3, 0, hsl(30, 40, 30, 0.2));
+  c.strokeStyle = hsl(36, 90, 54); c.lineCap = 'round'; c.lineWidth = 4;
+  for (let i = 0; i < 8; i++) { const a = (i * Math.PI) / 4; c.beginPath(); c.moveTo(cx + Math.cos(a) * r * 1.45, cx + Math.sin(a) * r * 1.45); c.lineTo(cx + Math.cos(a) * r * 1.9, cx + Math.sin(a) * r * 1.9); c.stroke(); }
+  c.fillStyle = hsl(46, 100, 62); c.beginPath(); c.arc(cx, cx, r * 1.15, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = hsl(32, 80, 44); c.lineWidth = 2.2; c.stroke();
+  c.fillStyle = hsl(52, 100, 86, 0.7); c.beginPath(); c.ellipse(cx - r * 0.35, cx - r * 0.4, r * 0.45, r * 0.26, -0.5, 0, Math.PI * 2); c.fill();
+}
+
 export function paintChristmasArt(scene: Phaser.Scene) {
   canvasTex(scene, 'i_winter', 48, 48, (c) => paintWinterIcon(c, 48), 2);
+  canvasTex(scene, 'i_summer', 48, 48, (c) => paintSummerIcon(c, 48), 2);
   ([['xm_present0', 2, 46], ['xm_present1', 142, 2], ['xm_present2', 212, 46], ['xm_present3', 46, 2]] as [string, number, number][])
     .forEach(([k, hue, rib]) => canvasTex(scene, k, 44, 44, (c) => paintPresent(c, 44, 44, hue, rib)));
   canvasTex(scene, 'xm_snowman', 56, 90, (c) => paintSnowman(c, 56, 90));

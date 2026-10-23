@@ -117,6 +117,28 @@ export const CHRISTMAS: Soundscape = {
   ],
 };
 
+/** Summer: a bright, sunny C-major kalimba that skips along a little faster than Spring, airy
+ *  pads, barely any wind, lots of songbirds, a far-off cuckoo and wind chimes on the porch. */
+export const SUMMER: Soundscape = {
+  id: 'summer', lead: 'kalimba', dens: 1.2, pad: 0.8, bright: 1.3, wind: 0.15,
+  extras: [
+    { kind: 'birds', every: [4, 10], vol: 0.6 },
+    { kind: 'birds', every: [8, 18], vol: 0.45 },
+    { kind: 'cuckoo', every: [30, 55], vol: 0.4 },
+    { kind: 'chimes', every: [20, 38], vol: 0.35 },
+  ],
+  chords: [
+    { bass: 36, pad: [52, 55, 59, 62, 64], mel: [72, 74, 76, 79, 81] },              // Cmaj9
+    { bass: 45, pad: [52, 55, 57, 59, 60], mel: [69, 71, 72, 76, 79] },              // Am9
+    { bass: 41, pad: [53, 57, 60, 64], mel: [72, 76, 77, 79, 81] },                  // Fmaj7
+    { bass: 43, pad: [55, 59, 62, 64], mel: [71, 74, 76, 79] },                      // G6
+    { bass: 40, pad: [52, 55, 59, 62], mel: [71, 74, 76, 79] },                      // Em7
+    { bass: 41, pad: [53, 57, 60, 64, 67], mel: [72, 76, 79, 81] },                  // Fmaj9
+    { bass: 38, pad: [53, 57, 60, 64], mel: [72, 74, 76, 77, 81] },                  // Dm9
+    { bass: 43, pad: [55, 60, 62, 65], mel: [72, 74, 77, 79] },                      // Gsus
+  ],
+};
+
 /** Winter: a hushed, airy D-major flute over soft pads, a steady cold wind, far-off wind chimes,
  *  a fireside crackle now and then and the drip of icicles. Calmer and sparser than Christmas. */
 export const WINTER: Soundscape = {

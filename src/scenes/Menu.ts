@@ -126,7 +126,7 @@ export class MenuScene extends Phaser.Scene {
     g.lineStyle(3, 0xd9b98f, 1); g.strokeRoundedRect(bx + 8, by + 8, bw - 16, bh - 16, 20);
     this.root.add([dim, g]);
     // Tabs.
-    const themeLeft = bx + bw - 22 - 56 - 18 - THEME_ORDER.length * ((THEME_ORDER.length > 4 ? 50 : THEME_ORDER.length > 3 ? 56 : 64) + 8);
+    const themeLeft = bx + bw - 22 - 56 - 18 - THEME_ORDER.length * ((THEME_ORDER.length > 5 ? 46 : THEME_ORDER.length > 4 ? 50 : THEME_ORDER.length > 3 ? 56 : 64) + 8);
     const tabW = Math.min(170, (themeLeft - bx - 22 - 10) / TABS.length - 8), tabH = 54;
     TABS.forEach(([id, label], i) => {
       const tx = bx + 22 + i * (tabW + 8), ty = by + 16;
@@ -138,7 +138,7 @@ export class MenuScene extends Phaser.Scene {
     });
     // Theme toggle: one big icon per theme, the active one lit up.
     {
-      const n = THEME_ORDER.length, tw = n > 4 ? 50 : n > 3 ? 56 : 64, ty = by + 15; // 4+ themes: slimmer buttons so they clear the tabs on iPad mini
+      const n = THEME_ORDER.length, tw = n > 5 ? 46 : n > 4 ? 50 : n > 3 ? 56 : 64, ty = by + 15; // 4+ themes: slimmer buttons so they clear the tabs on iPad mini
       const tx0 = bx + bw - 22 - 56 - 18 - n * (tw + 8);
       THEME_ORDER.forEach((id, i) => {
         const on = theme.id === id;
@@ -742,6 +742,15 @@ export class MenuScene extends Phaser.Scene {
       g.fillStyle(0xf7d046, 1); g.lineStyle(2, 0xc9822a, 1); g.beginPath();
       for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, rr = k % 2 ? 6 : 14; const x = sx + Math.cos(a) * rr, y = sy + Math.sin(a) * rr; if (k) g.lineTo(x, y); else g.moveTo(x, y); }
       g.closePath(); g.fillPath(); g.strokePath();
+    } else if (t === 'summer') {
+      // Sunny bunting along the crown and a little sun peeking over the left side.
+      const cols = [0x22aebd, 0xffd84a, 0xff8a5a, 0x7ad06a];
+      g.lineStyle(2, 0x8a5a34, 1); g.lineBetween(wx - 2, wy - 8, wx + ww + 2, wy - 8);
+      let i = 0; for (let x = wx + 4; x < wx + ww - 14; x += 26, i++) { g.fillStyle(cols[i % cols.length], 1); g.fillTriangle(x, wy - 8, x + 18, wy - 8, x + 9, wy + 8); }
+      const sx = wx + 40, sy = wy - 22;
+      g.lineStyle(3, 0xf2a623, 1);
+      for (let k = 0; k < 8; k++) { const a = (k * Math.PI) / 4; g.lineBetween(sx + Math.cos(a) * 13, sy + Math.sin(a) * 13, sx + Math.cos(a) * 19, sy + Math.sin(a) * 19); }
+      g.fillStyle(0xffd84a, 1); g.fillCircle(sx, sy, 10); g.lineStyle(2, 0xd98a1a, 1); g.strokeCircle(sx, sy, 10);
     } else if (t === 'winter') {
       // A soft snow crown with icy icicles hanging down.
       g.fillStyle(0xffffff, 1); g.fillRoundedRect(wx - 8, wy - 16, ww + 16, 10, 5);
