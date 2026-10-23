@@ -51,6 +51,9 @@ function fresh(): SaveData {
   return { v: 2, theme: 'spring', village: freshVillage(), puzzles: {}, treasures: [], fish: {}, minor: {}, look: { ...DEFAULT_LOOK }, visited: ['glade'], chests: [], snacks: 0, berries: 0, tips: [], wild: { visits: 0, poofs: 0, loot: {} } };
 }
 
+/** True when this session began with no save at all (a brand-new player). */
+export let freshSave = false;
+
 export const save: SaveData = (() => {
   try {
     let raw = localStorage.getItem(KEY);
@@ -67,6 +70,7 @@ export const save: SaveData = (() => {
       }
     }
   } catch { /* storage unavailable or corrupt */ }
+  freshSave = true;
   return fresh();
 })();
 

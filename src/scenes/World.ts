@@ -3,7 +3,7 @@ import { stickInput, steerBody, stepPath, pulseTapMarker, slideOutOfWater, CamZo
 import { S, ATLAS, atlasOf, frameScale, mulberry32, pondValue, distToPaths, pathDist, ALL_PATHS , TREE_SCALE} from '../art';
 import { GroundStreamer } from '../ground';
 import { waterBlocks, areaAt, waterAt } from '../geo';
-import { save, persist, setPuzzle, addTreasure, hasTreasure, visit, takeFruit } from '../save';
+import { save, persist, setPuzzle, addTreasure, hasTreasure, visit, takeFruit, freshSave } from '../save';
 import { buildHeroSheet } from '../hero';
 import { buildAreas } from '../areas';
 import { Village } from '../village/village';
@@ -21,6 +21,7 @@ import {
 import { sfx } from '../audio';
 import { DPR } from '../dpr';
 import { NavGrid } from '../pathfind';
+import { startCandidates, pickStart, rng32, StartOpts } from '../startSpot';
 import { Life } from '../life';
 import { Mount } from '../mount/mount';
 
@@ -254,6 +255,7 @@ export class WorldScene extends Phaser.Scene {
     this.village = new Village(this);
     this.dresser = new ThemeDresser(this);
     this.mount = new Mount(this);
+    this.placeStart();
     this.tapMarker = this.fx(0, 0, 'ripple', 0.5).setBlendMode('ADD').setAlpha(0).setDepth(-300);
 
     // Camera.
@@ -717,6 +719,38 @@ export class WorldScene extends Phaser.Scene {
         'Then the gate opens!',
       ], LANTERN_ORDER.map((id, i): SeqCard => ({ n: i + 1, icon: `q_${id}`, label: id, done: this.solved || this.litOrder.includes(id) }))),
     });
+  }
+
+  /** Random start spot (9.2): a new safe place each session. Brand-new players and automated
+   *  tests keep the classic spot by the lantern sign; ?start=random / ?start=fixed override. */
+  startInfo: { x: number; y: number; random: boolean; fallback: boolean; candidates: number } = { x: PLAYER_START.x, y: PLAYER_START.y, random: false, fallback: false, candidates: 0 };
+  startOpts(): StartOpts {
+    return {
+      from: PLAYER_START,
+      bounds: { x0: 80, y0: WALL_Y + 80, x1: GLADE_W - 80, y1: GLADE_H - 60 },
+      clearance: 2,
+      reject: (x, y) =>
+        // Not right on top of something to use, not hidden behind the cottage art, not under a tree canopy.
+        this.interactables.some(it => Math.hypot(it.x - x, it.y - y) < (it.r ?? 50) + 30)
+        || [0, 1, 2, 3, 4, 5, 6, 7].some(k => waterBlocks(x + Math.cos(k * Math.PI / 4) * 110, y + Math.sin(k * Math.PI / 4) * 110)) // not on the shore
+        || (Math.abs(x - COTTAGE.x) < 160 && y > COTTAGE.y - 300 && y < COTTAGE.y + 20)
+        || this.canopies.some(c => { if (!c.visible) return false; const b = c.getBounds(); return x > b.x + 10 && x < b.right - 10 && y > b.y + 10 && y < b.bottom - 10; }),
+    };
+  }
+  placeStart() {
+    const q = new URLSearchParams(location.search);
+    const mode = q.get('start');
+    const want = mode === 'random' || (mode !== 'fixed' && !freshSave && !navigator.webdriver);
+    if (!want) return;
+    this.buildNav(); // village buildings are in place now
+    const o = this.startOpts();
+    const cands = startCandidates(this.nav, o);
+    const seed = Number(q.get('startSeed')) || ((Math.random() * 2 ** 31) | 0);
+    const at = pickStart(cands, o, rng32(seed));
+    this.startInfo = { x: at.x, y: at.y, random: true, fallback: at.fallback, candidates: cands.length };
+    this.feet.setPosition(at.x, at.y); this.body.reset(at.x, at.y);
+    this.lastSafe = [at.x, at.y];
+    this.playerImg.setPosition(at.x, at.y); this.playerShadow.setPosition(at.x, at.y);
   }
 
   buildPlayer() {
@@ -1305,6 +1339,26 @@ export class WorldScene extends Phaser.Scene {
       },
       lanterns: LANTERNS,
       enterWild: (seed?: number) => self.enterWild(seed),
+      startInfo: () => ({ ...self.startInfo }),
+      /** Pick n start spots from seeds 1..n and report whether each is safe. */
+      startSpots(n: number) {
+        const o = self.startOpts();
+        const cands = startCandidates(self.nav, o);
+        const out: { x: number; y: number; free: boolean; water: boolean; solid: boolean; reach: boolean }[] = [];
+        for (let i = 1; i <= n; i++) {
+          const p = pickStart(cands, o, rng32(i));
+          const [c, r] = self.nav.cellOf(p.x, p.y);
+          const solid = (self.solids.getChildren() as Phaser.GameObjects.Zone[]).some(z => {
+            const b = z.body as Phaser.Physics.Arcade.StaticBody;
+            if (!b || !b.enable) return false;
+            if (b.isCircle) return Math.hypot(b.center.x - p.x, b.center.y - p.y) < b.halfWidth + 12;
+            return p.x > b.x - 12 && p.x < b.right + 12 && p.y > b.y - 12 && p.y < b.bottom + 12;
+          });
+          const reach = !!self.nav.find(PLAYER_START.x, PLAYER_START.y, p.x, p.y);
+          out.push({ x: p.x, y: p.y, free: !self.nav.isBlocked(c, r), water: waterBlocks(p.x, p.y), solid, reach });
+        }
+        return { candidates: cands.length, spots: out };
+      },
       themeHud() {
         const tp = (self.scene.get('ui') as any).themePick;
         return tp ? { open: tp.open, current: theme.id, rects: JSON.parse(JSON.stringify(tp.rects)) } : null;
