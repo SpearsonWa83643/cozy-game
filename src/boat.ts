@@ -6,6 +6,8 @@ import { waterAt, waterBlocks, type WaterId } from './geo';
 import { POND, PIER } from './layout';
 import { pulseTapMarker } from './controls';
 import type { WorldScene, Interactable } from './scenes/World';
+import { theme, themeEvents } from './theme';
+import type { ThemeId } from './save';
 
 type BoatWater = Extract<WaterId, 'pond' | 'lake'>;
 export type Boat = {
@@ -36,20 +38,50 @@ export function ensureBoatArt(scene: Phaser.Scene) {
   g.fillStyle = '#8a5a34'; g.beginPath(); g.ellipse(W / 2 + 2, 20, W / 2 - 8, 13, -0.04, 0, Math.PI * 2); g.fill(); g.stroke();
   g.fillStyle = '#6e4426'; g.beginPath(); g.ellipse(W / 2 + 2, 22, W / 2 - 18, 8, -0.04, 0, Math.PI * 2); g.fill();
   back.refresh();
-  const front = scene.textures.createCanvas('boat_front', W, H)!;
-  g = front.getContext();
+  for (const id of Object.keys(SKINS) as ThemeId[]) paintFront(scene, id);
+}
+
+/** Each theme gets its own boat paint: hull colour, stripe, and a little picture on the bow. */
+const SKINS: Record<ThemeId, { hull: string; stripe: string; rim: string; badge: 'flower' | 'leaf' | 'pumpkin' | 'star' }> = {
+  spring: { hull: '#d9604c', stripe: '#fbe3c0', rim: '#ffd9a0', badge: 'flower' },
+  fall: { hull: '#c9772f', stripe: '#ffe0a0', rim: '#ffd27a', badge: 'leaf' },
+  halloween: { hull: '#6b4a8c', stripe: '#ff9a3c', rim: '#c9a6f0', badge: 'pumpkin' },
+  christmas: { hull: '#2f8a4e', stripe: '#ffffff', rim: '#b8f0c8', badge: 'star' },
+};
+export const boatFrontKey = (id: ThemeId) => `boat_front_${id}`;
+
+function paintFront(scene: Phaser.Scene, id: ThemeId) {
+  const k = SKINS[id];
+  const front = scene.textures.createCanvas(boatFrontKey(id), W, H)!;
+  const g = front.getContext();
   g.lineJoin = 'round'; g.lineWidth = 4; g.strokeStyle = INK;
   g.save(); hullPath(g); g.clip();
-  g.fillStyle = '#d9604c'; g.fillRect(0, 0, W, H);
-  g.fillStyle = '#fbe3c0'; g.fillRect(0, 24, W, 9);
+  g.fillStyle = k.hull; g.fillRect(0, 0, W, H);
+  g.fillStyle = k.stripe; g.fillRect(0, 24, W, 9);
+  if (id === 'christmas') { g.fillStyle = '#d93a3a'; for (let x = -6; x < W; x += 16) { g.beginPath(); g.moveTo(x, 33); g.lineTo(x + 8, 33); g.lineTo(x + 14, 24); g.lineTo(x + 6, 24); g.closePath(); g.fill(); } }
   g.fillStyle = 'rgba(61,44,32,0.18)'; g.fillRect(0, H - 22, W, 22);
   g.restore();
   hullPath(g); g.stroke();
-  // Rim highlight and a little bow star.
-  g.strokeStyle = '#ffd9a0'; g.lineWidth = 3; g.beginPath(); g.moveTo(14, 21); g.lineTo(W - 12, 15); g.stroke();
-  g.fillStyle = '#ffe9a8'; g.strokeStyle = INK; g.lineWidth = 2.5; g.beginPath();
-  for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 4 : 9; g.lineTo(W - 34 + Math.cos(a) * r, 40 + Math.sin(a) * r); }
-  g.closePath(); g.fill(); g.stroke();
+  // Rim highlight and a little picture on the bow.
+  g.strokeStyle = k.rim; g.lineWidth = 3; g.beginPath(); g.moveTo(14, 21); g.lineTo(W - 12, 15); g.stroke();
+  const cx = W - 34, cy = 42;
+  g.strokeStyle = INK; g.lineWidth = 2.5;
+  if (k.badge === 'star') {
+    g.fillStyle = '#ffe27a'; g.beginPath();
+    for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 4 : 9; g.lineTo(cx + Math.cos(a) * r, cy + Math.sin(a) * r); }
+    g.closePath(); g.fill(); g.stroke();
+  } else if (k.badge === 'flower') {
+    g.fillStyle = '#ffe9f0';
+    for (let i = 0; i < 5; i++) { const a = -Math.PI / 2 + i * Math.PI * 2 / 5; g.beginPath(); g.arc(cx + Math.cos(a) * 5.5, cy + Math.sin(a) * 5.5, 4.2, 0, Math.PI * 2); g.fill(); g.stroke(); }
+    g.fillStyle = '#ffd34d'; g.beginPath(); g.arc(cx, cy, 3.6, 0, Math.PI * 2); g.fill(); g.stroke();
+  } else if (k.badge === 'leaf') {
+    g.fillStyle = '#ffcf4a'; g.beginPath(); g.ellipse(cx, cy, 10, 6, -0.6, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(cx - 9, cy + 7); g.lineTo(cx + 6, cy - 4); g.stroke();
+  } else {
+    g.fillStyle = '#ff8a2a'; g.beginPath(); g.ellipse(cx, cy + 1, 10, 8, 0, 0, Math.PI * 2); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(cx - 3, cy - 6); g.quadraticCurveTo(cx, cy + 1, cx - 3, cy + 8); g.moveTo(cx + 3, cy - 6); g.quadraticCurveTo(cx, cy + 1, cx + 3, cy + 8); g.stroke();
+    g.fillStyle = '#4f8a3a'; g.fillRect(cx - 1.5, cy - 11, 3, 5); g.strokeRect(cx - 1.5, cy - 11, 3, 5);
+  }
   front.refresh();
 }
 
@@ -66,6 +98,10 @@ export class Boats {
     this.add('pond', [POND.x, POND.y + POND.ry + 60], [0, -1]);
     // Beside the pier's shore end, not its deep tip: easy to walk up to.
     this.add('lake', [PIER.x + 120, PIER.y0], [0, 1]);
+    // Repaint with the theme's boat skin when the look changes.
+    const onTheme = () => { for (const b of this.boats) b.front.setTexture(boatFrontKey(theme.id)); };
+    themeEvents.on('change', onTheme);
+    w.events.once('shutdown', () => themeEvents.off('change', onTheme));
   }
 
   get active() { return !!this.riding; }
@@ -80,7 +116,7 @@ export class Boats {
       if (waterAt(x, y, BOAT_INSET + 6) === water && waterAt(x, y, BOAT_INSET + 6) && !waterBlocksDeck(x, y)) break;
     }
     const back = w.add.image(x, y, 'boat_back').setOrigin(0.5, 0.75);
-    const front = w.add.image(x, y, 'boat_front').setOrigin(0.5, 0.75);
+    const front = w.add.image(x, y, boatFrontKey(theme.id)).setOrigin(0.5, 0.75);
     const shadow = w.add.ellipse(x, y + 6, W * 0.9, 22, 0x1e4a63, 0.28).setDepth(-380);
     const b: Boat = {
       water, x, y, flip: dir[0] < 0, back, front, shadow, dock: stand,
@@ -287,7 +323,7 @@ export class Boats {
   snapshot() {
     const r = this.riding;
     return {
-      active: !!r, water: r?.water ?? null, castSpot: this.castSpot()?.map(Math.round) ?? null, hopping: this.hopping, boards: this.boards, hops: this.hops,
+      active: !!r, water: r?.water ?? null, skin: this.boats[0]?.front.texture.key ?? null, castSpot: this.castSpot()?.map(Math.round) ?? null, hopping: this.hopping, boards: this.boards, hops: this.hops,
       boats: this.boats.map((b) => ({ water: b.water, x: Math.round(b.x), y: Math.round(b.y), stand: [Math.round(b.x + (b.it.approach?.[0] ?? 0)), Math.round(b.y + (b.it.approach?.[1] ?? 0))] })),
     };
   }

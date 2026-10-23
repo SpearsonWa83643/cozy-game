@@ -90,6 +90,17 @@ test('boats: climb in, row on the pond and the lake, hop out on the shore', asyn
       expect(b.active).toBe(false);
       await tryWater(page, 0, 'boat-pond.png', 'boat-fishing.png');
       await tryWater(page, 1, 'boat-lake.png');
+      // Slice 3: each theme paints its own boat.
+      expect((await boat(page)).skin).toBe('boat_front_spring');
+      const pb = (await boat(page)).boats[0];
+      await page.evaluate(([x, y]) => (window as any).__cozy.teleport(x, y), pb.stand);
+      for (const id of ['fall', 'halloween', 'christmas']) {
+        await page.evaluate((t) => (window as any).__cozy.setTheme(t), id);
+        await expect.poll(async () => (await boat(page)).skin, { timeout: 10_000 }).toBe(`boat_front_${id}`);
+        await page.waitForTimeout(1500);
+        if (id !== 'fall') await page.screenshot({ path: `${SHOTS}/boat-${id}.png` });
+      }
+      await page.evaluate(() => (window as any).__cozy.setTheme('spring'));
       const end = await boat(page);
       expect(end.boards).toBe(2);
       expect(end.hops).toBe(2);
