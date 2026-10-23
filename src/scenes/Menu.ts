@@ -11,6 +11,7 @@ import { buildPreviewSheet, HERO_W, HERO_H } from '../hero';
 import { WORLD_W, WORLD_H, AREA_NAMES, AreaId, COTTAGE, SHRINE, WINDMILL, BRIDGES, PIER, POT_CHEST, BELL_CHEST, TILES, DIG, POND } from '../layout';
 import { areaAt, waterAt } from '../geo';
 import type { WorldScene } from './World';
+import { buildWardrobeItems, isNoneItem } from '../wardrobeArt';
 
 const INK = '#3d2c20';
 const FONT = 'Nunito';
@@ -227,80 +228,170 @@ export class MenuScene extends Phaser.Scene {
   }
 
   // ------------------------------------------------------------ wardrobe
+  /** 9.36 slice 1: a big character on the left and an illustrated wardrobe with open doors on the right:
+   *  hats on the shelf, scarves on hooks, outfits on hangers, extras in the drawer. Tap an item to wear it. */
   renderWardrobe(a: { x: number; y: number; w: number; h: number }) {
-    const looks = COSMETICS.map((c) => {
-      const l: Look = { ...save.look };
-      if (c.slot === 'feather' || c.slot === 'shells') (l as any)[c.slot] = true;
-      else (l as any)[c.slot] = c.value;
-      return { id: c.id, look: l };
-    });
-    buildPreviewSheet(this, 'previews', looks, 2);
+    buildWardrobeItems(this, 'wardrobe-items');
     const narrow = a.w < 860;
-    const pw = narrow ? 170 : 260;
-    // Character preview.
+    const ph = a.h - 30;
+    const pw = Math.round(a.w * (narrow ? 0.34 : 0.37));
+    // --- Character stage: soft spotlight, rug, and a big hero.
     const pg = this.add.graphics();
-    pg.fillStyle(0xf3e6cc, 1); pg.fillRoundedRect(a.x, a.y, pw, a.h - 30, 20);
-    pg.lineStyle(2.5, 0xd9b98f, 1); pg.strokeRoundedRect(a.x, a.y, pw, a.h - 30, 20);
-    pg.fillStyle(0x2a1d14, 0.12); pg.fillEllipse(a.x + pw / 2, a.y + (a.h - 30) * 0.72, pw * 0.42, 22);
+    pg.fillStyle(0xf3e6cc, 1); pg.fillRoundedRect(a.x, a.y, pw, ph, 22);
+    pg.fillStyle(0xfff8e6, 1); pg.fillEllipse(a.x + pw / 2, a.y + ph * 0.48, pw * 0.92, ph * 0.86);
+    pg.lineStyle(2.5, 0xd9b98f, 1); pg.strokeRoundedRect(a.x, a.y, pw, ph, 22);
+    const floorY = a.y + ph * 0.86;
+    pg.fillStyle(theme.ui.accent ?? 0xf2a93b, 0.22); pg.fillEllipse(a.x + pw / 2, floorY, pw * 0.78, 42);
+    pg.lineStyle(3, theme.ui.accentDark ?? 0xc9822a, 0.35); pg.strokeEllipse(a.x + pw / 2, floorY, pw * 0.78, 42);
+    pg.fillStyle(0x2a1d14, 0.14); pg.fillEllipse(a.x + pw / 2, floorY, pw * 0.36, 18);
     this.content.add(pg);
     const key = this.world.heroKey;
-    const sc = (narrow ? 2.0 : 3.0) / S;
-    this.heroImg = this.add.image(a.x + pw / 2, a.y + (a.h - 30) * 0.72, key, `${this.heroDir}_0`).setOrigin(0.5, 1).setScale(sc);
+    const sc = Math.min((ph * 0.8) / (HERO_H * S), (pw * 0.95) / (HERO_W * S));
+    this.heroImg = this.add.image(a.x + pw / 2, floorY + 8, key, `${this.heroDir}_0`).setOrigin(0.5, 1).setScale(sc);
     this.content.add(this.heroImg);
-    const turn = this.add.zone(a.x, a.y, pw, a.h - 30).setOrigin(0, 0).setInteractive();
+    this.rects.hero = { x: a.x, y: a.y, w: pw, h: ph };
+    const turn = this.add.zone(a.x, a.y, pw, ph).setOrigin(0, 0).setInteractive();
     turn.on('pointerup', () => { this.heroDir = (this.heroDir + 1) % 5; this.heroImg?.setFrame(`${this.heroDir}_0`); sfx.blip(); });
-    this.content.add([turn, this.text(a.x + pw / 2, a.y + a.h - 50, 'tap to turn', 14, '#8a6a50', 700).setOrigin(0.5)]);
-    // Tiles by slot.
-    const rows: [string, Cosmetic[]][] = [
-      ['Hats', COSMETICS.filter((c) => c.slot === 'hat')],
-      ['Scarves', COSMETICS.filter((c) => c.slot === 'scarf')],
-      ['Outfits', COSMETICS.filter((c) => c.slot === 'outfit')],
-      ['Back & extras', COSMETICS.filter((c) => c.slot === 'back' || c.slot === 'feather' || c.slot === 'shells')],
+    this.content.add([turn, this.text(a.x + pw / 2, a.y + ph - 14, 'tap to turn', 14, '#8a6a50', 700).setOrigin(0.5, 1)]);
+
+    // --- The wardrobe.
+    const gx = a.x + pw + 20, gw = a.w - pw - 20;
+    const dw = Math.min(54, gw * 0.08);              // open doors, one each side
+    const wx = gx + dw, ww = gw - dw * 2, wy = a.y + 12, wh = ph - 12;
+    const g = this.add.graphics();
+    const WOOD = 0xc08a58, WOOD_D = 0x8f5f38, LINE = 0x6b4a33, BACK = 0x7a5034, BOARD = 0xd8a872;
+    // Doors (swung open, in perspective).
+    const door = (x0: number, x1: number, sign: number) => {
+      g.fillStyle(WOOD, 1); g.lineStyle(3, LINE, 1);
+      g.beginPath(); g.moveTo(x1, wy + 4); g.lineTo(x0, wy + 22); g.lineTo(x0, wy + wh - 18); g.lineTo(x1, wy + wh - 4); g.closePath(); g.fillPath(); g.strokePath();
+      const ix0 = x0 + sign * 10, ix1 = x1 - sign * 8;
+      g.fillStyle(WOOD_D, 0.35);
+      for (const [t0, t1] of [[0.08, 0.46], [0.54, 0.92]]) {
+        g.beginPath();
+        g.moveTo(ix1, wy + 4 + (wh - 8) * t0 + 6); g.lineTo(ix0, wy + 22 + (wh - 40) * t0 + 6);
+        g.lineTo(ix0, wy + 22 + (wh - 40) * t1 - 6); g.lineTo(ix1, wy + 4 + (wh - 8) * t1 - 6); g.closePath(); g.fillPath();
+      }
+      g.fillStyle(0xf2c45a, 1); g.fillCircle((x0 + x1) / 2 + sign * 6, wy + wh * 0.5, 5); g.lineStyle(2, LINE, 1); g.strokeCircle((x0 + x1) / 2 + sign * 6, wy + wh * 0.5, 5);
+    };
+    door(gx, wx, 1); door(gx + gw, wx + ww, -1);
+    // Body with a little crown on top.
+    g.fillStyle(0x2a1d14, 0.18); g.fillRoundedRect(wx + 3, wy + 8, ww, wh, 16);
+    g.fillStyle(WOOD, 1); g.fillRoundedRect(wx, wy, ww, wh, 16);
+    g.lineStyle(3, LINE, 1); g.strokeRoundedRect(wx, wy, ww, wh, 16);
+    g.fillStyle(WOOD_D, 1); g.fillRoundedRect(wx - 6, wy - 10, ww + 12, 18, 8); g.lineStyle(3, LINE, 1); g.strokeRoundedRect(wx - 6, wy - 10, ww + 12, 18, 8);
+    const ix = wx + 14, iw = ww - 28, iy = wy + 18, ih = wh - 30;
+    g.fillStyle(BACK, 1); g.fillRoundedRect(ix, iy, iw, ih, 10);
+    g.lineStyle(1.5, 0x6a4329, 0.7);
+    for (let px = ix + 26; px < ix + iw - 10; px += 34) g.lineBetween(px, iy + 4, px, iy + ih - 4);
+    this.content.add(g);
+
+    type Row = { slot: string; list: Cosmetic[]; h: number };
+    const rows: Row[] = [
+      { slot: 'hat', list: COSMETICS.filter((c) => c.slot === 'hat'), h: 0.25 },
+      { slot: 'scarf', list: COSMETICS.filter((c) => c.slot === 'scarf'), h: 0.24 },
+      { slot: 'outfit', list: COSMETICS.filter((c) => c.slot === 'outfit'), h: 0.29 },
+      { slot: 'extras', list: COSMETICS.filter((c) => c.slot === 'back' || c.slot === 'feather' || c.slot === 'shells'), h: 0.22 },
     ];
-    const gx = a.x + pw + 22, gw = a.w - pw - 22;
-    const maxCols = Math.max(...rows.map((r) => r[1].length));
-    const tile = Math.max(64, Math.min(104, (gw - 8 * (maxCols - 1)) / maxCols, (a.h - 30 - rows.length * 26) / rows.length - 10));
-    let y = a.y;
-    for (const [name, list] of rows) {
-      this.content.add(this.text(gx, y, name, 16, '#8a6a50', 800));
-      y += 22;
-      list.forEach((c, i) => this.cosTile(gx + i * (tile + 8), y, tile, c));
-      y += tile + 12;
+    let y = iy;
+    const deco = this.add.graphics();
+    const fg = this.add.graphics();
+    this.content.add(deco);
+    for (const r of rows) {
+      const rh = ih * r.h, n = r.list.length, cw = iw / n;
+      // Furniture for this row.
+      if (r.slot === 'hat') {
+        deco.fillStyle(BOARD, 1); deco.fillRect(ix, y + rh - 12, iw, 10); deco.fillStyle(0x2a1d14, 0.25); deco.fillRect(ix, y + rh - 2, iw, 4);
+      } else if (r.slot === 'scarf') {
+        deco.fillStyle(BOARD, 1); deco.fillRoundedRect(ix + 6, y + 8, iw - 12, 9, 4);
+        r.list.forEach((_, i) => { const px = ix + cw * (i + 0.5); deco.fillStyle(0xe8c48c, 1); deco.fillCircle(px, y + 13, 5); deco.lineStyle(2, LINE, 1); deco.strokeCircle(px, y + 13, 5); });
+      } else if (r.slot === 'outfit') {
+        deco.lineStyle(5, 0xe0cfae, 1); deco.lineBetween(ix + 4, y + 10, ix + iw - 4, y + 10);
+        deco.lineStyle(2, LINE, 0.8); deco.lineBetween(ix + 4, y + 12.5, ix + iw - 4, y + 12.5);
+        r.list.forEach((_, i) => {
+          const px = ix + cw * (i + 0.5), hw = Math.min(cw * 0.36, 30);
+          deco.lineStyle(3, 0xa77b4f, 1); deco.beginPath(); deco.arc(px, y + 14, 5, Math.PI, Math.PI * 2.2); deco.strokePath();
+          deco.lineBetween(px, y + 19, px - hw, y + 30); deco.lineBetween(px, y + 19, px + hw, y + 30); deco.lineBetween(px - hw, y + 30, px + hw, y + 30);
+        });
+      } else {
+        // An open drawer along the bottom.
+        const dy = y + rh * 0.66;
+        fg.fillStyle(0xcf9a64, 1); fg.fillRoundedRect(ix - 6, dy, iw + 12, y + rh - dy + 4, 8);
+        fg.lineStyle(3, LINE, 1); fg.strokeRoundedRect(ix - 6, dy, iw + 12, y + rh - dy + 4, 8);
+        fg.fillStyle(0xf2c45a, 1); fg.fillRoundedRect(ix + iw / 2 - 22, dy + (y + rh - dy) / 2 - 3, 44, 9, 4); fg.lineStyle(2, LINE, 1); fg.strokeRoundedRect(ix + iw / 2 - 22, dy + (y + rh - dy) / 2 - 3, 44, 9, 4);
+        deco.fillStyle(0x5e3c26, 1); deco.fillRect(ix, dy - 12, iw, 14);
+      }
+      r.list.forEach((c, i) => this.wardrobeItem(c, r.slot, ix + cw * i, y, cw, rh));
+      y += rh;
     }
+    this.content.add(fg);
+    this.content.bringToTop(fg);
   }
 
-  private cosTile(x: number, y: number, size: number, c: Cosmetic) {
+  /** One item in its place in the wardrobe; the whole cell is the tap target. */
+  private wardrobeItem(c: Cosmetic, slot: string, x: number, y: number, w: number, h: number) {
     const unlocked = isUnlocked(c);
     const on = unlocked && isEquipped(c, save.look);
-    const [bg, z] = this.btn(x, y, size, size, () => {
-      if (!unlocked) { sfx.tock(); this.hint(`Locked \u2014 ${c.hint}`); return; }
+    const cx = x + w / 2;
+    // Where it sits: on the shelf, hanging from a hook / hanger, or peeking out of the drawer.
+    const anchorY = slot === 'hat' ? y + h - 12 : slot === 'scarf' ? y + 16 : slot === 'outfit' ? y + 22 : y + h * 0.74;
+    const originY = slot === 'hat' || slot === 'extras' ? 1 : 0;
+    const maxW = w * 0.84, maxH = (slot === 'hat' ? h - 20 : slot === 'extras' ? h * 0.62 : h - 24);
+    // Worn: a warm glow behind it (sized once we know how big the item is drawn).
+    const glow = on ? this.add.graphics() : null;
+    if (glow) this.content.add(glow);
+    const glowAt = (gx: number, gy: number, gw: number, gh: number) => {
+      if (!glow) return;
+      glow.fillStyle(0xffe27a, 0.28); glow.fillEllipse(gx, gy, gw + 30, gh + 26);
+      glow.fillStyle(0xffe27a, 0.4); glow.fillEllipse(gx, gy, gw + 12, gh + 10);
+    };
+    let img: Phaser.GameObjects.Image | null = null;
+    if (isNoneItem(c)) {
+      // "Take it off": a dashed empty spot with a little cross.
+      const g = this.add.graphics();
+      const r = Math.min(w, maxH) * 0.28, my = originY ? anchorY - r - 6 : anchorY + r + 8;
+      glowAt(cx, my, r * 2, r * 2);
+      g.lineStyle(3, 0xf3e6cc, on ? 0.95 : 0.6);
+      for (let k = 0; k < 12; k += 2) { g.beginPath(); g.arc(cx, my, r, (k * Math.PI) / 6, ((k + 1) * Math.PI) / 6); g.strokePath(); }
+      g.lineBetween(cx - r * 0.4, my - r * 0.4, cx + r * 0.4, my + r * 0.4); g.lineBetween(cx + r * 0.4, my - r * 0.4, cx - r * 0.4, my + r * 0.4);
+      this.content.add(g);
+    } else {
+      img = this.add.image(cx, anchorY, 'wardrobe-items', c.id).setOrigin(0.5, originY);
+      const s = Math.min(maxW / img.width, maxH / img.height, 1.6);
+      img.setScale(s);
+      glowAt(cx, originY ? anchorY - img.displayHeight / 2 : anchorY + img.displayHeight / 2, img.displayWidth, img.displayHeight);
+      if (!unlocked) img.setTint(0x3a2a20).setTintMode(Phaser.TintModes.FILL).setAlpha(0.5);
+      this.content.add(img);
+    }
+    if (!unlocked) {
+      const g = this.add.graphics();
+      const lx = cx, ly = originY ? anchorY - maxH * 0.45 : anchorY + maxH * 0.45;
+      g.lineStyle(3.5, 0xf3e6cc, 0.95); g.beginPath(); g.arc(lx, ly - 4, 7, Math.PI, 0); g.strokePath();
+      g.fillStyle(0xf3e6cc, 0.95); g.fillRoundedRect(lx - 11, ly - 4, 22, 17, 4);
+      g.fillStyle(0x6b4a33, 1); g.fillCircle(lx, ly + 3, 2.6);
+      this.content.add(g);
+    }
+    if (on) {
+      const g = this.add.graphics();
+      const bx = x + w - 14, by = y + 14;
+      g.fillStyle(0xf2a93b, 1); g.fillCircle(bx, by, 11); g.lineStyle(2, 0xfffaf0, 1); g.strokeCircle(bx, by, 11);
+      this.content.add([g, this.text(bx, by, '\u2713', 14, '#fffaf0', 900).setOrigin(0.5)]);
+    }
+    const z = this.add.zone(x, y, w, h).setOrigin(0, 0).setInteractive();
+    this.rects[c.id] = { x, y, w, h };
+    z.on('pointerup', (p: Phaser.Input.Pointer) => {
+      if (p.getDistance() >= 24) return;
+      if (!unlocked) { sfx.tock(); this.hint(`Locked \u2014 ${c.hint}`); if (img) this.tweens.add({ targets: img, x: cx + 4, duration: 50, yoyo: true, repeat: 2 }); return; }
       equip(c, save.look);
       persist();
       sfx.pickup();
       this.world.refreshHero();
       this.game.events.emit('equipped', c.id);
       this.render();
-    }, on ? 0xfff4d6 : unlocked ? 0xf7ead0 : 0xe6dccb, on ? 0xf2a93b : 0xd9b98f, 16);
-    this.content.add([bg, z]);
-    this.rects[c.id] = this.lastRect;
-    const img = this.add.image(x + size / 2, y + size - 18, 'previews', c.id).setOrigin(0.5, 1);
-    img.setScale(Math.min((size - 14) / (HERO_W * 2), (size - 24) / (HERO_H * 2)) * 1.25);
-    if (!unlocked) img.setTint(0x5a4a3c).setAlpha(0.35);
-    this.content.add(img);
-    this.content.add(this.text(x + size / 2, y + size - 4, unlocked ? c.name : '???', size < 86 ? 11 : 12, unlocked ? INK : '#9a8a78', 800).setOrigin(0.5, 1));
-    if (on) {
-      const g = this.add.graphics();
-      g.fillStyle(0xf2a93b, 1); g.fillCircle(x + size - 12, y + 12, 10);
-      this.content.add([g, this.text(x + size - 12, y + 12, '\u2713', 13, '#fffaf0', 900).setOrigin(0.5)]);
-    }
-    if (!unlocked) {
-      const g = this.add.graphics();
-      const lx = x + size / 2, ly = y + size / 2 - 8;
-      g.lineStyle(3.5, 0x8a6a50, 0.9); g.beginPath(); g.arc(lx, ly - 4, 7, Math.PI, 0); g.strokePath();
-      g.fillStyle(0x8a6a50, 0.9); g.fillRoundedRect(lx - 11, ly - 4, 22, 17, 4);
-      g.fillStyle(0xf3e6cc, 1); g.fillCircle(lx, ly + 3, 2.6);
-      this.content.add(g);
-    }
+      // A little hop for the hero, and the name of what you picked.
+      if (this.heroImg) { const hy = this.heroImg.y; this.tweens.add({ targets: this.heroImg, y: hy - 18, duration: 140, yoyo: true, ease: 'Sine.easeOut' }); }
+      this.hint(isEquipped(c, save.look) ? c.name : `${c.name} off`);
+    });
+    this.content.add(z);
   }
 
   // ------------------------------------------------------------ treasures
