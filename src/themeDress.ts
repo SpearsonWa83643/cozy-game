@@ -88,8 +88,10 @@ export class ThemeDresser {
     this.cullKey = key;
     const id = this.w.cameras.main.id;
     let n = 0, off = 0;
+    const seen = new Set<Phaser.GameObjects.Image>();
     for (const list of this.activeProps()) for (const img of list) {
-      n++;
+      if (seen.has(img)) continue;
+      seen.add(img); n++;
       const out = !this.near(img.x, img.y - img.displayHeight * 0.5);
       if (out) { off++; img.cameraFilter |= id; } else img.cameraFilter &= ~id;
     }
