@@ -314,7 +314,7 @@ export class MenuScene extends Phaser.Scene {
         });
       } else {
         // An open drawer along the bottom.
-        const dy = y + rh * 0.66;
+        const dy = y + rh * 0.8;
         fg.fillStyle(0xcf9a64, 1); fg.fillRoundedRect(ix - 6, dy, iw + 12, y + rh - dy + 4, 8);
         fg.lineStyle(3, LINE, 1); fg.strokeRoundedRect(ix - 6, dy, iw + 12, y + rh - dy + 4, 8);
         fg.fillStyle(0xf2c45a, 1); fg.fillRoundedRect(ix + iw / 2 - 22, dy + (y + rh - dy) / 2 - 3, 44, 9, 4); fg.lineStyle(2, LINE, 1); fg.strokeRoundedRect(ix + iw / 2 - 22, dy + (y + rh - dy) / 2 - 3, 44, 9, 4);
@@ -333,9 +333,9 @@ export class MenuScene extends Phaser.Scene {
     const on = unlocked && isEquipped(c, save.look);
     const cx = x + w / 2;
     // Where it sits: on the shelf, hanging from a hook / hanger, or peeking out of the drawer.
-    const anchorY = slot === 'hat' ? y + h - 12 : slot === 'scarf' ? y + 16 : slot === 'outfit' ? y + 22 : y + h * 0.74;
+    const anchorY = slot === 'hat' ? y + h - 12 : slot === 'scarf' ? y + 16 : slot === 'outfit' ? y + 22 : y + h * 0.86;
     const originY = slot === 'hat' || slot === 'extras' ? 1 : 0;
-    const maxW = w * 0.84, maxH = (slot === 'hat' ? h - 20 : slot === 'extras' ? h * 0.62 : h - 24);
+    const maxW = w * 0.84, maxH = (slot === 'hat' ? h - 20 : slot === 'extras' ? h * 0.66 : h - 24);
     // Worn: a warm glow behind it (sized once we know how big the item is drawn).
     const glow = on ? this.add.graphics() : null;
     if (glow) this.content.add(glow);
