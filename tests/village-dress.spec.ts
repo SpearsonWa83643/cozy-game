@@ -4,14 +4,14 @@ import { resolve } from 'node:path';
 
 // 11.7: the village dresses up for the theme. Every 2x2 building gets theme dressing:
 // Summer bunting, Fall gourds + corn, Halloween lanterns (+ the old jack/candle), Christmas lights
-// + wreaths, Winter snow caps + icicles. Spring/Classic stay plain.
+// + wreaths, Winter snow caps + icicles. 11.8: Spring/Classic blossom garlands + flower boxes.
 const FILE = pathToFileURL(resolve(process.env.COZY_SINGLE ?? 'dist-single/index.html')).href;
 const SHOTS = process.env.DRESS_SHOTS ?? '/workspace/cozy-game/screenshots';
 const village = (page: Page) => page.evaluate(() => (window as any).__cozy.village()) as Promise<any>;
 
 const EXPECT: Record<string, string[]> = {
-  spring: [],
-  classic: [],
+  spring: ['vd_garland', 'vd_flowerbox'],
+  classic: ['vd_garland', 'vd_flowerbox'],
   summer: ['f_bunting'],
   fall: ['vd_gourds', 'vd_corn'],
   halloween: ['vd_lanterns'],
@@ -61,10 +61,8 @@ test('village dresses up for each theme', async ({ page }) => {
       expect(by('garden')).toContain('vd_snowpile');
       expect(by('garden')).not.toContain('vd_icicles');
     }
-    if (id !== 'spring' && id !== 'classic') {
-      await page.waitForTimeout(4000);
-      await page.screenshot({ path: `${SHOTS}/village-dress-${id}.png` });
-    }
+    await page.waitForTimeout(4000);
+    await page.screenshot({ path: `${SHOTS}/village-dress-${id}.png` });
   }
   // Dressing does not pile up across theme flips.
   await page.evaluate(() => (window as any).__cozy.setTheme('winter'));
