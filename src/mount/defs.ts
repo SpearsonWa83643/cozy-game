@@ -145,8 +145,17 @@ export function mountById(id: string): MountDef {
 }
 
 /** The theme's own default mount: pumpkin in Halloween, goose in Fall, reindeer in Christmas, snowy owl in Winter, flamingo in Summer, bald eagle otherwise (Spring). */
+/** Every theme has its own default mount. Spring/Classic keeps the always-free eagle. */
+export const THEME_MOUNT: Record<string, string> = { spring: 'eagle', summer: 'flamingo', fall: 'goose', halloween: 'pumpkin', christmas: 'reindeer', winter: 'snowy_owl' };
+
 export function themeDefaultMount(): string {
-  return theme.id === 'halloween' ? 'pumpkin' : theme.id === 'fall' ? 'goose' : theme.id === 'christmas' ? 'reindeer' : theme.id === 'winter' ? 'snowy_owl' : theme.id === 'summer' ? 'flamingo' : 'eagle';
+  return THEME_MOUNT[theme.id] ?? 'eagle';
+}
+
+/** 11.4: the theme a seasonal friend belongs to (null for the eagle and treasure friends). */
+export function seasonalThemeOf(mountId: string): string | null {
+  if (mountId === 'eagle') return null;
+  return Object.keys(THEME_MOUNT).find((k) => THEME_MOUNT[k] === mountId) ?? null;
 }
 
 export function isMountUnlocked(m: MountDef): boolean {

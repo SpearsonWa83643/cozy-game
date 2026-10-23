@@ -13,7 +13,7 @@ import { areaAt, waterAt } from '../geo';
 import type { WorldScene } from './World';
 import { buildWardrobeItems, isNoneItem } from '../wardrobeArt';
 import { LANDMARKS, ensureLandmarkIcons } from '../landmarks';
-import { MOUNTS, isMountUnlocked, currentPick, type MountDef } from '../mount/defs';
+import { MOUNTS, isMountUnlocked, currentPick, seasonalThemeOf, type MountDef } from '../mount/defs';
 
 const INK = '#3d2c20';
 const FONT = 'Nunito';
@@ -1131,6 +1131,8 @@ export class MenuScene extends Phaser.Scene {
   // ------------------------------------------------------------ mount stable
   /** 9.38: a barn with a stall for every mount. Unlocked friends flap and bob; locked ones are silhouettes. */
   stablePets: { id: string; c: Phaser.GameObjects.Container; body: Phaser.GameObjects.Image; wing: Phaser.GameObjects.Image; wingFar: Phaser.GameObjects.Image; m: MountDef; flap: number; ph: number; on: boolean; k: number; idleAt?: number }[] = [];
+  /** 11.4: seasonal friends -> the theme whose badge is on their stall. */
+  badges: Record<string, string> = {};
   lastMount = '';
   /** Last petting reaction, for tests: which mount, tap or stroke, and the running heart count. */
   lastPet: { id: string; kind: 'tap' | 'stroke'; hearts: number } | null = null;
@@ -1246,7 +1248,7 @@ export class MenuScene extends Phaser.Scene {
   }
 
   renderStable(a: { x: number; y: number; w: number; h: number }) {
-    this.stablePets = []; this.rideBtn = null;
+    this.stablePets = []; this.rideBtn = null; this.badges = {};
     const list = MOUNTS;
     const got = list.filter(isMountUnlocked).length;
     const cols = Math.ceil(list.length / 2), rows = 2;
@@ -1291,6 +1293,19 @@ export class MenuScene extends Phaser.Scene {
       pp.c.setData('y0', py); pp.c.setData('k0', pp.k);
       this.content.add(pp.c);
       if (!on) this.content.add(this.text(x + sw / 2, py - 4, '?', 30, '#f3dfae', 900).setOrigin(0.5).setStroke('#2e2219', 5));
+      const st = seasonalThemeOf(m.id) as keyof typeof THEMES | null;
+      if (st && THEMES[st]) {
+        // 11.4: a little round badge with the theme's icon, so kids can see which theme brings this friend.
+        const bx = x + 22, by = y + 24, br = 17;
+        const bg = this.add.graphics();
+        bg.fillStyle(0x2e2219, 0.35); bg.fillCircle(bx + 1, by + 3, br);
+        bg.fillStyle(on ? THEMES[st].ui.tabOn : 0xf3e6cc, 1); bg.fillCircle(bx, by, br);
+        bg.lineStyle(3, on ? THEMES[st].ui.accentDark : 0xd9b98f, 1); bg.strokeCircle(bx, by, br);
+        const ic = this.add.image(bx, by, atlasOf(THEMES[st].icon), THEMES[st].icon).setDisplaySize(24, 24);
+        this.content.add([bg, ic]);
+        this.rects[`badge:${m.id}`] = { x: bx - br, y: by - br, w: br * 2, h: br * 2 };
+        this.badges[m.id] = st;
+      }
       if (on && m.id === currentPick()) {
         // Your current ride wears a rosette.
         const rg = this.add.graphics();

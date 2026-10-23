@@ -42,6 +42,16 @@ test('stable: every mount in a stall, locked ones give hints', async ({ playwrig
       expect(pets.length).toBe(13);
       const on = pets.filter((p: any) => p[1]).map((p: any) => p[0]).sort();
       expect(on).toEqual(['airplane', 'eagle', 'pterodactyl', 'unicorn']);
+      // 11.4: seasonal friends wear their theme's badge; the eagle and treasure friends don't.
+      expect(await page.evaluate(() => (window as any).__menu.badges)).toEqual({ flamingo: 'summer', goose: 'fall', pumpkin: 'halloween', reindeer: 'christmas', snowy_owl: 'winter' });
+      for (const id of ['goose', 'pumpkin', 'reindeer', 'snowy_owl', 'flamingo']) {
+        const b = await rect(page, `badge:${id}`), st = await rect(page, `stall:${id}`);
+        expect(b.w).toBeGreaterThanOrEqual(30);
+        expect(b.x).toBeGreaterThanOrEqual(st.x); expect(b.x + b.w).toBeLessThanOrEqual(st.x + st.w);
+        expect(b.y).toBeGreaterThanOrEqual(st.y - 4);
+      }
+      expect(await rect(page, 'badge:eagle')).toBeUndefined();
+      expect(await rect(page, 'badge:unicorn')).toBeUndefined();
       const vp = page.viewportSize()!;
       for (const k of ['stall:eagle', 'stall:reindeer']) {
         const r = await rect(page, k);
