@@ -114,6 +114,17 @@ export class Villager {
 
 export type Building = { data: BuildingSave; img: Phaser.GameObjects.Image; x: number; y: number; cx: number; cy: number; worker: Villager | null; prog: number; alt: number; bar: Phaser.GameObjects.Graphics; solid: Phaser.GameObjects.Zone; gone?: boolean };
 
+/** 11.7: where theme dressing sits on each building painting (art units from the bottom-centre). */
+type DressSpot = { eave: number; hw: number; roof?: { kind: 'tri' | 'trap'; top: number; base: number; hw: number }; wreath?: [number, number]; gourd: number; corn: number };
+const DRESS_SPOTS: Record<string, DressSpot> = {
+  b_home: { eave: -64, hw: 64, roof: { kind: 'tri', top: -128, base: -64, hw: 66 }, wreath: [0, -88], gourd: 42, corn: -60 },
+  b_kitchen: { eave: -64, hw: 64, roof: { kind: 'tri', top: -128, base: -64, hw: 66 }, wreath: [0, -26], gourd: 42, corn: -60 },
+  b_workshop: { eave: -60, hw: 66, roof: { kind: 'trap', top: -104, base: -60, hw: 68 }, wreath: [0, -30], gourd: -42, corn: 72 },
+  b_fishhut: { eave: -86, hw: 56, roof: { kind: 'tri', top: -130, base: -86, hw: 58 }, wreath: [0, -54], gourd: 44, corn: -54 },
+  b_garden: { eave: -84, hw: 64, gourd: 48, corn: -70 },
+  b_garden0: { eave: -84, hw: 64, gourd: 48, corn: -70 },
+};
+
 export class Village {
   villagers: Villager[] = [];
   buildings: Building[] = [];
@@ -271,18 +282,69 @@ export class Village {
     return bld;
   }
   goInside(b: Building) { this.w.game.events.emit('interior', { id: b.data.id, type: b.data.type, name: BUILD[b.data.type].name }); }
-  /** Seasonal dressing on buildings (pumpkins + candles for Halloween). */
+  /** 11.7: the village dresses up for the theme (bunting, gourds, lanterns, wreaths, icicles). */
   dressings: Phaser.GameObjects.Image[] = [];
+  /** Building id -> dressing frame keys currently shown (for tests). */
+  dressKeys = new Map<number, string[]>();
   dress(b: Building) {
     if (b.gone) return;
-    if (!theme.props || BUILD[b.data.type].w === 1) return;
-    const d1 = this.w.add.image(b.cx - 44, b.y - 2, atlasOf('h_jack'), 'h_jack').setOrigin(0.5, 1).setScale(0.55 / 2.5).setDepth(b.y + 1);
-    const d2 = this.w.add.image(b.cx + 46, b.y - 4, atlasOf('h_candle'), 'h_candle').setOrigin(0.5, 1).setScale(0.6 / 2.5).setDepth(b.y + 1);
-    this.dressings.push(d1, d2);
+    const t = BUILD[b.data.type];
+    if (t.w === 1) return;
+    const keys: string[] = [];
+    const add = (key: string, x: number, y: number, ox: number, oy: number) => {
+      const d = this.w.add.image(x, y, atlasOf(key), key).setOrigin(ox, oy).setDepth(b.y + 1);
+      this.dressings.push(d); keys.push(key);
+      d.setAlpha(0); this.w.tweens.add({ targets: d, alpha: 1, duration: 260 });
+      return d;
+    };
+    // Old Halloween ground props (unchanged): a jack-o'-lantern and a candle by the door.
+    if (theme.props) {
+      add('h_jack', b.cx - 44, b.y - 2, 0.5, 1).setScale(0.55 / 2.5);
+      add('h_candle', b.cx + 46, b.y - 4, 0.5, 1).setScale(0.6 / 2.5);
+    }
+    const s = DRESS_SPOTS[b.img.frame.name] ?? DRESS_SPOTS[t.frame];
+    if (!s) { this.dressKeys.set(b.data.id, keys); return; }
+    // Art units (the 150-wide building painting) -> world.
+    const k = (t.w * VILLAGE.cell * 1.08) / 150;
+    const P = (dx: number, dy: number): [number, number] => [b.cx + dx * k, b.y - 4 + (dy - 6) * k];
+    const strip = (key: string, artH: number, dy = 0, inset = 4) => {
+      const [x, y] = P(0, s.eave - 1 + dy);
+      add(key, x, y, 0.5, 0).setDisplaySize((2 * s.hw - inset) * k, artH * k);
+    };
+    switch (theme.id) {
+      case 'summer': {
+        const [x, y] = P(0, s.eave - 2); const w = 2 * s.hw * k;
+        add('f_bunting', x, y, 0.5, 0.2).setDisplaySize(w, w * 0.2);
+        break;
+      }
+      case 'fall': {
+        let [x, y] = P(s.gourd, 0); add('vd_gourds', x, y, 0.5, 1).setDisplaySize(56 * k * 0.9, 30 * k * 0.9);
+        [x, y] = P(s.corn, 0); add('vd_corn', x, y, 0.5, 1).setDisplaySize(24 * k, 50 * k);
+        break;
+      }
+      case 'halloween': strip('vd_lanterns', 34, 0, 10); break;
+      case 'christmas': {
+        strip('vd_lights', 22);
+        if (s.wreath) { const [x, y] = P(s.wreath[0], s.wreath[1]); add('vd_wreath', x, y, 0.5, 0.5).setDisplaySize(26 * k, 30 * k); }
+        break;
+      }
+      case 'winter': {
+        if (s.roof) {
+          const r = s.roof; const [x, y] = P(0, r.top - 3);
+          add(r.kind === 'tri' ? 'vd_snowtri' : 'vd_snowtrap', x, y, 0.5, 0).setDisplaySize((2 * r.hw + 6) * k, (r.base - r.top + 6) * k);
+          strip('vd_icicles', 30, 0, 2);
+        } else {
+          for (const dx of [-58, 58]) { const [x, y] = P(dx, 2); add('vd_snowpile', x, y, 0.5, 1).setDisplaySize(40 * k, 18 * k).setFlipX(dx > 0); }
+        }
+        break;
+      }
+    }
+    this.dressKeys.set(b.data.id, keys);
   }
   restyle() {
     for (const d of this.dressings) d.destroy();
     this.dressings = [];
+    this.dressKeys.clear();
     for (const b of this.buildings) this.dress(b);
   }
 

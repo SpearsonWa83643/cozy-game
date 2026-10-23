@@ -422,6 +422,112 @@ function paintSkyGrad(c: Ctx, w: number, h: number) {
   c.fillStyle = g; c.fillRect(0, 0, w, h);
 }
 
+// ---------------------------------------------------------------- 11.7 village theme dressing
+// Small parts stretched over each building's eave / roof (see village.ts DRESS_SPOTS).
+function paintIcicles(c: Ctx, w: number, h: number) {
+  // Snow lip along the eave, then icicles of mixed lengths.
+  const r = mulberry32(31);
+  c.beginPath(); c.moveTo(2, 4);
+  for (let x = 2; x <= w - 2; x += 10) c.quadraticCurveTo(x + 5, 1, x + 10, 4);
+  c.lineTo(w - 2, 9);
+  for (let x = w - 2; x >= 2; x -= 12) c.quadraticCurveTo(x - 6, 13, x - 12, 9);
+  c.closePath(); fo(c, '#ffffff', 2);
+  for (let x = 8; x < w - 6; x += 9 + r() * 5) {
+    const len = 6 + r() * (h - 16);
+    c.beginPath(); c.moveTo(x - 3, 9); c.lineTo(x + 3, 9); c.lineTo(x + 0.3, 9 + len); c.closePath(); fo(c, '#d6f0ff', 1.6);
+    c.fillStyle = 'rgba(255,255,255,0.85)'; c.fillRect(x - 1.2, 10, 1.2, len * 0.55);
+  }
+}
+function paintSnowTri(c: Ctx, w: number, h: number) {
+  // Snow cap for a triangular roof: covers the top ~70%, lumpy lower edge with drips.
+  const cx = w / 2, top = 3, base = h - 3, hw = w / 2 - 2;
+  const at = (t: number) => hw * t; // half-width at fraction t down the roof
+  const t1 = 0.62;
+  c.beginPath(); c.moveTo(cx, top);
+  c.lineTo(cx + at(t1) + 3, top + (base - top) * t1);
+  const y1 = top + (base - top) * t1;
+  const n = 7;
+  for (let i = 0; i < n; i++) {
+    const xa = cx + at(t1) + 3 - ((2 * at(t1) + 6) * i) / n, xb = cx + at(t1) + 3 - ((2 * at(t1) + 6) * (i + 1)) / n;
+    c.quadraticCurveTo((xa + xb) / 2, y1 + (i % 2 ? 9 : 5), xb, y1);
+  }
+  c.closePath(); fo(c, '#ffffff', 2.2);
+  c.fillStyle = 'rgba(160,200,235,0.45)'; c.beginPath(); c.moveTo(cx + 2, top + 8); c.lineTo(cx + at(t1) - 2, y1 - 2); c.lineTo(cx + at(t1) * 0.55, y1 - 1); c.closePath(); c.fill();
+  hi(c, cx - at(0.3), top + (base - top) * 0.32, 7, 3, 0.9);
+}
+function paintSnowTrap(c: Ctx, w: number, h: number) {
+  // Snow on the workshop's trapezoid roof: thick on the flat top, thinning down the slope.
+  const ins = w * 0.13;
+  c.beginPath(); c.moveTo(ins - 3, h * 0.12); c.quadraticCurveTo(w / 2, -2, w - ins + 3, h * 0.12);
+  c.lineTo(w - ins * 0.45, h * 0.6);
+  for (let i = 0; i < 8; i++) { const xa = w - ins * 0.45 - ((w - ins * 0.9) * i) / 8, xb = w - ins * 0.45 - ((w - ins * 0.9) * (i + 1)) / 8; c.quadraticCurveTo((xa + xb) / 2, h * 0.6 + (i % 2 ? 8 : 4), xb, h * 0.6); }
+  c.closePath(); fo(c, '#ffffff', 2.2);
+  hi(c, w * 0.32, h * 0.2, 12, 3, 0.9);
+}
+function paintSnowPile(c: Ctx, w: number, h: number) {
+  c.beginPath(); c.moveTo(3, h - 3); c.quadraticCurveTo(6, h * 0.4, w * 0.3, h * 0.45); c.quadraticCurveTo(w * 0.45, 2, w * 0.66, h * 0.35); c.quadraticCurveTo(w - 4, h * 0.4, w - 3, h - 3); c.closePath(); fo(c, '#ffffff', 2.2);
+  hi(c, w * 0.42, h * 0.38, 6, 2.5, 0.9);
+}
+function paintLights(c: Ctx, w: number, h: number) {
+  c.beginPath(); c.moveTo(3, 4);
+  for (let i = 0; i < 4; i++) { const x0 = 3 + ((w - 6) * i) / 4, x1 = 3 + ((w - 6) * (i + 1)) / 4; c.quadraticCurveTo((x0 + x1) / 2, 12, x1, 4); }
+  c.lineWidth = 2; c.strokeStyle = '#2f5a3a'; c.stroke();
+  const cols = ['#ff4d5e', '#ffd84d', '#4fd07a', '#5fb0ff', '#ff9a3c'];
+  const nb = 14;
+  for (let i = 0; i < nb; i++) {
+    const t = (i + 0.5) / nb, x = 3 + t * (w - 6), seg = (t * 4) % 1, y = 4 + 8 * 4 * seg * (1 - seg) * 0.5 + 2;
+    c.fillStyle = 'rgba(255,240,180,0.35)'; c.beginPath(); c.arc(x, y + 4, 5.5, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.ellipse(x, y + 4, 2.6, 3.8, 0, 0, Math.PI * 2); fo(c, cols[i % 5], 1.3);
+    c.fillStyle = 'rgba(255,255,255,0.8)'; c.fillRect(x - 1.2, y + 2, 1, 2);
+  }
+}
+function paintWreath(c: Ctx, w: number, h: number) {
+  const cx = w / 2, cy = h / 2 - 2, R = w / 2 - 4;
+  c.beginPath(); c.arc(cx, cy, R, 0, Math.PI * 2); c.arc(cx, cy, R * 0.5, 0, Math.PI * 2, true); fo(c, '#3f9a52', 2.4);
+  for (let i = 0; i < 10; i++) { const a = (i / 10) * Math.PI * 2; c.fillStyle = i % 2 ? '#5fc06a' : '#2f7a42'; c.beginPath(); c.ellipse(cx + Math.cos(a) * R * 0.75, cy + Math.sin(a) * R * 0.75, 4, 2.2, a + 1.2, 0, Math.PI * 2); c.fill(); }
+  for (const a of [0.4, 2.1, 3.6, 5.0]) circ(c, cx + Math.cos(a) * R * 0.78, cy + Math.sin(a) * R * 0.78, 2.2, '#ff3b4a', 1.2);
+  // Bow.
+  const by = cy + R * 0.82;
+  poly(c, [[cx, by], [cx - 9, by - 5], [cx - 9, by + 5]], '#e8304a', 1.8);
+  poly(c, [[cx, by], [cx + 9, by - 5], [cx + 9, by + 5]], '#e8304a', 1.8);
+  poly(c, [[cx - 1, by + 1], [cx - 6, by + 11], [cx - 2, by + 10]], '#e8304a', 1.5);
+  poly(c, [[cx + 1, by + 1], [cx + 6, by + 11], [cx + 2, by + 10]], '#e8304a', 1.5);
+  circ(c, cx, by, 2.6, '#ff5a6a', 1.5);
+}
+function paintLanterns(c: Ctx, w: number, h: number) {
+  c.beginPath(); c.moveTo(3, 4); c.quadraticCurveTo(w / 2, 16, w - 3, 4); c.lineWidth = 2; c.strokeStyle = INK; c.stroke();
+  const cols = ['#ff8a2a', '#9a5ad8', '#7cd65a'];
+  for (let i = 0; i < 5; i++) {
+    const t = (i + 0.5) / 5, x = 3 + t * (w - 6), y = 4 + 4 * 12 * t * (1 - t) * 0.5 + 2;
+    c.fillStyle = 'rgba(255,200,90,0.35)'; c.beginPath(); c.arc(x, y + 10, 11, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.moveTo(x, y); c.lineTo(x, y + 3); c.lineWidth = 1.5; c.strokeStyle = INK; c.stroke();
+    rect(c, x - 3.5, y + 2, 7, 3, 1, '#3b2a35', 1);
+    ell(c, x, y + 11, 7.5, 7, cols[i % 3], 2);
+    c.strokeStyle = 'rgba(59,42,53,0.45)'; c.lineWidth = 1; c.beginPath(); c.ellipse(x, y + 11, 3, 7, 0, 0, Math.PI * 2); c.stroke();
+    c.fillStyle = 'rgba(255,240,170,0.7)'; c.beginPath(); c.ellipse(x - 2, y + 9, 2, 3, 0, 0, Math.PI * 2); c.fill();
+    rect(c, x - 3, y + 17, 6, 2.5, 1, '#3b2a35', 1);
+  }
+}
+function paintGourds(c: Ctx, w: number, h: number) {
+  const by = h - 3;
+  // Leafy base, a big pumpkin, a gourd and a little squash.
+  c.fillStyle = '#c0632a'; c.beginPath(); c.ellipse(w / 2, by - 1, w / 2 - 3, 3, 0, 0, Math.PI * 2); c.fill();
+  ell(c, w * 0.66, by - 9, 7, 6, '#ffd84d', 2); c.beginPath(); c.moveTo(w * 0.66, by - 15); c.lineTo(w * 0.68, by - 19); c.lineWidth = 2; c.strokeStyle = '#5a8a3a'; c.stroke();
+  ell(c, w * 0.4, by - 11, 13, 10, '#ff8a2a', 2.4);
+  c.strokeStyle = 'rgba(59,42,53,0.45)'; c.lineWidth = 1.4; for (const dx of [-5, 0, 5]) { c.beginPath(); c.ellipse(w * 0.4 + dx, by - 11, 3, 9.5, 0, 0, Math.PI * 2); c.stroke(); }
+  rect(c, w * 0.4 - 1.5, by - 25, 3, 5, 1, '#5a8a3a', 1.4);
+  c.beginPath(); c.ellipse(w * 0.84, by - 7, 4.5, 6, 0.3, 0, Math.PI * 2); fo(c, '#7cc463', 1.8);
+  c.beginPath(); c.ellipse(w * 0.2, by - 6, 5, 5, 0, 0, Math.PI * 2); fo(c, '#e8604c', 1.8);
+  for (const [x, a] of [[w * 0.12, -0.6], [w * 0.55, 0.4], [w * 0.9, 0.9]] as [number, number][]) { c.beginPath(); c.ellipse(x, by - 2, 5, 2.4, a, 0, Math.PI * 2); fo(c, '#d2691e', 1.2); }
+}
+function paintCorn(c: Ctx, w: number, h: number) {
+  const cx = w / 2, by = h - 2;
+  for (let i = -3; i <= 3; i++) {
+    c.beginPath(); c.moveTo(cx + i * 1.5, by); c.quadraticCurveTo(cx + i * 2.2, by - h * 0.5, cx + i * 3.4, 3 + Math.abs(i) * 2);
+    c.lineWidth = 3.4; c.strokeStyle = INK; c.stroke(); c.lineWidth = 2; c.strokeStyle = i % 2 ? '#e8c06a' : '#d9a54a'; c.stroke();
+  }
+  rect(c, cx - 6, by - h * 0.42, 12, 4, 2, '#c0392b', 1.5);
+}
 export const BUILD_FRAMES = ['b_home', 'b_garden', 'b_garden0', 'b_kitchen', 'b_workshop', 'b_fishhut', 'd_flowerbed', 'd_lamp', 'd_well', 'd_bench', 'd_statue', 'd_pantry'];
 
 export function paintVillageArt(scene: Phaser.Scene) {
@@ -454,6 +560,15 @@ export function paintVillageArt(scene: Phaser.Scene) {
   T('h_batnap', 24, 32, paintBatNap, 2.5);
   for (let i = 0; i < 3; i++) T(`h_tree${i}`, 160, 200, paintSpooky(i), 2);
   T('f_bunting', 200, 40, paintBunting, 2);
+  T('vd_icicles', 140, 30, paintIcicles, 2);
+  T('vd_snowtri', 140, 70, paintSnowTri, 2);
+  T('vd_snowtrap', 140, 46, paintSnowTrap, 2);
+  T('vd_snowpile', 44, 20, paintSnowPile, 2.5);
+  T('vd_lights', 140, 22, paintLights, 2);
+  T('vd_wreath', 34, 40, paintWreath, 2.5);
+  T('vd_lanterns', 140, 34, paintLanterns, 2);
+  T('vd_gourds', 56, 30, paintGourds, 2.5);
+  T('vd_corn', 24, 50, paintCorn, 2.5);
   T('p_drop', 4, 12, paintDrop, 2);
   T('p_leafo', 12, 8, paintLeafO, 3);
   T('sky_halloween', 8, 64, (c, w, h) => paintSkyGrad(c, w, h), 2);
