@@ -56,7 +56,7 @@ function crack(g: Ctx, rng: Rng, x: number, y: number, a: number, len: number, d
   };
   line(3.2 * RES * (depth ? 0.7 : 1), INK, 0, 0);
   line(1.3 * RES, 'rgba(255,255,255,0.95)', 1.2 * RES, 1.2 * RES);
-  if (depth < 2) for (let i = 1; i < pts.length - 1; i++) if (rng() < 0.45) crack(g, rng, pts[i][0], pts[i][1], a + (rng() < 0.5 ? 1 : -1) * (0.6 + rng() * 0.6), len * 0.45, depth + 1);
+  if (depth < 1) for (let i = 1; i < pts.length - 1; i++) if (rng() < 0.35) crack(g, rng, pts[i][0], pts[i][1], a + (rng() < 0.5 ? 1 : -1) * (0.6 + rng() * 0.6), len * 0.45, depth + 1);
 }
 
 /** Paint the ice sheet for one body of water into a canvas texture. Coordinates are world units * RES. */
@@ -109,7 +109,7 @@ function paintIce(scene: Phaser.Scene, water: IceWater) {
   const nC = water === 'pond' ? 3 : 6;
   for (let i = 0; i < nC; i++) {
     const px = (cx + (rng() * 2 - 1) * B.rx * 0.55) * RES, py = (cy + (rng() * 2 - 1) * B.ry * 0.45) * RES;
-    const arms = 3 + Math.floor(rng() * 2);
+    const arms = 2 + Math.floor(rng() * 2);
     for (let k = 0; k < arms; k++) crack(g, rng, px, py, (k / arms) * Math.PI * 2 + rng() * 0.6, (55 + rng() * 60) * RES, 0);
   }
   g.restore();

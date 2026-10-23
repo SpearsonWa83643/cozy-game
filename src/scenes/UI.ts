@@ -416,7 +416,7 @@ export class UIScene extends Phaser.Scene {
         this.tweens.add({ targets: this.biteText, scale: 1, duration: 300, ease: 'Back.easeOut' });
       } else this.tweens.add({ targets: this.biteText, alpha: 0, duration: 150 });
     });
-    ev.on('fish-caught', (d: { species: Species; size: number; isNew: boolean; unlocked: string[] }) => this.showCard(d));
+    ev.on('fish-caught', (d: { species: Species; size: number; isNew: boolean; unlocked: string[]; frosty?: boolean }) => this.showCard(d));
   }
   layoutFishUI() {
     if (!this.reelG) return;
@@ -456,20 +456,20 @@ export class UIScene extends Phaser.Scene {
     this.reelText.setPosition(x + w / 2, y - 10).setText(r.flash > 0 ? (r.flashOk ? 'Nice!' : 'Oops!') : 'Tap in the green!');
     void time;
   }
-  showCard(d: { species: Species; size: number; isNew: boolean; unlocked: string[] }) {
+  showCard(d: { species: Species; size: number; isNew: boolean; unlocked: string[]; frosty?: boolean }) {
     const g = this.cardG;
     const w = 380, h = d.unlocked.length ? 250 : 220;
     g.clear();
     g.fillStyle(0x2a1d14, 0.3); g.fillRoundedRect(-w / 2 + 3, -h / 2 + 8, w, h, 24);
     g.fillStyle(0xfbf1dc, 0.98); g.fillRoundedRect(-w / 2, -h / 2, w, h, 24);
-    g.lineStyle(3, d.species.rarity === 'rare' ? 0xb48cff : 0xf2a93b, 1); g.strokeRoundedRect(-w / 2 + 7, -h / 2 + 7, w - 14, h - 14, 18);
+    g.lineStyle(3, d.species.rarity === 'rare' ? 0xb48cff : d.frosty ? 0x6fb6e4 : 0xf2a93b, 1); g.strokeRoundedRect(-w / 2 + 7, -h / 2 + 7, w - 14, h - 14, 18);
     if (d.isNew) { g.fillStyle(0xe85d3a, 1); g.fillRoundedRect(w / 2 - 82, -h / 2 + 16, 64, 28, 14); }
     this.cardNew.setPosition(w / 2 - 50, -h / 2 + 30).setVisible(d.isNew);
     this.cardFish.setTint(d.species.tint).setPosition(0, -h / 2 + 64);
     this.cardFish.setScale(Math.min(150, 70 + d.size) / this.cardFish.width);
     const stars = '\u2605'.repeat(RARITY_STARS[d.species.rarity]);
     this.cardTitle.setText(d.species.name).setPosition(0, -h / 2 + 118);
-    const lines = [`${d.size} cm   ${stars}`, d.species.blurb];
+    const lines = [`${d.size} cm   ${stars}`, d.frosty ? 'A frosty catch from under the ice. Brr!' : d.species.blurb];
     if (d.unlocked.length) lines.push(`Unlocked: ${d.unlocked.join(', ')}!`);
     this.cardSub.setText(lines.join('\n')).setPosition(0, -h / 2 + 168).setWordWrapWidth(w - 50);
     this.cardC.setVisible(true).setAlpha(0).setScale(0.7);
