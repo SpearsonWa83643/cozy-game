@@ -37,6 +37,11 @@ export class InteriorScene extends Phaser.Scene {
   /** Workshop: what the bench is building, and how many hammer taps so far (3 to finish). */
   craft: null | { id: string; taps: number } = null;
   pickerOpen = false;
+  /** Garden: pot growth steps and flowers picked; fishing hut: fish caught (cosmetic). */
+  grown = 0;
+  picked = 0;
+  caught = 0;
+  private fishing = false;
   private ghost: Phaser.GameObjects.Image | null = null;
   rects: Record<string, Rect> = {};
   room: Rect = { x: 0, y: 0, w: 0, h: 0 };
@@ -110,7 +115,7 @@ export class InteriorScene extends Phaser.Scene {
   private clear() {
     this.tweens.killAll();
     this.children.removeAll(true);
-    this.items = []; this.rects = {}; this.dark = null; this.glow = null; this.pan = null; this.cookStage = 0; this.brewing = false; this.winG = null; this.bin = null; this.hint = null; this.ghost = null; this.pickerOpen = false;
+    this.items = []; this.rects = {}; this.dark = null; this.glow = null; this.pan = null; this.cookStage = 0; this.brewing = false; this.winG = null; this.bin = null; this.hint = null; this.ghost = null; this.pickerOpen = false; this.fishing = false;
   }
 
   // ------------------------------------------------------------------ layout + drawing
@@ -263,6 +268,16 @@ export class InteriorScene extends Phaser.Scene {
       // A hammer.
       hg.fillStyle(0xc98a55, 1); hg.fillRoundedRect(L + 34, T + 20, 8, 28, 3); hg.lineStyle(2.5, 0x4a3022, 1); hg.strokeRoundedRect(L + 34, T + 20, 8, 28, 3);
       hg.fillStyle(0x9aa6b2, 1); hg.fillRoundedRect(L + 22, T + 10, 32, 13, 3); hg.strokeRoundedRect(L + 22, T + 10, 32, 13, 3);
+    } else if (this.btype === 'garden') {
+      // A flower.
+      hg.lineStyle(4, 0x4e9a3c, 1); hg.lineBetween(L + 38, T + 30, L + 38, T + 48);
+      hg.fillStyle(0xff9fb2, 1); for (let i = 0; i < 6; i++) hg.fillCircle(L + 38 + Math.cos(i * 1.047) * 9, T + 24 + Math.sin(i * 1.047) * 9, 6.5);
+      hg.fillStyle(0xffd34d, 1); hg.fillCircle(L + 38, T + 24, 6); hg.lineStyle(2.5, 0x4a3022, 1); hg.strokeCircle(L + 38, T + 24, 6);
+    } else if (this.btype === 'fishhut') {
+      // A fish.
+      hg.fillStyle(0x6fb8e8, 1); hg.fillEllipse(L + 34, T + 28, 34, 18); hg.fillTriangle(L + 48, T + 28, L + 60, T + 18, L + 60, T + 38);
+      hg.lineStyle(2.5, 0x4a3022, 1); hg.strokeEllipse(L + 34, T + 28, 34, 18); hg.strokeTriangle(L + 48, T + 28, L + 60, T + 18, L + 60, T + 38);
+      hg.fillStyle(0x4a3022, 1); hg.fillCircle(L + 26, T + 26, 2.5);
     } else {
       hg.fillStyle(0xe8604c, 1); hg.fillTriangle(L + 18, T + 30, L + 38, T + 12, L + 58, T + 30);
       hg.fillStyle(0xfff1d6, 1); hg.fillRect(L + 23, T + 29, 30, 17); hg.fillStyle(0x9a5b3a, 1); hg.fillRect(L + 34, T + 34, 9, 12);
@@ -294,7 +309,9 @@ export class InteriorScene extends Phaser.Scene {
     g.lineStyle(3, 0xd9b98f, 1); g.strokeRoundedRect(L + 4, y + 4, R - L - 8, H - 8, 20);
     if (!this.decorating) {
       this.hint = this.text((L + R) / 2, y + H / 2, this.btype === 'kitchen' ? 'Tap the stove to cook breakfast! Tap the coffee maker for coffee. Tap Decorate to move things.'
-      : this.btype === 'workshop' ? `Tap the workbench to build things from wood and stone! You have ${save.village.res.wood} wood and ${save.village.res.stone} stone.` : 'Tap things to play with them!  Tap Decorate to move things around.', 21, '#6b4f3a', 800)
+      : this.btype === 'workshop' ? `Tap the workbench to build things from wood and stone! You have ${save.village.res.wood} wood and ${save.village.res.stone} stone.` : this.btype === 'garden' ? 'Tap a flower pot to help it grow! Tap the watering can to water them all. Tap Decorate to move things.'
+      : this.btype === 'fishhut' ? 'Tap the fishing hole to cast your line! Tap Decorate to move things.'
+      : 'Tap things to play with them!  Tap Decorate to move things around.', 21, '#6b4f3a', 800)
         .setOrigin(0.5).setDepth(1001).setWordWrapWidth(R - L - 40).setAlign('center');
       this.bin = null;
       return;
@@ -462,6 +479,7 @@ export class InteriorScene extends Phaser.Scene {
     const wiggle = () => this.tweens.add({ targets: img, angle: { from: -5, to: 5 }, duration: 90, yoyo: true, repeat: 2, onComplete: () => img.setAngle(0) });
     const squash = () => this.tweens.add({ targets: img, scaleX: { from: s * 1.12, to: s }, scaleY: { from: s * 0.88, to: s }, duration: 320, ease: 'Back.easeOut' });
     let act = 'wiggle';
+    const k0 = it.k;
     if (this.decorating) { wiggle(); this.lastAction = `${it.k}:wiggle`; return; }
     switch (it.k) {
       case 'lamp':
@@ -559,12 +577,112 @@ export class InteriorScene extends Phaser.Scene {
         this.tweens.add({ targets: img, angle: { from: -8, to: 8 }, duration: 320, yoyo: true, repeat: 3, ease: 'Sine.easeInOut', onComplete: () => img.setAngle(0) });
         this.say('Giddy up!', cx, top - 16);
         break;
+      case 'pot': case 'pot_1': case 'pot_2': act = this.grow(it, true) ? 'grow' : 'wait'; break;
+      case 'pot_3': {
+        act = 'pick'; this.picked++; sfx.pickup(); squash();
+        this.setK(it, 'pot');
+        this.hearts(cx, top + 20, 5); this.sparkles(cx, top + 20, 10, 0xff9fb2);
+        this.say(Phaser.Utils.Array.GetRandom(['A flower for you!', 'So pretty! Plant another!', 'Smells sweet!']), cx, top - 16);
+        this.store();
+        break;
+      }
+      case 'wateringcan': {
+        const pots = this.items.filter((i) => i.k === 'pot' || i.k === 'pot_1' || i.k === 'pot_2');
+        this.tweens.add({ targets: img, angle: { from: 0, to: 24 }, duration: 220, yoyo: true, hold: 500, ease: 'Sine.easeOut', onComplete: () => img.setAngle(0) });
+        if (!pots.length) { act = 'none'; sfx.softFail(); this.say(this.items.some((i) => i.k === 'pot_3') ? 'Pick the flowers first!' : 'Add a flower pot to water!', cx, top - 16); break; }
+        act = 'water'; pots.forEach((p) => this.grow(p, false));
+        this.say(pots.length > 1 ? 'Splish! Everyone got a drink!' : 'Splish! Grow, little plant!', cx, top - 16);
+        this.store();
+        break;
+      }
+      case 'seedrack': act = 'seeds'; sfx.rustle(); wiggle(); this.say(Phaser.Utils.Array.GetRandom(['Sunflower seeds!', 'Tulip seeds!', 'Carrot seeds!', 'Pumpkin seeds!']), cx, top - 16); break;
+      case 'veggiebasket': {
+        act = 'count'; sfx.rustle(); squash();
+        const f = save.village.res.food;
+        this.say(f ? `${f} food for the village! Yum!` : 'Empty! Gardeners grow more.', cx, top - 16);
+        break;
+      }
+      case 'fishhole': act = this.castLine(it); break;
+      case 'rodrack': act = 'rods'; sfx.tock(); wiggle(); this.say(Phaser.Utils.Array.GetRandom(['Red, yellow and green rods!', 'Gone fishing!', 'Cast, wait, splash!']), cx, top - 16); break;
+      case 'fishbarrel': {
+        act = 'count'; sfx.splash(); wiggle();
+        const n = Object.keys(save.fish).filter((k) => k !== 'old_boot').length;
+        this.say(n ? `You know ${n} kind${n > 1 ? 's' : ''} of fish!` : 'Go catch your first fish!', cx, top - 16);
+        break;
+      }
+      case 'lifering': act = 'spin'; sfx.blip(); this.tweens.add({ targets: img, angle: 360, duration: 700, ease: 'Cubic.easeOut', onComplete: () => img.setAngle(0) }); this.say('Safety first!', cx, top - 16); break;
       case 'chair': act = 'sit'; sfx.creak(); squash(); break;
       case 'rug': act = 'squish'; sfx.rustle(); squash(); break;
       case 'painting': act = 'look'; sfx.sparkle(); wiggle(); this.sparkles(cx, img.y, 8, 0xfff1c4); break;
       default: wiggle();
     }
-    this.lastAction = `${it.k}:${act}`;
+    this.lastAction = `${k0}:${act}`;
+  }
+
+  /** Swap what a placed thing is (a pot growing), keeping its spot. */
+  private setK(it: Item, k: string) {
+    it.k = k; it.img.setTexture(furnTexture(this, k, this.res));
+  }
+
+  /** Garden: water a pot so it grows one step (soil → sprout → bud → bloom). */
+  private grow(it: Item, solo: boolean): boolean {
+    const stage = it.k === 'pot' ? 0 : +it.k.slice(4);
+    if (stage >= 3) return false;
+    const next = stage + 1, img = it.img, d = FURN.pot, top = img.y - d.h * it.sc, cx = img.x;
+    sfx.plip(); this.time.delayedCall(140, () => sfx.plip());
+    for (let i = 0; i < 6; i++) {
+      const dr = this.add.ellipse(cx + Phaser.Math.Between(-18, 18), top - 10 - Math.random() * 20, 7, 11, 0x6fb8e8).setStrokeStyle(2, 0x3f7fb0).setDepth(950);
+      this.tweens.add({ targets: dr, y: top + 60 * it.sc, alpha: 0, duration: 480, delay: i * 50, ease: 'Quad.easeIn', onComplete: () => dr.destroy() });
+    }
+    this.time.delayedCall(380, () => {
+      if (!this.open || !img.active) return;
+      const s = it.sc / this.res;
+      img.setTexture(furnTexture(this, next ? `pot_${next}` : 'pot', this.res));
+      this.tweens.add({ targets: img, scaleY: { from: s * 0.82, to: s }, scaleX: { from: s * 1.1, to: s }, duration: 360, ease: 'Back.easeOut' });
+      this.sparkles(cx, top + 20, next === 3 ? 12 : 6, next === 3 ? 0xff9fb2 : 0xc8f0a0);
+      if (next === 3) sfx.chimes();
+    });
+    it.k = `pot_${next}`; this.grown++;
+    if (solo) { this.say(next === 1 ? 'A tiny sprout! Tap again!' : next === 2 ? 'A flower bud! One more!' : 'It bloomed! Tap to pick it!', cx, top - 16); this.store(); }
+    return true;
+  }
+
+  /** Fishing hut: drop a line in the hole, wait for a nibble, and a fish hops out (then back in). */
+  private castLine(it: Item): string {
+    const img = it.img, cx = img.x, cy = img.y + 2;
+    if (this.fishing) { this.say('Shh... wait for a nibble!', cx, cy - 70); return 'wait'; }
+    this.fishing = true; sfx.cast();
+    const bob = this.add.container(cx, cy - 140).setDepth(img.depth + 0.5);
+    const bg = this.add.graphics();
+    bg.fillStyle(0xffffff, 1); bg.fillCircle(0, 0, 9); bg.fillStyle(0xe8604c, 1); bg.slice(0, 0, 9, Math.PI, 0, false); bg.fillPath();
+    bg.lineStyle(3, 0x4a3022, 1); bg.strokeCircle(0, 0, 9); bg.lineStyle(1.5, 0x4a3022, 0.7); bg.lineBetween(0, -9, 0, -200);
+    bob.add(bg);
+    this.tweens.add({ targets: bob, y: cy, duration: 380, ease: 'Quad.easeIn', onComplete: () => {
+      sfx.plip();
+      this.tweens.add({ targets: bob, y: cy + 5, duration: 160, yoyo: true, repeat: 2, delay: 260 });
+    } });
+    this.say('Plop! Waiting...', cx, cy - 70);
+    this.time.delayedCall(1250, () => {
+      if (!this.open) return;
+      bob.destroy(); sfx.splash(); sfx.caught();
+      this.fishing = false; this.caught++;
+      const kinds: [string, number][] = [['minnow', 0xa9bccf], ['sunfish', 0xff9a3c], ['little trout', 0x9ad46b], ['bluegill', 0x6fb8e8]];
+      const [name, col] = kinds[this.caught % kinds.length];
+      const fish = this.add.container(cx, cy).setDepth(950);
+      const fg = this.add.graphics();
+      fg.fillStyle(col, 1); fg.fillEllipse(0, 0, 44, 22); fg.fillTriangle(18, 0, 34, -12, 34, 12);
+      fg.lineStyle(3, 0x4a3022, 1); fg.strokeEllipse(0, 0, 44, 22); fg.strokeTriangle(18, 0, 34, -12, 34, 12);
+      fg.fillStyle(0x4a3022, 1); fg.fillCircle(-12, -3, 3);
+      fish.add(fg);
+      this.tweens.add({ targets: fish, y: cy - 110, angle: -20, duration: 420, ease: 'Quad.easeOut', yoyo: true, hold: 700, onYoyo: () => { this.hearts(cx, cy - 120, 3); }, onComplete: () => { fish.destroy(); sfx.plip(); } });
+      for (let i = 0; i < 6; i++) {
+        const dr = this.add.circle(cx, cy, 5, 0xbfe6f8).setStrokeStyle(2, 0x3f7fb0).setDepth(951);
+        this.tweens.add({ targets: dr, x: cx + Phaser.Math.Between(-60, 60), y: cy - 30 - Math.random() * 40, alpha: 0, duration: 600, ease: 'Quad.easeOut', onComplete: () => dr.destroy() });
+      }
+      this.say(`You caught a ${name}! Splash, back it goes!`, cx, cy - 150);
+      this.lastAction = 'fishhole:caught';
+    });
+    return 'cast';
   }
 
   /** Breakfast in three taps: Pour/Crack, Flip, then it hops onto a plate. */

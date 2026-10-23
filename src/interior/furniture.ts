@@ -19,6 +19,28 @@ function shadow(c: CanvasRenderingContext2D, cx: number, y: number, rx: number) 
   c.fillStyle = 'rgba(60,35,20,0.22)'; c.beginPath(); c.ellipse(cx, y, rx, rx * 0.16, 0, 0, Math.PI * 2); c.fill();
 }
 
+/** A flower pot at each growth stage: 0 soil, 1 sprout, 2 bud, 3 bloom. */
+function drawPot(c: CanvasRenderingContext2D, w: number, h: number, stage: number) {
+  shadow(c, w / 2, h - 5, w * 0.36);
+  const py = h - 46;
+  if (stage >= 1) {
+    const top = stage === 1 ? py - 16 : stage === 2 ? py - 40 : py - 52;
+    c.lineCap = 'round'; c.lineWidth = 7; c.strokeStyle = OUT; c.beginPath(); c.moveTo(w / 2, py + 4); c.lineTo(w / 2, top); c.stroke();
+    c.lineWidth = 3.5; c.strokeStyle = '#4e9a3c'; c.stroke();
+    const leaf = (x: number, y: number, a: number, s: number) => { c.save(); c.translate(x, y); c.rotate(a); c.beginPath(); c.ellipse(s, 0, s, s * 0.5, 0, 0, Math.PI * 2); fillOut(c, '#7cc463', 3); c.restore(); };
+    leaf(w / 2, top + (stage === 1 ? 4 : 18), -0.5, stage === 1 ? 8 : 12); leaf(w / 2, top + (stage === 1 ? 4 : 24), Math.PI + 0.5, stage === 1 ? 8 : 12);
+    if (stage === 2) { c.beginPath(); c.ellipse(w / 2, top - 4, 8, 11, 0, 0, Math.PI * 2); fillOut(c, '#ff9fb2', 3); c.fillStyle = '#7cc463'; c.beginPath(); c.moveTo(w / 2 - 8, top); c.lineTo(w / 2, top + 6); c.lineTo(w / 2 + 8, top); c.fill(); }
+    if (stage === 3) {
+      for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; c.beginPath(); c.ellipse(w / 2 + Math.cos(a) * 13, top + Math.sin(a) * 13, 10, 7, a, 0, Math.PI * 2); fillOut(c, i % 2 ? '#ff7fa0' : '#ff9fb2', 3); }
+      c.beginPath(); c.arc(w / 2, top, 8, 0, Math.PI * 2); fillOut(c, '#ffd34d', 3);
+    }
+  }
+  c.beginPath(); c.moveTo(12, py); c.lineTo(w - 12, py); c.lineTo(w - 20, h - 8); c.lineTo(20, h - 8); c.closePath(); fillOut(c, vgrad(c, py, h, '#e8875c', '#c0603a'));
+  rr(c, 8, py - 6, w - 16, 14, 5); fillOut(c, '#e8875c', 3.5);
+  c.fillStyle = '#6b4226'; c.beginPath(); c.ellipse(w / 2, py - 1, w / 2 - 14, 4, 0, 0, Math.PI * 2); c.fill();
+  if (stage === 0) { c.fillStyle = '#f6e2a8'; for (const x of [-8, 2, 10]) { c.beginPath(); c.ellipse(w / 2 + x, py - 2, 2.5, 1.6, 0, 0, Math.PI * 2); c.fill(); } }
+}
+
 export const FURNITURE: FurnDef[] = [
   { id: 'bed', name: 'Bed', layer: 'floor', w: 200, h: 130, draw: (c, w, h) => {
     shadow(c, w / 2, h - 6, w * 0.46);
@@ -207,6 +229,73 @@ export const FURNITURE: FurnDef[] = [
     rr(c, 50, 34, 26, 10, 4); fillOut(c, '#e8604c', 2.5);
     c.beginPath(); c.moveTo(24, 48); c.quadraticCurveTo(8, 50, 10, 68); c.lineWidth = 6; c.strokeStyle = '#7a4a2a'; c.stroke();
   } },
+  // ---- 9.4 slice 4: Garden shed + Fishing hut ----
+  ...[0, 1, 2, 3].map((stage): FurnDef => ({ id: stage ? `pot_${stage}` : 'pot', name: 'Flower Pot', layer: 'floor', w: 80, h: 116, draw: (c, w, h) => drawPot(c, w, h, stage) })),
+  { id: 'wateringcan', name: 'Watering Can', layer: 'floor', w: 104, h: 78, draw: (c, w, h) => {
+    shadow(c, w / 2, h - 5, w * 0.4);
+    c.beginPath(); c.moveTo(w - 40, h - 34); c.lineTo(w - 6, h - 62); c.lineTo(w - 2, h - 56); c.lineTo(w - 32, h - 22); c.closePath(); fillOut(c, '#4fa3d8', 3.5); // spout
+    rr(c, w - 12, h - 70, 12, 14, 4); fillOut(c, '#3f8fc6', 3);
+    c.beginPath(); c.arc(32, 22, 18, Math.PI, 0); c.lineWidth = 9; c.strokeStyle = OUT; c.stroke(); c.lineWidth = 5; c.strokeStyle = '#3f8fc6'; c.stroke(); // handle
+    rr(c, 10, 22, 56, h - 30, 12); fillOut(c, vgrad(c, 22, h, '#6fc0ec', '#3f8fc6'));
+    c.fillStyle = 'rgba(255,255,255,0.45)'; rr(c, 18, 28, 8, h - 46, 4); c.fill();
+    c.fillStyle = '#ffd34d'; c.beginPath(); c.arc(40, h - 30, 7, 0, Math.PI * 2); c.fill(); c.lineWidth = 2.5; c.strokeStyle = OUT; c.stroke();
+  } },
+  { id: 'seedrack', name: 'Seeds', layer: 'wall', w: 124, h: 92, draw: (c, w, h) => {
+    rr(c, 4, 4, w - 8, h - 8, 8); fillOut(c, vgrad(c, 4, h, '#e2a466', '#b8794a'));
+    const cols = ['#f6c453', '#e8604c', '#ff9fb2', '#7cc463', '#b48ae0', '#ff9a3c'];
+    for (let i = 0; i < 6; i++) {
+      const x = 14 + (i % 3) * 34, y = 12 + Math.floor(i / 3) * 38;
+      rr(c, x, y, 28, 32, 4); fillOut(c, '#fffaf0', 3);
+      c.fillStyle = cols[i]; c.beginPath(); c.arc(x + 14, y + 14, 7, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#4e9a3c'; c.fillRect(x + 13, y + 20, 2.5, 8);
+    }
+  } },
+  { id: 'veggiebasket', name: 'Veggies', layer: 'floor', w: 116, h: 84, draw: (c, w, h) => {
+    shadow(c, w / 2, h - 5, w * 0.44);
+    for (const [x, col] of [[30, '#ff9a3c'], [52, '#e8604c'], [76, '#9ad46b'], [92, '#e8604c']] as [number, string][]) {
+      c.beginPath(); c.arc(x, 34, 15, 0, Math.PI * 2); fillOut(c, col, 3.5);
+      c.fillStyle = '#4e9a3c'; c.beginPath(); c.ellipse(x, 20, 6, 3, 0, 0, Math.PI * 2); c.fill();
+    }
+    c.beginPath(); c.moveTo(6, 38); c.lineTo(w - 6, 38); c.lineTo(w - 16, h - 8); c.lineTo(16, h - 8); c.closePath(); fillOut(c, vgrad(c, 38, h, '#e2b066', '#b8794a'));
+    c.lineWidth = 2.5; c.strokeStyle = 'rgba(74,48,34,0.55)';
+    for (let y = 50; y < h - 10; y += 10) { c.beginPath(); c.moveTo(14, y); c.lineTo(w - 14, y); c.stroke(); }
+  } },
+  { id: 'fishhole', name: 'Fishing Hole', layer: 'rug', w: 190, h: 82, draw: (c, w, h) => {
+    c.beginPath(); c.ellipse(w / 2, h / 2, w / 2 - 4, h / 2 - 4, 0, 0, Math.PI * 2); fillOut(c, '#a8693c');
+    c.fillStyle = 'rgba(74,48,34,0.35)'; for (let x = 30; x < w - 20; x += 26) c.fillRect(x, 8, 2.5, h - 16);
+    c.beginPath(); c.ellipse(w / 2, h / 2 + 2, w / 2 - 26, h / 2 - 16, 0, 0, Math.PI * 2);
+    const g = c.createRadialGradient(w / 2, h / 2, 4, w / 2, h / 2, w / 2 - 26); g.addColorStop(0, '#5ec2e8'); g.addColorStop(1, '#2a6f9e');
+    fillOut(c, g, 3.5);
+    c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = 2.5;
+    c.beginPath(); c.ellipse(w / 2 - 14, h / 2, 22, 6, 0, 0, Math.PI * 2); c.stroke();
+    c.beginPath(); c.ellipse(w / 2 + 24, h / 2 + 6, 12, 3.5, 0, 0, Math.PI * 2); c.stroke();
+  } },
+  { id: 'rodrack', name: 'Rods', layer: 'wall', w: 134, h: 104, draw: (c, w, h) => {
+    rr(c, 6, 14, w - 12, 16, 6); fillOut(c, '#9a6238', 3.5); rr(c, 6, h - 30, w - 12, 16, 6); fillOut(c, '#9a6238', 3.5);
+    for (const [x, col] of [[30, '#e8604c'], [66, '#f6c453'], [102, '#7cc463']] as [number, string][]) {
+      c.lineCap = 'round'; c.lineWidth = 7; c.strokeStyle = OUT; c.beginPath(); c.moveTo(x, h - 6); c.lineTo(x + 8, 4); c.stroke();
+      c.lineWidth = 3.5; c.strokeStyle = col; c.stroke();
+      c.beginPath(); c.arc(x - 6, h - 32, 8, 0, Math.PI * 2); fillOut(c, '#d0d6dc', 3);
+      c.lineWidth = 1.5; c.strokeStyle = 'rgba(74,48,34,0.6)'; c.beginPath(); c.moveTo(x + 8, 4); c.quadraticCurveTo(x + 16, 40, x + 12, 70); c.stroke();
+    }
+  } },
+  { id: 'fishbarrel', name: 'Fish Barrel', layer: 'floor', w: 100, h: 118, draw: (c, w, h) => {
+    shadow(c, w / 2, h - 5, w * 0.42);
+    for (const [x, col, a] of [[34, '#ff9a3c', -0.4], [62, '#6fb8e8', 0.35]] as [number, string, number][]) {
+      c.save(); c.translate(x, 24); c.rotate(a);
+      c.beginPath(); c.moveTo(0, 10); c.lineTo(-12, -14); c.lineTo(12, -14); c.closePath(); fillOut(c, col, 3); c.restore();
+    }
+    c.beginPath(); c.moveTo(12, 28); c.quadraticCurveTo(2, h / 2 + 10, 14, h - 10); c.lineTo(w - 14, h - 10); c.quadraticCurveTo(w - 2, h / 2 + 10, w - 12, 28); c.closePath();
+    fillOut(c, vgrad(c, 28, h, '#c98a55', '#9a6238'));
+    c.lineWidth = 5; c.strokeStyle = '#6b7f94';
+    for (const y of [44, h - 26]) { c.beginPath(); c.moveTo(8, y); c.lineTo(w - 8, y); c.stroke(); }
+    c.beginPath(); c.ellipse(w / 2, 28, w / 2 - 12, 8, 0, 0, Math.PI * 2); fillOut(c, '#3f6f8f', 3.5);
+  } },
+  { id: 'lifering', name: 'Life Ring', layer: 'wall', w: 86, h: 86, draw: (c, w, h) => {
+    const r = w / 2 - 6;
+    for (let i = 0; i < 4; i++) { c.beginPath(); c.arc(w / 2, h / 2, r, i * Math.PI / 2, (i + 1) * Math.PI / 2); c.arc(w / 2, h / 2, r * 0.52, (i + 1) * Math.PI / 2, i * Math.PI / 2, true); c.closePath(); c.fillStyle = i % 2 ? '#fffaf0' : '#e8604c'; c.fill(); }
+    c.lineWidth = 4; c.strokeStyle = OUT; c.beginPath(); c.arc(w / 2, h / 2, r, 0, Math.PI * 2); c.stroke(); c.beginPath(); c.arc(w / 2, h / 2, r * 0.52, 0, Math.PI * 2); c.stroke();
+  } },
 ];
 
 export const FURN: Record<string, FurnDef> = Object.fromEntries(FURNITURE.map((f) => [f.id, f]));
@@ -245,6 +334,18 @@ export const WORKSHOP_START = [
   { k: 'lamp', x: 0.9, y: 0.3 }, { k: 'rug', x: 0.58, y: 0.8 }, { k: 'toyboat', x: 0.66, y: 0.75 }, { k: 'plant', x: 0.06, y: 0.9 },
 ];
 
+/** A fresh garden shed's starting layout. */
+export const GARDEN_START = [
+  { k: 'pot', x: 0.56, y: 0.2 }, { k: 'pot_1', x: 0.68, y: 0.22 }, { k: 'pot_2', x: 0.8, y: 0.2 }, { k: 'seedrack', x: 0.72, y: 0.42 },
+  { k: 'wateringcan', x: 0.5, y: 0.62 }, { k: 'veggiebasket', x: 0.22, y: 0.78 }, { k: 'plant', x: 0.94, y: 0.85 }, { k: 'rug', x: 0.66, y: 0.84 },
+];
+
+/** A fresh fishing hut's starting layout. */
+export const FISHHUT_START = [
+  { k: 'fishhole', x: 0.55, y: 0.62 }, { k: 'rodrack', x: 0.72, y: 0.45 }, { k: 'fishbarrel', x: 0.2, y: 0.4 }, { k: 'lifering', x: 0.9, y: 0.35 },
+  { k: 'chair', x: 0.8, y: 0.72 }, { k: 'plant', x: 0.94, y: 0.9 },
+];
+
 /** Things the workbench can build, and what they cost (village wood and stone). */
 export const RECIPES: { id: string; cost: { wood?: number; stone?: number } }[] = [
   { id: 'toyboat', cost: { wood: 1 } }, { id: 'birdhouse', cost: { wood: 2 } }, { id: 'stonefrog', cost: { stone: 2 } }, { id: 'rockinghorse', cost: { wood: 2, stone: 1 } },
@@ -259,5 +360,9 @@ export const ROOMS: Record<string, { start: { k: string; x: number; y: number }[
     style: { wall: 0xe6f5ee, stripe: 0xd2ebdf, dot: 0xb5dccb, wains: 0x6fb39e, wainsDark: 0x5c9f8a, wainsTop: 0x9fd6c4, floorA: 0xfaf0dc, floorB: 0xe08a6e, line: 0xb8705a, tiles: true, checker: true } },
   workshop: { start: WORKSHOP_START, tray: ['workbench', 'lumber', 'toolwall', 'lamp', 'rug', 'chair', 'plant', 'shelf', 'clock', 'painting'],
     style: { wall: 0xeedcbf, stripe: 0xe3cca8, dot: 0xd8b98e, wains: 0x8a9aa8, wainsDark: 0x75868f, wainsTop: 0xaab8c4, floorA: 0xc79868, floorB: 0x9e6c42, line: 0x7d5232 } },
+  garden: { start: GARDEN_START, tray: ['pot', 'wateringcan', 'seedrack', 'veggiebasket', 'plant', 'rug', 'chair', 'lamp', 'clock', 'painting'],
+    style: { wall: 0xe9f5dc, stripe: 0xd9edc4, dot: 0xbfe0a4, wains: 0x9a6238, wainsDark: 0x86532e, wainsTop: 0xc98a55, floorA: 0xd9906a, floorB: 0xae6646, line: 0x844a30 } },
+  fishhut: { start: FISHHUT_START, tray: ['fishhole', 'rodrack', 'fishbarrel', 'lifering', 'chair', 'lamp', 'rug', 'plant', 'clock', 'painting'],
+    style: { wall: 0xdcecf5, stripe: 0xc9e1ee, dot: 0xa9cde0, wains: 0x3f6f8f, wainsDark: 0x335e7a, wainsTop: 0x6f9fbf, floorA: 0xbfa588, floorB: 0x8e7358, line: 0x6a5040 } },
 };
 export const roomOf = (type: string) => ROOMS[type] ?? ROOMS.home;
