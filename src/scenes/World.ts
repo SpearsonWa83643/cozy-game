@@ -1582,6 +1582,15 @@ export class WorldScene extends Phaser.Scene {
       },
       villageEvent: (e: 'merchant' | 'rain' | 'festival') => self.village.start(e),
       /** 11.85: fast-forward the rainy-day event to N seconds left. */
+      /** 11.95: seasonal off-screen culling counters (props skipped by the camera, animations run/skipped). */
+      seasonPerf: () => ({ ...self.dresser.stats, cullOn: self.dresser.cullOn, zoom: self.cameras.main.zoom }),
+      seasonCull: (on: boolean) => { self.dresser.cullOn = on; },
+      /** Time n extra dresser updates (ms per update) with culling on or off: a headless measurement. */
+      seasonBench: (n: number, on: boolean) => {
+        const d = self.dresser, was = d.cullOn; d.cullOn = on;
+        const t0 = performance.now(); for (let i = 0; i < n; i++) d.update(self.time.now + i * 16, 0.016);
+        const ms = (performance.now() - t0) / n; d.cullOn = was; return ms;
+      },
       /** 11.9: make the next idle-admire check happen now. */
       villageAdmire: () => { self.village.admireT = 0; },
       weatherLeft: (n: number) => { if (self.village.rain > 0) self.village.rain = n; },

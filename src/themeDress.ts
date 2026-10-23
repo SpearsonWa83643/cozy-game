@@ -59,6 +59,51 @@ export class ThemeDresser {
   /** Each meadow tuft's own (Spring) frame, so Christmas can swap in its snowy twin and back. */
   tuftFrame = new Map<Phaser.GameObjects.Image, string>();
 
+  // ------------------------------------------------------------ 11.95 off-screen culling
+  /** Seasonal props and animations outside the camera view (plus MARGIN) are skipped: not drawn by the
+   *  main camera (cameraFilter, so `visible` and tap rules stay untouched) and not animated per frame. */
+  cullOn = true;
+  static MARGIN = 320;
+  private view = new Phaser.Geom.Rectangle();
+  private cullKey = '';
+  /** Test/debug counters: props currently skipped, props drawn, animations run / skipped last frame. */
+  stats = { props: 0, culled: 0, animated: 0, skipped: 0 };
+  private near(x: number, y: number) { return !this.cullOn || this.view.contains(x, y); }
+  private activeProps(): Phaser.GameObjects.Image[][] {
+    const t = theme;
+    const out: Phaser.GameObjects.Image[][] = [];
+    if (t.props) out.push(this.props);
+    if (t.fallProps) out.push(this.fallProps);
+    if (t.id === 'summer') out.push(this.summerProps);
+    if (t.id === 'christmas') out.push(this.xmasProps);
+    if (t.id === 'christmas' || t.id === 'winter') out.push(this.snowmen);
+    if (t.id === 'winter') out.push(this.snowballs);
+    return out;
+  }
+  /** Re-check which seasonal props the camera should draw (only when the view moves a cell, or on theme change). */
+  private cullProps(force = false) {
+    const v = this.view, C = 160;
+    const key = `${Math.floor(v.x / C)},${Math.floor(v.y / C)},${Math.floor(v.width / C)},${Math.floor(v.height / C)},${this.cullOn}`;
+    if (!force && key === this.cullKey) return;
+    this.cullKey = key;
+    const id = this.w.cameras.main.id;
+    let n = 0, off = 0;
+    const seen = new Set<Phaser.GameObjects.Image>();
+    for (const list of this.activeProps()) for (const img of list) {
+      if (seen.has(img)) continue;
+      seen.add(img); n++;
+      const out = !this.near(img.x, img.y - img.displayHeight * 0.5);
+      if (out) { off++; img.cameraFilter |= id; } else img.cameraFilter &= ~id;
+    }
+    this.stats.props = n; this.stats.culled = off;
+  }
+  /** Theme off: make sure nothing stays filtered from the camera. */
+  private uncullAll() {
+    const id = this.w.cameras.main.id;
+    for (const list of [this.props, this.fallProps, this.summerProps, this.xmasProps, this.snowmen, this.snowballs]) for (const img of list) img.cameraFilter &= ~id;
+    this.cullKey = '';
+  }
+
   constructor(private w: WorldScene) {
     this.sky = w.add.image(0, 0, atlasOf('sky_halloween'), 'sky_halloween').setScrollFactor(0).setDepth(8700).setBlendMode(Phaser.BlendModes.MULTIPLY).setVisible(false);
     for (let i = 0; i < 7; i++) {
@@ -396,10 +441,18 @@ export class ThemeDresser {
     litTree(PIER.x - 90, PIER.y0 - 30);
   }
 
+  /** Should this animation run this frame? Counts animated vs skipped for the perf hook. */
+  private tick(x: number, y: number) {
+    if (this.near(x, y)) { this.stats.animated++; return true; }
+    this.stats.skipped++; return false;
+  }
+
   /** Christmas: twinkle the tree lights (brighter for a few seconds after a tap). */
   tickXmas(time: number) {
     for (const lt of this.litTrees) {
       if (!lt.tree.visible) continue;
+      if (!this.near(lt.tree.x, lt.tree.y - 60)) { this.stats.skipped++; continue; }
+      this.stats.animated++;
       const hot = time < lt.until;
       lt.bulbs.forEach((b, i) => b.setAlpha(hot ? 0.75 + 0.25 * Math.sin(time / 90 + i * 1.7) : 0.55 + 0.4 * Math.max(0, Math.sin(time / 420 + i * 2.1))));
       lt.glow.setAlpha(hot ? 0.5 + 0.1 * Math.sin(time / 120) : 0.2);
@@ -527,6 +580,7 @@ export class ThemeDresser {
   apply(live: boolean) {
     const t: Theme = theme;
     const w = this.w;
+    this.uncullAll();
     const fp = !!t.fallProps;
     if (fp) this.buildFallProps();
     for (const p of this.fallProps) p.setVisible(fp);
@@ -659,8 +713,12 @@ export class ThemeDresser {
 
   update(time: number, dt: number) {
     const w = this.w;
-    if (this.litTrees.length) this.tickXmas(time);
     const cam = w.cameras.main;
+    const M = ThemeDresser.MARGIN, wv = cam.worldView;
+    this.view.setTo(wv.x - M, wv.y - M, wv.width + 2 * M, wv.height + 2 * M);
+    this.stats.animated = 0; this.stats.skipped = 0;
+    this.cullProps();
+    if (this.litTrees.length) this.tickXmas(time);
     if (this.sky.visible) this.sky.setPosition(cam.width / 2, cam.height / 2).setDisplaySize(cam.width / cam.zoom * 1.2, cam.height / cam.zoom * 1.2);
     // Blossoms follow their canopy (chopped trees lose them, see-through fades carry over).
     if (theme.blossom) for (const [img, bl] of this.blooms) {
@@ -683,7 +741,7 @@ export class ThemeDresser {
     }
     if (!theme.props) return;
     if (this.wisps) this.wisps.setPosition(cam.worldView.x, cam.worldView.y);
-    for (const g of this.glows) g.img.setAlpha(g.base + Math.sin(time / 140 + g.ph) * 0.12 + Math.sin(time / 53 + g.ph) * 0.06);
+    for (const g of this.glows) if (this.tick(g.img.x, g.img.y)) g.img.setAlpha(g.base + Math.sin(time / 140 + g.ph) * 0.12 + Math.sin(time / 53 + g.ph) * 0.06);
     for (const j of this.jacks) {
       if (j.flare <= 0) continue;
       j.flare = Math.max(0, j.flare - dt * 0.7);
@@ -694,6 +752,7 @@ export class ThemeDresser {
     }
     for (const b of this.batTrees) {
       let flying = false;
+      if (!this.tick(b.x, b.y - 60) && b.fly.every((f) => f.t === -1)) continue;
       for (const f of b.fly) {
         if (f.t === -1 && !f.img.visible) continue;
         f.t += dt;
@@ -714,8 +773,9 @@ export class ThemeDresser {
       }
       for (let i = 0; i < b.nap.length; i++) b.nap[i].setAngle(Math.sin(time / 700 + i * 1.7) * 6);
     }
-    for (const o of this.orchardBats) o.img.setAngle(Math.sin(time / 800 + o.ph) * 7);
+    for (const o of this.orchardBats) if (this.tick(o.img.x, o.img.y)) o.img.setAngle(Math.sin(time / 800 + o.ph) * 7);
     for (const p of this.peeks) {
+      if (p.up < 0.001 && p.target === 0 && !this.tick(p.x, p.y - 30)) continue;
       p.next -= dt;
       if (p.next <= 0 && p.target === 0 && w.cameras.main.worldView.contains(p.x, p.y)) { p.target = 0.55; p.wave = 1.2; p.next = 1.8; }
       else if (p.next <= 0) { p.target = 0; p.next = 4 + Math.random() * 3; }
@@ -724,6 +784,7 @@ export class ThemeDresser {
       p.ghost.setAlpha(Math.min(0.95, p.up * 5)).setPosition(p.x + Math.sin(time / 400) * 2, p.y - 6 - p.up * 46).setAngle(p.wave > 0 ? Math.sin(time / 110) * 12 * Math.min(1, p.wave) : 0);
     }
     for (const g of this.ghosts) {
+      if (g.spin <= 0 && !this.tick(g.hx, g.hy - 30)) continue;
       const t = time / 1000 + g.ph;
       g.spin = Math.max(0, g.spin - dt * 1.2);
       g.img.setPosition(g.hx + Math.sin(t * 0.4) * 60, g.hy + Math.sin(t * 1.7) * 6 - 6);
