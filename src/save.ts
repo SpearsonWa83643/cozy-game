@@ -38,6 +38,8 @@ export type SaveData = {
   wild: WildSave;
   /** 9.36: wardrobe items you've already seen unlocked (newer ones get a "new" glow). */
   seenWardrobe?: string[];
+  /** 9.4: each building's room inside (by building id): furniture spots, lamp on/off. */
+  interiors?: Record<string, { items: { k: string; x: number; y: number }[]; lampOn?: boolean }>;
 };
 export type WildSave = { visits: number; poofs: number; loot: Record<string, number> };
 

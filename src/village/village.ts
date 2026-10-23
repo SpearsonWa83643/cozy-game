@@ -28,6 +28,8 @@ export const BUILD: Record<BuildingType, BuildDef> = {
   pantry: { name: 'Snack Crate', frame: 'd_pantry', w: 1, h: 1, cost: { wood: 2 }, job: null, makes: null, every: 0, amount: 0, beds: 0, fun: false, unlock: null, blurb: 'Snacks close to home! Hungry friends eat here.', hint: '' },
   statue: { name: 'Fox Statue', frame: 'd_statue', w: 1, h: 1, cost: { stone: 2 }, job: null, makes: null, every: 0, amount: 0, beds: 0, fun: true, unlock: { treasure: 'fox_hood' }, blurb: 'A brave little fox.', hint: 'Find the Fox-ear Hood.' },
 };
+/** 9.4: buildings you can step inside (more join in later slices). */
+export const HAS_INTERIOR = new Set<BuildingType>(['home']);
 export const BUILD_ORDER: BuildingType[] = ['home', 'garden', 'kitchen', 'pantry', 'workshop', 'fishhut', 'flowerbed', 'lamp', 'well', 'bench', 'statue'];
 
 const NAMES = ['Pip', 'Mo', 'Bea', 'Juniper', 'Tuck', 'Hazel', 'Olive', 'Bram', 'Poppy', 'Wren', 'Fig', 'Clover', 'Moss', 'Tilly', 'Basil', 'Daisy', 'Pebble', 'Sunny'];
@@ -252,6 +254,9 @@ export class Village {
     this.buildings.push(bld);
     this.w.nav.blockRect(f.x + 6, f.y + f.h - sh - 4, f.w - 12, sh, 6);
     this.w.tappables.push({ x: () => f.cx, y: () => f.y + f.h * 0.5, r: f.w * 0.45, enabled: () => !this.building && !bld.gone, tap: () => this.w.game.events.emit('card', { kind: 'building', b: bld }) });
+    // 9.4: walk up to a building with a room inside and tap "Go in".
+    if (HAS_INTERIOR.has(b.type)) this.w.interactables.push({ x: f.cx, y: f.by, r: 70, label: 'Go in', promptY: f.h * 0.9, approach: [0, 26], noTap: true,
+      enabled: () => !this.building && !bld.gone, action: () => this.goInside(bld) });
     if (fresh) {
       const s = img.scaleX;
       img.setScale(s * 0.2, s * 0.2);
@@ -265,6 +270,7 @@ export class Village {
     this.dress(bld);
     return bld;
   }
+  goInside(b: Building) { this.w.game.events.emit('interior', { id: b.data.id, type: b.data.type, name: BUILD[b.data.type].name }); }
   /** Seasonal dressing on buildings (pumpkins + candles for Halloween). */
   dressings: Phaser.GameObjects.Image[] = [];
   dress(b: Building) {

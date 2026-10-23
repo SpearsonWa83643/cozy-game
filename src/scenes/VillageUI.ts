@@ -7,7 +7,7 @@ import { safeInsets } from '../device';
 import { sfx } from '../audio';
 import { save, persist, BuildingType, Res } from '../save';
 import { theme, themeEvents } from '../theme';
-import { BUILD, BUILD_ORDER, isUnlockedB, canAfford, Village, Villager, Building, ResId, Alert } from '../village/village';
+import { BUILD, BUILD_ORDER, isUnlockedB, canAfford, Village, Villager, Building, ResId, Alert, HAS_INTERIOR } from '../village/village';
 import type { WorldScene } from './World';
 import { LANDMARKS, ensureLandmarkIcons, type Landmark } from '../landmarks';
 import { unlockedMounts, directMount, currentPick, mountById, type MountDef } from '../mount/defs';
@@ -419,6 +419,7 @@ export class VillageUIScene extends Phaser.Scene {
     this.registry.set('vcard', true);
     const v = this.village;
     let title = '', portrait = '', lines: string[] = [], btns: CardBtn[] = [], needs: Villager | null = null;
+    let inside: CardBtn | null = null; // 9.4: "Go inside!" on buildings with a room
     if (data.kind === 'villager' || data.kind === 'guest') {
       const vl: Villager = data.v;
       title = vl.data.name; portrait = `vil${vl.data.kind}_0`;
@@ -440,6 +441,7 @@ export class VillageUIScene extends Phaser.Scene {
       if (d.beds) lines.push(`${save.village.villagers.length} friends, ${v.beds()} beds.`);
       // Order 19: move it (free) or remove it (you get everything back). Remove asks "Sure?" first.
       const sure = !!data.sure;
+      if (HAS_INTERIOR.has(b.data.type)) inside = { id: 'inside', label: 'Go inside!', icon: 'i_heart', ok: true, tap: () => { this.closeCard(true); v.goInside(b); } };
       btns = [
         { id: 'move', label: 'Move', icon: 'i_hammer', ok: true, tap: () => { this.closeCard(); v.startMove(b); } },
         { id: 'remove', label: sure ? 'Sure?' : 'Remove', icon: 'i_cross', ok: v.canRemove(b), tap: () => {
@@ -452,7 +454,7 @@ export class VillageUIScene extends Phaser.Scene {
       title = 'Merchant'; portrait = 'v_cart'; lines = ['Want to trade?'];
       btns = Village.TRADES.map((t, i) => ({ id: `trade:${i}`, label: '', ok: canAfford(t.give), tap: () => { if (v.trade(i)) this.openCard(data); else { sfx.softFail(); this.game.events.emit('toast', 'Not enough yet!'); } } }));
     }
-    const W = Math.min(420, this.w - 40), H = 176 + (needs ? 70 : 0) + (btns.length ? (data.kind === 'merchant' ? btns.length * 66 : 74) : 0);
+    const W = Math.min(420, this.w - 40), H = 176 + (needs ? 70 : 0) + (btns.length ? (data.kind === 'merchant' ? btns.length * 66 : 74) : 0) + (inside ? 72 : 0);
     const x0 = (this.w - W) / 2, y0 = Math.max(20, (this.h - H) / 2 - 20);
     const c = this.add.container(0, 0);
     const dim = this.add.rectangle(0, 0, this.w, this.h, 0x1d1510, 0.35).setOrigin(0, 0).setInteractive();
@@ -485,6 +487,19 @@ export class VillageUIScene extends Phaser.Scene {
         c.add(bg);
       });
       y += 70;
+    }
+    if (inside) {
+      const b = inside;
+      const [bg, z] = this.button(x0 + 30, y, W - 60, 60, 0xfff2b0, 0xd9a520, b.tap, 30, `card:${b.id}`);
+      c.add([bg, z]);
+      const dg = this.add.graphics(); // little door icon
+      const ix = x0 + 64, iy = y + 30;
+      dg.fillStyle(0x7cc463, 1); dg.fillRoundedRect(ix - 12, iy - 18, 24, 34, { tl: 12, tr: 12, bl: 2, br: 2 });
+      dg.lineStyle(3, 0x4a3022, 1); dg.strokeRoundedRect(ix - 12, iy - 18, 24, 34, { tl: 12, tr: 12, bl: 2, br: 2 });
+      dg.fillStyle(0xf2c14e, 1); dg.fillCircle(ix + 6, iy + 2, 3);
+      c.add(dg);
+      c.add(this.text(x0 + W / 2 + 14, y + 30, b.label, 24, INK, 900).setOrigin(0.5));
+      y += 72;
     }
     if (data.kind === 'merchant') {
       Village.TRADES.forEach((t, i) => {
