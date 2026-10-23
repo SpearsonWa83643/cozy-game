@@ -105,7 +105,49 @@ export const FURNITURE: FurnDef[] = [
     c.lineWidth = 3; c.beginPath(); c.moveTo(w / 2, h / 2); c.lineTo(w / 2 + 13, h / 2 + 4); c.stroke();
     c.fillStyle = '#e8604c'; c.beginPath(); c.arc(w / 2, h / 2, 4, 0, Math.PI * 2); c.fill();
   } },
+  // ---- Kitchen (9.4 slice 2)
+  { id: 'stove', name: 'Stove', layer: 'floor', w: 124, h: 132, draw: (c, w, h) => {
+    shadow(c, w / 2, h - 5, w * 0.44);
+    rr(c, 6, 22, w - 12, h - 30, 10); fillOut(c, vgrad(c, 22, h, '#f2f2f0', '#cfd6dc'));
+    rr(c, 2, 12, w - 4, 18, 7); fillOut(c, '#5a6470', 3.5);
+    c.fillStyle = '#2f353c'; for (const x of [w * 0.3, w * 0.7]) { c.beginPath(); c.ellipse(x, 19, 18, 5, 0, 0, Math.PI * 2); c.fill(); }
+    rr(c, 18, 50, w - 36, h - 70, 8); fillOut(c, vgrad(c, 50, h - 20, '#3a4048', '#22262c'), 3.5);
+    rr(c, 26, 58, w - 52, 26, 5); c.fillStyle = 'rgba(255,170,80,0.55)'; c.fill();
+    rr(c, 30, 40, w - 60, 6, 3); fillOut(c, '#c0c6cc', 2.5);
+    c.fillStyle = '#e8604c'; for (const x of [16, 28, w - 28, w - 16]) { c.beginPath(); c.arc(x, 40, 4, 0, Math.PI * 2); c.fill(); }
+  } },
+  { id: 'coffee', name: 'Coffee', layer: 'floor', w: 118, h: 128, draw: (c, w, h) => {
+    shadow(c, w / 2, h - 5, w * 0.44);
+    rr(c, 6, 56, w - 12, h - 62, 8); fillOut(c, vgrad(c, 56, h, '#9fd6c4', '#6fb39e'));
+    rr(c, 14, 70, (w - 36) / 2, h - 86, 5); fillOut(c, '#8fc9b6', 3); rr(c, w / 2 + 4, 70, (w - 36) / 2, h - 86, 5); fillOut(c, '#8fc9b6', 3);
+    rr(c, 2, 48, w - 4, 12, 5); fillOut(c, '#e2a466', 3.5);
+    rr(c, 24, 6, 58, 44, 10); fillOut(c, vgrad(c, 6, 50, '#e8604c', '#b8402e'));
+    rr(c, 30, 24, 46, 22, 4); c.fillStyle = '#2f353c'; c.fill();
+    rr(c, 44, 30, 18, 16, 3); fillOut(c, '#ffffff', 2.5);
+    c.fillStyle = '#fff1c4'; c.beginPath(); c.arc(36, 15, 3.5, 0, Math.PI * 2); c.fill();
+    rr(c, 88, 28, 18, 22, 4); fillOut(c, '#f6c453', 3);
+  } },
+  { id: 'fridge', name: 'Fridge', layer: 'floor', w: 92, h: 176, draw: (c, w, h) => {
+    shadow(c, w / 2, h - 5, w * 0.44);
+    rr(c, 6, 6, w - 12, h - 14, 14); fillOut(c, vgrad(c, 6, h, '#bfe6fb', '#86c4e8'));
+    c.lineWidth = 3.5; c.strokeStyle = OUT; c.beginPath(); c.moveTo(8, 62); c.lineTo(w - 8, 62); c.stroke();
+    rr(c, w - 24, 24, 7, 26, 3); fillOut(c, '#e8f4fb', 2.5); rr(c, w - 24, 76, 7, 40, 3); fillOut(c, '#e8f4fb', 2.5);
+    c.fillStyle = '#ff9fb2'; c.beginPath(); c.arc(26, 90, 7, 0, Math.PI * 2); c.fill();
+    c.fillStyle = '#f6c453'; c.beginPath(); c.arc(38, 108, 6, 0, Math.PI * 2); c.fill();
+    rr(c, 18, 120, 30, 24, 3); fillOut(c, '#fffaf0', 2); c.fillStyle = '#7cc463'; c.fillRect(24, 128, 18, 3); c.fillRect(24, 135, 12, 3);
+  } },
+  { id: 'sink', name: 'Sink', layer: 'floor', w: 124, h: 120, draw: (c, w, h) => {
+    shadow(c, w / 2, h - 5, w * 0.44);
+    rr(c, 6, 44, w - 12, h - 50, 8); fillOut(c, vgrad(c, 44, h, '#f6d38a', '#e0a850'));
+    rr(c, 16, 58, (w - 40) / 2, h - 74, 5); fillOut(c, '#f9e0a8', 3); rr(c, w / 2 + 4, 58, (w - 40) / 2, h - 74, 5); fillOut(c, '#f9e0a8', 3);
+    rr(c, 2, 36, w - 4, 12, 5); fillOut(c, '#e8f4fb', 3.5);
+    c.beginPath(); c.ellipse(w / 2, 40, 30, 4, 0, 0, Math.PI * 2); c.fillStyle = '#9fb4c4'; c.fill();
+    c.lineCap = 'round';
+    c.lineWidth = 8; c.strokeStyle = OUT; c.beginPath(); c.moveTo(w / 2 - 20, 36); c.lineTo(w / 2 - 20, 12); c.quadraticCurveTo(w / 2 - 20, 4, w / 2 - 8, 6); c.lineTo(w / 2, 14); c.stroke();
+    c.lineWidth = 4; c.strokeStyle = '#d6dde2'; c.beginPath(); c.moveTo(w / 2 - 20, 36); c.lineTo(w / 2 - 20, 12); c.quadraticCurveTo(w / 2 - 20, 4, w / 2 - 8, 6); c.lineTo(w / 2, 14); c.stroke();
+  } },
 ];
+
 export const FURN: Record<string, FurnDef> = Object.fromEntries(FURNITURE.map((f) => [f.id, f]));
 
 /** Make (once) a crisp texture for a furniture piece. Image scale = 1 / res. */
@@ -128,3 +170,20 @@ export const HOME_START = [
   { k: 'chair', x: 0.76, y: 0.62 }, { k: 'lamp', x: 0.9, y: 0.3 }, { k: 'plant', x: 0.08, y: 0.85 },
   { k: 'painting', x: 0.6, y: 0.4 },
 ];
+
+/** A fresh kitchen's starting layout. */
+export const KITCHEN_START = [
+  { k: 'fridge', x: 0.2, y: 0.12 }, { k: 'stove', x: 0.38, y: 0.14 }, { k: 'sink', x: 0.56, y: 0.14 }, { k: 'coffee', x: 0.74, y: 0.14 },
+  { k: 'table', x: 0.52, y: 0.78 }, { k: 'chair', x: 0.38, y: 0.8 }, { k: 'chair', x: 0.66, y: 0.8 }, { k: 'plant', x: 0.94, y: 0.85 },
+  { k: 'clock', x: 0.88, y: 0.35 },
+];
+
+/** Room look + the tray of things you can add, per building type. */
+export type RoomStyle = { wall: number; stripe: number; dot: number; wains: number; wainsDark: number; wainsTop: number; floorA: number; floorB: number; line: number; tiles?: boolean; checker?: boolean };
+export const ROOMS: Record<string, { start: { k: string; x: number; y: number }[]; tray: string[]; style: RoomStyle }> = {
+  home: { start: HOME_START, tray: ['bed', 'rug', 'table', 'chair', 'lamp', 'plant', 'shelf', 'teddy', 'painting', 'clock'],
+    style: { wall: 0xfbe9cf, stripe: 0xf5dcb8, dot: 0xf0c9a0, wains: 0xc98a55, wainsDark: 0xb8794a, wainsTop: 0xe2a466, floorA: 0xd09060, floorB: 0xa8693c, line: 0x8a5430 } },
+  kitchen: { start: KITCHEN_START, tray: ['stove', 'coffee', 'fridge', 'sink', 'table', 'chair', 'plant', 'rug', 'clock', 'painting'],
+    style: { wall: 0xe6f5ee, stripe: 0xd2ebdf, dot: 0xb5dccb, wains: 0x6fb39e, wainsDark: 0x5c9f8a, wainsTop: 0x9fd6c4, floorA: 0xfaf0dc, floorB: 0xe08a6e, line: 0xb8705a, tiles: true, checker: true } },
+};
+export const roomOf = (type: string) => ROOMS[type] ?? ROOMS.home;

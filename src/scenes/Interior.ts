@@ -6,7 +6,7 @@ import { safeInsets } from '../device';
 import { sfx } from '../audio';
 import { save, persist } from '../save';
 import { theme } from '../theme';
-import { FURNITURE, FURN, furnTexture, HOME_START, type FurnDef } from '../interior/furniture';
+import { FURN, furnTexture, roomOf, type FurnDef } from '../interior/furniture';
 import type { WorldScene } from './World';
 
 const INK = '#3d2c20';
@@ -27,6 +27,12 @@ export class InteriorScene extends Phaser.Scene {
   items: Item[] = [];
   lastAction = '';
   actions = 0;
+  meals = 0;
+  coffees = 0;
+  cookStage = 0;
+  recipe: 'pancakes' | 'eggs' = 'pancakes';
+  private pan: Phaser.GameObjects.Graphics | null = null;
+  private brewing = false;
   rects: Record<string, Rect> = {};
   room: Rect = { x: 0, y: 0, w: 0, h: 0 };
   floorTop = 0;
@@ -60,7 +66,7 @@ export class InteriorScene extends Phaser.Scene {
   roomSave(): RoomSave {
     const all = (save.interiors ??= {});
     let r = all[String(this.bid)];
-    if (!r) { r = all[String(this.bid)] = { items: this.btype === 'home' ? HOME_START.map((s) => ({ ...s })) : [], lampOn: true }; persist(); }
+    if (!r) { r = all[String(this.bid)] = { items: roomOf(this.btype).start.map((s) => ({ ...s })), lampOn: true }; persist(); }
     return r;
   }
   private store() {
@@ -99,7 +105,7 @@ export class InteriorScene extends Phaser.Scene {
   private clear() {
     this.tweens.killAll();
     this.children.removeAll(true);
-    this.items = []; this.rects = {}; this.dark = null; this.glow = null; this.winG = null; this.bin = null; this.hint = null;
+    this.items = []; this.rects = {}; this.dark = null; this.glow = null; this.pan = null; this.cookStage = 0; this.brewing = false; this.winG = null; this.bin = null; this.hint = null;
   }
 
   // ------------------------------------------------------------------ layout + drawing
@@ -128,25 +134,48 @@ export class InteriorScene extends Phaser.Scene {
     const g = this.add.graphics().setDepth(0);
     const ft = this.floorTop;
     // Wallpaper: cream with soft stripes and little dots.
-    g.fillStyle(0xfbe9cf, 1); g.fillRoundedRect(r.x, r.y, r.w, ft - r.y + 20, { tl: 22, tr: 22, bl: 0, br: 0 });
-    g.fillStyle(0xf5dcb8, 1);
-    for (let x = r.x + 18; x < r.x + r.w - 10; x += 56) g.fillRect(x, r.y + 6, 22, ft - r.y - 6);
-    g.fillStyle(0xf0c9a0, 1);
-    for (let x = r.x + 46; x < r.x + r.w - 10; x += 56) for (let y = r.y + 30; y < ft - 40; y += 48) g.fillCircle(x, y, 3);
+    const st = roomOf(this.btype).style;
+    g.fillStyle(st.wall, 1); g.fillRoundedRect(r.x, r.y, r.w, ft - r.y + 20, { tl: 22, tr: 22, bl: 0, br: 0 });
+    if (st.tiles) {
+      // Kitchen: shiny square tiles.
+      g.lineStyle(2, st.dot, 1);
+      for (let x = r.x + 30; x < r.x + r.w; x += 40) g.lineBetween(x, r.y + 4, x, ft - 46);
+      for (let y = r.y + 30; y < ft - 46; y += 40) g.lineBetween(r.x + 4, y, r.x + r.w - 4, y);
+      g.fillStyle(0xffffff, 0.5);
+      for (let x = r.x + 34; x < r.x + r.w - 20; x += 80) for (let y = r.y + 34; y < ft - 60; y += 80) g.fillRoundedRect(x, y, 10, 4, 2);
+    } else {
+      g.fillStyle(st.stripe, 1);
+      for (let x = r.x + 18; x < r.x + r.w - 10; x += 56) g.fillRect(x, r.y + 6, 22, ft - r.y - 6);
+      g.fillStyle(st.dot, 1);
+      for (let x = r.x + 46; x < r.x + r.w - 10; x += 56) for (let y = r.y + 30; y < ft - 40; y += 48) g.fillCircle(x, y, 3);
+    }
     // Wainscot.
-    g.fillStyle(0xc98a55, 1); g.fillRect(r.x, ft - 46, r.w, 46);
-    g.fillStyle(0xb8794a, 1); for (let x = r.x + 10; x < r.x + r.w - 40; x += 64) g.fillRoundedRect(x, ft - 38, 54, 30, 5);
-    g.fillStyle(0xe2a466, 1); g.fillRect(r.x, ft - 50, r.w, 8);
-    // Floor: planks with a gradient toward the front.
+    g.fillStyle(st.wains, 1); g.fillRect(r.x, ft - 46, r.w, 46);
+    g.fillStyle(st.wainsDark, 1); for (let x = r.x + 10; x < r.x + r.w - 40; x += 64) g.fillRoundedRect(x, ft - 38, 54, 30, 5);
+    g.fillStyle(st.wainsTop, 1); g.fillRect(r.x, ft - 50, r.w, 8);
     const fh = r.y + r.h - ft;
-    g.fillGradientStyle(0xd09060, 0xd09060, 0xa8693c, 0xa8693c, 1); g.fillRect(r.x, ft, r.w, fh - 22);
-    g.fillStyle(0xa8693c, 1); g.fillRoundedRect(r.x, r.y + r.h - 40, r.w, 40, { tl: 0, tr: 0, bl: 22, br: 22 });
-    g.lineStyle(2, 0x8a5430, 0.55);
     const rows = 6;
-    for (let i = 1; i <= rows; i++) { const y = ft + (fh * i) / (rows + 0.5); g.lineBetween(r.x, y, r.x + r.w, y); }
-    for (let i = 0; i <= rows; i++) {
-      const y0 = ft + (fh * i) / (rows + 0.5), y1 = ft + (fh * (i + 1)) / (rows + 0.5);
-      for (let x = r.x + ((i * 97) % 160) + 40; x < r.x + r.w; x += 190) g.lineBetween(x, y0, x, Math.min(y1, r.y + r.h - 4));
+    if (st.checker) {
+      // Kitchen: a checkerboard floor, with a terracotta skirting strip at the front.
+      const fb = r.y + r.h - 26;
+      g.fillStyle(st.floorA, 1); g.fillRect(r.x, ft, r.w, fb - ft);
+      g.fillStyle(st.floorB, 1);
+      const cw = 64, rh = (fb - ft) / rows;
+      for (let i = 0; i < rows; i++) {
+        const y0 = ft + i * rh;
+        for (let x = r.x + (i % 2) * cw; x < r.x + r.w; x += cw * 2) g.fillRect(x, y0, Math.min(cw, r.x + r.w - x), rh);
+      }
+      g.fillStyle(st.line, 1); g.fillRoundedRect(r.x, fb, r.w, r.y + r.h - fb, { tl: 0, tr: 0, bl: 22, br: 22 });
+    } else {
+      // Floor: planks with a gradient toward the front.
+      g.fillGradientStyle(st.floorA, st.floorA, st.floorB, st.floorB, 1); g.fillRect(r.x, ft, r.w, fh - 22);
+      g.fillStyle(st.floorB, 1); g.fillRoundedRect(r.x, r.y + r.h - 40, r.w, 40, { tl: 0, tr: 0, bl: 22, br: 22 });
+      g.lineStyle(2, st.line, 0.55);
+      for (let i = 1; i <= rows; i++) { const y = ft + (fh * i) / (rows + 0.5); g.lineBetween(r.x, y, r.x + r.w, y); }
+      for (let i = 0; i <= rows; i++) {
+        const y0 = ft + (fh * i) / (rows + 0.5), y1 = ft + (fh * (i + 1)) / (rows + 0.5);
+        for (let x = r.x + ((i * 97) % 160) + 40; x < r.x + r.w; x += 190) g.lineBetween(x, y0, x, Math.min(y1, r.y + r.h - 4));
+      }
     }
     g.fillStyle(0x6b4226, 1); g.fillRect(r.x, ft, r.w, 6); // baseboard shadow
     // Frame.
@@ -219,9 +248,16 @@ export class InteriorScene extends Phaser.Scene {
     tg.fillStyle(0xfbf1dc, 1); tg.fillRoundedRect(L, T, tw, 56, 28);
     tg.lineStyle(3.5, theme.ui.accent, 1); tg.strokeRoundedRect(L + 4, T + 4, tw - 8, 48, 24);
     const hg = this.add.graphics().setDepth(1001);
-    hg.fillStyle(0xe8604c, 1); hg.fillTriangle(L + 18, T + 30, L + 38, T + 12, L + 58, T + 30);
-    hg.fillStyle(0xfff1d6, 1); hg.fillRect(L + 23, T + 29, 30, 17); hg.fillStyle(0x9a5b3a, 1); hg.fillRect(L + 34, T + 34, 9, 12);
-    hg.lineStyle(2.5, 0x4a3022, 1); hg.strokeTriangle(L + 18, T + 30, L + 38, T + 12, L + 58, T + 30); hg.strokeRect(L + 23, T + 29, 30, 17);
+    if (this.btype === 'kitchen') {
+      // A steaming mug.
+      hg.fillStyle(0xffffff, 1); hg.fillRoundedRect(L + 22, T + 20, 26, 26, 5); hg.lineStyle(2.5, 0x4a3022, 1); hg.strokeRoundedRect(L + 22, T + 20, 26, 26, 5);
+      hg.strokeCircle(L + 52, T + 32, 6); hg.fillStyle(0x8a5430, 1); hg.fillRect(L + 25, T + 23, 20, 6);
+      hg.lineStyle(2.5, 0xb8b0a8, 1); hg.lineBetween(L + 30, T + 16, L + 32, T + 8); hg.lineBetween(L + 40, T + 16, L + 38, T + 8);
+    } else {
+      hg.fillStyle(0xe8604c, 1); hg.fillTriangle(L + 18, T + 30, L + 38, T + 12, L + 58, T + 30);
+      hg.fillStyle(0xfff1d6, 1); hg.fillRect(L + 23, T + 29, 30, 17); hg.fillStyle(0x9a5b3a, 1); hg.fillRect(L + 34, T + 34, 9, 12);
+      hg.lineStyle(2.5, 0x4a3022, 1); hg.strokeTriangle(L + 18, T + 30, L + 38, T + 12, L + 58, T + 30); hg.strokeRect(L + 23, T + 29, 30, 17);
+    }
     this.text(L + 70, T + 28, this.title, 26, INK, 900).setOrigin(0, 0.5).setDepth(1001);
     // Close (X), same look as the satchel's.
     const cx = R - 56;
@@ -247,16 +283,17 @@ export class InteriorScene extends Phaser.Scene {
     g.fillStyle(0xfbf1dc, 1); g.fillRoundedRect(L, y, R - L, H, 24);
     g.lineStyle(3, 0xd9b98f, 1); g.strokeRoundedRect(L + 4, y + 4, R - L - 8, H - 8, 20);
     if (!this.decorating) {
-      this.hint = this.text((L + R) / 2, y + H / 2, 'Tap things to play with them!  Tap Decorate to move things around.', 21, '#6b4f3a', 800)
+      this.hint = this.text((L + R) / 2, y + H / 2, this.btype === 'kitchen' ? 'Tap the stove to cook breakfast! Tap the coffee maker for coffee. Tap Decorate to move things.' : 'Tap things to play with them!  Tap Decorate to move things around.', 21, '#6b4f3a', 800)
         .setOrigin(0.5).setDepth(1001).setWordWrapWidth(R - L - 40).setAlign('center');
       this.bin = null;
       return;
     }
     // Furniture tray: tap a piece to add it to the room.
-    const n = FURNITURE.length, gap = 8;
+    const tray = roomOf(this.btype).tray.map((k) => FURN[k]).filter(Boolean);
+    const n = tray.length, gap = 8;
     const sw = Math.min(92, (R - L - 24 - gap * (n - 1)) / n), sh = H - 20;
     const x0 = (L + R) / 2 - (n * sw + (n - 1) * gap) / 2;
-    FURNITURE.forEach((f, i) => {
+    tray.forEach((f, i) => {
       const r = { x: x0 + i * (sw + gap), y: y + 10, w: sw, h: sh };
       this.button(r, 0xfffaf0, 0xe2c9a0, `tray:${f.id}`, () => this.add1(f), 16);
       const im = this.add.image(r.x + r.w / 2, r.y + r.h / 2 - 8, furnTexture(this, f.id, this.res)).setDepth(1002);
@@ -454,12 +491,125 @@ export class InteriorScene extends Phaser.Scene {
         act = 'story'; sfx.rustle(); wiggle();
         this.say(Phaser.Utils.Array.GetRandom(['Once upon a time...', 'A book about frogs!', 'The Moon Fox story!', 'A map of the stars!']), cx, top - 16);
         break;
+      case 'stove': act = this.cook(it); break;
+      case 'coffee': act = this.brew(it); break;
+      case 'fridge': {
+        act = 'open'; sfx.creak();
+        const fw = d.w * it.sc, fx = img.x - fw / 2 + 8 * it.sc, fy = img.y - d.h * it.sc + 64 * it.sc, fhh = 100 * it.sc;
+        const og = this.add.graphics().setDepth(img.depth + 0.2);
+        og.fillStyle(0xf4fbff, 1); og.fillRoundedRect(fx, fy, fw - 16 * it.sc, fhh, 6); og.lineStyle(3, 0x4a3022, 1); og.strokeRoundedRect(fx, fy, fw - 16 * it.sc, fhh, 6);
+        og.lineStyle(2.5, 0x9fb4c4, 1); og.lineBetween(fx + 4, fy + fhh * 0.5, fx + fw - 20 * it.sc, fy + fhh * 0.5);
+        const foods: [number, number, number][] = [[0.2, 0.36, 0xe8604c], [0.45, 0.36, 0xf6c453], [0.7, 0.36, 0x7cc463], [0.3, 0.85, 0xfffaf0], [0.62, 0.85, 0xff9fb2]];
+        for (const [a, b, col] of foods) { og.fillStyle(col, 1); og.fillCircle(fx + (fw - 16 * it.sc) * a, fy + fhh * b, 7 * it.sc); og.lineStyle(2, 0x4a3022, 1); og.strokeCircle(fx + (fw - 16 * it.sc) * a, fy + fhh * b, 7 * it.sc); }
+        og.setAlpha(0); this.tweens.add({ targets: og, alpha: 1, duration: 120, yoyo: true, hold: 1100, onComplete: () => og.destroy() });
+        this.say(Phaser.Utils.Array.GetRandom(['Milk and apples!', 'Cheese and berries!', 'Brrr, so cold!', 'Yummy snacks inside!']), cx, top - 16);
+        break;
+      }
+      case 'sink':
+        act = 'wash'; sfx.plip(); this.time.delayedCall(140, () => sfx.plip()); this.time.delayedCall(300, () => sfx.plip());
+        for (let i = 0; i < 9; i++) {
+          const bb = this.add.circle(cx + Phaser.Math.Between(-30, 30) * it.sc, top + 40 * it.sc, Phaser.Math.Between(5, 10), 0xe8f6ff, 0.9).setStrokeStyle(2, 0x6fb8e8).setDepth(950);
+          this.tweens.add({ targets: bb, y: bb.y - 50 - Math.random() * 40, x: bb.x + Phaser.Math.Between(-16, 16), alpha: 0, duration: 900, delay: i * 70, ease: 'Sine.easeOut', onComplete: () => bb.destroy() });
+        }
+        this.say('Splish splash! All clean!', cx, top - 16);
+        break;
       case 'chair': act = 'sit'; sfx.creak(); squash(); break;
       case 'rug': act = 'squish'; sfx.rustle(); squash(); break;
       case 'painting': act = 'look'; sfx.sparkle(); wiggle(); this.sparkles(cx, img.y, 8, 0xfff1c4); break;
       default: wiggle();
     }
     this.lastAction = `${it.k}:${act}`;
+  }
+
+  /** Breakfast in three taps: Pour/Crack, Flip, then it hops onto a plate. */
+  private cook(it: Item): string {
+    const img = it.img, d = FURN.stove, sc = it.sc;
+    const bx = img.x + (d.w * 0.3 - d.w / 2) * sc, by = img.y - d.h * sc + 14 * sc;
+    const drawPan = (stage: number) => {
+      const g = (this.pan ??= this.add.graphics());
+      g.setDepth(img.depth + 0.3).setPosition(bx, by).clear();
+      g.fillStyle(0x2f353c, 1); g.fillRoundedRect(22 * sc, -4 * sc, 36 * sc, 8 * sc, 4);
+      g.fillEllipse(0, 0, 50 * sc, 18 * sc); g.lineStyle(3, 0x1a1d22, 1); g.strokeEllipse(0, 0, 50 * sc, 18 * sc);
+      if (stage === 0) return;
+      if (this.recipe === 'pancakes') {
+        g.fillStyle(stage === 1 ? 0xf6e2a8 : 0xd9953e, 1); g.fillEllipse(0, -3 * sc, 36 * sc, 12 * sc);
+        if (stage === 2) { g.fillStyle(0xb8732a, 1); g.fillEllipse(-5 * sc, -4 * sc, 8 * sc, 3 * sc); g.fillEllipse(6 * sc, -2 * sc, 6 * sc, 2 * sc); }
+      } else {
+        g.fillStyle(0xffffff, 1); g.fillEllipse(-2 * sc, -3 * sc, 34 * sc, 12 * sc);
+        g.fillStyle(stage === 1 ? 0xffd34d : 0xf6a623, 1); g.fillCircle(0, -5 * sc, 6 * sc);
+      }
+    };
+    const steam = () => {
+      for (let i = 0; i < 3; i++) {
+        const st = this.add.circle(bx - 8 + i * 8, by - 8, 6, 0xffffff, 0.8).setDepth(950);
+        this.tweens.add({ targets: st, y: st.y - 50, scale: 2, alpha: 0, duration: 900, delay: i * 150, ease: 'Sine.easeOut', onComplete: () => st.destroy() });
+      }
+    };
+    const pc = this.recipe === 'pancakes';
+    if (this.cookStage === 0) {
+      this.cookStage = 1; drawPan(1); sfx.plip(); steam();
+      this.say(pc ? 'Pour the batter! Tap again to flip.' : 'Crack an egg! Tap again to cook.', img.x, by - 40);
+      return pc ? 'pour' : 'crack';
+    }
+    if (this.cookStage === 1) {
+      this.cookStage = 2; sfx.tock(); steam();
+      const pan = this.pan!;
+      this.tweens.add({ targets: pan, y: by - 26, duration: 160, yoyo: true, ease: 'Quad.easeOut', onYoyo: () => drawPan(2) });
+      this.say(pc ? 'Flip! Tap once more!' : 'Sizzle! Tap once more!', img.x, by - 40);
+      return pc ? 'flip' : 'sizzle';
+    }
+    // Done: food hops onto a plate on the nearest table (or above the stove).
+    this.cookStage = 0; drawPan(0);
+    this.meals++;
+    const tables = this.items.filter((i) => i.k === 'table');
+    const tb = tables.sort((a, b) => Phaser.Math.Distance.Between(a.img.x, a.img.y, img.x, img.y) - Phaser.Math.Distance.Between(b.img.x, b.img.y, img.x, img.y))[0];
+    const tx = tb ? tb.img.x - 10 * tb.sc : img.x, ty = tb ? tb.img.y - FURN.table.h * tb.sc + 18 * tb.sc : by - 60;
+    const plate = this.add.container(bx, by).setDepth(Math.max(img.depth, tb ? tb.img.depth : 0) + 0.5);
+    const pg = this.add.graphics();
+    pg.fillStyle(0xfdf6ea, 1); pg.fillEllipse(0, 0, 46 * sc, 14 * sc); pg.lineStyle(2.5, 0x4a3022, 1); pg.strokeEllipse(0, 0, 46 * sc, 14 * sc);
+    if (pc) { for (let i = 0; i < 3; i++) { pg.fillStyle(0xd9953e, 1); pg.fillEllipse(0, (-4 - i * 5) * sc, 32 * sc, 9 * sc); pg.lineStyle(2, 0x8a5430, 1); pg.strokeEllipse(0, (-4 - i * 5) * sc, 32 * sc, 9 * sc); }
+      pg.fillStyle(0xfff6c8, 1); pg.fillRoundedRect(-5 * sc, -22 * sc, 10 * sc, 6 * sc, 2); }
+    else { pg.fillStyle(0xffffff, 1); pg.fillEllipse(-6 * sc, -3 * sc, 22 * sc, 9 * sc); pg.fillEllipse(8 * sc, -3 * sc, 20 * sc, 8 * sc); pg.fillStyle(0xf6a623, 1); pg.fillCircle(-6 * sc, -5 * sc, 4.5 * sc); pg.fillCircle(8 * sc, -5 * sc, 4 * sc); }
+    plate.add(pg);
+    this.tweens.add({ targets: plate, x: tx, duration: 520, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: plate, y: { from: by, to: ty }, duration: 520, ease: 'Back.easeOut' });
+    this.time.delayedCall(540, () => { this.sparkles(tx, ty - 10, 10, 0xfff1c4); this.hearts(tx, ty - 20, 4); sfx.chimes(); });
+    this.tweens.add({ targets: plate, alpha: 0, delay: 3200, duration: 400, onComplete: () => plate.destroy() });
+    this.say(pc ? 'Pancakes for breakfast! Yum!' : 'Eggs for breakfast! Yum!', tx, ty - 50);
+    this.recipe = pc ? 'eggs' : 'pancakes';
+    return 'breakfast';
+  }
+
+  /** Coffee: the mug fills up drip by drip, then steams. */
+  private brew(it: Item): string {
+    if (this.brewing) { this.say('Almost ready...', it.img.x, it.img.y - FURN.coffee.h * it.sc - 10); return 'wait'; }
+    this.brewing = true;
+    const img = it.img, d = FURN.coffee, sc = it.sc;
+    const left = img.x - (d.w / 2) * sc, top = img.y - d.h * sc;
+    const mx = left + 44 * sc, my = top + 30 * sc, mw = 18 * sc, mh = 16 * sc;
+    const fill = this.add.graphics().setDepth(img.depth + 0.3);
+    const drops: Phaser.GameObjects.Arc[] = [];
+    sfx.plip();
+    const st = { f: 0 };
+    this.tweens.add({ targets: st, f: 1, duration: 1300, ease: 'Linear', onUpdate: () => {
+      fill.clear(); fill.fillStyle(0x8a5430, 1); const h = (mh - 5) * st.f; fill.fillRect(mx + 2.5, my + mh - 2.5 - h, mw - 5, h);
+    } });
+    for (let i = 0; i < 6; i++) this.time.delayedCall(i * 200, () => {
+      const dr = this.add.circle(mx + mw / 2, top + 24 * sc, 2.5 * sc, 0x6b3f22).setDepth(img.depth + 0.4); drops.push(dr);
+      this.tweens.add({ targets: dr, y: my + 4 * sc, duration: 180, onComplete: () => dr.destroy() });
+      if (i % 2) sfx.plip();
+    });
+    this.time.delayedCall(1350, () => {
+      this.brewing = false; this.coffees++;
+      for (let i = 0; i < 3; i++) {
+        const s2 = this.add.circle(mx + mw / 2 - 6 + i * 6, my - 4, 5, 0xffffff, 0.85).setDepth(950);
+        this.tweens.add({ targets: s2, y: s2.y - 54, scale: 2, alpha: 0, duration: 1000, delay: i * 180, ease: 'Sine.easeOut', onComplete: () => s2.destroy() });
+      }
+      sfx.chimes(); this.sparkles(mx + mw / 2, my, 8, 0xfff1c4);
+      this.say('Coffee is ready! Sip sip!', img.x, top - 16);
+      this.tweens.add({ targets: fill, alpha: 0, delay: 2200, duration: 400, onComplete: () => fill.destroy() });
+    });
+    return 'brew';
   }
 
   private sparkles(x: number, y: number, n: number, color: number) {

@@ -29,7 +29,7 @@ export const BUILD: Record<BuildingType, BuildDef> = {
   statue: { name: 'Fox Statue', frame: 'd_statue', w: 1, h: 1, cost: { stone: 2 }, job: null, makes: null, every: 0, amount: 0, beds: 0, fun: true, unlock: { treasure: 'fox_hood' }, blurb: 'A brave little fox.', hint: 'Find the Fox-ear Hood.' },
 };
 /** 9.4: buildings you can step inside (more join in later slices). */
-export const HAS_INTERIOR = new Set<BuildingType>(['home']);
+export const HAS_INTERIOR = new Set<BuildingType>(['home', 'kitchen']);
 export const BUILD_ORDER: BuildingType[] = ['home', 'garden', 'kitchen', 'pantry', 'workshop', 'fishhut', 'flowerbed', 'lamp', 'well', 'bench', 'statue'];
 
 const NAMES = ['Pip', 'Mo', 'Bea', 'Juniper', 'Tuck', 'Hazel', 'Olive', 'Bram', 'Poppy', 'Wren', 'Fig', 'Clover', 'Moss', 'Tilly', 'Basil', 'Daisy', 'Pebble', 'Sunny'];
