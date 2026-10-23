@@ -13,7 +13,7 @@ import { MountDef, mountById } from './defs';
 import { stickInput } from '../controls';
 import type { TouchStick } from '../controls';
 
-export type MountPhase = 'off' | 'arrive' | 'ride' | 'land' | 'hop' | 'leave';
+export type MountPhase = 'off' | 'arrive' | 'ride' | 'travel' | 'land' | 'hop' | 'leave';
 
 const RIDE_ALT = 72;
 const SPEED = 150;
@@ -24,6 +24,7 @@ const DEPTH = 9300;
 const EDGE = 70;
 /** After this long with no steering input, the mount drifts back to its own tour. */
 const IDLE_TOUR_MS = 2000;
+const TRAVEL_NEAR = 220;
 const STEER_SPEED = 190;
 
 /** Cubic Hermite between two points with start/end velocities (already scaled by duration). */
@@ -37,7 +38,7 @@ function hermiteD(p0: number, v0: number, p1: number, v1: number, t: number) {
 }
 const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 
-type Seg = { x0: number; y0: number; vx0: number; vy0: number; x1: number; y1: number; vx1: number; vy1: number; a0: number; a1: number; T: number; t: number; altEase: (t: number) => number };
+type Seg = { x0: number; y0: number; vx0: number; vy0: number; x1: number; y1: number; vx1: number; vy1: number; a0: number; a1: number; T: number; t: number; altEase: (t: number) => number; arc?: number };
 
 export class Mount {
   phase: MountPhase = 'off';
@@ -66,6 +67,8 @@ export class Mount {
   /** Manual control: true while steering and for IDLE_TOUR_MS after the last input. */
   manual = false;
   idleMs = 0;
+  /** Fast travel: where we're flying, and counts for tests. */
+  travelName = ''; travelTarget: [number, number] | null = null; travels = 0; arrivals = 0;
   vx = 0; vy = 0;
   steers = 0; tours = 0;
   def: MountDef = mountById('eagle');
@@ -109,7 +112,7 @@ export class Mount {
   /** Eagle is on screen at all. */
   get active() { return this.phase !== 'off'; }
   /** The eagle (not the walk code) moves the player. */
-  get carrying() { return this.phase === 'arrive' || this.phase === 'ride' || this.phase === 'land' || this.phase === 'hop'; }
+  get carrying() { return this.phase === 'arrive' || this.phase === 'ride' || this.phase === 'travel' || this.phase === 'land' || this.phase === 'hop'; }
   get riding() { return this.phase === 'ride'; }
   /** Where the eagle is drawn (its body centre). */
   get ex() { return this.gx; }
@@ -233,6 +236,49 @@ export class Mount {
     this.target = this.pickWaypoint(); this.targetTime = 0;
     w.game.events.emit('mount', this.phase);
     w.game.events.emit('toast', `Wheee! Riding the ${this.def.name}! Tap the ground to hop off.`);
+  }
+
+  // ------------------------------------------------------------ fast travel (9.3)
+  /** Where a fast-travel flight to (x, y) would end, or null if you haven't found the way there on foot yet. */
+  travelSpot(x: number, y: number): [number, number] | null {
+    if (!this.reach) this.computeReach();
+    const spot = this.nearestReachable(x, y);
+    return Math.hypot(spot[0] - x, spot[1] - y) <= TRAVEL_NEAR ? spot : null;
+  }
+  /** While riding: fly smoothly to a landmark, then hover there and carry on riding. */
+  travelTo(x: number, y: number, name: string) {
+    if (this.phase !== 'ride' && this.phase !== 'travel') return false;
+    const spot = this.travelSpot(x, y);
+    if (!spot) return false;
+    const d = Math.hypot(spot[0] - this.gx, spot[1] - this.gy);
+    const T = Phaser.Math.Clamp(1.3 + d / 650, 1.6, 6.5);
+    const ang = Math.atan2(spot[1] - this.gy, spot[0] - this.gx);
+    // Leave along the current heading (no snap), arrive gliding gently in the travel direction.
+    const sp0 = Math.min(this.speed, 260) * T * 0.5;
+    const vx0 = Math.cos(this.heading) * sp0, vy0 = Math.sin(this.heading) * sp0;
+    const vx1 = Math.cos(ang) * 50 * T, vy1 = Math.sin(ang) * 50 * T;
+    this.seg = { x0: this.gx, y0: this.gy, vx0, vy0, x1: spot[0], y1: spot[1], vx1, vy1, a0: this.alt, a1: RIDE_ALT, T, t: 0,
+      altEase: (t) => t * t * (3 - 2 * t), arc: Math.min(150, 50 + d / 20) };
+    this.fastMs = 0; this.glide = 0;
+    this.manual = false; this.steerIn = null;
+    this.phase = 'travel';
+    this.travelName = name; this.travelTarget = spot; this.travels++;
+    sfx.wind(1.2); sfx.sparkle();
+    this.w.burst(this.ex, this.ey, 0xffffff, 12, 'spark');
+    this.w.game.events.emit('mount', this.phase);
+    this.w.game.events.emit('toast', `Off to ${name}!`);
+    return true;
+  }
+  arrive() {
+    this.phase = 'ride';
+    // Hover a moment at the landmark (coasting), then the usual tour picks up from here.
+    this.manual = true; this.vx = Math.cos(this.heading) * 40; this.vy = Math.sin(this.heading) * 40;
+    this.idleMs = -3000; this.steerIn = null;
+    this.arrivals++;
+    sfx.sparkle();
+    this.w.burst(this.ex, this.ey, 0xfff1c4, 14, 'spark');
+    this.w.game.events.emit('mount', this.phase);
+    this.w.game.events.emit('toast', `Here we are: ${this.travelName}! Tap the ground to hop off.`);
   }
 
   /** Fly down to the nearest reachable spot near (x, y) and let the rider off there. */
@@ -375,7 +421,7 @@ export class Mount {
     const nx = hermite(s.x0, s.vx0, s.x1, s.vx1, t), ny = hermite(s.y0, s.vy0, s.y1, s.vy1, t);
     const dx = hermiteD(s.x0, s.vx0, s.x1, s.vx1, t) / s.T, dy = hermiteD(s.y0, s.vy0, s.y1, s.vy1, t) / s.T;
     this.gx = nx; this.gy = ny;
-    this.alt = s.a0 + (s.a1 - s.a0) * s.altEase(t);
+    this.alt = s.a0 + (s.a1 - s.a0) * s.altEase(t) + (s.arc ?? 0) * Math.sin(Math.PI * t);
     const sp = Math.hypot(dx, dy);
     if (sp > 20) this.heading = Math.atan2(dy, dx);
     this.speed = sp;
@@ -413,6 +459,9 @@ export class Mount {
         case 'ride':
           this.ride(dt);
           break;
+        case 'travel':
+          if (this.stepSeg(dt)) this.arrive();
+          break;
         case 'land':
           if (this.stepSeg(dt)) { this.phase = 'hop'; this.hopT = 0; this.hopFrom = [w.playerImg.x, w.playerImg.y]; sfx.blip(); }
           break;
@@ -449,7 +498,7 @@ export class Mount {
     const w = this.w;
     const fast = this.fastMs > 0;
     // Wings: beat faster when climbing, landing or whooshing; glide now and then on a ride.
-    const rate = this.phase === 'hop' ? 3.4 : fast ? 3.0 : this.phase === 'arrive' ? 1.2 : this.phase === 'leave' ? 2.4 : 1.7;
+    const rate = this.phase === 'hop' ? 3.4 : fast ? 3.0 : this.phase === 'arrive' ? 1.2 : this.phase === 'leave' || this.phase === 'travel' ? 2.4 : 1.7;
     if (this.phase === 'ride' && !fast && !paused) {
       this.nextGlide -= dt;
       if (this.nextGlide <= 0 && this.glide <= 0) { this.glide = 1.4 + Math.random(); this.nextGlide = 4 + Math.random() * 4; }
@@ -523,6 +572,7 @@ export class Mount {
       steering: this.manual, idleMs: Math.round(this.idleMs), steers: this.steers, tours: this.tours, heading: +this.heading.toFixed(2),
       boosts: this.boosts, rides: this.rides, landings: this.landings, dropAt: this.dropAt ? this.dropAt.map(Math.round) : null,
       canCall: this.canCall(), reachable: this.reachList.length, seg: this.seg ? +this.seg.t.toFixed(2) : null,
+      travels: this.travels, arrivals: this.arrivals, travelName: this.travelName, travelTarget: this.travelTarget ? this.travelTarget.map(Math.round) : null,
       reachableHere: this.reach ? this.isReachable(this.w.feet.x, this.w.feet.y) : null,
     };
   }

@@ -9,6 +9,7 @@ import { save, persist, BuildingType, Res } from '../save';
 import { theme, themeEvents } from '../theme';
 import { BUILD, BUILD_ORDER, isUnlockedB, canAfford, Village, Villager, Building, ResId, Alert } from '../village/village';
 import type { WorldScene } from './World';
+import { LANDMARKS, ensureLandmarkIcons, type Landmark } from '../landmarks';
 import { unlockedMounts, directMount, currentPick, mountById, type MountDef } from '../mount/defs';
 
 const INK = '#3d2c20';
@@ -116,6 +117,7 @@ export class VillageUIScene extends Phaser.Scene {
     });
     this.mountC.setData('zone', zm);
     this.drawMountBtn();
+    this.makeTravel();
 
     this.layout();
     this.scale.on('resize', this.layout, this);
@@ -150,6 +152,7 @@ export class VillageUIScene extends Phaser.Scene {
     this.mountC.setPosition(bx, my);
     (this.mountC.getData('zone') as Phaser.GameObjects.Zone).setPosition(bx - 46, my - 46);
     this.rects.mount = { x: bx - 46, y: my - 46, w: 92, h: 92 };
+    this.layoutTravel();
     this.rects.bar = { x: this.bar.x, y: this.bar.y, w: 312, h: 52 };
     if (this.tray) this.openTray();
     if (this.card) this.openCard(this.cardData);
@@ -546,6 +549,89 @@ export class VillageUIScene extends Phaser.Scene {
     this.mountC.setVisible(!mh);
     (this.mountC.getData('zone') as Phaser.GameObjects.Zone).input!.enabled = !mh;
     if (!mh) this.drawMountBtn();
+    this.updateTravel(mh);
+  }
+
+  // ------------------------------------------------------------ fast travel (9.3)
+  travelBtns: { lm: Landmark; c: Phaser.GameObjects.Container; bg: Phaser.GameObjects.Graphics; lock: Phaser.GameObjects.Graphics; zone: Phaser.GameObjects.Zone; locked: boolean }[] = [];
+  travelShown = false;
+  travelState = '';
+  travelR = 34;
+  makeTravel() {
+    ensureLandmarkIcons(this);
+    for (const lm of LANDMARKS) {
+      const bg = this.add.graphics();
+      const ic = this.add.image(0, -4, lm.icon).setDisplaySize(52, 52);
+      const label = this.text(0, 30, lm.name, 13, '#fffaf0', 900).setOrigin(0.5).setStroke('#5a3d28', 4);
+      const lock = this.add.graphics();
+      const c = this.add.container(0, 0, [bg, ic, label, lock]).setVisible(false).setDepth(5);
+      const zone = this.add.zone(0, 0, 84, 84).setOrigin(0.5).setInteractive(new Phaser.Geom.Circle(42, 42, 42), Phaser.Geom.Circle.Contains);
+      zone.input!.enabled = false;
+      const b = { lm, c, bg, lock, zone, locked: false };
+      zone.on('pointerup', (p: Phaser.Input.Pointer) => { if (p.getDistance() < 30 && this.travelShown) { sfx.unlock(); this.tapTravel(b); } });
+      this.travelBtns.push(b);
+    }
+  }
+  layoutTravel() {
+    const si = safeInsets();
+    const top = 104 + si.top, bottom = this.h - 150 - si.bottom;
+    const cell = Math.min(92, (bottom - top) / LANDMARKS.length);
+    const sc = Phaser.Math.Clamp(cell / 88, 0.7, 1);
+    this.travelR = 36 * sc;
+    const x = this.w - 22 - si.right - 40 * sc;
+    this.travelBtns.forEach((b, i) => {
+      const y = top + cell * (i + 0.5);
+      b.c.setPosition(x, y).setScale(sc);
+      b.zone.setPosition(x, y).setScale(sc);
+      const r = 42 * sc;
+      this.rects[`travel:${b.lm.id}`] = { x: x - r, y: y - r, w: r * 2, h: r * 2 };
+    });
+    this.travelState = '';
+  }
+  drawTravelBtn(b: (typeof this.travelBtns)[number], target: boolean) {
+    const g = b.bg; g.clear();
+    g.fillStyle(0x2a1d14, 0.3); g.fillCircle(0, 4, 38);
+    g.fillStyle(target ? theme.ui.accent : 0xfbf1dc, 0.97); g.fillCircle(0, 0, 38);
+    g.lineStyle(4, target ? theme.ui.accentDark : theme.ui.accent, 1); g.strokeCircle(0, 0, 34);
+    b.c.setAlpha(b.locked ? 0.55 : 1);
+    const l = b.lock; l.clear();
+    if (b.locked) {
+      // A little padlock badge, top right.
+      l.fillStyle(0x5a3d28, 1); l.fillCircle(24, -24, 15);
+      l.lineStyle(3, 0xfff1c4, 1); l.beginPath(); l.arc(24, -28, 5, Math.PI, 0); l.strokePath();
+      l.fillStyle(0xfff1c4, 1); l.fillRoundedRect(17, -28, 14, 11, 3);
+    }
+  }
+  updateTravel(hidden: boolean) {
+    const m = this.world?.mount;
+    const show = !hidden && !!m && m.riderOn && (m.phase === 'ride' || m.phase === 'travel') && !this.mountPicker && !this.card;
+    if (show && !this.travelShown) {
+      // Which landmarks have you found the way to on foot? (Fixed for the whole ride.)
+      for (const b of this.travelBtns) b.locked = !m!.travelSpot(b.lm.x, b.lm.y);
+      this.travelState = '';
+      this.travelBtns.forEach((b, i) => { b.c.setScale(b.zone.scale * 0.6); this.tweens.add({ targets: b.c, scale: b.zone.scale, duration: 260, delay: i * 40, ease: 'Back.easeOut' }); });
+    }
+    this.travelShown = show;
+    for (const b of this.travelBtns) { b.c.setVisible(show); b.zone.input!.enabled = show; }
+    if (!show) { this.travelState = ''; return; }
+    const tgt = m!.phase === 'travel' ? m!.travelName : '';
+    const st = `${tgt}|${theme.ui.accent}|${this.travelBtns.map((b) => +b.locked).join('')}`;
+    if (st === this.travelState) return;
+    this.travelState = st;
+    for (const b of this.travelBtns) this.drawTravelBtn(b, b.lm.name === tgt);
+  }
+  tapTravel(b: (typeof this.travelBtns)[number]) {
+    const m = this.world.mount;
+    if (this.registry.get('menuOpen') || this.card) return;
+    if (b.locked) {
+      sfx.tock();
+      this.tweens.add({ targets: b.c, angle: { from: -8, to: 8 }, duration: 90, yoyo: true, repeat: 1, onComplete: () => b.c.setAngle(0) });
+      this.game.events.emit('toast', `Find the way to ${b.lm.name} on foot first!`);
+      return;
+    }
+    sfx.blip();
+    this.tweens.add({ targets: b.c, scale: { from: b.zone.scale * 0.85, to: b.zone.scale }, duration: 220, ease: 'Back.easeOut' });
+    m.travelTo(b.lm.x, b.lm.y, b.lm.name);
   }
 }
 export type { Res };
