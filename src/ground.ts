@@ -232,7 +232,8 @@ export function paintGroundTile(ctx: Ctx, x0: number, y0: number, size: number) 
   // 10. Pond.
   if (vis(POND.x - POND.rx - 60, POND.y - POND.ry - 60, POND.x + POND.rx + 60, POND.y + POND.ry + 60)) paintPond(ctx);
 
-  // 11. Tiny painted flower clusters (512 cells).
+  // 11. Tiny painted flower clusters (512 cells). Snowy themes (Christmas, Winter) skip them: the
+  // little orange and pink dots read as stray leaves on the snow.
   const FC = 512;
   const flowerHues = [[340, 75, 78], [0, 0, 97], [48, 90, 66], [270, 50, 78], [20, 85, 70], [200, 70, 80]];
   for (let cy = Math.floor((y0 - 80) / FC); cy <= Math.floor((y1 + 80) / FC); cy++) {
@@ -244,7 +245,7 @@ export function paintGroundTile(ctx: Ctx, x0: number, y0: number, size: number) 
         const col = flowerHues[Math.floor(rng() * flowerHues.length)];
         const n = 10 + Math.floor(rng() * 25);
         const skip = !vis(ccx - 50, ccy - 35, ccx + 50, ccy + 35) || pondValue(ccx, ccy, 40) < 1 || pathDist(ccx, ccy) < 45 ||
-          lakeValue(ccx, ccy) < 1.4 || riverDist(ccx, ccy) < riverHalfAt(ccy) + 40 || (ccy < 330 && ccx < GLADE_W);
+          lakeValue(ccx, ccy) < 1.4 || riverDist(ccx, ccy) < riverHalfAt(ccy) + 40 || (ccy < 330 && ccx < GLADE_W) || !!theme.frost;
         for (let i = 0; i < n; i++) {
           const x = ccx + rr(rng, -45, 45), y = ccy + rr(rng, -30, 30);
           const dh = rr(rng, -8, 8);
