@@ -111,7 +111,7 @@ export class MenuScene extends Phaser.Scene {
     this.root.removeAll(true);
     this.cancelDrag();
     if (this.tab !== 'wardrobe') this.newIds = null;
-    this.heroImg = null; this.playerDot = null; this.hintText = null; this.hintBg = null; this.stageGlow = null;
+    this.heroImg = null; this.playerDot = null; this.hintText = null; this.hintBg = null; this.stageGlow = null; this.tankFx = null; this.tankFish = [];
     this.w = this.scale.width / DPR; this.h = this.scale.height / DPR;
     const si = safeInsets();
     const m = 18;
@@ -964,30 +964,151 @@ export class MenuScene extends Phaser.Scene {
     this.content.add([rbg, rz, this.text(rx + rw / 2, ry + rh / 2, armed ? 'Tap again to start over' : 'Reset progress\u2026', 16, armed ? '#a2402a' : '#8a6a50', 800).setOrigin(0.5)]);
   }
 
-  // ------------------------------------------------------------ fish journal
+  // ------------------------------------------------------------ fish aquarium + journal
+  /** 9.37 slice 3: fish you have caught swim in a glass tank; the journal cards below list every species. */
+  tankFish: { id: string; img: Phaser.GameObjects.Image; x: number; y: number; vx: number; by: number; ph: number; dart: number; s: number; boot: boolean }[] = [];
+  private tankFx: Phaser.GameObjects.Graphics | null = null;
+  private tankBox = { x: 0, y: 0, w: 0, h: 0, sand: 0 };
+  private bubbles: { x: number; y: number; r: number; v: number }[] = [];
+  lastFish = '';
+
+  private pokeFish(id: string) {
+    const sp = SPECIES.find((s) => s.id === id)!;
+    const f = this.tankFish.find((t) => t.id === id);
+    this.lastFish = id;
+    if (!f) { sfx.tock(); this.hint(`Not caught yet. Look in the ${sp.where}. ${sp.rarity === 'rare' ? 'Rare!' : ''}`.trim()); return; }
+    sfx.blip();
+    this.hint(`${sp.name}! ${sp.blurb}`);
+    if (f.boot) { this.tweens.add({ targets: f.img, angle: { from: -14, to: 14 }, duration: 90, yoyo: true, repeat: 2, onComplete: () => f.img.setAngle(0) }); return; }
+    f.dart = 700; f.vx = (f.vx >= 0 ? 1 : -1) * Math.max(Math.abs(f.vx), 30);
+    this.tweens.add({ targets: f.img, scaleX: f.s * 1.25, scaleY: f.s * 0.8, duration: 110, yoyo: true });
+    if (sp.rarity === 'rare' || sp.rarity === 'uncommon') this.sparkles(f.x, f.y, 34);
+    for (let i = 0; i < 4; i++) this.bubbles.push({ x: f.x + (f.vx > 0 ? 20 : -20), y: f.y - 4, r: 3 + Math.random() * 3, v: 30 + Math.random() * 25 });
+  }
+
   renderFish(a: { x: number; y: number; w: number; h: number }) {
-    const caught = SPECIES.filter((s) => save.fish[s.id]).length;
-    this.content.add(this.text(a.x, a.y, `Fish journal: ${caught} / ${SPECIES.length}`, 20, INK, 800));
-    this.content.add(this.text(a.x + a.w, a.y + 4, 'Tap water to fish. Each place has new fish.', 14, '#8a6a50', 700).setOrigin(1, 0));
-    const cols = 6, rowsN = 2;
-    const tw = (a.w - (cols - 1) * 12) / cols, th = Math.min(200, (a.h - 50 - (rowsN - 1) * 12) / rowsN);
+    this.tankFish = []; this.bubbles = [];
+    const caught = SPECIES.filter((s) => save.fish[s.id]);
+    const cols = 6, rowsN = Math.ceil(SPECIES.length / cols), gap = 10, cardH = 74;
+    const jH = rowsN * cardH + (rowsN - 1) * gap;
+    const tx = a.x, ty = a.y, tw = a.w, th = a.h - jH - 16;
+    const g = this.add.graphics();
+    // Wooden stand + tank frame.
+    g.fillStyle(0x2a1a0e, 0.3); g.fillRoundedRect(tx + 4, ty + 8, tw, th, 18);
+    g.fillStyle(0x7a4e2c, 1); g.fillRoundedRect(tx, ty, tw, th, 18);
+    g.lineStyle(3, 0x4f321c, 1); g.strokeRoundedRect(tx, ty, tw, th, 18);
+    const wx = tx + 14, wy = ty + 14, ww = tw - 28, wh = th - 28, sandH = Math.min(46, wh * 0.18);
+    // Water: deep blue at the bottom, light at the top.
+    g.fillGradientStyle(0x9fdcf0, 0x9fdcf0, 0x2f7fae, 0x2f7fae, 1); g.fillRect(wx, wy, ww, wh);
+    // Light rays from the top.
+    for (let i = 0; i < 5; i++) {
+      const rx = wx + ww * (0.1 + i * 0.2);
+      g.fillStyle(0xffffff, 0.08); g.fillTriangle(rx - 18, wy, rx + 22, wy, rx + 70 - i * 10, wy + wh - sandH);
+    }
+    // Sand with pebbles, rocks and a little castle.
+    const sy = wy + wh - sandH;
+    g.fillStyle(0xe8cf98, 1); g.fillRect(wx, sy, ww, sandH);
+    g.fillStyle(0xf5e2b6, 1); g.fillRect(wx, sy, ww, 4);
+    let seed = 7; const rnd = () => ((seed = (seed * 9301 + 49297) % 233280) / 233280);
+    for (let i = 0; i < 60; i++) { g.fillStyle([0xc9a46a, 0xb08850, 0xd8b98a, 0xa0c4c0][i % 4], 1); g.fillCircle(wx + rnd() * ww, sy + 8 + rnd() * (sandH - 12), 2 + rnd() * 3); }
+    g.fillStyle(0x8f949a, 1); g.fillEllipse(wx + ww * 0.82, sy + 4, 90, 44); g.fillStyle(0xa9aeb4, 1); g.fillEllipse(wx + ww * 0.8, sy - 2, 60, 30);
+    g.fillStyle(0x7d8288, 1); g.fillEllipse(wx + ww * 0.12, sy + 6, 64, 30);
+    // Castle.
+    const kx = wx + ww * 0.62, kb = sy + 10;
+    g.fillStyle(0xd88a5a, 1); g.fillRect(kx - 30, kb - 52, 60, 52); g.fillRect(kx - 40, kb - 70, 20, 70); g.fillRect(kx + 20, kb - 70, 20, 70);
+    g.fillStyle(0xb86a3e, 1); for (const cx of [kx - 40, kx + 20]) for (let j = 0; j < 3; j++) g.fillRect(cx + j * 7, kb - 76, 5, 6);
+    g.fillStyle(0x2a3b52, 1); g.fillRoundedRect(kx - 10, kb - 26, 20, 26, { tl: 10, tr: 10, bl: 0, br: 0 }); g.fillCircle(kx - 30, kb - 52, 0);
+    g.fillStyle(0x2a3b52, 0.9); g.fillRect(kx - 34, kb - 58, 8, 10); g.fillRect(kx + 26, kb - 58, 8, 10);
+    // Water plants (simple wavy strands).
+    const plant = (px: number, hgt: number, col: number) => {
+      g.lineStyle(7, col, 1);
+      g.beginPath(); g.moveTo(px, sy + 6);
+      for (let k = 1; k <= 8; k++) g.lineTo(px + Math.sin(k * 1.1) * 9, sy + 6 - (hgt * k) / 8);
+      g.strokePath();
+    };
+    [[0.05, 0.6, 0x3f9a5a], [0.08, 0.42, 0x58b56c], [0.3, 0.5, 0x3f9a5a], [0.33, 0.34, 0x6cc47a], [0.93, 0.55, 0x3f9a5a], [0.96, 0.38, 0x58b56c], [0.72, 0.3, 0x6cc47a]].forEach(([f, hh, c]) => plant(wx + ww * f, wh * hh, c));
+    // Glass shine + water surface line.
+    g.fillStyle(0xffffff, 0.35); g.fillRect(wx, wy, ww, 6);
+    g.fillStyle(0xffffff, 0.16); g.fillRect(wx + 18, wy + 14, 10, wh - sandH - 30); g.fillRect(wx + 34, wy + 14, 4, wh - sandH - 30);
+    this.content.add(g);
+    this.tankBox = { x: wx, y: wy, w: ww, h: wh, sand: sy };
+    // Count plaque on the frame.
+    const plq = this.text(tx + tw / 2, ty + 7, `Fish caught: ${caught.length} / ${SPECIES.length}`, 16, '#5a3d14', 900).setOrigin(0.5, 0);
+    const pg = this.add.graphics();
+    pg.fillStyle(0xe8c46a, 1); pg.fillRoundedRect(plq.x - plq.width / 2 - 14, ty + 2, plq.width + 28, plq.height + 10, 8);
+    pg.lineStyle(2, 0xa0782c, 1); pg.strokeRoundedRect(plq.x - plq.width / 2 - 14, ty + 2, plq.width + 28, plq.height + 10, 8);
+    this.content.add([pg, plq]);
+    // Fish.
+    const top = wy + 30, bot = sy - 20;
+    caught.forEach((sp, i) => {
+      const boot = sp.rarity === 'junk';
+      const img = this.add.image(0, 0, ATLAS, 'fishicon').setTint(sp.tint);
+      const wpx = boot ? 54 : Phaser.Math.Clamp(48 + (sp.size[0] + sp.size[1]) * 0.5, 50, 120);
+      const s = wpx / img.width; img.setScale(s);
+      const x = boot ? wx + ww * 0.45 : wx + 60 + ((i * 0.37) % 1) * (ww - 120);
+      const by = boot ? sy + sandH * 0.35 : top + ((i * 0.61 + 0.2) % 1) * (bot - top);
+      const vx = boot ? 0 : (12 + (i % 3) * 7) * (i % 2 ? 1 : -1);
+      if (boot) img.setAngle(-20);
+      img.setPosition(x, by).setFlipX(vx > 0);
+      img.setInteractive(new Phaser.Geom.Rectangle(-10, -14, img.width + 20, img.height + 28), Phaser.Geom.Rectangle.Contains);
+      img.on('pointerup', (p: Phaser.Input.Pointer) => { if (p.getDistance() < 24) this.pokeFish(sp.id); });
+      this.content.add(img);
+      this.tankFish.push({ id: sp.id, img, x, y: by, vx, by, ph: i * 1.7, dart: 0, s, boot });
+    });
+    if (!caught.length) this.content.add(this.text(wx + ww / 2, wy + (wh - sandH) / 2, 'Your tank is empty.\nTap water to fish!', 22, '#ffffff', 900).setOrigin(0.5).setAlign('center').setShadow(0, 2, '#1f4f70', 4, false, true));
+    this.tankFx = this.add.graphics();
+    this.content.add(this.tankFx);
+    // Journal cards.
+    const cw = (a.w - (cols - 1) * gap) / cols, jy = ty + th + 16;
     SPECIES.forEach((sp, i) => {
-      const x = a.x + (i % cols) * (tw + 12), y = a.y + 40 + Math.floor(i / cols) * (th + 12);
+      const x = a.x + (i % cols) * (cw + gap), y = jy + Math.floor(i / cols) * (cardH + gap);
       const rec = save.fish[sp.id];
-      const [bg, z] = this.btn(x, y, tw, th, () => { sfx.blip(); this.hint(rec ? sp.blurb : `Found in the ${sp.where}. ${sp.rarity === 'rare' ? 'Rare!' : ''}`); }, rec ? 0xfff4d6 : 0xe6dccb, rec ? (sp.rarity === 'rare' ? 0xb48cff : 0xf2a93b) : 0xd9b98f, 16);
+      const [bg, z] = this.btn(x, y, cw, cardH, () => this.pokeFish(sp.id), rec ? 0xfff4d6 : 0xe6dccb, rec ? (sp.rarity === 'rare' ? 0xb48cff : 0xf2a93b) : 0xd9b98f, 14);
+      this.rects[`fishcard:${sp.id}`] = this.lastRect;
       this.content.add([bg, z]);
-      const ic = this.add.image(x + tw / 2, y + th * 0.36, ATLAS, 'fishicon').setTint(rec ? sp.tint : 0x4a3e34).setAlpha(rec ? 1 : 0.35);
-      ic.setScale((tw * (sp.rarity === 'junk' ? 0.4 : 0.55)) / ic.width);
+      const ic = this.add.image(x + 34, y + cardH / 2 - 4, ATLAS, 'fishicon').setTint(rec ? sp.tint : 0x4a3e34).setAlpha(rec ? 1 : 0.4);
+      ic.setScale(50 / ic.width);
       this.content.add(ic);
       const stars = '\u2605'.repeat(RARITY_STARS[sp.rarity]) || '\u00B7';
-      this.content.add(this.text(x + tw / 2, y + th * 0.62, rec ? sp.name : '???', 15, rec ? INK : '#9a8a78', 800).setOrigin(0.5));
-      this.content.add(this.text(x + tw / 2, y + th * 0.62 + 20, rec ? `\u00D7${rec.n}  \u00B7  best ${rec.best} cm` : sp.where, 13, '#8a6a50', 700).setOrigin(0.5));
-      this.content.add(this.text(x + tw / 2, y + th - 16, stars, 14, sp.rarity === 'rare' ? '#9b6cf0' : '#e2a23b', 900).setOrigin(0.5));
+      this.content.add(this.text(x + 34, y + cardH - 14, stars, 12, sp.rarity === 'rare' ? '#9b6cf0' : '#e2a23b', 900).setOrigin(0.5));
+      const nm = this.text(x + 66, y + 14, rec ? sp.name : '???', 15, rec ? INK : '#9a8a78', 800);
+      if (nm.width > cw - 72) nm.setScale((cw - 72) / nm.width);
+      this.content.add(nm);
+      const sub = this.text(x + 66, y + 38, rec ? `\u00D7${rec.n} \u00B7 ${rec.best} cm` : `in the ${sp.where}`, 13, '#8a6a50', 700);
+      if (sub.width > cw - 72) sub.setScale((cw - 72) / sub.width);
+      this.content.add(sub);
     });
+  }
+
+  private tickTank(time: number, delta: number) {
+    const fx = this.tankFx; if (!fx || !fx.active) return;
+    const dt = Math.min(delta, 100) / 1000, B = this.tankBox;
+    for (const f of this.tankFish) {
+      if (f.boot) continue;
+      const sp = f.dart > 0 ? 4 : 1;
+      f.dart = Math.max(0, f.dart - delta);
+      f.x += f.vx * sp * dt;
+      const half = (f.img.displayWidth || 60) / 2;
+      if (f.x < B.x + half + 6) { f.x = B.x + half + 6; f.vx = Math.abs(f.vx); }
+      if (f.x > B.x + B.w - half - 6) { f.x = B.x + B.w - half - 6; f.vx = -Math.abs(f.vx); }
+      f.y = f.by + Math.sin(time / 700 + f.ph) * 7;
+      f.img.setPosition(f.x, f.y).setFlipX(f.vx > 0).setAngle(Math.cos(time / 700 + f.ph) * 6 * (f.vx > 0 ? 1 : -1));
+      if (Math.random() < dt * 0.25) this.bubbles.push({ x: f.x + (f.vx > 0 ? half * 0.8 : -half * 0.8), y: f.y - 4, r: 2 + Math.random() * 2.5, v: 25 + Math.random() * 20 });
+    }
+    // The bubbler by the castle.
+    if (Math.random() < dt * 3) this.bubbles.push({ x: B.x + B.w * 0.62 + (Math.random() - 0.5) * 8, y: B.sand - 70, r: 2 + Math.random() * 4, v: 40 + Math.random() * 30 });
+    fx.clear();
+    this.bubbles = this.bubbles.filter((b) => b.y > B.y + 8);
+    for (const b of this.bubbles) {
+      b.y -= b.v * dt; b.x += Math.sin((b.y + time / 10) / 14) * 0.4;
+      fx.lineStyle(1.5, 0xffffff, 0.8); fx.strokeCircle(b.x, b.y, b.r);
+      fx.fillStyle(0xffffff, 0.6); fx.fillCircle(b.x - b.r * 0.35, b.y - b.r * 0.35, b.r * 0.3);
+    }
   }
 
   update(time: number, delta = 16) {
     if (!this.open) return;
+    if (this.tankFx) this.tickTank(time, delta);
     const d = this.drag;
     if (d && d.live && !d.done) {
       // Springy follow: catches up fast but not instantly, and tilts with the swing.
