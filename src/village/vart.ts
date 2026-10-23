@@ -545,6 +545,13 @@ function paintFlowerbox(c: Ctx, w: number, h: number) {
   c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(5, by - 12, w - 10, 2.5);
   c.fillStyle = 'rgba(80,50,30,0.35)'; for (const x of [w / 3, (2 * w) / 3]) c.fillRect(x, by - 12, 1.5, 10);
 }
+/** 11.85: a soft rainbow arc shown after Spring rain or a Summer sun shower. */
+function paintRainbow(c: Ctx, w: number, h: number) {
+  const cols = ['#ff6b6b', '#ffa94d', '#ffe066', '#8ce99a', '#74c0fc', '#b197fc'];
+  const cx = w / 2, cy = h, R = h - 4, band = 6;
+  cols.forEach((col, i) => { c.beginPath(); c.arc(cx, cy, R - i * band, Math.PI, 0); c.lineWidth = band + 0.6; c.strokeStyle = col; c.stroke(); });
+  c.beginPath(); c.arc(cx, cy, R + band / 2, Math.PI, 0); c.lineWidth = 2; c.strokeStyle = 'rgba(255,255,255,0.7)'; c.stroke();
+}
 function paintGourds(c: Ctx, w: number, h: number) {
   const by = h - 3;
   // Leafy base, a big pumpkin, a gourd and a little squash.
@@ -606,6 +613,7 @@ export function paintVillageArt(scene: Phaser.Scene) {
   T('vd_lanterns', 140, 34, paintLanterns, 2);
   T('vd_garland', 140, 30, paintGarland, 2);
   T('vd_flowerbox', 52, 34, paintFlowerbox, 2.5);
+  T('w_rainbow', 200, 100, paintRainbow, 2);
   T('vd_gourds', 56, 30, paintGourds, 2.5);
   T('vd_corn', 24, 50, paintCorn, 2.5);
   T('p_drop', 4, 12, paintDrop, 2);
