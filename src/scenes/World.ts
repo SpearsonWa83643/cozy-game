@@ -1012,8 +1012,12 @@ export class WorldScene extends Phaser.Scene {
     if (this.locked || this.registry.get('dialogOpen') || this.registry.get('menuOpen')) return;
     if (this.mount.carrying) { if (this.mount.onTap(wx, wy)) return; }
     if (this.village.building) { this.village.buildTap(wx, wy); return; }
-    if (this.boat?.active || this.boat?.hopping) { this.boat.tap(wx, wy); return; }
     if (this.fishing.active) { this.fishing.tap(); return; }
+    if (this.boat?.active || this.boat?.hopping) {
+      // Tap your own boat to cast a line off the bow; anything else rows.
+      if (this.boat.active && this.boat.hitsBoat(wx, wy)) { const s = this.boat.castSpot(); if (s) { this.fishing.cast(s[0], s[1]); return; } }
+      this.boat.tap(wx, wy); return;
+    }
     // Creatures and reactive objects respond right away, wherever they are on screen.
     let tb: Tappable | null = null;
     let tbD = Infinity;

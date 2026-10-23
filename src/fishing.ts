@@ -31,7 +31,7 @@ export class Fishing {
     // A context prompt that follows you along any shoreline ("Fish" on the action button / E key).
     this.prompt = {
       x: 0, y: 0, r: 60, label: 'Fish', promptY: 115, noTap: true,
-      enabled: () => this.state === 'idle' && !!this.spot && !this.w.boat?.active,
+      enabled: () => this.state === 'idle' && !!this.spot && !this.w.boat?.hopping,
       action: () => { if (this.spot) this.cast(this.spot[0], this.spot[1]); },
     };
     w.interactables.push(this.prompt);
@@ -94,7 +94,8 @@ export class Fishing {
   rodTip(): [number, number] {
     const f = this.w.facing, fl = this.w.flip ? -1 : 1;
     const dx = [10, 22, 30, 20, 8][f] * fl, dy = [-34, -40, -46, -56, -62][f];
-    return [this.w.feet.x + dx, this.w.feet.y + dy];
+    // Sitting up in a boat lifts the rod too.
+    return [this.w.feet.x + dx, this.w.feet.y + dy - (this.w.boat?.active ? 34 : 0)];
   }
 
   /** Any tap / action press while fishing. */
@@ -204,7 +205,8 @@ export class Fishing {
     this.spotTimer -= dt;
     if (this.spotTimer <= 0) {
       this.spotTimer = 0.25;
-      this.spot = this.state === 'idle' ? nearestWater(this.w.feet.x, this.w.feet.y, 120) : null;
+      // In a boat: open water off the bow. On foot: the nearest shoreline.
+      this.spot = this.state !== 'idle' ? null : this.w.boat?.active ? this.w.boat.castSpot() : nearestWater(this.w.feet.x, this.w.feet.y, 120);
     }
     this.prompt.x = this.w.feet.x; this.prompt.y = this.w.feet.y + 45;
     if (this.state === 'idle') return;

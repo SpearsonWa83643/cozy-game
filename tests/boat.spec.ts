@@ -24,7 +24,7 @@ async function tapWorld(page: Page, x: number, y: number) {
   await page.touchscreen.tap(p.x, p.y);
 }
 
-async function tryWater(page: Page, idx: number, shot: string | null) {
+async function tryWater(page: Page, idx: number, shot: string | null, fishShot: string | null = null) {
   const b0 = (await boat(page)).boats[idx];
   // Stand on the bank next to the boat, then tap the boat.
   await page.evaluate(([x, y]) => (window as any).__cozy.teleport(x, y), b0.stand);
@@ -45,6 +45,22 @@ async function tryWater(page: Page, idx: number, shot: string | null) {
   // The boat carries you (once you've come to a stop; while moving it is drawn with the player sprite, a frame behind physics).
   await expect.poll(() => page.evaluate((i) => { const c = (window as any).__cozy; const b = c.boat().boats[i]; const s = c.state; return Math.hypot(b.x - s.x, b.y - s.y); }, idx), { timeout: 20_000, intervals: [300] }).toBeLessThan(4);
   if (shot) await page.screenshot({ path: `${SHOTS}/${shot}` });
+  // Slice 2: tap your own boat to cast a line off the bow into open water.
+  if (fishShot) {
+    const bs = await boat(page);
+    expect(bs.castSpot).not.toBeNull();
+    expect(await page.evaluate(([x, y]) => (window as any).__cozy.waterAt(x, y), bs.castSpot)).toBe(b0.water);
+    const rb = bs.boats[idx];
+    await tapWorld(page, rb.x, rb.y - 20);
+    await expect.poll(async () => (await st(page)).fishing, { timeout: 20_000, intervals: [250] }).toMatch(/cast|wait|bite/);
+    await expect.poll(async () => (await st(page)).fishing, { timeout: 20_000, intervals: [250] }).toMatch(/wait|bite/);
+    expect((await boat(page)).active).toBe(true);
+    await page.screenshot({ path: `${SHOTS}/${fishShot}` });
+    // Tap again to bring the line back in (or play out a bite) before rowing home.
+    for (let k = 0; k < 40 && (await st(page)).fishing !== 'idle'; k++) { await tapWorld(page, b0.stand[0], b0.stand[1]); await page.waitForTimeout(400); }
+    expect((await st(page)).fishing).toBe('idle');
+    expect((await boat(page)).active).toBe(true);
+  }
   // Tap a far land point (beyond the water): row to the edge and hop out on dry land.
   await tapWorld(page, b0.stand[0], b0.stand[1]);
   await expect.poll(async () => (await boat(page)).active, { timeout: 40_000, intervals: [300] }).toBe(false);
@@ -72,7 +88,7 @@ test('boats: climb in, row on the pond and the lake, hop out on the shore', asyn
       console.log('boats', JSON.stringify(b.boats));
       expect(b.boats.map((x: any) => x.water)).toEqual(['pond', 'lake']);
       expect(b.active).toBe(false);
-      await tryWater(page, 0, 'boat-pond.png');
+      await tryWater(page, 0, 'boat-pond.png', 'boat-fishing.png');
       await tryWater(page, 1, 'boat-lake.png');
       const end = await boat(page);
       expect(end.boards).toBe(2);

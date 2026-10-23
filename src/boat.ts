@@ -150,7 +150,7 @@ export class Boats {
         sfx.thump();
         this.splash(b.x, b.y);
         w.game.events.emit('boat', true);
-        w.game.events.emit('toast', 'All aboard! Drag or tap the water to row. Tap the shore to hop out.');
+        w.game.events.emit('toast', 'All aboard! Drag or tap the water to row. Tap your boat to fish. Tap the shore to hop out.');
       },
     });
   }
@@ -262,10 +262,32 @@ export class Boats {
     }
   }
 
+  /** Where to cast from the boat: open water out in front (or anywhere around), clear of the hull. */
+  castSpot(): [number, number] | null {
+    const b = this.riding;
+    if (!b || this.hopping) return null;
+    const fx = this.w.feet.x, fy = this.w.feet.y;
+    const front = b.flip ? Math.PI : 0;
+    for (const r of [130, 110, 90, 75]) {
+      for (let k = 0; k < 16; k++) {
+        const a = front + (k % 2 ? 1 : -1) * Math.ceil(k / 2) * (Math.PI / 8);
+        const x = fx + Math.cos(a) * r, y = fy + Math.sin(a) * r * 0.75;
+        if (waterAt(x, y, 12) === b.water && !waterBlocksDeck(x, y)) return [x, y];
+      }
+    }
+    return null;
+  }
+
+  /** Did this tap land on your own boat (tap the boat to fish)? */
+  hitsBoat(wx: number, wy: number) {
+    const b = this.riding;
+    return !!b && Math.abs(wx - b.x) < 62 && wy > b.y - 90 && wy < b.y + 22;
+  }
+
   snapshot() {
     const r = this.riding;
     return {
-      active: !!r, water: r?.water ?? null, hopping: this.hopping, boards: this.boards, hops: this.hops,
+      active: !!r, water: r?.water ?? null, castSpot: this.castSpot()?.map(Math.round) ?? null, hopping: this.hopping, boards: this.boards, hops: this.hops,
       boats: this.boats.map((b) => ({ water: b.water, x: Math.round(b.x), y: Math.round(b.y), stand: [Math.round(b.x + (b.it.approach?.[0] ?? 0)), Math.round(b.y + (b.it.approach?.[1] ?? 0))] })),
     };
   }
