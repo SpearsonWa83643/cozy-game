@@ -70,6 +70,8 @@ export class Villager {
   stepT = 0;
   frame = 0;
   hop = 0;
+  /** 11.9: seconds left of a happy little cheer-hop. */
+  cheer = 0;
   idleT = 0;
   walkT = 0;
   suggest: Suggest | null = null;
@@ -126,6 +128,25 @@ const DRESS_SPOTS: Record<string, DressSpot> = {
   b_garden0: { eave: -84, hw: 64, gourd: 48, corn: -70 },
 };
 
+/** 11.9: what friends say when the village dresses up (cheer) and when they admire a dressed house. */
+const CHEER: Record<string, string[]> = {
+  spring: ['Pretty blossoms!', 'Smells like flowers!', 'Hello, spring!'],
+  summer: ['Sunny fun!', 'Beach day!', 'Yay, summer!'],
+  fall: ['Crunchy leaves!', 'Pumpkin time!', 'So cozy!'],
+  halloween: ['Boo! Hee hee!', 'Spooky fun!', 'Ooh, lanterns!'],
+  christmas: ['Twinkly lights!', 'Merry, merry!', 'So cozy!'],
+  winter: ['Snow day!', 'Brrr, fun!', 'So sparkly!'],
+};
+const ADMIRE: Record<string, string[]> = {
+  spring: ['I love the flower box!', 'What pretty blossoms!'],
+  summer: ['Yay, flags!', 'So bright and sunny!'],
+  fall: ['Look at the gourds!', 'Corn on the door!'],
+  halloween: ['Ooh, glowy lanterns!', 'A happy pumpkin!'],
+  christmas: ['What a pretty wreath!', 'The lights twinkle!'],
+  winter: ['Icicles! Sparkly!', 'A snowy roof!'],
+};
+const pickLine = (m: Record<string, string[]>, i: number) => { const a = m[theme.id] ?? m.spring; return a[i % a.length]; };
+
 export class Village {
   villagers: Villager[] = [];
   buildings: Building[] = [];
@@ -178,7 +199,7 @@ export class Village {
       const n = { junk: 0, common: 1, uncommon: 2, rare: 3 }[d.species.rarity as 'common'] ?? 1;
       if (n) this.add('food', n, w.feet.x, w.feet.y - 60);
     });
-    themeEvents.on('change', () => { this.restyle(); this.weather.retheme(); });
+    themeEvents.on('change', () => { this.restyle(); this.weather.retheme(); this.cheerTheme(); });
   }
 
   // ------------------------------------------------------------ grid helpers
@@ -350,6 +371,53 @@ export class Village {
       }
     }
     this.dressKeys.set(b.data.id, keys);
+  }
+  // ------------------------------------------------------------ 11.9 friends notice the decorations (no effect on needs)
+  cheers = 0; admires = 0; said = '';
+  admireT = 25 + Math.random() * 15;
+  /** Theme switched: every awake friend does a happy hop; up to three say a line, with a few hearts. */
+  cheerTheme() {
+    let n = 0;
+    this.villagers.forEach((v, i) => {
+      if (v.task === 'sleep' || v.task === 'drag') return;
+      const talk = n++ < 3;
+      this.w.time.delayedCall(250 + i * 160, () => {
+        if (!this.villagers.includes(v) || v.task === 'sleep' || v.task === 'drag') return;
+        v.cheer = 1.4;
+        this.w.life.hearts.emitParticleAt(v.x, v.y - 50, 3);
+        if (talk) { this.said = pickLine(CHEER, v.data.id + i); this.say(v, this.said, i % 2 ? -1 : 1); }
+        this.cheers++;
+      });
+    });
+  }
+  /** A little white speech pill over a friend: easy to read on snow or grass, gone after ~2.5 s. */
+  say(v: Villager, msg: string, lean = 1) {
+    const w = this.w;
+    const t = w.add.text(0, 0, msg, { fontFamily: 'Nunito, sans-serif', fontSize: '15px', color: '#4a3426', fontStyle: '800', resolution: 3 } as any).setOrigin(0.5);
+    const pw = t.width + 22, ph = 30;
+    const g = w.add.graphics();
+    g.fillStyle(0x2a1d14, 0.18); g.fillRoundedRect(-pw / 2 + 1, -ph / 2 + 3, pw, ph, 15);
+    g.fillStyle(0xffffff, 0.97); g.fillRoundedRect(-pw / 2, -ph / 2, pw, ph, 15);
+    g.fillTriangle(-6 * lean, ph / 2 - 1, 6 * lean, ph / 2 - 1, 2 * lean, ph / 2 + 8);
+    g.lineStyle(2, theme.ui.accent, 0.9); g.strokeRoundedRect(-pw / 2, -ph / 2, pw, ph, 15);
+    const c = w.add.container(v.x + lean * 10, v.y - 96, [g, t]).setDepth(9600).setScale(0.3);
+    w.tweens.add({ targets: c, scale: 1, y: c.y - 10, duration: 280, ease: 'Back.easeOut' });
+    w.tweens.add({ targets: c, alpha: 0, y: c.y - 24, delay: 2200, duration: 450, onComplete: () => c.destroy() });
+  }
+  /** Now and then an idle friend near a dressed house admires it. Rate-limited by admireT. */
+  admire(): boolean {
+    const near = (v: Villager) => this.buildings.filter((b) => !b.gone && (this.dressKeys.get(b.data.id)?.length ?? 0) > 0 && Math.hypot(b.cx - v.x, b.y - v.y) < 230);
+    const cands = this.villagers.filter((v) => v.task === 'idle' && !v.bubble && !this.building && v.cheer <= 0 && near(v).length);
+    if (!cands.length) return false;
+    const v = cands[Math.floor(Math.random() * cands.length)];
+    const bs = near(v); const b = bs[Math.floor(Math.random() * bs.length)];
+    v.img.setFlipX(b.cx < v.x);
+    v.cheer = 1;
+    this.said = pickLine(ADMIRE, this.admires + v.data.id);
+    this.say(v, this.said);
+    this.w.life.hearts.emitParticleAt(v.x, v.y - 50, 2);
+    this.admires++;
+    return true;
   }
   restyle() {
     for (const d of this.dressings) d.destroy();
@@ -627,6 +695,8 @@ export class Village {
     for (const v of this.villagers) this.tick(v, dt, time);
     for (const b of this.buildings) this.work(b, dt);
     this.events(dt, time);
+    this.admireT -= dt;
+    if (this.admireT <= 0) this.admireT = this.admire() ? 30 + Math.random() * 25 : 6;
     this.checkT -= dt;
     if (this.checkT <= 0) { this.checkT = 1; this.think(); }
   }
@@ -805,7 +875,9 @@ export class Village {
     if (moving) { v.stepT += dt; if (v.stepT > 0.17) { v.stepT = 0; v.frame ^= 1; v.img.setFrame(v.key()); } }
     else if (v.frame) { v.frame = 0; v.img.setFrame(v.key()); }
     const festive = this.festival > 0 && v.task !== 'drag' && !v.guest;
-    const bob = v.task === 'drag' ? -10 + Math.sin(v.hop) * 3 : v.task === 'work' ? -Math.abs(Math.sin(time / 180 + d.id)) * 4 : (v.task === 'play' || festive) ? -Math.abs(Math.sin(v.hop + time / 160 + d.id)) * 9 : moving ? -Math.abs(Math.sin(v.stepT * 18)) * 2 : 0;
+    if (v.cheer > 0) v.cheer = Math.max(0, v.cheer - dt);
+    const cheering = v.cheer > 0 && v.task !== 'drag' && v.task !== 'sleep';
+    const bob = cheering ? -Math.abs(Math.sin(v.cheer * 11)) * 11 : v.task === 'drag' ? -10 + Math.sin(v.hop) * 3 : v.task === 'work' ? -Math.abs(Math.sin(time / 180 + d.id)) * 4 : (v.task === 'play' || festive) ? -Math.abs(Math.sin(v.hop + time / 160 + d.id)) * 9 : moving ? -Math.abs(Math.sin(v.stepT * 18)) * 2 : 0;
     v.img.setPosition(v.x, v.y + bob).setDepth(v.task === 'drag' ? 9200 : v.y);
     v.img.setAngle(v.task === 'sleep' ? (v.img.flipX ? -80 : 80) : v.task === 'drag' ? Math.sin(v.hop * 0.7) * 10 : 0);
     v.shadow.setPosition(v.x, v.y - 2).setVisible(v.task !== 'sleep');
