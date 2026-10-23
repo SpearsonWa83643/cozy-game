@@ -73,11 +73,11 @@ test('wardrobe: big hero, illustrated wardrobe, tap to wear', async ({ playwrigh
       await tapRect(page, await rect(page, 'hat:straw'));
       await expect.poll(async () => (await look(page)).hat, { timeout: 20_000 }).toBe('straw');
       expect(await reaction(page)).toBe('hat');
-      await page.waitForTimeout(1500);
-      // After the reaction the hero settles back to normal.
-      const sq = await page.evaluate(() => (window as any).__menu.heroSquash);
-      expect(Math.abs(sq.x - 1)).toBeLessThan(0.02);
-      expect(Math.abs(sq.y - 1)).toBeLessThan(0.02);
+      // After the reaction the hero settles back to normal (poll: tweens run slowly on a loaded box).
+      await expect.poll(async () => {
+        const sq = await page.evaluate(() => (window as any).__menu.heroSquash);
+        return Math.max(Math.abs(sq.x - 1), Math.abs(sq.y - 1));
+      }, { timeout: 15_000 }).toBeLessThan(0.02);
       expect(errors).toEqual([]);
     } finally { await page.close(); }
   } finally { await browser.close(); }
@@ -139,6 +139,65 @@ test('wardrobe: drag and drop dress-up', async ({ playwright: _pw }, info) => {
       // A plain tap still works.
       await tapRect(page, await rect(page, 'hat:straw'));
       await expect.poll(async () => (await look(page)).hat, { timeout: 20_000 }).toBe('straw');
+      expect(errors).toEqual([]);
+    } finally { await page.close(); }
+  } finally { await browser.close(); }
+});
+
+// 9.36 slice 4: newly unlocked items glow "new" (this visit only), and the wardrobe dresses up per theme.
+test('wardrobe: new glow + themed wardrobe', async ({ playwright: _pw }, info) => {
+  test.setTimeout(400_000);
+  const use = info.project.use as any;
+  const browser = await chromium.launch(use.launchOptions);
+  try {
+    const ctx = await browser.newContext({ viewport: use.viewport, deviceScaleFactor: use.deviceScaleFactor, hasTouch: true, userAgent: use.userAgent });
+    const page = await ctx.newPage();
+    const errors: string[] = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+    try {
+      await page.goto(FILE);
+      await page.evaluate(() => {
+        localStorage.clear();
+        const free = ['hat:straw', 'hat:none', 'scarf:red', 'scarf:none', 'outfit:teal', 'outfit:moss', 'back:none'];
+        localStorage.setItem('cozy.save.v2', JSON.stringify({ v: 2, theme: 'spring', puzzles: {}, treasures: ['acorn_cap'], fish: {}, minor: {}, visited: ['glade'], chests: [], snacks: 0, tips: [], seenWardrobe: free }));
+      });
+      await page.reload();
+      await page.waitForFunction(() => (window as any).__cozy?.ready, null, { timeout: 180_000 });
+      await page.waitForTimeout(1000);
+      await page.evaluate(() => { try { (window as any).__cozy.dismiss?.(); } catch { /* */ } });
+      const openWardrobe = async () => {
+        await page.evaluate(() => (window as any).__menu.show('wardrobe'));
+        await expect.poll(() => page.evaluate(() => (window as any).__menu.open), { timeout: 30_000 }).toBe(true);
+        await page.waitForTimeout(1000);
+      };
+      const closeMenu = async () => {
+        await page.evaluate(() => (window as any).__menu.close());
+        await expect.poll(() => page.evaluate(() => (window as any).__menu.open), { timeout: 30_000 }).toBe(false);
+        await page.waitForTimeout(600);
+      };
+      const newIds = () => page.evaluate(() => [...((window as any).__menu.newIds ?? [])]);
+      await openWardrobe();
+      expect(await newIds()).toEqual(['hat:acorn']);
+      await page.screenshot({ path: `${SHOTS}/wardrobe-new.png` });
+      // Still "new" after a re-render within the same visit, until you wear it.
+      await tapRect(page, await rect(page, 'outfit:moss'));
+      await expect.poll(async () => (await look(page)).outfit, { timeout: 20_000 }).toBe('moss');
+      expect(await newIds()).toEqual(['hat:acorn']);
+      await tapRect(page, await rect(page, 'hat:acorn'));
+      await expect.poll(async () => (await look(page)).hat, { timeout: 20_000 }).toBe('acorn');
+      expect(await newIds()).toEqual([]);
+      await closeMenu();
+      await openWardrobe();
+      expect(await newIds()).toEqual([]);
+      // Each theme dresses the wardrobe.
+      for (const t of ['fall', 'halloween', 'christmas', 'spring']) {
+        await closeMenu();
+        await page.evaluate((t) => (window as any).__cozy.setTheme(t), t);
+        await page.waitForTimeout(1500);
+        await openWardrobe();
+        expect(await page.evaluate(() => (window as any).__menu.wardrobeTheme)).toBe(t);
+        if (t !== 'spring') await page.screenshot({ path: `${SHOTS}/wardrobe-${t}.png` });
+      }
       expect(errors).toEqual([]);
     } finally { await page.close(); }
   } finally { await browser.close(); }

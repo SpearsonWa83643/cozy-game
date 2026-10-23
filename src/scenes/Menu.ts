@@ -18,6 +18,8 @@ const FONT = 'Nunito';
 export type Tab = 'map' | 'wardrobe' | 'treasures' | 'fish';
 const TABS: [Tab, string][] = [['map', 'Map'], ['wardrobe', 'Wardrobe'], ['treasures', 'Treasures'], ['fish', 'Fish']];
 
+const iw0 = (ww: number) => ww - 28;
+
 export class MenuScene extends Phaser.Scene {
   root!: Phaser.GameObjects.Container;
   content!: Phaser.GameObjects.Container;
@@ -39,6 +41,10 @@ export class MenuScene extends Phaser.Scene {
   private heroBase = 1;
   /** Last reaction played, for tests: 'hat' | 'scarf' | 'outfit' | 'extras' | 'off'. */
   lastReaction = '';
+  /** 9.36 slice 4: items unlocked since your last look in the wardrobe (they glow "new" this visit). */
+  newIds: Set<string> | null = null;
+  /** The theme the wardrobe was last dressed for (for tests). */
+  wardrobeTheme = '';
   private reactChain: Phaser.Tweens.TweenChain | null = null;
   playerDot: Phaser.GameObjects.Graphics | null = null;
   mapGeom = { x: 0, y: 0, s: 1 };
@@ -80,6 +86,7 @@ export class MenuScene extends Phaser.Scene {
   close() {
     if (!this.open) return;
     this.open = false;
+    this.newIds = null;
     sfx.blip();
     this.tweens.add({ targets: this.root, alpha: 0, duration: 160, onComplete: () => { this.root.setVisible(false); this.root.removeAll(true); } });
     // Release on a later frame so the closing tap doesn't reach the world.
@@ -102,6 +109,7 @@ export class MenuScene extends Phaser.Scene {
     this.rects = {};
     this.root.removeAll(true);
     this.cancelDrag();
+    if (this.tab !== 'wardrobe') this.newIds = null;
     this.heroImg = null; this.playerDot = null; this.hintText = null; this.stageGlow = null;
     this.w = this.scale.width / DPR; this.h = this.scale.height / DPR;
     const si = safeInsets();
@@ -246,6 +254,14 @@ export class MenuScene extends Phaser.Scene {
    *  hats on the shelf, scarves on hooks, outfits on hangers, extras in the drawer. Tap an item to wear it. */
   renderWardrobe(a: { x: number; y: number; w: number; h: number }) {
     buildWardrobeItems(this, 'wardrobe-items');
+    if (!this.newIds) {
+      // Anything unlocked since last time is "new" for this visit; first visit ever: nothing is new.
+      const unlocked = COSMETICS.filter((c) => isUnlocked(c)).map((c) => c.id);
+      const seen = save.seenWardrobe;
+      this.newIds = new Set(seen ? unlocked.filter((id) => !seen.includes(id)) : []);
+      save.seenWardrobe = unlocked;
+      persist();
+    }
     const narrow = a.w < 860;
     const ph = a.h - 30;
     const pw = Math.round(a.w * (narrow ? 0.34 : 0.37));
@@ -316,6 +332,7 @@ export class MenuScene extends Phaser.Scene {
     g.lineStyle(1.5, 0x6a4329, 0.7);
     for (let px = ix + 26; px < ix + iw - 10; px += 34) g.lineBetween(px, iy + 4, px, iy + ih - 4);
     this.content.add(g);
+    this.dressWardrobe(wx, wy, ww, ix, iy);
 
     type Row = { slot: string; list: Cosmetic[]; h: number };
     const rows: Row[] = [
@@ -363,6 +380,7 @@ export class MenuScene extends Phaser.Scene {
 
   /** Put it on (or, for the on/off extras, toggle it), save, and let the hero show it off. */
   private wear(c: Cosmetic) {
+    this.newIds?.delete(c.id);
     equip(c, save.look);
     persist();
     sfx.pickup();
@@ -499,6 +517,67 @@ export class MenuScene extends Phaser.Scene {
     this.itemImgs = {};
   }
 
+  /** Seasonal touches on the wardrobe for the active theme. */
+  private dressWardrobe(wx: number, wy: number, ww: number, ix: number, iy: number) {
+    const t = theme.id; this.wardrobeTheme = t;
+    const g = this.add.graphics();
+    const LINE = 0x6b4a33;
+    const flower = (x: number, y: number, r: number, c: number) => {
+      g.fillStyle(c, 1); for (let k = 0; k < 5; k++) { const a = (k / 5) * Math.PI * 2; g.fillCircle(x + Math.cos(a) * r * 0.6, y + Math.sin(a) * r * 0.6, r * 0.55); }
+      g.fillStyle(0xf7d046, 1); g.fillCircle(x, y, r * 0.38);
+    };
+    const leaf = (x: number, y: number, r: number, c: number, rot: number) => {
+      const ca = Math.cos(rot), sa = Math.sin(rot), P = (u: number, v: number) => [x + u * ca - v * sa, y + u * sa + v * ca] as const;
+      const [ax, ay] = P(-r, 0), [bx, by] = P(0, -r * 0.55), [cx2, cy2] = P(r, 0), [dx, dy] = P(0, r * 0.55);
+      g.fillStyle(c, 1); g.fillTriangle(ax, ay, bx, by, cx2, cy2); g.fillTriangle(ax, ay, dx, dy, cx2, cy2);
+      g.lineStyle(1.5, 0x7a3b1c, 0.6); g.lineBetween(ax, ay, cx2, cy2);
+    };
+    if (t === 'spring') {
+      // A flower garland along the crown.
+      g.lineStyle(3, 0x6aa84f, 1); g.lineBetween(wx - 4, wy - 1, wx + ww + 4, wy - 1);
+      const cols = [0xf7a8c4, 0xffffff, 0xf48fb1, 0xfff0a8];
+      let i = 0; for (let x = wx + 8; x < wx + ww - 4; x += 30, i++) { leaf(x + 14, wy + 2, 7, 0x6aa84f, 0.5); flower(x, wy - 2, 9, cols[i % cols.length]); }
+    } else if (t === 'fall') {
+      const cols = [0xe0701e, 0xc8452b, 0xe8b13a, 0xa8551e];
+      let i = 0; for (let x = wx + 6; x < wx + ww; x += 22, i++) leaf(x, wy - 2 + (i % 2) * 4, 11, cols[i % cols.length], (i % 3 - 1) * 0.6);
+      // Two leaves drifting down the doors.
+      leaf(wx - 22, wy + 120, 10, 0xe0701e, 0.9); leaf(wx + ww + 24, wy + 220, 10, 0xc8452b, -0.7);
+      g.fillStyle(0x8f5f38, 1); g.fillEllipse(wx + 40, wy - 16, 16, 18); g.fillStyle(0x5e3c26, 1); g.fillEllipse(wx + 40, wy - 23, 20, 9);
+    } else if (t === 'halloween') {
+      // A cobweb in the corner and a pumpkin on top.
+      const cx = ix + 2, cy = iy + 2, R = 64;
+      g.lineStyle(1.5, 0xf3ecdf, 0.65);
+      for (let k = 0; k <= 4; k++) { const a = (k / 4) * (Math.PI / 2); g.lineBetween(cx, cy, cx + Math.cos(a) * R, cy + Math.sin(a) * R); }
+      for (const rr of [18, 34, 50]) { g.beginPath(); for (let k = 0; k <= 4; k++) { const a = (k / 4) * (Math.PI / 2); const px = cx + Math.cos(a) * rr, py = cy + Math.sin(a) * rr; if (k) g.lineTo(px, py); else g.moveTo(px, py); } g.strokePath(); }
+      const px = wx + 84, py = wy - 14;
+      g.fillStyle(0xe8771e, 1); g.fillEllipse(px - 8, py, 18, 22); g.fillEllipse(px + 8, py, 18, 22); g.fillEllipse(px, py, 20, 24);
+      g.lineStyle(2, LINE, 1); g.strokeEllipse(px, py, 34, 24);
+      g.fillStyle(0x2a1d14, 1); g.fillTriangle(px - 9, py - 3, px - 3, py - 3, px - 6, py - 8); g.fillTriangle(px + 3, py - 3, px + 9, py - 3, px + 6, py - 8);
+      g.fillTriangle(px - 8, py + 3, px + 8, py + 3, px, py + 8);
+      g.fillStyle(0x4f7a2a, 1); g.fillRect(px - 2, py - 16, 4, 6);
+      // A little bat on the left of the crown.
+      const bx = wx + 34, by = wy - 18;
+      g.fillStyle(0x3b2b4f, 1); g.fillEllipse(bx, by, 12, 10);
+      g.fillTriangle(bx - 4, by, bx - 20, by - 7, bx - 14, by + 5); g.fillTriangle(bx + 4, by, bx + 20, by - 7, bx + 14, by + 5);
+    } else if (t === 'christmas') {
+      // Snow on the crown, a drooping string of lights, and a star on top.
+      g.fillStyle(0xffffff, 1); g.fillRoundedRect(wx - 8, wy - 16, ww + 16, 10, 5);
+      for (let x = wx + 10; x < wx + ww - 6; x += 38) g.fillEllipse(x, wy - 6, 14, 10);
+      const n = Math.max(4, Math.floor(ww / 70)), cols = [0xe53935, 0xfbc02d, 0x43a047, 0x1e88e5];
+      g.lineStyle(2, 0x2e5e2e, 1);
+      for (let k = 0; k < n; k++) {
+        const x0 = ix + (iw0(ww) * k) / n, x1 = ix + (iw0(ww) * (k + 1)) / n;
+        g.beginPath(); for (let u = 0; u <= 8; u++) { const x = x0 + ((x1 - x0) * u) / 8, y = iy + 4 + Math.sin((u / 8) * Math.PI) * 14; if (u) g.lineTo(x, y); else g.moveTo(x, y); } g.strokePath();
+        for (let u = 1; u < 4; u++) { const x = x0 + ((x1 - x0) * u) / 4, y = iy + 4 + Math.sin((u / 4) * Math.PI) * 14; g.fillStyle(cols[(k * 3 + u) % 4], 1); g.fillEllipse(x, y + 5, 7, 10); }
+      }
+      const sx = wx + ww / 2, sy = wy - 24;
+      g.fillStyle(0xf7d046, 1); g.lineStyle(2, 0xc9822a, 1); g.beginPath();
+      for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, rr = k % 2 ? 6 : 14; const x = sx + Math.cos(a) * rr, y = sy + Math.sin(a) * rr; if (k) g.lineTo(x, y); else g.moveTo(x, y); }
+      g.closePath(); g.fillPath(); g.strokePath();
+    }
+    this.content.add(g);
+  }
+
   /** One item in its place in the wardrobe; the whole cell is the tap target. */
   private wardrobeItem(c: Cosmetic, slot: string, x: number, y: number, w: number, h: number) {
     const unlocked = isUnlocked(c);
@@ -516,6 +595,16 @@ export class MenuScene extends Phaser.Scene {
       glow.fillStyle(0xffe27a, 0.28); glow.fillEllipse(gx, gy, gw + 30, gh + 26);
       glow.fillStyle(0xffe27a, 0.4); glow.fillEllipse(gx, gy, gw + 12, gh + 10);
     };
+    // Newly unlocked: a gentle pulsing glow and a little "new" tag (this visit only).
+    if (unlocked && !on && this.newIds?.has(c.id)) {
+      const ng = this.add.graphics();
+      ng.fillStyle(0xfff2a8, 0.5); ng.fillEllipse(cx, originY ? anchorY - maxH * 0.42 : anchorY + maxH * 0.42, w * 0.95, maxH * 0.95);
+      this.content.add(ng);
+      this.tweens.add({ targets: ng, alpha: { from: 0.35, to: 1 }, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      const tg = this.add.graphics();
+      tg.fillStyle(0xe85d3a, 1); tg.fillRoundedRect(x + 4, y + 4, 40, 18, 9);
+      this.content.add([tg, this.text(x + 24, y + 13, 'new', 12, '#fffaf0', 900).setOrigin(0.5)]);
+    }
     let img: Phaser.GameObjects.Image | null = null;
     if (isNoneItem(c)) {
       // "Take it off": a dashed empty spot with a little cross.

@@ -36,6 +36,8 @@ export type SaveData = {
   tips: string[];
   /** Wilderness: trips taken, monsters poofed, rare finds banked at home. */
   wild: WildSave;
+  /** 9.36: wardrobe items you've already seen unlocked (newer ones get a "new" glow). */
+  seenWardrobe?: string[];
 };
 export type WildSave = { visits: number; poofs: number; loot: Record<string, number> };
 
