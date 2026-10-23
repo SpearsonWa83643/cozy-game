@@ -2,7 +2,7 @@
 // painter read the active theme and listen for changes, so a switch happens live.
 import Phaser from 'phaser';
 import { save, persist, normTheme, ThemeId } from './save';
-import { SPRING, HALLOWEEN, FALL, CHRISTMAS, type Soundscape } from './soundscapes';
+import { SPRING, HALLOWEEN, FALL, CHRISTMAS, WINTER, type Soundscape } from './soundscapes';
 
 export type Theme = {
   id: ThemeId;
@@ -159,9 +159,37 @@ const christmas: Theme = {
   },
 };
 
-// Ready for more: Summer, Winter and holiday themes each add one entry here + a soundscape.
-export const THEMES: Record<ThemeId, Theme> = { spring, halloween, fall, christmas };
-export const THEME_ORDER: ThemeId[] = ['spring', 'fall', 'halloween', 'christmas'];
+const winter: Theme = {
+  id: 'winter', name: 'Winter', icon: 'i_winter',
+  // Deep, quiet winter: the meadow is under crisp blue-white snow, paths are frosted pale, and the
+  // whole glade sits in a cool, soft haze. No Christmas lights: just snow, snowmen and cozy windows.
+  ground: (h, s, l) => (h > 60 && h < 170 ? [212, Math.min(36, s * 0.4 + 12), Math.min(l * 0.28 + 68, 96)] : [h - 8, s * 0.55, Math.min(l * 1.08 + 4, 90)]),
+  foliage: 0xe2f0f8, trees: null, blossom: null,
+  frost: { leafy: 0xd6ecf4, pine: 0x78a8a4, birch: 0xf4f8fc, fruit: 0xeef2f8 },
+  grass: 0xd4e8f0,
+  sky: null,
+  fog: { tint: 0xe0eeff, alpha: 0.15 },
+  // Thicker snowfall; the fireflies become icy blue-white sparkles.
+  particles: { pollen: [0xffffff, 0xe4f2ff, 0xd0e8ff], firefly: [0xcfeaff, 0xffffff, 0x9fd8ff], petal: 'p_snow', petalTint: [0xffffff, 0xeef6ff, 0xd8ecff] },
+  critters: { cat: null, bats: false, ghosts: false, butterflies: 0xe4f2ff },
+  props: false, glow: 0xffd080,
+  ui: { accent: 0x4a9ad8, accentDark: 0x2f6fa8, css: '#4a9ad8', tab: 0xe6f0fa, tabOn: 0x4a9ad8 },
+  soundscape: WINTER,
+  entry: {
+    sky: ['rgba(170,200,236,0.82)', 'rgba(214,230,246,0.76)', 'rgba(70,104,140,0.88)'],
+    title: '#ffffff', titleEdge: '#2f6fa8',
+    card: 'rgba(248,252,255,0.97)', cardEdge: '#a8c8e4',
+    ink: '#24384a', soft: '#5a7690',
+    accent: '#4a9ad8', accentDark: '#2f6fa8', field: '#fbfdff',
+    drift: { shape: 'snow', colors: ['#ffffff', '#eef6ff', '#d8ecff'], count: 28 },
+    glow: { colors: ['#cfeaff', '#ffffff', '#9fd8ff'], count: 12 },
+    iconSvg: '<svg viewBox="0 0 40 40"><circle cx="20" cy="20" r="17" fill="#4a9ad8" stroke="#2f6fa8" stroke-width="2"/><g stroke="#ffffff" stroke-width="2.6" stroke-linecap="round"><path d="M20 7 V33 M8.7 13.5 L31.3 26.5 M8.7 26.5 L31.3 13.5"/><path d="M16 9.5 L20 13 L24 9.5 M16 30.5 L20 27 L24 30.5" fill="none"/></g></svg>',
+  },
+};
+
+// Ready for more: Summer and holiday themes each add one entry here + a soundscape.
+export const THEMES: Record<ThemeId, Theme> = { spring, halloween, fall, christmas, winter };
+export const THEME_ORDER: ThemeId[] = ['spring', 'fall', 'halloween', 'christmas', 'winter'];
 
 export const themeEvents = new Phaser.Events.EventEmitter();
 export let theme: Theme = THEMES[normTheme(save.theme)] ?? spring;

@@ -47,6 +47,7 @@ const SKINS: Record<ThemeId, { hull: string; stripe: string; rim: string; badge:
   fall: { hull: '#c9772f', stripe: '#ffe0a0', rim: '#ffd27a', badge: 'leaf' },
   halloween: { hull: '#6b4a8c', stripe: '#ff9a3c', rim: '#c9a6f0', badge: 'pumpkin' },
   christmas: { hull: '#2f8a4e', stripe: '#ffffff', rim: '#b8f0c8', badge: 'star' },
+  winter: { hull: '#3f7fc0', stripe: '#ffffff', rim: '#cfe8ff', badge: 'star' },
 };
 export const boatFrontKey = (id: ThemeId) => `boat_front_${id}`;
 

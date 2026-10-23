@@ -1493,7 +1493,7 @@ export class WorldScene extends Phaser.Scene {
       setRes: (r: { food?: number; wood?: number; stone?: number }) => { Object.assign(save.village.res, r); self.game.events.emit('res', null, 0); },
       moveVillager: (id: number, x: number, y: number) => { const q = self.village.villagers.find((z) => z.data.id === id); if (q) { q.x = x; q.y = y; q.path = []; q.task = 'idle'; q.think = 0.2; q.clearMark(); } },
       setNeeds: (id: number, n: { food?: number; sleep?: number; fun?: number }) => { const q = self.village.villagers.find((x) => x.data.id === id); if (q) Object.assign(q.data, n); },
-      setTheme: (id: 'spring' | 'halloween' | 'fall' | 'christmas' | 'classic') => setTheme(id),
+      setTheme: (id: 'spring' | 'halloween' | 'fall' | 'christmas' | 'winter' | 'classic') => setTheme(id),
       /** Every live particle's frame, per emitter, in the world + wild scenes (art-management checks). */
       particleFrames() {
         const out: { scene: string; tex: string; frame: string; frameTex: string }[] = [];

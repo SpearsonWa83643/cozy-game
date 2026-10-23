@@ -116,3 +116,24 @@ export const CHRISTMAS: Soundscape = {
     { bass: 38, pad: [50, 54, 57, 62, 66], mel: [69, 74, 78, 81] },                  // D
   ],
 };
+
+/** Winter: a hushed, airy D-major flute over soft pads, a steady cold wind, far-off wind chimes,
+ *  a fireside crackle now and then and the drip of icicles. Calmer and sparser than Christmas. */
+export const WINTER: Soundscape = {
+  id: 'winter', lead: 'flute', dens: 0.7, pad: 1.1, bright: 0.9, wind: 0.8,
+  extras: [
+    { kind: 'chimes', every: [18, 34], vol: 0.45 },
+    { kind: 'crackle', every: [20, 36], vol: 0.4 },
+    { kind: 'drops', every: [28, 50], vol: 0.25 },
+  ],
+  chords: [
+    { bass: 38, pad: [50, 54, 57, 61, 64], mel: [69, 73, 74, 76, 78] },              // Dmaj9
+    { bass: 47, pad: [50, 54, 57, 59, 61], mel: [69, 71, 74, 78] },                  // Bm9
+    { bass: 43, pad: [50, 54, 55, 59, 62], mel: [71, 74, 78, 79] },                  // Gmaj7
+    { bass: 45, pad: [52, 54, 57, 59, 61], mel: [69, 71, 73, 76] },                  // A6/9
+    { bass: 40, pad: [50, 54, 55, 59, 62], mel: [71, 74, 76, 78] },                  // Em9
+    { bass: 43, pad: [50, 54, 57, 59, 62], mel: [69, 71, 74, 78] },                  // Gmaj9
+    { bass: 42, pad: [49, 52, 54, 57, 61], mel: [69, 73, 76, 78] },                  // F#m7
+    { bass: 45, pad: [50, 52, 55, 57, 62], mel: [69, 74, 76, 79] },                  // A7sus
+  ],
+};

@@ -187,7 +187,7 @@ export class WildScene extends Phaser.Scene {
   /** Paints trails, glades and ponds for the current theme. */
   applyTheme() {
     const hal = theme.id === 'halloween';
-    const xm = theme.id === 'christmas';
+    const xm = !!theme.frost; // Christmas and Winter: snowy woods
     this.groundTS.setTexture(hal ? 'wg_halloween' : xm ? 'wg_snow' : 'wg_classic');
     const g = this.deco; g.clear();
     const m = this.map;
@@ -227,7 +227,7 @@ export class WildScene extends Phaser.Scene {
       }
       t.cap?.setVisible(!!theme.frost);
     }
-    this.cameras.main.setBackgroundColor(hal ? '#20262a' : theme.id === 'fall' ? '#5a5430' : theme.id === 'christmas' ? '#8a9aa4' : '#3c5a32');
+    this.cameras.main.setBackgroundColor(hal ? '#20262a' : theme.id === 'fall' ? '#5a5430' : theme.frost ? '#8a9aa4' : '#3c5a32');
     for (const mo of this.monsters) mo.retheme();
     // Christmas: gentle snowfall over the woods (screen-fixed, kept light for iPad).
     if (xm && !this.snow) {

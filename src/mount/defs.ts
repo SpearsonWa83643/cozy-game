@@ -124,9 +124,9 @@ export function mountById(id: string): MountDef {
   return MOUNTS.find((m) => m.id === id) ?? MOUNTS[0];
 }
 
-/** The theme's own default mount: pumpkin in Halloween, Canada goose in Fall, reindeer in Christmas, bald eagle otherwise. */
+/** The theme's own default mount: pumpkin in Halloween, Canada goose in Fall, reindeer in Christmas and Winter, bald eagle otherwise. */
 export function themeDefaultMount(): string {
-  return theme.id === 'halloween' ? 'pumpkin' : theme.id === 'fall' ? 'goose' : theme.id === 'christmas' ? 'reindeer' : 'eagle';
+  return theme.id === 'halloween' ? 'pumpkin' : theme.id === 'fall' ? 'goose' : theme.id === 'christmas' || theme.id === 'winter' ? 'reindeer' : 'eagle';
 }
 
 export function isMountUnlocked(m: MountDef): boolean {

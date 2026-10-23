@@ -188,7 +188,28 @@ function paintBulb(c: Ctx, w: number, h: number) {
   c.fillStyle = hsl(0, 0, 55); c.fillRect(w / 2 - 1.5, 0.5, 3, 2.4);
 }
 
+/** Winter theme icon: a bold white snowflake on an icy-blue disc. */
+function paintWinterIcon(c: Ctx, w: number) {
+  const cx = w / 2, r = w * 0.44;
+  dab(c, cx, w - 4, w * 0.32, 3, 0, hsl(210, 30, 30, 0.2));
+  c.fillStyle = hsl(206, 64, 57); c.beginPath(); c.arc(cx, cx, r, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = hsl(210, 56, 36); c.lineWidth = 2; c.stroke();
+  c.fillStyle = hsl(200, 80, 80, 0.5); c.beginPath(); c.ellipse(cx - r * 0.3, cx - r * 0.4, r * 0.4, r * 0.22, -0.5, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = '#ffffff'; c.lineCap = 'round'; c.lineWidth = 3;
+  const a0 = r * 0.78;
+  for (let i = 0; i < 6; i++) {
+    const a = -Math.PI / 2 + (i * Math.PI) / 3, ex = cx + Math.cos(a) * a0, ey = cx + Math.sin(a) * a0;
+    c.beginPath(); c.moveTo(cx, cx); c.lineTo(ex, ey); c.stroke();
+    const mx = cx + Math.cos(a) * a0 * 0.6, my = cx + Math.sin(a) * a0 * 0.6;
+    c.lineWidth = 2.2;
+    for (const s of [-1, 1]) { const b = a + s * 0.75; c.beginPath(); c.moveTo(mx, my); c.lineTo(mx + Math.cos(b) * a0 * 0.32, my + Math.sin(b) * a0 * 0.32); c.stroke(); }
+    c.lineWidth = 3;
+  }
+  c.fillStyle = '#ffffff'; c.beginPath(); c.arc(cx, cx, 3, 0, Math.PI * 2); c.fill();
+}
+
 export function paintChristmasArt(scene: Phaser.Scene) {
+  canvasTex(scene, 'i_winter', 48, 48, (c) => paintWinterIcon(c, 48), 2);
   ([['xm_present0', 2, 46], ['xm_present1', 142, 2], ['xm_present2', 212, 46], ['xm_present3', 46, 2]] as [string, number, number][])
     .forEach(([k, hue, rib]) => canvasTex(scene, k, 44, 44, (c) => paintPresent(c, 44, 44, hue, rib)));
   canvasTex(scene, 'xm_snowman', 56, 90, (c) => paintSnowman(c, 56, 90));

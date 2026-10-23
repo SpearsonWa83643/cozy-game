@@ -126,7 +126,7 @@ export class MenuScene extends Phaser.Scene {
     g.lineStyle(3, 0xd9b98f, 1); g.strokeRoundedRect(bx + 8, by + 8, bw - 16, bh - 16, 20);
     this.root.add([dim, g]);
     // Tabs.
-    const themeLeft = bx + bw - 22 - 56 - 18 - THEME_ORDER.length * ((THEME_ORDER.length > 3 ? 56 : 64) + 8);
+    const themeLeft = bx + bw - 22 - 56 - 18 - THEME_ORDER.length * ((THEME_ORDER.length > 4 ? 50 : THEME_ORDER.length > 3 ? 56 : 64) + 8);
     const tabW = Math.min(170, (themeLeft - bx - 22 - 10) / TABS.length - 8), tabH = 54;
     TABS.forEach(([id, label], i) => {
       const tx = bx + 22 + i * (tabW + 8), ty = by + 16;
@@ -138,7 +138,7 @@ export class MenuScene extends Phaser.Scene {
     });
     // Theme toggle: one big icon per theme, the active one lit up.
     {
-      const n = THEME_ORDER.length, tw = n > 3 ? 56 : 64, ty = by + 15; // 4+ themes: slimmer buttons so they clear the tabs on iPad mini
+      const n = THEME_ORDER.length, tw = n > 4 ? 50 : n > 3 ? 56 : 64, ty = by + 15; // 4+ themes: slimmer buttons so they clear the tabs on iPad mini
       const tx0 = bx + bw - 22 - 56 - 18 - n * (tw + 8);
       THEME_ORDER.forEach((id, i) => {
         const on = theme.id === id;
@@ -742,6 +742,16 @@ export class MenuScene extends Phaser.Scene {
       g.fillStyle(0xf7d046, 1); g.lineStyle(2, 0xc9822a, 1); g.beginPath();
       for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + (k * Math.PI) / 5, rr = k % 2 ? 6 : 14; const x = sx + Math.cos(a) * rr, y = sy + Math.sin(a) * rr; if (k) g.lineTo(x, y); else g.moveTo(x, y); }
       g.closePath(); g.fillPath(); g.strokePath();
+    } else if (t === 'winter') {
+      // A soft snow crown with icy icicles hanging down.
+      g.fillStyle(0xffffff, 1); g.fillRoundedRect(wx - 8, wy - 16, ww + 16, 10, 5);
+      for (let x = wx + 10; x < wx + ww - 6; x += 34) g.fillEllipse(x, wy - 6, 16, 10);
+      let i = 0;
+      for (let x = wx + 4; x < wx + ww - 2; x += 18, i++) {
+        const len = 10 + ((i * 7) % 4) * 6;
+        g.fillStyle(0xcfe8fa, 0.95); g.fillTriangle(x - 4, wy - 2, x + 4, wy - 2, x, wy - 2 + len);
+        g.fillStyle(0xffffff, 0.9); g.fillTriangle(x - 2, wy - 2, x, wy - 2, x - 0.5, wy - 2 + len * 0.6);
+      }
     }
     this.content.add(g);
   }
