@@ -13,11 +13,12 @@ import { areaAt, waterAt } from '../geo';
 import type { WorldScene } from './World';
 import { buildWardrobeItems, isNoneItem } from '../wardrobeArt';
 import { LANDMARKS, ensureLandmarkIcons } from '../landmarks';
+import { MOUNTS, isMountUnlocked, currentPick, type MountDef } from '../mount/defs';
 
 const INK = '#3d2c20';
 const FONT = 'Nunito';
-export type Tab = 'map' | 'wardrobe' | 'treasures' | 'fish';
-const TABS: [Tab, string][] = [['map', 'Map'], ['wardrobe', 'Wardrobe'], ['treasures', 'Treasures'], ['fish', 'Fish']];
+export type Tab = 'map' | 'wardrobe' | 'treasures' | 'fish' | 'stable';
+const TABS: [Tab, string][] = [['map', 'Map'], ['wardrobe', 'Wardrobe'], ['treasures', 'Treasures'], ['fish', 'Fish'], ['stable', 'Stable']];
 
 const iw0 = (ww: number) => ww - 28;
 
@@ -111,7 +112,7 @@ export class MenuScene extends Phaser.Scene {
     this.root.removeAll(true);
     this.cancelDrag();
     if (this.tab !== 'wardrobe') this.newIds = null;
-    this.heroImg = null; this.playerDot = null; this.hintText = null; this.hintBg = null; this.stageGlow = null; this.tankFx = null; this.tankFish = [];
+    this.heroImg = null; this.playerDot = null; this.hintText = null; this.hintBg = null; this.stageGlow = null; this.tankFx = null; this.tankFish = []; this.stablePets = [];
     this.w = this.scale.width / DPR; this.h = this.scale.height / DPR;
     const si = safeInsets();
     const m = 18;
@@ -125,13 +126,14 @@ export class MenuScene extends Phaser.Scene {
     g.lineStyle(3, 0xd9b98f, 1); g.strokeRoundedRect(bx + 8, by + 8, bw - 16, bh - 16, 20);
     this.root.add([dim, g]);
     // Tabs.
-    const tabW = Math.min(170, (bw - 120 - 170) / 4 - 8), tabH = 54;
+    const themeLeft = bx + bw - 22 - 56 - 18 - THEME_ORDER.length * ((THEME_ORDER.length > 3 ? 56 : 64) + 8);
+    const tabW = Math.min(170, (themeLeft - bx - 22 - 10) / TABS.length - 8), tabH = 54;
     TABS.forEach(([id, label], i) => {
       const tx = bx + 22 + i * (tabW + 8), ty = by + 16;
       const on = id === this.tab;
       const [bg, z] = this.btn(tx, ty, tabW, tabH, () => { if (this.tab !== id) { this.tab = id; sfx.blip(); this.render(); } }, on ? theme.ui.tabOn : theme.ui.tab, on ? theme.ui.accentDark : 0xd9b98f);
       this.rects[`tab:${id}`] = this.lastRect;
-      const t = this.text(tx + tabW / 2, ty + tabH / 2, label, tabW < 120 ? 17 : 20, on ? '#fffaf0' : INK, 800).setOrigin(0.5);
+      const t = this.text(tx + tabW / 2, ty + tabH / 2, label, tabW < 105 ? 15 : tabW < 120 ? 17 : 20, on ? '#fffaf0' : INK, 800).setOrigin(0.5);
       this.root.add([bg, z, t]);
     });
     // Theme toggle: one big icon per theme, the active one lit up.
@@ -160,7 +162,8 @@ export class MenuScene extends Phaser.Scene {
     if (this.tab === 'map') this.renderMap(area);
     else if (this.tab === 'wardrobe') this.renderWardrobe(area);
     else if (this.tab === 'treasures') this.renderTreasures(area);
-    else this.renderFish(area);
+    else if (this.tab === 'fish') this.renderFish(area);
+    else this.renderStable(area);
   }
 
   private hint(msg: string) {
@@ -1106,9 +1109,159 @@ export class MenuScene extends Phaser.Scene {
     }
   }
 
+  // ------------------------------------------------------------ mount stable
+  /** 9.38: a barn with a stall for every mount. Unlocked friends flap and bob; locked ones are silhouettes. */
+  stablePets: { id: string; c: Phaser.GameObjects.Container; body: Phaser.GameObjects.Image; wing: Phaser.GameObjects.Image; wingFar: Phaser.GameObjects.Image; m: MountDef; flap: number; ph: number; on: boolean; k: number }[] = [];
+  lastMount = '';
+
+  private puppet(m: MountDef, x: number, y: number, targetW: number, on: boolean) {
+    const SC = m.scale, prop = m.style === 'prop';
+    const sc = (key: string) => SC / (frameScale[key] ?? S);
+    const wingFar = this.add.image(prop ? m.propAt![0] * SC : 3 * SC, prop ? m.propAt![1] * SC : -10 * SC, atlasOf(m.wingFar), m.wingFar).setOrigin(0.5, prop ? 0.5 : 0.96).setScale(sc(m.wingFar) * 0.9);
+    const body = this.add.image(0, 0, atlasOf(m.body), m.body).setOrigin(0.5, 0.52).setScale(sc(m.body));
+    const wing = this.add.image(prop ? m.propAt![0] * SC : -4 * SC, prop ? m.propAt![1] * SC : -7 * SC, atlasOf(m.wing), m.wing).setOrigin(0.5, prop ? 0.5 : 0.96).setScale(sc(m.wing));
+    const parts = prop ? [body, wingFar, wing] : [wingFar, body, wing];
+    if (!on) for (const o of parts) o.setTint(0x2e2219);
+    const c = this.add.container(x, y, parts);
+    const k = targetW / Math.max(1, body.width * sc(m.body));
+    c.setScale(k).setAlpha(on ? 1 : 0.8);
+    return { c, body, wing, wingFar, k };
+  }
+
+  private mountHint(m: MountDef) {
+    if (!m.treasure) return `${m.name} is always free!`;
+    const t = TREASURES.find((x) => x.id === m.treasure);
+    if (t) return `Find the ${t.name} to meet the ${m.name}. Hint: ${t.hint}`;
+    if (m.id === 'goose') return 'The Canada Goose comes to ride in Fall. Tap the leaf button to try Fall!';
+    if (m.id === 'reindeer') return 'The Reindeer comes to ride at Christmas. Tap the tree button to try Christmas!';
+    if (m.id === 'pumpkin') return 'The Pumpkin rides along at Halloween!';
+    return `Keep exploring to meet the ${m.name}!`;
+  }
+
+  private tapStall(m: MountDef) {
+    const p = this.stablePets.find((q) => q.id === m.id);
+    this.lastMount = m.id;
+    if (!p) return;
+    if (!p.on) {
+      sfx.tock();
+      this.hint(this.mountHint(m));
+      this.tweens.add({ targets: p.c, x: p.c.x + 5, duration: 50, yoyo: true, repeat: 2 });
+      return;
+    }
+    sfx.blip();
+    this.hint(`${m.name}! ${m.blurb}`);
+    const y0 = p.c.getData('y0') as number;
+    this.tweens.killTweensOf(p.c);
+    p.c.y = y0;
+    this.tweens.add({ targets: p.c, y: y0 - 14, duration: 150, yoyo: true, ease: 'Quad.easeOut' });
+  }
+
+  renderStable(a: { x: number; y: number; w: number; h: number }) {
+    this.stablePets = [];
+    const list = MOUNTS;
+    const got = list.filter(isMountUnlocked).length;
+    const cols = Math.ceil(list.length / 2), rows = 2;
+    const g = this.add.graphics();
+    // Barn: red plank walls under a roof beam, with a hay loft glow.
+    g.fillStyle(0x2a1a0e, 0.3); g.fillRoundedRect(a.x + 4, a.y + 8, a.w, a.h, 16);
+    g.fillStyle(0xa8432f, 1); g.fillRoundedRect(a.x, a.y, a.w, a.h, 16);
+    g.lineStyle(2, 0x7f2c1e, 0.7);
+    for (let x = a.x + 30; x < a.x + a.w - 10; x += 34) g.lineBetween(x, a.y + 40, x, a.y + a.h - 4);
+    g.fillStyle(0x6a3a22, 1); g.fillRoundedRect(a.x, a.y, a.w, 40, { tl: 16, tr: 16, bl: 0, br: 0 });
+    g.fillStyle(0x8a5434, 1); g.fillRect(a.x, a.y + 34, a.w, 6);
+    this.content.add(g);
+    // Sign on the beam.
+    const sign = this.text(a.x + a.w / 2, a.y + 20, `Your stable: ${got} / ${list.length} friends`, 18, '#fff3d6', 900).setOrigin(0.5).setStroke('#4a2a16', 4);
+    this.content.add(sign);
+    const top = a.y + 56, gap = 10;
+    const sw = (a.w - 24 - (cols - 1) * gap) / cols, sh = (a.h - (top - a.y) - 12 - (rows - 1) * gap) / rows;
+    list.forEach((m, i) => {
+      const on = isMountUnlocked(m);
+      const col = i % cols, row = Math.floor(i / cols);
+      const x = a.x + 12 + col * (sw + gap), y = top + row * (sh + gap);
+      const sg = this.add.graphics();
+      // Stall: arched opening, shadowy inside, hay floor, a half-door rail, a name board.
+      sg.fillStyle(0x5a2a1a, 1); sg.fillRoundedRect(x - 4, y - 4, sw + 8, sh + 8, { tl: sw / 2, tr: sw / 2, bl: 8, br: 8 });
+      sg.fillStyle(0x4a2e1c, 1); sg.fillRoundedRect(x, y, sw, sh, { tl: sw / 2 - 4, tr: sw / 2 - 4, bl: 6, br: 6 });
+      sg.fillStyle(0x5e3c26, 1); sg.fillRect(x, y + sh * 0.45, sw, sh * 0.55 - 6);
+      sg.fillStyle(0xffe6b0, on ? 0.12 : 0.05); sg.fillEllipse(x + sw / 2, y + sh * 0.5, sw * 0.9, sh * 0.6);
+      sg.fillStyle(0xe8c26a, 1); sg.fillRect(x, y + sh - 34, sw, 28);
+      sg.fillStyle(0xd4a94e, 1);
+      for (let k = 0; k < 9; k++) sg.fillTriangle(x + (k / 9) * sw, y + sh - 34, x + ((k + 0.5) / 9) * sw, y + sh - 44 - (k % 3) * 3, x + ((k + 1) / 9) * sw, y + sh - 34);
+      sg.fillStyle(0x8a5434, 1); sg.fillRect(x, y + sh - 60, sw, 7);
+      sg.fillStyle(0x6a3a22, 1); sg.fillRect(x + 6, y + sh - 60, 6, 54); sg.fillRect(x + sw - 12, y + sh - 60, 6, 54);
+      // Name board.
+      sg.fillStyle(on ? 0xf3dfae : 0x8a7560, 1); sg.fillRoundedRect(x + 8, y + sh - 26, sw - 16, 22, 6);
+      sg.lineStyle(2, 0x6a3a22, 1); sg.strokeRoundedRect(x + 8, y + sh - 26, sw - 16, 22, 6);
+      this.content.add(sg);
+      const nm = this.text(x + sw / 2, y + sh - 15, on ? m.name : '???', 13, on ? '#4a2a16' : '#e8dccb', 900).setOrigin(0.5);
+      if (nm.width > sw - 22) nm.setScale((sw - 22) / nm.width);
+      this.content.add(nm);
+      const py = y + sh * 0.46;
+      const pp = this.puppet(m, x + sw / 2, py, Math.min(sw * 0.82, 130), on);
+      pp.c.setData('y0', py);
+      this.content.add(pp.c);
+      if (!on) this.content.add(this.text(x + sw / 2, py - 4, '?', 30, '#f3dfae', 900).setOrigin(0.5).setStroke('#2e2219', 5));
+      if (on && m.id === currentPick()) {
+        // Your current ride wears a rosette.
+        const rg = this.add.graphics();
+        rg.fillStyle(theme.ui.accent, 1); rg.fillCircle(x + sw - 20, y + 22, 13);
+        rg.fillStyle(0xffffff, 1); rg.fillCircle(x + sw - 20, y + 22, 6);
+        rg.fillStyle(theme.ui.accent, 1); rg.fillTriangle(x + sw - 28, y + 30, x + sw - 22, y + 30, x + sw - 30, y + 46); rg.fillTriangle(x + sw - 18, y + 30, x + sw - 12, y + 30, x + sw - 10, y + 46);
+        this.content.add(rg);
+      }
+      this.stablePets.push({ id: m.id, ...pp, m, flap: i * 0.9, ph: i * 1.3, on });
+      const z = this.add.zone(x, y, sw, sh).setOrigin(0, 0).setInteractive();
+      z.on('pointerup', (p: Phaser.Input.Pointer) => { if (p.getDistance() < 24) this.tapStall(m); });
+      this.content.add(z);
+      this.rects[`stall:${m.id}`] = { x, y, w: sw, h: sh };
+    });
+    for (let i = list.length; i < cols * rows; i++) this.barnCorner(a.x + 12 + (i % cols) * (sw + gap), top + Math.floor(i / cols) * (sh + gap), sw, sh);
+  }
+
+  /** Hay bales and a water trough for the spare corner of the barn. */
+  private barnCorner(x: number, y: number, w: number, h: number) {
+    const g = this.add.graphics();
+    const by = y + h - 8;
+    const bale = (bx: number, bb: number, bw: number, bh: number) => {
+      g.fillStyle(0xd9ae52, 1); g.fillRoundedRect(bx, bb - bh, bw, bh, 8);
+      g.lineStyle(2, 0xb08838, 1); for (let k = 1; k < 4; k++) g.lineBetween(bx + 6, bb - bh + (bh * k) / 4, bx + bw - 6, bb - bh + (bh * k) / 4);
+      g.lineStyle(4, 0x8a5434, 1); g.lineBetween(bx + bw * 0.3, bb - bh, bx + bw * 0.3, bb); g.lineBetween(bx + bw * 0.7, bb - bh, bx + bw * 0.7, bb);
+    };
+    bale(x + 4, by, w * 0.55, h * 0.26); bale(x + w * 0.45, by, w * 0.52, h * 0.26); bale(x + w * 0.2, by - h * 0.26, w * 0.55, h * 0.24);
+    // Trough.
+    const tx = x + 8, ty = by - h * 0.62, tw = w - 16;
+    g.fillStyle(0x6a3a22, 1); g.fillRoundedRect(tx, ty, tw, 30, 6);
+    g.fillStyle(0x7fc4e0, 1); g.fillRoundedRect(tx + 5, ty + 4, tw - 10, 10, 4);
+    g.fillStyle(0xffffff, 0.6); g.fillRect(tx + 14, ty + 6, 20, 3);
+    g.fillStyle(0x4a2a16, 1); g.fillRect(tx + 8, ty + 30, 8, 16); g.fillRect(tx + tw - 16, ty + 30, 8, 16);
+    this.content.add(g);
+  }
+
+  private tickStable(time: number, delta: number) {
+    const dt = Math.min(delta, 100) / 1000;
+    for (const p of this.stablePets) {
+      if (!p.on || !p.c.active) continue;
+      const m = p.m, SC = m.scale;
+      p.flap += dt * Math.PI * 2 * 0.7 * (m.flapRate ?? 1);
+      const ws = SC / (frameScale[m.wing] ?? S);
+      if (m.style === 'prop') {
+        p.wing.setScale(ws * 0.6, ws * (0.15 + 0.85 * Math.abs(Math.cos(time / 40))));
+      } else {
+        const lift = Math.cos(p.flap);
+        const sy = ws * (lift >= 0 ? 0.35 + 0.65 * lift : 0.35 + 0.95 * lift);
+        const sweep = 0.32 + 0.08 * Math.sin(p.flap);
+        p.wing.setScale(ws, sy).setRotation(-sweep);
+        p.wingFar.setScale(ws * 0.9, sy * 0.88).setRotation(-sweep * 1.15);
+      }
+      p.body.y = Math.sin(time / 600 + p.ph) * 2.5 / p.k;
+    }
+  }
+
   update(time: number, delta = 16) {
     if (!this.open) return;
     if (this.tankFx) this.tickTank(time, delta);
+    if (this.stablePets.length) this.tickStable(time, delta);
     const d = this.drag;
     if (d && d.live && !d.done) {
       // Springy follow: catches up fast but not instantly, and tilts with the swing.
