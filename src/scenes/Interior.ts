@@ -6,7 +6,7 @@ import { safeInsets } from '../device';
 import { sfx } from '../audio';
 import { save, persist } from '../save';
 import { theme } from '../theme';
-import { FURN, furnTexture, roomOf, type FurnDef } from '../interior/furniture';
+import { FURN, furnTexture, roomOf, RECIPES, type FurnDef } from '../interior/furniture';
 import type { WorldScene } from './World';
 
 const INK = '#3d2c20';
@@ -33,6 +33,11 @@ export class InteriorScene extends Phaser.Scene {
   recipe: 'pancakes' | 'eggs' = 'pancakes';
   private pan: Phaser.GameObjects.Graphics | null = null;
   private brewing = false;
+  crafted = 0;
+  /** Workshop: what the bench is building, and how many hammer taps so far (3 to finish). */
+  craft: null | { id: string; taps: number } = null;
+  pickerOpen = false;
+  private ghost: Phaser.GameObjects.Image | null = null;
   rects: Record<string, Rect> = {};
   room: Rect = { x: 0, y: 0, w: 0, h: 0 };
   floorTop = 0;
@@ -93,7 +98,7 @@ export class InteriorScene extends Phaser.Scene {
   close() {
     if (!this.open) return;
     this.open = false;
-    this.drag = null;
+    this.drag = null; this.craft = null; this.pickerOpen = false;
     sfx.creak();
     this.store();
     this.cameras.main.fadeOut(200, 40, 26, 18);
@@ -105,7 +110,7 @@ export class InteriorScene extends Phaser.Scene {
   private clear() {
     this.tweens.killAll();
     this.children.removeAll(true);
-    this.items = []; this.rects = {}; this.dark = null; this.glow = null; this.pan = null; this.cookStage = 0; this.brewing = false; this.winG = null; this.bin = null; this.hint = null;
+    this.items = []; this.rects = {}; this.dark = null; this.glow = null; this.pan = null; this.cookStage = 0; this.brewing = false; this.winG = null; this.bin = null; this.hint = null; this.ghost = null; this.pickerOpen = false;
   }
 
   // ------------------------------------------------------------------ layout + drawing
@@ -125,6 +130,7 @@ export class InteriorScene extends Phaser.Scene {
     this.drawRoom(room);
     // Items.
     for (const s of this.roomSave().items) if (FURN[s.k]) this.spawn(s.k, s.x, s.y, false);
+    if (this.craft) this.showGhost();
     this.drawLight();
     this.drawTopBar(T, L, Rr);
     this.drawBottom(B - 100, L, Rr, 100);
@@ -253,6 +259,10 @@ export class InteriorScene extends Phaser.Scene {
       hg.fillStyle(0xffffff, 1); hg.fillRoundedRect(L + 22, T + 20, 26, 26, 5); hg.lineStyle(2.5, 0x4a3022, 1); hg.strokeRoundedRect(L + 22, T + 20, 26, 26, 5);
       hg.strokeCircle(L + 52, T + 32, 6); hg.fillStyle(0x8a5430, 1); hg.fillRect(L + 25, T + 23, 20, 6);
       hg.lineStyle(2.5, 0xb8b0a8, 1); hg.lineBetween(L + 30, T + 16, L + 32, T + 8); hg.lineBetween(L + 40, T + 16, L + 38, T + 8);
+    } else if (this.btype === 'workshop') {
+      // A hammer.
+      hg.fillStyle(0xc98a55, 1); hg.fillRoundedRect(L + 34, T + 20, 8, 28, 3); hg.lineStyle(2.5, 0x4a3022, 1); hg.strokeRoundedRect(L + 34, T + 20, 8, 28, 3);
+      hg.fillStyle(0x9aa6b2, 1); hg.fillRoundedRect(L + 22, T + 10, 32, 13, 3); hg.strokeRoundedRect(L + 22, T + 10, 32, 13, 3);
     } else {
       hg.fillStyle(0xe8604c, 1); hg.fillTriangle(L + 18, T + 30, L + 38, T + 12, L + 58, T + 30);
       hg.fillStyle(0xfff1d6, 1); hg.fillRect(L + 23, T + 29, 30, 17); hg.fillStyle(0x9a5b3a, 1); hg.fillRect(L + 34, T + 34, 9, 12);
@@ -283,7 +293,8 @@ export class InteriorScene extends Phaser.Scene {
     g.fillStyle(0xfbf1dc, 1); g.fillRoundedRect(L, y, R - L, H, 24);
     g.lineStyle(3, 0xd9b98f, 1); g.strokeRoundedRect(L + 4, y + 4, R - L - 8, H - 8, 20);
     if (!this.decorating) {
-      this.hint = this.text((L + R) / 2, y + H / 2, this.btype === 'kitchen' ? 'Tap the stove to cook breakfast! Tap the coffee maker for coffee. Tap Decorate to move things.' : 'Tap things to play with them!  Tap Decorate to move things around.', 21, '#6b4f3a', 800)
+      this.hint = this.text((L + R) / 2, y + H / 2, this.btype === 'kitchen' ? 'Tap the stove to cook breakfast! Tap the coffee maker for coffee. Tap Decorate to move things.'
+      : this.btype === 'workshop' ? `Tap the workbench to build things from wood and stone! You have ${save.village.res.wood} wood and ${save.village.res.stone} stone.` : 'Tap things to play with them!  Tap Decorate to move things around.', 21, '#6b4f3a', 800)
         .setOrigin(0.5).setDepth(1001).setWordWrapWidth(R - L - 40).setAlign('center');
       this.bin = null;
       return;
@@ -367,7 +378,15 @@ export class InteriorScene extends Phaser.Scene {
 
   private add1(f: FurnDef) {
     if (this.items.length >= MAX_ITEMS) { this.say('The room is full! Put something in the bin first.'); sfx.softFail(); return; }
-    // Find the emptiest spot on its layer so new things don't hide behind old ones.
+    const { x, y } = this.emptiest(f);
+    this.spawn(f.id, x, y, true);
+    sfx.pickup();
+    this.lastAction = `add:${f.id}`;
+    this.store(); this.updateGlow();
+  }
+
+  /** The emptiest spot on a thing's layer, so new things don't hide behind old ones. */
+  private emptiest(f: FurnDef) {
     let x = 0.5, y = 0.5, best = -1;
     const same = this.items.filter((i) => FURN[i.k].layer === f.layer || (f.layer !== 'wall' && FURN[i.k].layer !== 'wall'));
     for (let t = 0; t < 24; t++) {
@@ -375,10 +394,7 @@ export class InteriorScene extends Phaser.Scene {
       const dmin = same.reduce((m, i) => Math.min(m, Math.hypot(i.x - cx, (i.y - cy) * 0.6)), 9);
       if (dmin > best) { best = dmin; x = cx; y = cy; }
     }
-    this.spawn(f.id, x, y, true);
-    sfx.pickup();
-    this.lastAction = `add:${f.id}`;
-    this.store(); this.updateGlow();
+    return { x, y };
   }
 
   private onDown(it: Item, p: Phaser.Input.Pointer) {
@@ -513,6 +529,36 @@ export class InteriorScene extends Phaser.Scene {
         }
         this.say('Splish splash! All clean!', cx, top - 16);
         break;
+      case 'workbench': act = this.craft ? this.hammer(it) : this.openPicker(); break;
+      case 'lumber': {
+        act = 'count'; sfx.rustle(); wiggle();
+        const r = save.village.res;
+        this.say(`${r.wood} wood and ${r.stone} stone!`, cx, top - 16);
+        break;
+      }
+      case 'toolwall': act = 'tools'; sfx.tock(); wiggle(); this.say(Phaser.Utils.Array.GetRandom(['Hammer, saw and wrench!', 'Measure twice, cut once!', 'Tools all tidy!']), cx, top - 16); break;
+      case 'toyboat':
+        act = 'sail'; sfx.plip();
+        this.tweens.add({ targets: img, angle: { from: -9, to: 9 }, duration: 260, yoyo: true, repeat: 2, ease: 'Sine.easeInOut', onComplete: () => img.setAngle(0) });
+        this.say('Toot toot! Ahoy!', cx, top - 16);
+        break;
+      case 'birdhouse': {
+        act = 'tweet'; [1568, 1760, 1568].forEach((f, i) => sfx.bell(f, i * 0.12, 0.05, 0.3));
+        const bird = this.add.ellipse(cx, img.y + 8 * it.sc, 18, 15, 0x6fb8e8).setStrokeStyle(2.5, 0x4a3022).setDepth(img.depth + 0.5).setScale(0.2);
+        this.tweens.add({ targets: bird, scale: 1, y: bird.y - 34, duration: 300, ease: 'Back.easeOut', yoyo: true, hold: 600, onComplete: () => bird.destroy() });
+        this.say('Tweet tweet!', cx, top - 16);
+        break;
+      }
+      case 'stonefrog':
+        act = 'ribbit'; sfx.bell(196, 0, 0.09, 0.25); sfx.bell(165, 0.14, 0.09, 0.25);
+        this.tweens.add({ targets: img, y: img.y - 30, duration: 180, yoyo: true, ease: 'Quad.easeOut', onComplete: squash });
+        this.say('Ribbit!', cx, top - 16);
+        break;
+      case 'rockinghorse':
+        act = 'rock'; sfx.creak(); sfx.giggle();
+        this.tweens.add({ targets: img, angle: { from: -8, to: 8 }, duration: 320, yoyo: true, repeat: 3, ease: 'Sine.easeInOut', onComplete: () => img.setAngle(0) });
+        this.say('Giddy up!', cx, top - 16);
+        break;
       case 'chair': act = 'sit'; sfx.creak(); squash(); break;
       case 'rug': act = 'squish'; sfx.rustle(); squash(); break;
       case 'painting': act = 'look'; sfx.sparkle(); wiggle(); this.sparkles(cx, img.y, 8, 0xfff1c4); break;
@@ -610,6 +656,118 @@ export class InteriorScene extends Phaser.Scene {
       this.tweens.add({ targets: fill, alpha: 0, delay: 2200, duration: 400, onComplete: () => fill.destroy() });
     });
     return 'brew';
+  }
+
+  // ------------------------------------------------------------------ workshop (build things)
+  private canPay(cost: { wood?: number; stone?: number }) {
+    const r = save.village.res; return r.wood >= (cost.wood ?? 0) && r.stone >= (cost.stone ?? 0);
+  }
+  private costText(cost: { wood?: number; stone?: number }) {
+    return [cost.wood ? `${cost.wood} wood` : '', cost.stone ? `${cost.stone} stone` : ''].filter(Boolean).join(' + ');
+  }
+  /** Tap the workbench: a big friendly card of things to build. */
+  openPicker(): string {
+    if (this.pickerOpen) return 'pick';
+    this.pickerOpen = true;
+    const rm = this.room, objs: Phaser.GameObjects.GameObject[] = [];
+    const closeP = () => { objs.forEach((o) => o.destroy()); this.pickerOpen = false; for (const k of Object.keys(this.rects)) if (k.startsWith('craft:') || k === 'pick-close') delete this.rects[k]; };
+    const dim = this.add.rectangle(0, 0, this.w, this.h, 0x2a1d14, 0.35).setOrigin(0).setDepth(1100).setInteractive();
+    dim.on('pointerup', (p: Phaser.Input.Pointer) => { if (p.getDistance() < 24) { sfx.blip(); closeP(); } });
+    objs.push(dim);
+    const n = RECIPES.length, cw = Math.min(170, (rm.w - 80) / n - 14), ch = cw + 70;
+    const pw = n * cw + (n - 1) * 14 + 48, ph = ch + 120;
+    const px = rm.x + rm.w / 2 - pw / 2, py = Math.max(rm.y + 10, rm.y + rm.h / 2 - ph / 2);
+    const g = this.add.graphics().setDepth(1101);
+    g.fillStyle(0x2a1d14, 0.25); g.fillRoundedRect(px + 2, py + 6, pw, ph, 26);
+    g.fillStyle(0xfbf1dc, 1); g.fillRoundedRect(px, py, pw, ph, 26);
+    g.lineStyle(4, 0xd9b98f, 1); g.strokeRoundedRect(px + 5, py + 5, pw - 10, ph - 10, 22);
+    objs.push(g);
+    const blocker = this.add.zone(px, py, pw, ph).setOrigin(0).setInteractive().setDepth(1101); objs.push(blocker);
+    objs.push(this.text(px + pw / 2, py + 36, 'What shall we build?', 28, INK, 900).setOrigin(0.5).setDepth(1102));
+    const r = save.village.res;
+    objs.push(this.text(px + pw / 2, py + ph - 30, `You have ${r.wood} wood and ${r.stone} stone.`, 19, '#6b4f3a', 800).setOrigin(0.5).setDepth(1102));
+    RECIPES.forEach((rc, i) => {
+      const d = FURN[rc.id], ok = this.canPay(rc.cost);
+      const cr = { x: px + 24 + i * (cw + 14), y: py + 64, w: cw, h: ch };
+      const cg = this.add.graphics().setDepth(1102);
+      cg.fillStyle(0x2a1d14, 0.18); cg.fillRoundedRect(cr.x + 1, cr.y + 4, cr.w, cr.h, 18);
+      cg.fillStyle(ok ? 0xfffaf0 : 0xeee4d2, 1); cg.fillRoundedRect(cr.x, cr.y, cr.w, cr.h, 18);
+      cg.lineStyle(3.5, ok ? theme.ui.accent : 0xd2c2a8, 1); cg.strokeRoundedRect(cr.x + 2, cr.y + 2, cr.w - 4, cr.h - 4, 16);
+      objs.push(cg);
+      const im = this.add.image(cr.x + cr.w / 2, cr.y + cw / 2 + 6, furnTexture(this, rc.id, this.res)).setDepth(1103);
+      im.setScale(Math.min((cw - 30) / d.w, (cw - 30) / d.h) / this.res).setAlpha(ok ? 1 : 0.55);
+      objs.push(im);
+      objs.push(this.text(cr.x + cr.w / 2, cr.y + cw + 14, d.name, 20, INK, 900).setOrigin(0.5).setDepth(1103));
+      objs.push(this.text(cr.x + cr.w / 2, cr.y + cw + 42, this.costText(rc.cost), 17, ok ? '#4e9a3c' : '#b0503c', 900).setOrigin(0.5).setDepth(1103));
+      this.rects[`craft:${rc.id}`] = cr;
+      const z = this.add.zone(cr.x, cr.y, cr.w, cr.h).setOrigin(0).setInteractive().setDepth(1104); objs.push(z);
+      z.on('pointerup', (p: Phaser.Input.Pointer) => {
+        if (p.getDistance() >= 24) return;
+        if (!this.canPay(rc.cost)) {
+          sfx.softFail(); this.lastAction = `need:${rc.id}`;
+          this.tweens.add({ targets: [im], angle: { from: -8, to: 8 }, duration: 80, yoyo: true, repeat: 2, onComplete: () => im.setAngle(0) });
+          this.say(`Need ${this.costText(rc.cost)}. Workshop friends can make more!`);
+          return;
+        }
+        if (this.items.length >= MAX_ITEMS) { sfx.softFail(); closeP(); this.say('The room is full! Put something in the bin first.'); return; }
+        sfx.pickup(); closeP();
+        this.craft = { id: rc.id, taps: 0 };
+        this.showGhost();
+        const wb = this.items.find((i) => i.k === 'workbench');
+        this.say('Tap the workbench to hammer! Bonk bonk bonk!', wb?.img.x, wb ? wb.img.y - FURN.workbench.h * wb.sc - 40 : undefined);
+        this.lastAction = `workbench:start:${rc.id}`;
+      });
+    });
+    const cx = px + pw - 54, cy = py + 12;
+    this.button({ x: cx, y: cy, w: 42, h: 42 }, 0xf3e6cc, 0xd9b98f, 'pick-close', () => closeP(), 21).setDepth(1104);
+    const zx = this.add.graphics().setDepth(1105); zx.lineStyle(4.5, 0x6b4a33, 1);
+    zx.lineBetween(cx + 13, cy + 13, cx + 29, cy + 29); zx.lineBetween(cx + 29, cy + 13, cx + 13, cy + 29);
+    objs.push(zx);
+    // The button helper adds a graphic + zone at fixed depths; lift and track them.
+    const last = this.children.list.slice(-3) as any[];
+    for (const o of last) { if (o !== zx) { o.setDepth?.(o.type === 'Zone' ? 1106 : 1104); objs.push(o); } }
+    return 'pick';
+  }
+  /** The thing being built, faint on the bench; it fills in with each hammer tap. */
+  private showGhost() {
+    const wb = this.items.find((i) => i.k === 'workbench');
+    if (!this.craft || !wb) return;
+    this.ghost?.destroy();
+    const d = FURN[this.craft.id];
+    const gy = wb.img.y - FURN.workbench.h * wb.sc + 34 * wb.sc;
+    this.ghost = this.add.image(wb.img.x - 20 * wb.sc, gy, furnTexture(this, this.craft.id, this.res)).setOrigin(0.5, 1).setDepth(wb.img.depth + 0.4)
+      .setScale((wb.sc * 0.7) / this.res).setAlpha(0.3 + this.craft.taps * 0.22).setTint(this.craft.taps ? 0xffffff : 0xd8c8b0);
+    void d;
+  }
+  private hammer(it: Item): string {
+    const c = this.craft!; c.taps++;
+    const img = it.img, sc = it.sc;
+    const hx = img.x + 30 * sc, hy = img.y - FURN.workbench.h * sc + 20 * sc;
+    sfx.thump(); this.time.delayedCall(60, () => sfx.tock());
+    this.tweens.add({ targets: img, scaleY: { from: (sc * 0.94) / this.res, to: sc / this.res }, duration: 200, ease: 'Back.easeOut' });
+    for (let i = 0; i < 6; i++) {
+      const ch = this.add.rectangle(hx, hy, 7, 4, i % 2 ? 0xf0c48a : 0xc4ccd4).setStrokeStyle(1.5, 0x4a3022).setDepth(960).setAngle(Math.random() * 180);
+      this.tweens.add({ targets: ch, x: hx + Phaser.Math.Between(-50, 50), y: hy - 20 - Math.random() * 40, angle: ch.angle + 200, alpha: 0, duration: 520, ease: 'Quad.easeOut', onComplete: () => ch.destroy() });
+    }
+    const bonk = this.text(hx, hy - 20, 'Bonk!', 26, '#fffaf0', 900).setStroke('#4a3022', 6).setOrigin(0.5).setDepth(970).setScale(0.5);
+    this.tweens.add({ targets: bonk, scale: 1.1, y: bonk.y - 30, alpha: { from: 1, to: 0 }, duration: 600, ease: 'Back.easeOut', onComplete: () => bonk.destroy() });
+    if (c.taps < 3) { this.showGhost(); return `hammer${c.taps}`; }
+    // Done: pay, and the new thing hops into the room.
+    const rc = RECIPES.find((r) => r.id === c.id)!;
+    this.craft = null; this.ghost?.destroy(); this.ghost = null;
+    if (!this.canPay(rc.cost)) { sfx.softFail(); this.say(`Oh no, need ${this.costText(rc.cost)}!`); return 'need'; }
+    const r = save.village.res; r.wood -= rc.cost.wood ?? 0; r.stone -= rc.cost.stone ?? 0;
+    this.game.events.emit('res', null, 0);
+    const f = FURN[rc.id];
+    const { x, y } = this.emptiest(f);
+    const made = this.spawn(rc.id, x, y, true);
+    this.crafted++;
+    sfx.chimes();
+    this.hearts(made.img.x, made.img.y - f.h * made.sc * (f.layer === 'floor' ? 1 : 0.5), 5);
+    this.say(`You built a ${f.name}!`, made.img.x, made.img.y - f.h * made.sc - 20);
+    this.store(); this.updateGlow();
+    if (this.hint) this.hint.setText(`Tap the workbench to build things from wood and stone! You have ${r.wood} wood and ${r.stone} stone.`);
+    return 'built';
   }
 
   private sparkles(x: number, y: number, n: number, color: number) {
