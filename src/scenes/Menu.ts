@@ -372,6 +372,9 @@ export class MenuScene extends Phaser.Scene {
   }
 
   mapPins: Record<string, Phaser.GameObjects.Container> = {};
+  treasureImgs: Record<string, Phaser.GameObjects.Image> = {};
+  /** Last treasure tapped on the shelf (for tests). */
+  lastTreasure = '';
   /** Last landmark pin tapped on the map (for tests). */
   lastPin = '';
 
@@ -813,43 +816,141 @@ export class MenuScene extends Phaser.Scene {
 
   // ------------------------------------------------------------ treasures
   renderTreasures(a: { x: number; y: number; w: number; h: number }) {
+    // 9.37 slice 2: a wooden display cabinet. Found treasures sit on cushions under glass domes;
+    // ones still out there are dark silhouettes on an empty stand. Little finds fill glass jars below.
+    this.treasureImgs = {};
     const n = TREASURES.length;
-    // Big tiles: wrap into two rows once there are lots of treasures (mounts add more).
+    const got = TREASURES.filter((t) => save.treasures.includes(t.id)).length;
     const cols = n > 7 ? Math.ceil(n / 2) : n;
     const rows = Math.ceil(n / cols);
-    const tile = Math.min(rows > 1 ? 118 : 170, (a.w - (cols - 1) * 14) / cols);
-    this.content.add(this.text(a.x, a.y, `Treasures found: ${TREASURES.filter((t) => save.treasures.includes(t.id)).length} / ${n}`, 20, INK, 800));
+    const capH = 40, jarsH = 112, footH = 58;
+    const cx0 = a.x, cy0 = a.y, cw = a.w, ch = a.h - jarsH - footH;
+    const g = this.add.graphics();
+    // Cabinet body: a dark wood frame, a lighter back panel with vertical boards, a crown on top.
+    g.fillStyle(0x2a1a0e, 0.3); g.fillRoundedRect(cx0 + 4, cy0 + 8, cw, ch, 16);
+    g.fillStyle(0x8a5a34, 1); g.fillRoundedRect(cx0, cy0, cw, ch, 16);
+    g.lineStyle(3, 0x5a3a20, 1); g.strokeRoundedRect(cx0, cy0, cw, ch, 16);
+    const ix = cx0 + 14, iy = cy0 + capH, iw = cw - 28, ih = ch - capH - 14;
+    g.fillStyle(0x5e3c26, 1); g.fillRect(ix, iy, iw, ih);
+    g.lineStyle(1.5, 0x4a2e1c, 0.8);
+    for (let x = ix + 34; x < ix + iw - 6; x += 38) g.lineBetween(x, iy + 2, x, iy + ih - 2);
+    // Soft light from the top of each shelf bay.
+    const bayH = ih / rows;
+    for (let r = 0; r < rows; r++) {
+      g.fillStyle(0xffe6b0, 0.1); g.fillRect(ix, iy + r * bayH, iw, bayH * 0.45);
+      // The shelf board with a lit front edge.
+      const sy = iy + (r + 1) * bayH - 12;
+      g.fillStyle(0x2a1a0e, 0.35); g.fillRect(ix, sy - 4, iw, 4);
+      g.fillStyle(0xa8743f, 1); g.fillRect(ix - 4, sy, iw + 8, 12);
+      g.fillStyle(0xc99158, 1); g.fillRect(ix - 4, sy, iw + 8, 3);
+    }
+    this.content.add(g);
+    // A brass plaque with the count on the crown.
+    const plq = `Treasures found: ${got} / ${n}`;
+    const pt = this.text(cx0 + cw / 2, cy0 + capH / 2 + 1, plq, 18, '#5a3d14', 900).setOrigin(0.5);
+    const pw = pt.width + 40;
+    const pg = this.add.graphics();
+    pg.fillStyle(0x2a1a0e, 0.3); pg.fillRoundedRect(cx0 + cw / 2 - pw / 2 + 2, cy0 + 7, pw, 28, 8);
+    pg.fillStyle(0xe8c25a, 1); pg.fillRoundedRect(cx0 + cw / 2 - pw / 2, cy0 + 5, pw, 28, 8);
+    pg.lineStyle(2, 0xa87b22, 1); pg.strokeRoundedRect(cx0 + cw / 2 - pw / 2 + 3, cy0 + 8, pw - 6, 22, 6);
+    pg.fillStyle(0xa87b22, 1); pg.fillCircle(cx0 + cw / 2 - pw / 2 + 9, cy0 + 19, 2.5); pg.fillCircle(cx0 + cw / 2 + pw / 2 - 9, cy0 + 19, 2.5);
+    this.content.add([pg, pt]);
+    const cellW = iw / cols;
     TREASURES.forEach((t, i) => {
-      const x = a.x + (i % cols) * (tile + 14), y = a.y + 36 + Math.floor(i / cols) * (tile + 52);
+      const r = Math.floor(i / cols), c = i % cols;
+      const x = ix + cellW * (c + 0.5), shelfY = iy + (r + 1) * bayH - 12;
       const found = save.treasures.includes(t.id);
-      const [bg, z] = this.btn(x, y, tile, tile + 40, () => { sfx.blip(); this.hint(found ? t.blurb : `Hint: ${t.hint}`); }, found ? 0xfff4d6 : 0xe6dccb, found ? 0xf2a93b : 0xd9b98f, 18);
-      this.content.add([bg, z]);
+      const sz = Math.min(cellW * 0.62, bayH * 0.42);
+      const iyc = shelfY - 26 - sz / 2;
+      const sg = this.add.graphics();
+      // Stand: a small turned-wood base; found treasures get a red velvet cushion.
+      sg.fillStyle(0x2a1a0e, 0.3); sg.fillEllipse(x + 2, shelfY - 2, cellW * 0.72, 9);
+      sg.fillStyle(0x6e4526, 1); sg.fillRoundedRect(x - cellW * 0.3, shelfY - 12, cellW * 0.6, 10, 4);
+      sg.fillStyle(0x9b6a3c, 1); sg.fillRoundedRect(x - cellW * 0.26, shelfY - 16, cellW * 0.52, 6, 3);
+      if (found) { sg.fillStyle(0xb8323a, 1); sg.fillEllipse(x, shelfY - 19, cellW * 0.54, 12); sg.fillStyle(0xd85a5a, 1); sg.fillEllipse(x - 3, shelfY - 21, cellW * 0.3, 5); }
+      this.content.add(sg);
+      let img: Phaser.GameObjects.Image;
       if (found) {
-        const ic = this.add.image(x + tile / 2, y + tile * 0.48, atlasOf(t.icon), t.icon);
-        ic.setScale(Math.min(tile * 0.55 / ic.width, tile * 0.55 / ic.height));
-        const glow = this.add.image(x + tile / 2, y + tile * 0.48, ATLAS, 'glow').setBlendMode('ADD').setTint(0xffd27a).setAlpha(0.35).setScale(tile / 300);
-        this.content.add([glow, ic]);
+        const glow = this.add.image(x, iyc, ATLAS, 'glow').setBlendMode('ADD').setTint(0xffd27a).setAlpha(0.4).setScale(sz / 170);
+        img = this.add.image(x, iyc, atlasOf(t.icon), t.icon);
+        img.setScale(Math.min(sz / img.width, sz / img.height));
+        this.content.add([glow, img]);
+        // Glass dome: a pale outline with a highlight streak.
+        const dome = this.add.graphics();
+        const dw = Math.min(cellW * 0.6, sz * 1.25), dh = sz * 1.35, dy = shelfY - 18;
+        dome.fillStyle(0xdff4ff, 0.12); dome.fillRoundedRect(x - dw / 2, dy - dh, dw, dh, { tl: dw / 2, tr: dw / 2, bl: 2, br: 2 });
+        dome.lineStyle(2, 0xeaf8ff, 0.55); dome.strokeRoundedRect(x - dw / 2, dy - dh, dw, dh, { tl: dw / 2, tr: dw / 2, bl: 2, br: 2 });
+        dome.lineStyle(3, 0xffffff, 0.5); dome.beginPath(); dome.arc(x, dy - dh + dw / 2, dw / 2 - 6, Math.PI * 1.08, Math.PI * 1.38); dome.strokePath();
+        dome.fillStyle(0xe8c25a, 1); dome.fillCircle(x, dy - dh - 3, 3.5);
+        this.content.add(dome);
       } else {
-        this.content.add(this.text(x + tile / 2, y + tile * 0.48, '?', 54, '#b8a690', 900).setOrigin(0.5));
+        img = this.add.image(x, iyc, atlasOf(t.icon), t.icon).setTint(0x1d130c).setAlpha(0.55);
+        img.setScale(Math.min(sz / img.width, sz / img.height));
+        this.content.add([img, this.text(x, iyc, '?', Math.round(sz * 0.42), '#e8d6b0', 900).setOrigin(0.5).setAlpha(0.8)]);
       }
-      this.content.add(this.text(x + tile / 2, y + tile + 18, found ? t.name : 'Not found yet', 15, found ? INK : '#9a8a78', 800).setOrigin(0.5).setWordWrapWidth(tile - 10).setAlign('center'));
+      this.treasureImgs[t.id] = img;
+      // Name plaque on the shelf edge.
+      const nm = found ? t.name : '???';
+      const tt = this.text(x, shelfY + 6, nm, cellW < 90 ? 11 : 13, found ? '#4a3010' : '#d8c4a0', 800).setOrigin(0.5).setWordWrapWidth(cellW - 6).setAlign('center');
+      if (found) { const lg = this.add.graphics(); const lw = Math.min(cellW - 6, tt.width + 12); lg.fillStyle(0xe8c25a, 1); lg.fillRoundedRect(x - lw / 2, shelfY, lw, 13, 3); this.content.add(lg); tt.setFontSize(10); }
+      this.content.add(tt);
+      const hit = { x: x - cellW / 2, y: shelfY - bayH + 14, w: cellW, h: bayH - 2 };
+      this.rects[`treasure:${t.id}`] = hit;
+      const z = this.add.zone(hit.x, hit.y, hit.w, hit.h).setOrigin(0, 0).setInteractive();
+      z.on('pointerup', (p: Phaser.Input.Pointer) => {
+        if (p.getDistance() >= 24) return;
+        this.lastTreasure = t.id;
+        this.tweens.killTweensOf(img);
+        img.setY(iyc).setAngle(0);
+        if (found) {
+          sfx.sparkle();
+          this.tweens.add({ targets: img, y: iyc - 14, angle: { from: -8, to: 8 }, duration: 160, yoyo: true, repeat: 1, ease: 'Sine.easeInOut', onComplete: () => img.setAngle(0) });
+          this.sparkles(x, iyc, sz * 0.8);
+          this.hint(t.blurb);
+        } else {
+          sfx.blip();
+          this.tweens.add({ targets: img, x: { from: x - 4, to: x + 4 }, duration: 60, yoyo: true, repeat: 2, onComplete: () => img.setX(x) });
+          this.hint(`Hint: ${t.hint}`);
+        }
+      });
+      this.content.add(z);
     });
-    // Minor collectibles.
-    let y = a.y + 36 + (rows - 1) * (tile + 52) + tile + 64;
-    this.content.add(this.text(a.x, y, 'Little finds', 18, '#8a6a50', 800));
-    y += 30;
-    const mw = Math.min(190, (a.w - (MINORS.length - 1) * 10) / MINORS.length);
+    // Little finds: glass jars on a low shelf, filled with what you've gathered.
+    const jy = cy0 + ch + 10;
+    const jg = this.add.graphics();
+    jg.fillStyle(0xa8743f, 1); jg.fillRoundedRect(a.x, jy + jarsH - 22, a.w * 0.62, 12, 4);
+    jg.fillStyle(0xc99158, 1); jg.fillRect(a.x + 4, jy + jarsH - 22, a.w * 0.62 - 8, 3);
+    this.content.add(jg);
+    const jw = Math.min(86, (a.w * 0.62 - 10) / MINORS.length);
     MINORS.forEach((m, i) => {
-      const x = a.x + i * (mw + 10);
-      const g = this.add.graphics();
-      g.fillStyle(0xf3e6cc, 1); g.fillRoundedRect(x, y, mw, 64, 14);
-      const ic = this.add.image(x + 32, y + 32, atlasOf(m.icon), m.icon);
-      ic.setScale(Math.min(34 / ic.width, 34 / ic.height));
-      this.content.add([g, ic, this.text(x + 60, y + 14, m.name, 14, '#8a6a50', 700), this.text(x + 60, y + 32, `${save.minor[m.id] ?? 0}`, 20, INK, 900)]);
+      const x = a.x + 8 + jw * (i + 0.5), bot = jy + jarsH - 22, jh = 62, jwd = jw * 0.72;
+      const cnt = save.minor[m.id] ?? 0;
+      const fill = Math.min(1, cnt / 20);
+      const g2 = this.add.graphics();
+      // Contents first (a warm tint rising with the count), then the glass over it.
+      if (fill > 0) { g2.fillStyle(0xf2d38a, 0.55); g2.fillRoundedRect(x - jwd / 2 + 3, bot - 4 - (jh - 14) * fill, jwd - 6, (jh - 14) * fill, 6); }
+      this.content.add(g2);
+      const ic = this.add.image(x, bot - jh * 0.42, atlasOf(m.icon), m.icon);
+      ic.setScale(Math.min(30 / ic.width, 30 / ic.height)).setAlpha(cnt ? 1 : 0.35);
+      const glass = this.add.graphics();
+      glass.fillStyle(0xdff4ff, 0.18); glass.fillRoundedRect(x - jwd / 2, bot - jh, jwd, jh, 10);
+      glass.lineStyle(2, 0xeaf8ff, 0.8); glass.strokeRoundedRect(x - jwd / 2, bot - jh, jwd, jh, 10);
+      glass.fillStyle(0xffffff, 0.45); glass.fillRoundedRect(x - jwd / 2 + 5, bot - jh + 10, 4, jh - 22, 2);
+      glass.fillStyle(0x9b6a3c, 1); glass.fillRoundedRect(x - jwd / 2 - 2, bot - jh - 8, jwd + 4, 10, 3);
+      this.content.add([ic, glass]);
+      // Count on a little paper label.
+      const lab = this.add.graphics(); lab.fillStyle(0xfff6e0, 1); lab.fillRoundedRect(x - 16, bot - 22, 32, 18, 5); lab.lineStyle(1, 0xb89564, 1); lab.strokeRoundedRect(x - 16, bot - 22, 32, 18, 5);
+      this.content.add([lab, this.text(x, bot - 13, `${cnt}`, 13, INK, 900).setOrigin(0.5)]);
+      this.content.add(this.text(x, bot + 8, m.name, 11, '#8a6a50', 800).setOrigin(0.5, 0).setWordWrapWidth(jw).setAlign('center'));
+      const hz = { x: x - jw / 2, y: bot - jh - 8, w: jw, h: jh + 26 };
+      this.rects[`minor:${m.id}`] = hz;
+      const z = this.add.zone(hz.x, hz.y, hz.w, hz.h).setOrigin(0, 0).setInteractive();
+      z.on('pointerup', (p: Phaser.Input.Pointer) => { if (p.getDistance() < 24) { sfx.blip(); this.tweens.add({ targets: ic, y: ic.y - 8, duration: 120, yoyo: true }); this.hint(`${m.name}: ${cnt}`); } });
+      this.content.add(z);
     });
-    y += 82;
     const goals = COSMETICS.filter((c) => c.unlock?.minor).map((c) => `${c.name}: ${Math.min(save.minor[c.unlock!.minor![0]] ?? 0, c.unlock!.minor![1])}/${c.unlock!.minor![1]} ${c.unlock!.minor![0]}s`);
-    this.content.add(this.text(a.x, y, `Collect to unlock \u2014 ${goals.join('   \u00B7   ')}`, 15, '#8a6a50', 700));
+    this.content.add(this.text(a.x + a.w * 0.64, jy + 8, 'Collect to unlock', 15, '#8a6a50', 900));
+    this.content.add(this.text(a.x + a.w * 0.64, jy + 30, goals.join('\n'), 13, '#8a6a50', 700).setLineSpacing(2));
     // Reset (gentle, two taps).
     const rw = 210, rh = 50, rx = a.x + a.w - rw, ry = a.y + a.h - rh;
     const armed = this.time.now < this.resetArmed;
