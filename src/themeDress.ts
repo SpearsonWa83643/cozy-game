@@ -2,6 +2,7 @@
 import Phaser from 'phaser';
 import { atlasOf, frameScale, ALL_PATHS, mulberry32 } from './art';
 import { theme, themeEvents, Theme } from './theme';
+import { TREE_BULBS } from './mount/xmasArt';
 import { sfx } from './audio';
 import { COTTAGE, SHRINE, VILLAGE_SIGN, PIER, POND, WINDMILL, BRIDGES, VILLAGE, PLAYER_START } from './layout';
 import { waterAt } from './geo';
@@ -19,6 +20,8 @@ export class ThemeDresser {
   orig = new Map<Phaser.GameObjects.Image, Orig>();
   /** Spring blossom clusters painted over some round canopies (made once, shown per theme). */
   blooms = new Map<Phaser.GameObjects.Image, Phaser.GameObjects.Image[]>();
+  /** Christmas snow caps sitting on round canopies (made once, shown per theme). */
+  snowcaps = new Map<Phaser.GameObjects.Image, Phaser.GameObjects.Image>();
   sky: Phaser.GameObjects.Image;
   fog: { img: Phaser.GameObjects.Image; ox: number; oy: number; v: number }[] = [];
   props: Phaser.GameObjects.Image[] = [];
@@ -32,13 +35,21 @@ export class ThemeDresser {
   peeks: Peek[] = [];
   orchardBats: { img: Phaser.GameObjects.Image; ph: number }[] = [];
   wisps: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
-  taps = { jack: 0, pumpkin: 0, bats: 0, peek: 0, candy: 0, leaves: 0, hay: 0 };
+  taps = { jack: 0, pumpkin: 0, bats: 0, peek: 0, candy: 0, leaves: 0, hay: 0, presents: 0, snowman: 0, lights: 0 };
+  /** Christmas: presents, snowmen and lit trees to tap (made once, shown only in Christmas). */
+  xmasProps: Phaser.GameObjects.Image[] = [];
+  presents: Phaser.GameObjects.Image[] = [];
+  snowmen: Phaser.GameObjects.Image[] = [];
+  litTrees: { tree: Phaser.GameObjects.Image; bulbs: Phaser.GameObjects.Image[]; glow: Phaser.GameObjects.Image; until: number }[] = [];
+  xmasBuilt = false;
   /** Fall: leaf piles + hay bales (made once, shown only in Fall). */
   fallProps: Phaser.GameObjects.Image[] = [];
   leafPiles: Phaser.GameObjects.Image[] = [];
   hay: Phaser.GameObjects.Image[] = [];
   fallBuilt = false;
   tufts: Phaser.GameObjects.Image[] | null = null;
+  /** Each meadow tuft's own (Spring) frame, so Christmas can swap in its snowy twin and back. */
+  tuftFrame = new Map<Phaser.GameObjects.Image, string>();
 
   constructor(private w: WorldScene) {
     this.sky = w.add.image(0, 0, atlasOf('sky_halloween'), 'sky_halloween').setScrollFactor(0).setDepth(8700).setBlendMode(Phaser.BlendModes.MULTIPLY).setVisible(false);
@@ -192,6 +203,108 @@ export class ThemeDresser {
     for (const [x, y] of [[COTTAGE.x - 92, COTTAGE.y + 22], [WINDMILL.x + 80, WINDMILL.y + 34], [VILLAGE_SIGN.x - 70, VILLAGE_SIGN.y + 12], [PIER.x + 70, PIER.y0 - 24], [BRIDGES.north.x + 150, BRIDGES.north.y + 30]] as [number, number][]) hay(x, y);
   }
 
+
+  /** Christmas props: wrapped presents to pop open, snowmen to wobble and little lit trees whose
+   *  lights twinkle brighter when tapped. Made the first time Christmas is shown. */
+  private buildXmasProps() {
+    if (this.xmasBuilt) return;
+    this.xmasBuilt = true;
+    const w = this.w;
+    const rng = mulberry32(1225);
+    const free = (x: number, y: number) => !waterAt(x, y, 12) && !w.nav.isBlocked(...w.nav.cellOf(x, y));
+    const put = (x: number, y: number, frame: string, scale: number) => {
+      const img = w.add.image(x, y, atlasOf(frame), frame).setOrigin(0.5, 1).setScale(scale / (frameScale[frame] ?? 2.5)).setDepth(y);
+      this.xmasProps.push(img);
+      return img;
+    };
+    const BULB = [0xff4a4a, 0x5ad85a, 0xffd04a, 0x4ab0ff];
+    const present = (x: number, y: number, scale: number) => {
+      if (!free(x, y)) return;
+      const img = put(x, y, `xm_present${Math.floor(rng() * 4)}`, scale);
+      this.presents.push(img);
+      const sx = img.scaleX, sy = img.scaleY;
+      w.tappables.push({
+        x: () => img.x, y: () => img.y - 16, r: 36, enabled: () => img.visible,
+        tap: () => {
+          this.taps.presents++; w.life.reactions++;
+          sfx.chimes();
+          w.floatText(img.x, img.y - 52, ['A present!', 'Ho ho ho!', 'For you!', 'Surprise!'][Math.floor(Math.random() * 4)], '#fff1c4');
+          w.burst(img.x, img.y - 30, 0xffd04a, 10, 'spark');
+          w.burst(img.x, img.y - 30, 0xff6a6a, 6, 'spark');
+          w.burst(img.x, img.y - 24, 0xffffff, 8, 'p_snow');
+          w.tweens.killTweensOf(img);
+          img.setScale(sx * 0.82, sy * 1.28);
+          w.tweens.add({ targets: img, scaleX: sx, scaleY: sy, duration: 800, ease: 'Elastic.easeOut' });
+        },
+      });
+    };
+    const snowman = (x: number, y: number) => {
+      if (!free(x, y)) return;
+      const img = put(x, y, 'xm_snowman', 1.0);
+      this.snowmen.push(img);
+      w.tappables.push({
+        x: () => img.x, y: () => img.y - 34, r: 42, enabled: () => img.visible,
+        tap: () => {
+          this.taps.snowman++; w.life.reactions++;
+          sfx.giggle();
+          w.floatText(img.x, img.y - 100, ['Brrr!', 'Hello friend!', 'Snow day!', 'Hee hee!'][Math.floor(Math.random() * 4)], '#eaf4ff');
+          w.burst(img.x, img.y - 50, 0xffffff, 14, 'p_snow');
+          w.tweens.killTweensOf(img);
+          img.setAngle(0);
+          w.tweens.add({ targets: img, angle: { from: -12, to: 12 }, duration: 160, yoyo: true, repeat: 2, ease: 'Sine.easeInOut', onComplete: () => img.setAngle(0) });
+        },
+      });
+    };
+    const litTree = (x: number, y: number) => {
+      if (!free(x, y)) return;
+      const tree = put(x, y, 'xm_tree', 1.05);
+      const glow = w.fx(x, y - 50 * 1.05, 'glow', 0.7).setBlendMode('ADD').setTint(0xffd27a).setAlpha(0.22).setDepth(y + 1);
+      this.xmasProps.push(glow);
+      const bulbs = TREE_BULBS.map(([bx, by], i) => {
+        const b = w.add.image(x + (bx - 32) * 1.05, y - (92 - by) * 1.05, atlasOf('xm_bulb'), 'xm_bulb')
+          .setScale(1.05 / (frameScale['xm_bulb'] ?? 3) * 0.72).setTint(BULB[i % 4]).setDepth(y + 2).setBlendMode('ADD');
+        this.xmasProps.push(b);
+        return b;
+      });
+      const lt = { tree, bulbs, glow, until: 0 };
+      this.litTrees.push(lt);
+      w.tappables.push({
+        x: () => x, y: () => y - 46, r: 48, enabled: () => tree.visible,
+        tap: () => {
+          this.taps.lights++; w.life.reactions++;
+          sfx.sparkle();
+          lt.until = w.time.now + 4000;
+          w.floatText(x, y - 110, ['Sparkle!', 'So bright!', 'Twinkle twinkle!'][Math.floor(Math.random() * 3)], '#ffe8a0');
+          w.burst(x, y - 92, 0xffd84a, 12, 'spark');
+          bulbs.forEach((b, i) => b.setTint(BULB[(i + 1 + this.taps.lights) % 4]));
+        },
+      });
+    };
+    // Presents in little piles at cozy spots, a snowman or two, and lit trees by home and the village.
+    const pile = (x: number, y: number) => { present(x, y, 0.95); present(x + 34, y + 8, 0.8); if (rng() < 0.6) present(x - 30, y + 10, 0.72); };
+    pile(PLAYER_START.x + 120, PLAYER_START.y - 60);
+    pile(COTTAGE.x + 110, COTTAGE.y + 40);
+    pile(VILLAGE_SIGN.x + 90, VILLAGE_SIGN.y - 20);
+    pile(WINDMILL.x - 110, WINDMILL.y + 40);
+    snowman(PLAYER_START.x - 130, PLAYER_START.y + 30);
+    snowman(POND.x + 190, POND.y - 150);
+    snowman(VILLAGE_SIGN.x - 40, VILLAGE_SIGN.y + 120);
+    litTree(COTTAGE.x - 120, COTTAGE.y + 60);
+    litTree(PLAYER_START.x + 170, PLAYER_START.y - 170);
+    litTree(VILLAGE_SIGN.x - 110, VILLAGE_SIGN.y + 30);
+    litTree(PIER.x - 90, PIER.y0 - 30);
+  }
+
+  /** Christmas: twinkle the tree lights (brighter for a few seconds after a tap). */
+  tickXmas(time: number) {
+    for (const lt of this.litTrees) {
+      if (!lt.tree.visible) continue;
+      const hot = time < lt.until;
+      lt.bulbs.forEach((b, i) => b.setAlpha(hot ? 0.75 + 0.25 * Math.sin(time / 90 + i * 1.7) : 0.55 + 0.4 * Math.max(0, Math.sin(time / 420 + i * 2.1))));
+      lt.glow.setAlpha(hot ? 0.5 + 0.1 * Math.sin(time / 120) : 0.2);
+    }
+  }
+
   private jack(img: Phaser.GameObjects.Image, glow: Phaser.GameObjects.Image) {
     const w = this.w;
     const j: Jack = { img, glow, gs: glow.scaleX, flare: 0 };
@@ -316,9 +429,22 @@ export class ThemeDresser {
     const fp = !!t.fallProps;
     if (fp) this.buildFallProps();
     for (const p of this.fallProps) p.setVisible(fp);
-    // Grass tufts: Fall dries the meadow grass to gold.
+    const xp = t.id === 'christmas';
+    if (xp) this.buildXmasProps();
+    for (const p of this.xmasProps) p.setVisible(xp);
+    // Grass tufts: Fall dries the meadow grass to gold; Christmas swaps in frosty tufts poking out
+    // of little snow drifts (same size and base point, so nothing shifts).
     if (!this.tufts) this.tufts = (w.children.list as Phaser.GameObjects.Image[]).filter((o) => o.type === 'Image' && /^tuft\d$/.test(o.frame?.name ?? ''));
-    for (const tf of this.tufts) { if (t.grass) tf.setTint(t.grass); else tf.clearTint(); }
+    for (const tf of this.tufts) {
+      let k = this.tuftFrame.get(tf);
+      if (k === undefined) { k = tf.frame.name; this.tuftFrame.set(tf, k); }
+      const want = t.frost ? `x_${k}` : k;
+      if (tf.frame.name !== want) {
+        const { scaleX, scaleY, originX, originY } = tf;
+        tf.setTexture(atlasOf(want), want).setOrigin(originX, originY).setScale(scaleX, scaleY);
+      }
+      if (t.frost) tf.clearTint(); else if (t.grass) tf.setTint(t.grass); else tf.clearTint();
+    }
     if (t.props) this.buildProps();
     for (const p of this.props) p.setVisible(t.props);
     for (const b of this.batTrees) for (const f of b.fly) { f.t = -1; f.img.setVisible(false); }
@@ -352,13 +478,14 @@ export class ThemeDresser {
       } else {
         // Spring has no autumn trees: the amber tree4 becomes its fresh-green twin (same silhouette).
         // Fall turns every leafy round tree into the amber autumn tree4 (tinted red/orange/gold below).
-        const want = t.id === 'spring' && f === 'tree4' ? 'tree4s' : t.autumn && round && f.startsWith('tree') ? 'tree4' : f;
+        const want = t.id === 'spring' && f === 'tree4' ? 'tree4s' : t.autumn && round && f.startsWith('tree') ? 'tree4' : t.frost && round && (f === 'tree3' || f === 'tree4') ? 'tree4s' : f;
         if (img.frame.name !== want) {
           if (want === f) img.setTexture(o.tex, f).setOrigin(o.ox, o.oy).setScale(o.sx, o.sy);
           else img.setTexture(atlasOf(want), want).setOrigin(o.ox, o.oy).setScale(o.sx, o.sy);
         }
         if (t.id === 'halloween') img.setTint(fruity ? 0xf7c0a0 : f.startsWith('pine') ? 0x9c88c0 : f.startsWith('birch') ? 0xffc27a : t.foliage ?? 0xffffff);
         else if (t.autumn) img.setTint(fruity ? t.autumn.fruit : f.startsWith('pine') ? t.autumn.pine : f.startsWith('birch') ? t.autumn.birch : t.autumn.tints[(i * 7 + Math.floor(img.x)) % t.autumn.tints.length]);
+        else if (t.frost) img.setTint(fruity ? t.frost.fruit : f.startsWith('pine') ? t.frost.pine : f.startsWith('birch') ? t.frost.birch : t.frost.leafy);
         else if (t.blossom && round && i % t.blossom.every === 0) img.setTint(0xfff2f4);
         else img.clearTint();
       }
@@ -382,6 +509,18 @@ export class ThemeDresser {
         this.blooms.set(img, bl);
       }
       if (bl) for (const p of bl) p.setVisible(bloom);
+      // Christmas: a soft white snow cap on top of every round leafy canopy, fruit trees included
+      // (theirs sits a little higher and slimmer so the hanging fruit still pop out in front).
+      const fruitTree = fruity && w.reacts.fruit.get(img)?.minor !== 'berry';
+      const capOn = !!t.frost && (round || fruitTree) && !t.trees;
+      let cap = this.snowcaps.get(img);
+      if (capOn && !cap) {
+        const b = img.getBounds();
+        cap = w.add.image(b.centerX, b.y + b.height * (fruity ? 0.17 : 0.2), atlasOf('x_snowcap'), 'x_snowcap')
+          .setDisplaySize(b.width * (fruity ? 0.8 : 0.84), b.height * (fruity ? 0.28 : 0.34)).setFlipX((Math.floor(img.x) & 1) === 1).setDepth(img.depth + 0.02);
+        this.snowcaps.set(img, cap);
+      }
+      if (cap) cap.setVisible(capOn);
     }
     w.reacts.restyleStumps();
     for (const b of w.reacts.foliage) { if (t.foliage) b.setTint(t.foliage); else b.clearTint(); }
@@ -393,7 +532,7 @@ export class ThemeDresser {
     const [pollen] = w.ambient;
     pollen?.updateConfig({ tint: t.particles.pollen } as any);
     // Each theme's petal/leaf frame has its own emitter on the right atlas page; only one runs.
-    const petals = w.makePetals(t.particles.petal, t.particles.petalTint, t.id === 'halloween' ? 300 : t.id === 'spring' ? 380 : t.id === 'fall' ? 260 : 700);
+    const petals = w.makePetals(t.particles.petal, t.particles.petalTint, t.id === 'halloween' ? 300 : t.id === 'spring' ? 380 : t.id === 'fall' ? 260 : t.id === 'christmas' ? 140 : 700);
     for (const [f, e] of w.petalBy) { const on = e === petals; e.emitting = on; if (!on) e.killAll(); e.setVisible(on); }
     w.petals = petals;
     for (const e of w.fireflies) e.updateConfig({ tint: t.particles.firefly } as any);
@@ -405,13 +544,14 @@ export class ThemeDresser {
     sfx.setSoundscape(t.soundscape);
     if (live) {
       w.ground.restyle();
-      w.cameras.main.flash(400, t.id === 'halloween' ? 120 : 255, t.id === 'halloween' ? 80 : t.id === 'fall' ? 200 : 245, t.id === 'halloween' ? 160 : t.id === 'fall' ? 140 : 220);
-      w.burst(w.feet.x, w.feet.y - 30, t.id === 'halloween' ? 0xffa040 : t.id === 'spring' ? 0xffc4dc : t.id === 'fall' ? 0xff9a4a : 0x9be07a, 30, t.id === 'halloween' ? 'spark' : 'leaf');
+      w.cameras.main.flash(400, t.id === 'halloween' ? 120 : 255, t.id === 'halloween' ? 80 : t.id === 'fall' ? 200 : 245, t.id === 'halloween' ? 160 : t.id === 'fall' ? 140 : t.id === 'christmas' ? 255 : 220);
+      w.burst(w.feet.x, w.feet.y - 30, t.id === 'halloween' ? 0xffa040 : t.id === 'spring' ? 0xffc4dc : t.id === 'fall' ? 0xff9a4a : t.id === 'christmas' ? 0xffffff : 0x9be07a, 30, t.id === 'halloween' ? 'spark' : t.id === 'christmas' ? 'p_snow' : 'leaf');
     }
   }
 
   update(time: number, dt: number) {
     const w = this.w;
+    if (this.litTrees.length) this.tickXmas(time);
     const cam = w.cameras.main;
     if (this.sky.visible) this.sky.setPosition(cam.width / 2, cam.height / 2).setDisplaySize(cam.width / cam.zoom * 1.2, cam.height / cam.zoom * 1.2);
     // Blossoms follow their canopy (chopped trees lose them, see-through fades carry over).
@@ -419,6 +559,11 @@ export class ThemeDresser {
       const on = img.active && img.visible && bl[0]?.visible !== undefined;
       const a = on ? 0.92 * img.alpha : 0;
       if (bl[0] && bl[0].alpha !== a) for (const p of bl) p.setAlpha(a);
+    }
+    // Snow caps follow their canopy too (chopped trees lose them, see-through fades carry over).
+    if (theme.frost) for (const [img, cap] of this.snowcaps) {
+      const a = img.active && img.visible ? img.alpha : 0;
+      if (cap.alpha !== a) cap.setAlpha(a);
     }
     if (theme.fog) {
       const v = cam.worldView;

@@ -1401,7 +1401,7 @@ export class WorldScene extends Phaser.Scene {
       setRes: (r: { food?: number; wood?: number; stone?: number }) => { Object.assign(save.village.res, r); self.game.events.emit('res', null, 0); },
       moveVillager: (id: number, x: number, y: number) => { const q = self.village.villagers.find((z) => z.data.id === id); if (q) { q.x = x; q.y = y; q.path = []; q.task = 'idle'; q.think = 0.2; q.clearMark(); } },
       setNeeds: (id: number, n: { food?: number; sleep?: number; fun?: number }) => { const q = self.village.villagers.find((x) => x.data.id === id); if (q) Object.assign(q.data, n); },
-      setTheme: (id: 'spring' | 'halloween' | 'fall' | 'classic') => setTheme(id),
+      setTheme: (id: 'spring' | 'halloween' | 'fall' | 'christmas' | 'classic') => setTheme(id),
       /** Every live particle's frame, per emitter, in the world + wild scenes (art-management checks). */
       particleFrames() {
         const out: { scene: string; tex: string; frame: string; frameTex: string }[] = [];
@@ -1451,6 +1451,25 @@ export class WorldScene extends Phaser.Scene {
         return { theme: theme.id, autumn, petal, soundscape: theme.soundscape.id,
           leafPiles: d.leafPiles.filter((p) => p.visible).map((p) => [r(p.x), r(p.y - 10)]), hay: d.hay.filter((p) => p.visible).map((p) => [r(p.x), r(p.y - 16)]),
           goldTufts: tufts.filter((t) => t.isTinted).length, tufts: tufts.length, taps: { leaves: d.taps.leaves, hay: d.taps.hay } };
+      },
+      /** Test hook (Christmas): frosted canopies, which particle emitter runs, soundscape. */
+      christmas() {
+        const fr = theme.frost;
+        let frosted = 0;
+        if (fr) for (const c of self.canopies) if (c.visible && [fr.leafy, fr.pine, fr.birch, fr.fruit].includes((c as any).tintTopLeft ?? (c as any).tint)) frosted++;
+        let petal = '';
+        for (const [f, e] of self.petalBy) if (e.emitting) petal = f;
+        let caps = 0;
+        let fruitCaps = 0;
+        for (const [img, cap] of self.dresser.snowcaps) if (cap.visible && img.visible) { caps++; if (self.reacts.fruit.has(img)) fruitCaps++; }
+        const tufts = self.dresser.tufts ?? [];
+        const snowTufts = tufts.filter((t) => /^x_tuft\d$/.test(t.frame.name)).length;
+        const d = self.dresser, r = Math.round;
+        const vis = (a: Phaser.GameObjects.Image[], dy: number) => a.filter((p) => p.visible).map((p) => [r(p.x), r(p.y - dy)]);
+        return { theme: theme.id, frosted, caps, fruitCaps, snowTufts, tufts: tufts.length, petal, soundscape: theme.soundscape.id,
+          presents: vis(d.presents, 16), snowmen: vis(d.snowmen, 34), litTrees: d.litTrees.filter((l) => l.tree.visible).map((l) => [r(l.tree.x), r(l.tree.y - 46)]),
+          bulbs: d.litTrees.reduce((n, l) => n + l.bulbs.filter((b) => b.visible).length, 0),
+          taps: { presents: d.taps.presents, snowman: d.taps.snowman, lights: d.taps.lights } };
       },
       villageEvent: (e: 'merchant' | 'rain' | 'festival') => self.village.start(e),
       mount: () => self.mount.snapshot(),

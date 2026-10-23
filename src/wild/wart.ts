@@ -155,4 +155,5 @@ export function paintWildArt(scene: Phaser.Scene) {
   buildAtlas(scene, ATLAS3);
   canvasTex(scene, 'wg_classic', 128, 128, (c) => groundTile(c, [96, 42, 52], 5), 2, true);
   canvasTex(scene, 'wg_halloween', 128, 128, (c) => groundTile(c, [170, 22, 36], 6), 2, true);
+  canvasTex(scene, 'wg_snow', 128, 128, (c) => groundTile(c, [206, 26, 88], 7), 2, true); // Christmas: soft blue-white snow
 }

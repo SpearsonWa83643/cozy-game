@@ -112,7 +112,7 @@ export class MenuScene extends Phaser.Scene {
     });
     // Theme toggle: one big icon per theme, the active one lit up.
     {
-      const n = THEME_ORDER.length, tw = 64, ty = by + 15;
+      const n = THEME_ORDER.length, tw = n > 3 ? 56 : 64, ty = by + 15; // 4+ themes: slimmer buttons so they clear the tabs on iPad mini
       const tx0 = bx + bw - 22 - 56 - 18 - n * (tw + 8);
       THEME_ORDER.forEach((id, i) => {
         const on = theme.id === id;

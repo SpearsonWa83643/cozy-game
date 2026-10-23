@@ -41,8 +41,9 @@ export class WildScene extends Phaser.Scene {
   playerShadow!: Phaser.GameObjects.Image;
   solids!: Phaser.Physics.Arcade.StaticGroup;
   groundTS!: Phaser.GameObjects.TileSprite;
+  snow: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   deco!: Phaser.GameObjects.Graphics;
-  trees: { img: Phaser.GameObjects.Image; v: number; pine: boolean }[] = [];
+  trees: { img: Phaser.GameObjects.Image; v: number; pine: boolean; cap?: Phaser.GameObjects.Image }[] = [];
   portal!: Phaser.GameObjects.Container;
   // Movement: the exact same model as the glade (shared src/controls.ts).
   nav!: NavGrid;
@@ -183,15 +184,16 @@ export class WildScene extends Phaser.Scene {
   /** Paints trails, glades and ponds for the current theme. */
   applyTheme() {
     const hal = theme.id === 'halloween';
-    this.groundTS.setTexture(hal ? 'wg_halloween' : 'wg_classic');
+    const xm = theme.id === 'christmas';
+    this.groundTS.setTexture(hal ? 'wg_halloween' : xm ? 'wg_snow' : 'wg_classic');
     const g = this.deco; g.clear();
     const m = this.map;
     for (const c of m.clearings) {
-      g.fillStyle(hal ? 0x4f6f64 : 0xa9d36b, 0.55); g.fillEllipse(c.x, c.y, c.r * 2.1, c.r * 1.7);
-      g.fillStyle(hal ? 0x5a7a6c : 0xb9de7c, 0.5); g.fillEllipse(c.x, c.y, c.r * 1.6, c.r * 1.25);
+      g.fillStyle(hal ? 0x4f6f64 : xm ? 0xf4f9fc : 0xa9d36b, 0.55); g.fillEllipse(c.x, c.y, c.r * 2.1, c.r * 1.7);
+      g.fillStyle(hal ? 0x5a7a6c : xm ? 0xffffff : 0xb9de7c, 0.5); g.fillEllipse(c.x, c.y, c.r * 1.6, c.r * 1.25);
     }
     for (const path of m.paths) {
-      for (const [w, col] of [[64, hal ? 0x5a4a3e : 0xb08a58], [48, hal ? 0x7a6450 : 0xdcc08a]] as const) {
+      for (const [w, col] of [[64, hal ? 0x5a4a3e : xm ? 0xa08868 : 0xb08a58], [48, hal ? 0x7a6450 : xm ? 0xcfbea0 : 0xdcc08a]] as const) {
         g.lineStyle(w, col, 1);
         g.beginPath(); g.moveTo(path[0][0], path[0][1]);
         for (const [x, y] of path.slice(1)) g.lineTo(x, y);
@@ -200,19 +202,39 @@ export class WildScene extends Phaser.Scene {
       }
     }
     for (const p of m.ponds) {
-      g.fillStyle(hal ? 0x2c3b30 : 0x6c8f45, 1); g.fillEllipse(p.x, p.y + 4, p.rx * 2 + 22, p.ry * 2 + 18);
-      g.fillStyle(hal ? 0x3d3a6e : 0x4aa6d8, 1); g.fillEllipse(p.x, p.y, p.rx * 2, p.ry * 2);
-      g.fillStyle(hal ? 0x6b62a8 : 0x8fd3f5, 0.6); g.fillEllipse(p.x - p.rx * 0.2, p.y - p.ry * 0.25, p.rx * 1.1, p.ry * 0.7);
+      g.fillStyle(hal ? 0x2c3b30 : xm ? 0xc8d8e2 : 0x6c8f45, 1); g.fillEllipse(p.x, p.y + 4, p.rx * 2 + 22, p.ry * 2 + 18);
+      g.fillStyle(hal ? 0x3d3a6e : xm ? 0x9ccbe6 : 0x4aa6d8, 1); g.fillEllipse(p.x, p.y, p.rx * 2, p.ry * 2);
+      g.fillStyle(hal ? 0x6b62a8 : xm ? 0xeaf6ff : 0x8fd3f5, 0.6); g.fillEllipse(p.x - p.rx * 0.2, p.y - p.ry * 0.25, p.rx * 1.1, p.ry * 0.7);
     }
     const tf = theme.trees;
     for (const t of this.trees) {
       if (!t.pine && tf) { const f = tf[t.v % tf.length]; t.img.setTexture(atlasOf(f), f).setOrigin(0.5, 192 / 200).setScale(TREE_SCALE / (frameScale[f] ?? S)); }
       else if (!t.pine) { const f = treeFrame(t.v); t.img.setTexture(atlasOf(f), f).setOrigin(0.5, 202 / 210).setScale((0.9 + (t.v % 3) * 0.08) * TREE_SCALE / (frameScale[f] ?? S)); }
       if (theme.autumn) t.img.setTint(t.pine ? theme.autumn.pine : theme.autumn.tints[t.v % theme.autumn.tints.length]);
+      else if (theme.frost) t.img.setTint(t.pine ? theme.frost.pine : theme.frost.leafy);
       else if (theme.foliage !== null && t.pine) t.img.setTint(theme.foliage); else t.img.clearTint();
     }
-    this.cameras.main.setBackgroundColor(hal ? '#20262a' : theme.id === 'fall' ? '#5a5430' : '#3c5a32');
+    // Christmas: snow caps on the round canopies (made once, toggled per theme).
+    for (const t of this.trees) {
+      if (t.pine) continue;
+      if (theme.frost && !t.cap) {
+        const b = t.img.getBounds();
+        t.cap = this.add.image(b.centerX, b.y + b.height * 0.2, atlasOf('x_snowcap'), 'x_snowcap')
+          .setDisplaySize(b.width * 0.84, b.height * 0.34).setFlipX((Math.floor(t.img.x) & 1) === 1).setDepth(t.img.depth + 0.02);
+      }
+      t.cap?.setVisible(!!theme.frost);
+    }
+    this.cameras.main.setBackgroundColor(hal ? '#20262a' : theme.id === 'fall' ? '#5a5430' : theme.id === 'christmas' ? '#8a9aa4' : '#3c5a32');
     for (const mo of this.monsters) mo.retheme();
+    // Christmas: gentle snowfall over the woods (screen-fixed, kept light for iPad).
+    if (xm && !this.snow) {
+      this.snow = this.add.particles(0, 0, atlasOf('p_snow'), {
+        frame: 'p_snow', x: { min: -60, max: 1300 }, y: -20, lifespan: 9000, frequency: 160, maxAliveParticles: 90,
+        speedY: { min: 30, max: 60 }, speedX: { min: -14, max: 14 }, scale: { min: 0.6, max: 1.1 }, alpha: { start: 0.95, end: 0.6 },
+        rotate: { min: 0, max: 360 },
+      } as any).setScrollFactor(0).setDepth(9000);
+    }
+    if (this.snow) { this.snow.setVisible(xm); if (xm) this.snow.start(); else this.snow.stop(true); }
     this.events.emit('theme');
   }
 
@@ -461,7 +483,7 @@ export class WildScene extends Phaser.Scene {
   testState() {
     return {
       path: this.path.length, chasing: !!this.chase, speed: Math.round(Math.hypot(this.body.velocity.x, this.body.velocity.y)), stick: !!this.stick,
-      hearts: this.hearts, bag: { ...this.bag }, found: [...this.found], pickups: this.pickups.filter((p) => !p.taken).map((p) => ({ kind: p.kind, x: Math.round(p.x), y: Math.round(p.y) })), chests: this.chests.map((c) => ({ x: c.x, y: c.y, opened: c.opened, lunchbox: !!c.lunchbox })), start: [this.map.start.x, this.map.start.y], monsters: this.monsters.filter((m) => m.alive).length, total: this.monsters.length, poofs: this.runPoofs, swings: this.swings,
+      hearts: this.hearts, ground: this.groundTS.texture.key, snowing: !!this.snow?.visible && !!this.snow?.emitting, bag: { ...this.bag }, found: [...this.found], pickups: this.pickups.filter((p) => !p.taken).map((p) => ({ kind: p.kind, x: Math.round(p.x), y: Math.round(p.y) })), chests: this.chests.map((c) => ({ x: c.x, y: c.y, opened: c.opened, lunchbox: !!c.lunchbox })), start: [this.map.start.x, this.map.start.y], monsters: this.monsters.filter((m) => m.alive).length, total: this.monsters.length, poofs: this.runPoofs, swings: this.swings,
       mons: this.monsters.filter((m) => m.alive).map((m) => ({ id: m.id, x: Math.round(m.x), y: Math.round(m.y), kind: m.kind, hp: m.hp })),
     };
   }
