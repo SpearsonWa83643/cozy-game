@@ -1464,7 +1464,12 @@ export class WorldScene extends Phaser.Scene {
         for (const [img, cap] of self.dresser.snowcaps) if (cap.visible && img.visible) { caps++; if (self.reacts.fruit.has(img)) fruitCaps++; }
         const tufts = self.dresser.tufts ?? [];
         const snowTufts = tufts.filter((t) => /^x_tuft\d$/.test(t.frame.name)).length;
-        return { theme: theme.id, frosted, caps, fruitCaps, snowTufts, tufts: tufts.length, petal, soundscape: theme.soundscape.id };
+        const d = self.dresser, r = Math.round;
+        const vis = (a: Phaser.GameObjects.Image[], dy: number) => a.filter((p) => p.visible).map((p) => [r(p.x), r(p.y - dy)]);
+        return { theme: theme.id, frosted, caps, fruitCaps, snowTufts, tufts: tufts.length, petal, soundscape: theme.soundscape.id,
+          presents: vis(d.presents, 16), snowmen: vis(d.snowmen, 34), litTrees: d.litTrees.filter((l) => l.tree.visible).map((l) => [r(l.tree.x), r(l.tree.y - 46)]),
+          bulbs: d.litTrees.reduce((n, l) => n + l.bulbs.filter((b) => b.visible).length, 0),
+          taps: { presents: d.taps.presents, snowman: d.taps.snowman, lights: d.taps.lights } };
       },
       villageEvent: (e: 'merchant' | 'rain' | 'festival') => self.village.start(e),
       mount: () => self.mount.snapshot(),
