@@ -242,7 +242,7 @@ export class Boats {
   /** Per frame, after the player moved: the boat carries the rider and bobs. */
   update(time: number, dt: number, speed: number, vx: number) {
     for (const b of this.boats) {
-      if (b === this.riding) {
+      if (b === this.riding && !this.hopping) {
         if (vx > 20) b.flip = false; else if (vx < -20) b.flip = true;
         const bob = Math.sin(time / 520) * 1.6;
         this.place(b, this.w.feet.x, this.w.feet.y, bob);

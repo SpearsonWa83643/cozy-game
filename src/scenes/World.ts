@@ -1565,7 +1565,16 @@ export class WorldScene extends Phaser.Scene {
       giveTreasure: (id: string) => { addTreasure(id); self.game.events.emit('treasure', id); },
       mountTap: (x: number, y: number) => self.tapWorld(x, y),
       boat: () => self.boat.snapshot(),
-      boatTap: (x: number, y: number) => self.tapWorld(x, y),
+      waterAt: (x: number, y: number) => waterAt(x, y),
+      /** A rowable water point ~150 px out from boat i (test helper). */
+      boatProbe(i: number) {
+        const b = self.boat.boats[i];
+        for (let r = 170; r >= 70; r -= 20) for (let a = 0; a < Math.PI * 2; a += Math.PI / 12) {
+          const x = b.x + Math.cos(a) * r, y = b.y + Math.sin(a) * r * 0.7;
+          if (self.boat.inside(b, x, y)) return [Math.round(x), Math.round(y)];
+        }
+        return null;
+      },
       worldToScreen(x: number, y: number) {
         const cam = self.cameras.main;
         return { x: (x - cam.worldView.x) * cam.zoom / DPR, y: (y - cam.worldView.y) * cam.zoom / DPR };
