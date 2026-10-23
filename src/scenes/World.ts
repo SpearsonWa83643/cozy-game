@@ -3,6 +3,7 @@ import { stickInput, steerBody, stepPath, pulseTapMarker, slideOutOfWater, CamZo
 import { S, ATLAS, atlasOf, frameScale, mulberry32, pondValue, distToPaths, pathDist, ALL_PATHS , TREE_SCALE} from '../art';
 import { GroundStreamer } from '../ground';
 import { waterBlocks, areaAt, waterAt } from '../geo';
+import { Boats } from '../boat';
 import { save, persist, setPuzzle, addTreasure, hasTreasure, visit, takeFruit, freshSave } from '../save';
 import { buildHeroSheet } from '../hero';
 import { buildAreas } from '../areas';
@@ -257,6 +258,7 @@ export class WorldScene extends Phaser.Scene {
     this.mount = new Mount(this);
     this.placeStart();
     this.tapMarker = this.fx(0, 0, 'ripple', 0.5).setBlendMode('ADD').setAlpha(0).setDepth(-300);
+    this.boat = new Boats(this);
 
     // Camera.
     const cam = this.cameras.main;
@@ -650,6 +652,9 @@ export class WorldScene extends Phaser.Scene {
 
   // ------------------------------------------------------------ Wild Woods trailhead
   inWild = false;
+  /** 9.35: rowboats on the pond and lake. */
+  boat!: Boats;
+  wasBoating = false;
   buildTrailhead() {
     const T = TRAILHEAD;
     this.shadow(T.x, T.y - 2, 120, 0.6);
@@ -673,6 +678,7 @@ export class WorldScene extends Phaser.Scene {
   enterWild(seed?: number) {
     if (this.inWild) return;
     if (this.mount.carrying) this.mount.dropNow();
+    this.boat?.forceOut();
     this.inWild = true;
     this.locked = true;
     this.path = []; this.body.setVelocity(0, 0);
@@ -1006,6 +1012,7 @@ export class WorldScene extends Phaser.Scene {
     if (this.locked || this.registry.get('dialogOpen') || this.registry.get('menuOpen')) return;
     if (this.mount.carrying) { if (this.mount.onTap(wx, wy)) return; }
     if (this.village.building) { this.village.buildTap(wx, wy); return; }
+    if (this.boat?.active || this.boat?.hopping) { this.boat.tap(wx, wy); return; }
     if (this.fishing.active) { this.fishing.tap(); return; }
     // Creatures and reactive objects respond right away, wherever they are on screen.
     let tb: Tappable | null = null;
@@ -1150,7 +1157,7 @@ export class WorldScene extends Phaser.Scene {
     const dt = Math.min(delta, 50) / 1000;
     const k = this.keys;
     const paused = !!this.registry.get('dialogOpen') || !!this.registry.get('menuOpen');
-    const frozen = this.buildView || this.locked || paused || ['cast', 'reel', 'land'].includes(this.fishing?.state) || this.mount.carrying;
+    const frozen = this.buildView || this.locked || paused || ['cast', 'reel', 'land'].includes(this.fishing?.state) || this.mount.carrying || !!this.boat?.hopping;
     this.mount.update(time, dt, paused);
     const carried = this.mount.riderOn;
     let ix = 0, iy = 0;
@@ -1168,7 +1175,9 @@ export class WorldScene extends Phaser.Scene {
     if (!carried) steerBody(this.body, ix, iy, len, dt);
 
     // Pond: collide against the painted shoreline shape, sliding along it.
-    if (!carried) slideOutOfWater(this.feet, this.lastSafe, waterBlocks);
+    const boating = !!this.boat?.active;
+    if (this.boat?.hopping) { /* the hop tween moves the feet */ }
+    else if (!carried) slideOutOfWater(this.feet, this.lastSafe, boating ? this.boat.blocks : waterBlocks);
     else this.lastSafe = [this.feet.x, this.feet.y];
 
     // Facing + animation.
@@ -1182,12 +1191,12 @@ export class WorldScene extends Phaser.Scene {
     } else {
       this.walkPhase = 0;
     }
-    const stepFrame = speed > 25 ? [1, 0, 2, 0][Math.floor(this.walkPhase) % 4] : 0;
+    const stepFrame = speed > 25 && !boating ? [1, 0, 2, 0][Math.floor(this.walkPhase) % 4] : 0;
     if (stepFrame !== this.lastStepFrame && stepFrame !== 0 && speed > 80) {
       this.dust.emitParticleAt(this.feet.x, this.feet.y + 4, 2);
     }
     this.lastStepFrame = stepFrame;
-    if (!carried) {
+    if (!carried && !this.boat?.hopping) {
     this.playerImg.setTexture(this.heroKey, `${this.facing}_${stepFrame}`).setFlipX(this.flip);
     const bob = speed > 25 ? Math.abs(Math.sin(this.walkPhase * Math.PI / 2)) * 2.4 : 0;
     const breathe = speed > 25 ? 0 : Math.sin(time / 420) * 0.018;
@@ -1196,6 +1205,8 @@ export class WorldScene extends Phaser.Scene {
     this.playerImg.setDepth(this.feet.y + 6);
     this.playerShadow.setPosition(this.feet.x, this.feet.y + 5).setScale((34 / 64) * (1 - bob * 0.03) / frameScale.shadow);
     }
+    this.boat?.update(time, dt, speed, v.x);
+    if (boating !== this.wasBoating) { this.wasBoating = boating; this.playerShadow.setVisible(!boating); }
 
     // Sway everything gently; rustle what the player brushes past.
     const t = time / 1000;
@@ -1330,6 +1341,7 @@ export class WorldScene extends Phaser.Scene {
       },
       teleport(x: number, y: number) {
         if (self.mount.carrying) self.mount.dropNow();
+        self.boat.forceOut();
         self.feet.setPosition(x, y);
         self.body.reset(x, y);
         self.cameras.main.centerOn(x, y + 18);
@@ -1552,6 +1564,8 @@ export class WorldScene extends Phaser.Scene {
       /** Test hook: grant a treasure (e.g. a mount egg) without the trip. */
       giveTreasure: (id: string) => { addTreasure(id); self.game.events.emit('treasure', id); },
       mountTap: (x: number, y: number) => self.tapWorld(x, y),
+      boat: () => self.boat.snapshot(),
+      boatTap: (x: number, y: number) => self.tapWorld(x, y),
       worldToScreen(x: number, y: number) {
         const cam = self.cameras.main;
         return { x: (x - cam.worldView.x) * cam.zoom / DPR, y: (y - cam.worldView.y) * cam.zoom / DPR };

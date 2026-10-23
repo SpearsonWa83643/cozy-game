@@ -31,7 +31,7 @@ export class Fishing {
     // A context prompt that follows you along any shoreline ("Fish" on the action button / E key).
     this.prompt = {
       x: 0, y: 0, r: 60, label: 'Fish', promptY: 115, noTap: true,
-      enabled: () => this.state === 'idle' && !!this.spot,
+      enabled: () => this.state === 'idle' && !!this.spot && !this.w.boat?.active,
       action: () => { if (this.spot) this.cast(this.spot[0], this.spot[1]); },
     };
     w.interactables.push(this.prompt);

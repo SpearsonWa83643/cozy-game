@@ -282,6 +282,7 @@ export class Village {
 
   // ------------------------------------------------------------ build mode
   enterBuild() {
+    this.w.boat?.forceOut();
     if (this.building) return;
     if (this.w.mount?.carrying) this.w.mount.dropNow(); // hop off first: build mode needs feet on the ground
     this.building = true;

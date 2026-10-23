@@ -121,7 +121,7 @@ export class Mount {
   /** Can the Call Mount button be used right now? */
   canCall() {
     const w = this.w;
-    return this.phase === 'off' && !w.inWild && !w.locked && !w.village?.building && !w.buildView && !w.fishing?.active
+    return this.phase === 'off' && !w.inWild && !w.locked && !w.village?.building && !w.buildView && !w.fishing?.active && !w.boat?.active && !w.boat?.hopping
       && !w.registry.get('dialogOpen') && !w.registry.get('menuOpen') && !w.registry.get('mountPicker');
   }
 
