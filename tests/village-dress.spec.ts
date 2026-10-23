@@ -41,6 +41,8 @@ test('village dresses up for each theme', async ({ page }) => {
 
   const v0 = await village(page);
   expect(v0.buildings.length).toBe(6);
+
+  for (const id of ['spring', 'summer', 'fall', 'halloween', 'christmas', 'winter']) {
     await page.evaluate((t) => (window as any).__cozy.setTheme(t), id);
     await page.waitForTimeout(1200);
     const v = await village(page);
@@ -59,7 +61,10 @@ test('village dresses up for each theme', async ({ page }) => {
       expect(by('garden')).toContain('vd_snowpile');
       expect(by('garden')).not.toContain('vd_icicles');
     }
-    if (id !== 'spring' && id !== 'classic') await page.waitForTimeout(4000), await page.screenshot({ path: `${SHOTS}/village-dress-${id}.png` });
+    if (id !== 'spring' && id !== 'classic') {
+      await page.waitForTimeout(4000);
+      await page.screenshot({ path: `${SHOTS}/village-dress-${id}.png` });
+    }
   }
   // Dressing does not pile up across theme flips.
   await page.evaluate(() => (window as any).__cozy.setTheme('winter'));
