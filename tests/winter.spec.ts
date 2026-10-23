@@ -38,6 +38,25 @@ test('winter: snowy look, snowmen only, own soundscape, picker', async ({ page }
     expect(c.litTrees.length).toBe(0);
     expect(c.bulbs).toBe(0);
 
+    // 11.5: snowball piles to tap (Winter only).
+    let wi = await cozy(page, 'winter()');
+    expect(wi.snowballs.length).toBeGreaterThanOrEqual(3);
+    {
+      const tp = (x: number, y: number) => page.evaluate(([x, y]) => (window as any).__cozy.teleport(x, y), [x, y]);
+      const [sx, sy] = wi.snowballs[0];
+      await tp(sx, sy + 110); await page.waitForTimeout(1500);
+      const s = await cozy(page, `worldToScreen(${sx}, ${sy})`);
+      await page.touchscreen.tap(Math.round(s.x), Math.round(s.y));
+      await expect.poll(async () => (await cozy(page, 'winter()')).taps.snowball, { timeout: 10_000, intervals: [200] }).toBeGreaterThanOrEqual(1);
+      await page.waitForTimeout(250);
+      await page.screenshot({ path: `${SHOTS}/winter-snowballs.png` });
+      await cozy(page, "setTheme('christmas')"); await page.waitForTimeout(800);
+      expect((await cozy(page, 'winter()')).snowballs.length).toBe(0);
+      await cozy(page, "setTheme('winter')"); await page.waitForTimeout(800);
+      wi = await cozy(page, 'winter()');
+      expect(wi.snowballs.length).toBeGreaterThanOrEqual(3);
+    }
+
     await page.evaluate(() => (window as any).__cozy.teleport(905, 1330));
     await page.waitForTimeout(5000);
     await page.screenshot({ path: `${SHOTS}/winter.png` });

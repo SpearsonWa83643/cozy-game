@@ -35,7 +35,7 @@ export class ThemeDresser {
   peeks: Peek[] = [];
   orchardBats: { img: Phaser.GameObjects.Image; ph: number }[] = [];
   wisps: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
-  taps = { jack: 0, pumpkin: 0, bats: 0, peek: 0, candy: 0, leaves: 0, hay: 0, presents: 0, snowman: 0, lights: 0, sunflower: 0, ball: 0 };
+  taps = { jack: 0, pumpkin: 0, bats: 0, peek: 0, candy: 0, leaves: 0, hay: 0, presents: 0, snowman: 0, lights: 0, sunflower: 0, ball: 0, snowball: 0 };
   /** Christmas: presents, snowmen and lit trees to tap (made once, shown only in Christmas). */
   xmasProps: Phaser.GameObjects.Image[] = [];
   presents: Phaser.GameObjects.Image[] = [];
@@ -46,6 +46,9 @@ export class ThemeDresser {
   summerProps: Phaser.GameObjects.Image[] = [];
   sunflowers: Phaser.GameObjects.Image[] = [];
   balls: Phaser.GameObjects.Image[] = [];
+  /** 11.5 Winter: snowball piles that go poof and roll back together when tapped (Winter only). */
+  snowballs: Phaser.GameObjects.Image[] = [];
+  winterBuilt = false;
   summerBuilt = false;
   /** Fall: leaf piles + hay bales (made once, shown only in Fall). */
   fallProps: Phaser.GameObjects.Image[] = [];
@@ -202,6 +205,39 @@ export class ThemeDresser {
     ball(POND.x + 190, POND.y - 150);
     ball(PIER.x - 90, PIER.y0 - 30);
     ball(VILLAGE_SIGN.x - 40, VILLAGE_SIGN.y + 120);
+  }
+
+  /** 11.5 Winter props: snowball piles by home, the pond, the cottage and the village. A tap throws a
+   *  puff of snow, squashes the pile flat, and it plops back up a moment later. */
+  private buildWinterProps() {
+    if (this.winterBuilt) return;
+    this.winterBuilt = true;
+    const w = this.w;
+    const free = (x: number, y: number) => !waterAt(x, y, 12) && !w.nav.isBlocked(...w.nav.cellOf(x, y));
+    const pile = (x: number, y: number) => {
+      if (!free(x, y)) return;
+      const k0 = 1.1 / (frameScale['wi_snowballs'] ?? 2.5);
+      const img = w.add.image(x, y, atlasOf('wi_snowballs'), 'wi_snowballs').setOrigin(0.5, 1).setScale(k0).setDepth(y);
+      this.snowballs.push(img);
+      w.tappables.push({
+        x: () => img.x, y: () => img.y - 22, r: 36, enabled: () => img.visible,
+        tap: () => {
+          this.taps.snowball++; w.life.reactions++;
+          sfx.thump();
+          w.floatText(img.x, img.y - 70, ['Poof!', 'Snowball!', 'Splat!', 'Brrr!'][Math.floor(Math.random() * 4)], '#e6f4ff');
+          w.burst(img.x, img.y - 24, 0xffffff, 14, 'p_snow');
+          w.tweens.killTweensOf(img);
+          img.setScale(k0);
+          w.tweens.add({ targets: img, scaleY: k0 * 0.35, scaleX: k0 * 1.25, duration: 140, ease: 'Quad.easeOut',
+            onComplete: () => { w.tweens.add({ targets: img, scaleY: k0, scaleX: k0, delay: 700, duration: 420, ease: 'Back.easeOut' }); } });
+        },
+      });
+    };
+    pile(PLAYER_START.x + 140, PLAYER_START.y + 50);
+    pile(POND.x - 170, POND.y + 190);
+    pile(COTTAGE.x - 140, COTTAGE.y + 70);
+    pile(VILLAGE_SIGN.x + 110, VILLAGE_SIGN.y + 60);
+    pile(WINDMILL.x - 90, WINDMILL.y + 60);
   }
 
   /** Fall props: crunchy leaf piles along the paths and under trees, hay bales (with pumpkins) at cozy spots. */
@@ -502,6 +538,8 @@ export class ThemeDresser {
     for (const p of this.xmasProps) p.setVisible(xp);
     // Winter keeps the snowmen (no presents or Christmas lights).
     for (const p of this.snowmen) p.setVisible(xp || wp);
+    if (wp) this.buildWinterProps();
+    for (const p of this.snowballs) p.setVisible(wp);
     // Grass tufts: Fall dries the meadow grass to gold; Christmas swaps in frosty tufts poking out
     // of little snow drifts (same size and base point, so nothing shifts).
     if (!this.tufts) this.tufts = (w.children.list as Phaser.GameObjects.Image[]).filter((o) => o.type === 'Image' && /^tuft\d$/.test(o.frame?.name ?? ''));

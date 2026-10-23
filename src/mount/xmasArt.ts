@@ -258,11 +258,32 @@ function paintBeachBall(c: Ctx, w: number, h: number) {
   c.strokeStyle = hsl(220, 30, 30, 0.7); c.lineWidth = 1.4; c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.stroke();
 }
 
+/** 11.5 Winter: a little pyramid of snowballs on a drift, with a red mitten left beside it. */
+function paintSnowballs(c: Ctx, w: number, h: number) {
+  dab(c, w / 2, h - 5, w * 0.44, 5, 0, hsl(210, 30, 60, 0.35));
+  c.fillStyle = hsl(205, 40, 96); c.beginPath(); c.ellipse(w / 2, h - 7, w * 0.42, 6, 0, 0, Math.PI * 2); c.fill();
+  const ball = (x: number, y: number, r: number) => {
+    const g = c.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r);
+    g.addColorStop(0, hsl(0, 0, 100)); g.addColorStop(0.7, hsl(205, 35, 93)); g.addColorStop(1, hsl(210, 35, 78));
+    c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+    c.strokeStyle = hsl(215, 30, 60, 0.7); c.lineWidth = 1.2; c.stroke();
+  };
+  const r = 8;
+  ball(w / 2 - 2 * r + 1, h - 9 - r, r); ball(w / 2, h - 9 - r, r); ball(w / 2 + 2 * r - 1, h - 9 - r, r);
+  ball(w / 2 - r + 0.5, h - 9 - 2.6 * r, r); ball(w / 2 + r - 0.5, h - 9 - 2.6 * r, r);
+  ball(w / 2, h - 9 - 4.2 * r, r);
+  // Mitten.
+  c.fillStyle = hsl(355, 75, 50); c.beginPath(); c.ellipse(w - 9, h - 10, 5, 6.5, 0.4, 0, Math.PI * 2); c.fill();
+  c.beginPath(); c.ellipse(w - 14, h - 12, 2.2, 3.4, -0.5, 0, Math.PI * 2); c.fill();
+  c.fillStyle = hsl(0, 0, 98); c.fillRect(w - 11, h - 5, 7, 2.5);
+}
+
 export function paintChristmasArt(scene: Phaser.Scene) {
   canvasTex(scene, 'i_winter', 48, 48, (c) => paintWinterIcon(c, 48), 2);
   canvasTex(scene, 'i_summer', 48, 48, (c) => paintSummerIcon(c, 48), 2);
   canvasTex(scene, 'su_sunflower', 40, 96, (c) => paintSunflower(c, 40, 96));
   canvasTex(scene, 'su_ball', 40, 40, (c) => paintBeachBall(c, 40, 40));
+  canvasTex(scene, 'wi_snowballs', 56, 56, (c) => paintSnowballs(c, 56, 56));
   ([['xm_present0', 2, 46], ['xm_present1', 142, 2], ['xm_present2', 212, 46], ['xm_present3', 46, 2]] as [string, number, number][])
     .forEach(([k, hue, rib]) => canvasTex(scene, k, 44, 44, (c) => paintPresent(c, 44, 44, hue, rib)));
   canvasTex(scene, 'xm_snowman', 56, 90, (c) => paintSnowman(c, 56, 90));

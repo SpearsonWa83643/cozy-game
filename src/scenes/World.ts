@@ -1569,6 +1569,10 @@ export class WorldScene extends Phaser.Scene {
         return { sunflowers: d.sunflowers.filter((p) => p.visible).map((p) => [r(p.x), r(p.y - 30 * (p.scaleY * 2.5))]),
           balls: d.balls.filter((p) => p.visible).map((p) => [r(p.x), r(p.y - 16)]), taps: { sunflower: d.taps.sunflower, ball: d.taps.ball } };
       },
+      winter() {
+        const d = self.dresser, r = Math.round;
+        return { snowballs: d.snowballs.filter((p) => p.visible).map((p) => [r(p.x), r(p.y - 22)]), taps: { snowball: d.taps.snowball } };
+      },
       villageEvent: (e: 'merchant' | 'rain' | 'festival') => self.village.start(e),
       mount: () => self.mount.snapshot(),
       callMount: (id?: string) => self.mount.call(id),
