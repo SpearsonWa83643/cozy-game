@@ -1490,6 +1490,7 @@ export class WorldScene extends Phaser.Scene {
           alert: v.alert ? { id: v.alert.id, text: v.alert.text } : null, gifts: v.gifts, fruitFed: v.fruitFed,
           guest: v.wanderer ? { name: v.wanderer.data.name, x: Math.round(v.wanderer.x), y: Math.round(v.wanderer.y - 26) } : null,
           produced: v.produced, rain: v.rain > 0, weather: v.weather.kind, rainbows: v.weather.rainbows, rainbow: !!v.weather.rainbow, festival: v.festival > 0, merchant: !!v.cart, theme: save.theme,
+          cheers: v.cheers, admires: v.admires, said: v.said, cheering: v.villagers.filter((q) => q.cheer > 0).length,
         };
       },
       villageSpeed: (n: number) => { self.village.speed = n; },
@@ -1581,6 +1582,8 @@ export class WorldScene extends Phaser.Scene {
       },
       villageEvent: (e: 'merchant' | 'rain' | 'festival') => self.village.start(e),
       /** 11.85: fast-forward the rainy-day event to N seconds left. */
+      /** 11.9: make the next idle-admire check happen now. */
+      villageAdmire: () => { self.village.admireT = 0; },
       weatherLeft: (n: number) => { if (self.village.rain > 0) self.village.rain = n; },
       mount: () => self.mount.snapshot(),
       callMount: (id?: string) => self.mount.call(id),
