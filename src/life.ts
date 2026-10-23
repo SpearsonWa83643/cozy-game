@@ -6,6 +6,7 @@ import { sfx } from './audio';
 import type { WorldScene } from './scenes/World';
 import { Creatures } from './creatures';
 import { pondHit } from './art';
+import { waterAt } from './geo';
 
 type Fly = {
   img: Phaser.GameObjects.Image; shadow: Phaser.GameObjects.Image; landed?: number;
@@ -96,7 +97,7 @@ export class Life {
           for (const o of this.ducks) {
             const a = Math.atan2(o.img.y - d.img.y, o.img.x - d.img.x) + rand(-0.8, 0.8);
             o.vx = Math.cos(a) * rand(70, 110); o.vy = Math.sin(a) * rand(45, 70);
-            this.splash.emitParticleAt(o.img.x, o.img.y, 4);
+            if (!this.iced) this.splash.emitParticleAt(o.img.x, o.img.y, 4);
           }
         },
       });
@@ -115,7 +116,7 @@ export class Life {
     // Fish dart away with a splash.
     for (const f of this.fish) {
       w.tappables.push({
-        x: () => f.x, y: () => f.y, r: 22,
+        x: () => f.x, y: () => f.y, r: 22, enabled: () => !this.iced,
         tap: () => {
           this.reactions++;
           this.splash.emitParticleAt(f.x, f.y, 9);
@@ -342,6 +343,7 @@ export class Life {
     }
     if (time > this.nextPlip) {
       this.nextPlip = time + rand(7000, 15000);
+      if (this.iced) return;
       const f = this.fish[Math.floor(Math.random() * this.fish.length)];
       this.splash.emitParticleAt(f.x, f.y, 7);
       this.ripple(f.x, f.y, 0.12, 0.6, 0.55, 1800);
@@ -350,7 +352,11 @@ export class Life {
     }
   }
 
-  ripple(x: number, y: number, s0: number, s1: number, alpha: number, dur: number) {
+  /** Winter ice (11.5b): the pond is frozen, so no splashes or rings on it. */
+  get iced() { return !!this.w.ice?.frozen; }
+
+  ripple(x: number, y: number, s0: number, s1: number, alpha: number, dur: number, force = false) {
+    if (!force && this.iced && this.w.ice!.isFrozen(waterAt(x, y))) return;
     const r = this.w.add.image(x, y, ATLAS, 'ripple').setScale(s0 / frameScale.ripple * 4).setAlpha(alpha).setBlendMode('ADD').setDepth(-395);
     this.w.tweens.add({ targets: r, scale: (s1 / frameScale.ripple) * 4, alpha: 0, duration: dur, ease: 'Sine.easeOut', onComplete: () => r.destroy() });
   }
@@ -397,6 +403,7 @@ export class Life {
 
   updateFrog(time: number) {
     const f = this.frog;
+    if (this.iced) { if (f.visible && !this.frogBusy) f.setVisible(false); this.frogHiddenUntil = time + 1500; return; }
     if (!f.visible) {
       if (time > this.frogHiddenUntil) {
         // Pop back up somewhere away from the player.

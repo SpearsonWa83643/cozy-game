@@ -24,6 +24,8 @@ export class Fishing {
   prompt: Interactable;
   castFrom: [number, number] = [0, 0];
   catches = 0;
+  /** Winter (11.5b): the line is down an ice hole rather than open water. */
+  iceHole = false;
 
   constructor(private w: WorldScene) {
     this.bobber = w.add.image(0, 0, ATLAS, 'bobber').setOrigin(0.5, 0.75).setScale(1.3 / (frameScale.bobber ?? S)).setVisible(false).setDepth(-300);
@@ -58,15 +60,42 @@ export class Fishing {
     const wa = waterAt(wx, wy);
     if (!wa) return;
     this.water = wa;
+    const ice = this.w.ice;
+    this.iceHole = !!ice?.isFrozen(wa);
+    if (this.iceHole && ice && (wa === 'pond' || wa === 'lake')) {
+      // Frozen: fish through an ice hole. Reuse one close by, or chip a fresh one first.
+      const near = ice.holeNear(wx, wy);
+      if (near) { wx = near.x; wy = near.y; }
+      else {
+        [wx, wy] = ice.snapInside(wa, wx, wy);
+        this.state = 'cast';
+        this.w.path = []; this.w.pathTarget = null;
+        this.w.body.setVelocity(0, 0);
+        this.face(wx, wy);
+        this.castFrom = [this.w.feet.x, this.w.feet.y];
+        ice.cutHole(wa, wx, wy, () => { if (this.state === 'cast' && this.iceHole) this.throwLine(wx, wy); });
+        this.w.game.events.emit('fish-state', 'cast');
+        return;
+      }
+    }
     this.state = 'cast';
     this.w.path = []; this.w.pathTarget = null;
     this.w.body.setVelocity(0, 0);
-    // Face the water.
+    this.face(wx, wy);
+    this.castFrom = [this.w.feet.x, this.w.feet.y];
+    this.throwLine(wx, wy);
+  }
+
+  /** Turn the hero toward the water. */
+  private face(wx: number, wy: number) {
     const a = Math.atan2(wy - this.w.feet.y, wx - this.w.feet.x);
     const sector = (Math.round(a / (Math.PI / 4)) + 8) % 8;
     const map: [number, boolean][] = [[2, false], [1, false], [0, false], [1, true], [2, true], [3, true], [4, false], [3, false]];
     [this.w.facing, this.w.flip] = map[sector];
-    this.castFrom = [this.w.feet.x, this.w.feet.y];
+  }
+
+  /** The cast itself: the bobber arcs out and lands at (wx, wy). */
+  private throwLine(wx: number, wy: number) {
     sfx.cast();
     const [tx, ty] = this.rodTip();
     this.bobber.setVisible(true).setPosition(tx, ty).setDepth(9000);
@@ -81,8 +110,8 @@ export class Fishing {
         if (this.state !== 'cast') return;
         this.bx = wx; this.by = wy;
         this.bobber.setDepth(-300);
-        sfx.splash();
-        this.w.life.ripple(wx, wy, 0.1, 0.5, 0.6, 1500);
+        if (this.iceHole) sfx.plip(); else sfx.splash();
+        this.w.life.ripple(wx, wy, this.iceHole ? 0.06 : 0.1, this.iceHole ? 0.28 : 0.5, 0.6, 1500, true);
         this.state = 'wait';
         this.timer = 1.8 + Math.random() * 3.6;
         this.nibble = 0.6 + Math.random();
@@ -153,7 +182,7 @@ export class Fishing {
     if (ok) {
       r.hits++;
       try { navigator.vibrate?.(25); } catch { /* unsupported */ }
-      this.w.life.ripple(this.bx, this.by, 0.1, 0.5, 0.6, 900);
+      this.w.life.ripple(this.bx, this.by, 0.1, this.iceHole ? 0.3 : 0.5, 0.6, 900, true);
       if (r.hits >= r.need) { this.land(); return; }
       r.zone = 0.18 + Math.random() * 0.64;
       r.speed *= 1.08;
@@ -175,6 +204,8 @@ export class Fishing {
     save.fish[sp.id] = rec;
     persist();
     this.catches++;
+    const frosty = this.iceHole;
+    if (frosty && this.w.ice) this.w.ice.catches++;
     const unlocked = COSMETICS.filter((c) => isUnlocked(c) && !unlockBefore.includes(c.id));
     // The fish leaps out of the water to you.
     sfx.splash(true);
@@ -190,8 +221,15 @@ export class Fishing {
       },
       onComplete: () => {
         this.w.burst(px, py, 0xbff0ff, 16, 'dot');
+        if (frosty) {
+          // A frosty touch for fish pulled up through the ice.
+          this.w.burst(px, py - 6, 0xffffff, 14, 'p_snow');
+          this.w.burst(px, py - 6, 0xdff6ff, 10, 'spark');
+          this.w.floatText(px, py - 40, 'Frosty!', '#dff4ff');
+          sfx.icePlink();
+        }
         this.w.tweens.add({ targets: img, alpha: 0, scale: img.scale * 0.5, duration: 300, onComplete: () => img.destroy() });
-        this.w.game.events.emit('fish-caught', { species: sp, size, isNew, unlocked: unlocked.map((c) => c.name) });
+        this.w.game.events.emit('fish-caught', { species: sp, size, isNew, unlocked: unlocked.map((c) => c.name), frosty });
         this.state = 'idle';
         this.reel = null;
         this.line.clear();
@@ -209,6 +247,7 @@ export class Fishing {
       this.spot = this.state !== 'idle' ? null : this.w.boat?.active ? this.w.boat.castSpot() : nearestWater(this.w.feet.x, this.w.feet.y, 120);
     }
     this.prompt.x = this.w.feet.x; this.prompt.y = this.w.feet.y + 45;
+    this.prompt.label = this.spot && this.w.ice?.isFrozen(waterAt(this.spot[0], this.spot[1])) ? 'Ice fish' : 'Fish';
     if (this.state === 'idle') return;
     // Walking away reels the line in.
     if ((this.state === 'wait' || this.state === 'bite') && Math.hypot(this.w.feet.x - this.castFrom[0], this.w.feet.y - this.castFrom[1]) > 30) {
@@ -227,7 +266,7 @@ export class Fishing {
         this.timer = 1.7;
         sfx.bite();
         try { navigator.vibrate?.([40, 50, 40]); } catch { /* unsupported */ }
-        this.w.life.ripple(this.bx, this.by, 0.12, 0.7, 0.7, 1200);
+        this.w.life.ripple(this.bx, this.by, 0.12, this.iceHole ? 0.32 : 0.7, 0.7, 1200, true);
         this.w.floatText(this.w.feet.x, this.w.feet.y - 78, '!', '#ffe27a');
         this.w.game.events.emit('fish-state', 'bite');
       }

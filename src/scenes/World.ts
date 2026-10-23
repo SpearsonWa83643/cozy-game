@@ -4,6 +4,7 @@ import { S, ATLAS, atlasOf, frameScale, mulberry32, pondValue, distToPaths, path
 import { GroundStreamer } from '../ground';
 import { waterBlocks, areaAt, waterAt } from '../geo';
 import { Boats } from '../boat';
+import { FrozenWater } from '../iceFishing';
 import { save, persist, setPuzzle, addTreasure, hasTreasure, visit, takeFruit, freshSave } from '../save';
 import { buildHeroSheet } from '../hero';
 import { buildAreas } from '../areas';
@@ -118,6 +119,9 @@ export class WorldScene extends Phaser.Scene {
   clouds: Phaser.GameObjects.Image[] = [];
   rays: Phaser.GameObjects.Image[] = [];
   lilies: Phaser.GameObjects.Image[] = [];
+  pondGlints?: Phaser.GameObjects.Particles.ParticleEmitter;
+  /** 11.5b: Winter freezes the pond and lake for ice fishing. */
+  ice?: FrozenWater;
   gateGlows: Phaser.GameObjects.Image[] = [];
   windowGlows: Phaser.GameObjects.Image[] = [];
   nextChirp = 4000;
@@ -259,6 +263,7 @@ export class WorldScene extends Phaser.Scene {
     this.placeStart();
     this.tapMarker = this.fx(0, 0, 'ripple', 0.5).setBlendMode('ADD').setAlpha(0).setDepth(-300);
     this.boat = new Boats(this);
+    this.ice = new FrozenWater(this);
 
     // Camera.
     const cam = this.cameras.main;
@@ -360,7 +365,7 @@ export class WorldScene extends Phaser.Scene {
       this.lilies.push(l);
     }
     // Glints.
-    this.add.particles(0, 0, ATLAS, {
+    this.pondGlints = this.add.particles(0, 0, ATLAS, {
       frame: 'spark',
       emitZone: { type: 'random', source: new Phaser.Geom.Ellipse(POND.x, POND.y, POND.rx * 1.6, POND.ry * 1.5) as any },
       lifespan: { min: 600, max: 1400 },
@@ -373,6 +378,7 @@ export class WorldScene extends Phaser.Scene {
     // Ripples.
     this.time.addEvent({
       delay: 900, loop: true, callback: () => {
+        if (this.ice?.frozen) return; // Winter: the pond is iced over
         let x = 0, y = 0;
         do { x = POND.x + (Math.random() * 2 - 1) * POND.rx; y = POND.y + (Math.random() * 2 - 1) * POND.ry; } while (pondValue(x, y) > 0.75);
         const r = this.fx(x, y, 'ripple', 0.2).setDepth(-395).setAlpha(0.5).setBlendMode('ADD');
@@ -1580,6 +1586,8 @@ export class WorldScene extends Phaser.Scene {
       giveTreasure: (id: string) => { addTreasure(id); self.game.events.emit('treasure', id); },
       mountTap: (x: number, y: number) => self.tapWorld(x, y),
       boat: () => self.boat.snapshot(),
+      /** 11.5b: frozen pond / ice-fishing state. */
+      ice: () => self.ice?.snapshot() ?? null,
       waterAt: (x: number, y: number) => waterAt(x, y),
       /** A rowable water point ~150 px out from boat i (test helper). */
       boatProbe(i: number) {

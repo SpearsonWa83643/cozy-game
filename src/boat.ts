@@ -98,6 +98,8 @@ export class Boats {
   hopping = false;
   boards = 0; hops = 0;
   wakeT = 0;
+  /** 11.5b: false while the water is frozen (Winter): the boats are put away and can't be boarded. */
+  open = true;
 
   constructor(private w: WorldScene) {
     ensureBoatArt(w);
@@ -128,7 +130,7 @@ export class Boats {
       water, x, y, flip: dir[0] < 0, back, front, shadow, dock: stand,
       it: {
         x, y, r: 120, label: 'Boat', promptY: 70, approach: [stand[0] - x, stand[1] - y],
-        enabled: () => !this.riding && !this.hopping && !w.inWild && !w.mount.carrying && !w.village?.building,
+        enabled: () => this.open && !this.riding && !this.hopping && !w.inWild && !w.mount.carrying && !w.village?.building,
         action: () => this.board(b),
       },
     };
@@ -262,6 +264,13 @@ export class Boats {
     });
   }
 
+  /** Winter freezes the pond and lake: hide the boats (and climb out if you're in one). */
+  setSeason(open: boolean) {
+    this.open = open;
+    if (!open && this.riding) this.forceOut();
+    for (const b of this.boats) { b.back.setVisible(open); b.front.setVisible(open); b.shadow.setVisible(open); }
+  }
+
   /** Out right away (Wild Woods, build mode, teleport): onto the nearest bank. */
   forceOut() {
     const b = this.riding;
@@ -329,6 +338,7 @@ export class Boats {
   snapshot() {
     const r = this.riding;
     return {
+      open: this.open, visible: this.boats.map((b) => b.front.visible), enabled: this.boats.map((b) => !!b.it.enabled?.()),
       active: !!r, water: r?.water ?? null, skin: this.boats[0]?.front.texture.key ?? null, castSpot: this.castSpot()?.map(Math.round) ?? null, hopping: this.hopping, boards: this.boards, hops: this.hops,
       boats: this.boats.map((b) => ({ water: b.water, x: Math.round(b.x), y: Math.round(b.y), stand: [Math.round(b.x + (b.it.approach?.[0] ?? 0)), Math.round(b.y + (b.it.approach?.[1] ?? 0))] })),
     };

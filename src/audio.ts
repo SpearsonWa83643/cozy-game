@@ -497,6 +497,22 @@ class Synth {
     src.connect(f); f.connect(g); g.connect(this.out);
     src.start(t); src.stop(t + dur + 0.02);
   }
+  /** 11.5b: a crisp little chip at the ice (a click of noise over a short glassy tick). */
+  iceChip() {
+    if (!this.ready) return;
+    const p = 0.92 + Math.random() * 0.16;
+    this.noiseBurst(0.07, 5200 * p, 2.5, 0.06, 'highpass');
+    this.noiseBurst(0.05, 1800 * p, 4, 0.04, 'bandpass', 0.005);
+    this.voice(2400 * p, 0, 0.025, 0.06, 'triangle', 0.002);
+  }
+  /** 11.5b: the hole opens: a bright, icy plink with a soft water blip under it. */
+  icePlink() {
+    if (!this.ready) return;
+    this.voice(1760, 0, 0.05, 0.5, 'sine', 0.002);
+    this.voice(2637, 0.06, 0.035, 0.45, 'sine', 0.002);
+    this.voice(3520, 0.12, 0.02, 0.35, 'sine', 0.002);
+    this.plip();
+  }
   rustle() { if (!this.ready) return; this.noiseBurst(0.35, 2600, 0.8, 0.05); this.noiseBurst(0.25, 4200, 1.2, 0.025, 'bandpass', 0.12); }
   tock() { if (!this.ready) return; this.voice(320, 0, 0.06, 0.12, 'triangle'); this.noiseBurst(0.06, 900, 2, 0.04); }
   pickup() { if (!this.ready) return; this.bell(1318.5, 0, 0.07, 0.6); this.bell(1760, 0.07, 0.06, 0.8); }
