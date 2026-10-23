@@ -608,6 +608,26 @@ class Synth {
     [1, 1.12, 1.26, 1.19].forEach((m, i) => { this.voice(base * m, i * 0.085, 0.045, 0.09, 'triangle', 0.01); this.voice(base * m * 2, i * 0.085, 0.012, 0.07, 'sine', 0.01); });
   }
 
+  /** 9.38: a happy little sound for each mount when you pet it in the stable. */
+  mountHappy(id: string) {
+    if (!this.ready) return;
+    const v = (f: number, w: number, vol: number, d: number, ty: OscillatorType = 'triangle') => this.voice(f, w, vol, d, ty, 0.01);
+    switch (id) {
+      case 'eagle': this.chirp(); break;
+      case 'pterodactyl': [330, 392, 494].forEach((f, i) => v(f, i * 0.1, 0.07, 0.16, 'sawtooth')); break;
+      case 'cloud_puppy': [880, 988].forEach((f, i) => v(f, i * 0.16, 0.08, 0.12)); break;
+      case 'unicorn': [1318.5, 1568, 2093].forEach((f, i) => this.bell(f, i * 0.07, 0.07, 1.2)); break;
+      case 'bumblebee': for (let i = 0; i < 6; i++) v(220 + (i % 2) * 18, i * 0.05, 0.05, 0.07, 'sawtooth'); break;
+      case 'snail': [523, 659, 784].forEach((f, i) => v(f, i * 0.14, 0.06, 0.2, 'sine')); break;
+      case 'teacup': [2093, 2637].forEach((f, i) => this.bell(f, i * 0.12, 0.06, 1)); break;
+      case 'airplane': for (let i = 0; i < 8; i++) v(140 + i * 22, i * 0.04, 0.05, 0.06, 'square'); break;
+      case 'pumpkin': this.giggle(); break;
+      case 'goose': this.quack(); break;
+      case 'reindeer': [2349, 2637, 2349, 2637].forEach((f, i) => this.bell(f, i * 0.08, 0.05, 0.5)); break;
+      default: this.sparkle();
+    }
+  }
+
   blip() {
     if (!this.ready) return;
     this.voice(880, 0, 0.03, 0.12, 'triangle');

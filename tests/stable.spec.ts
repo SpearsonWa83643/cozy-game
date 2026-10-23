@@ -53,8 +53,33 @@ test('stable: every mount in a stall, locked ones give hints', async ({ playwrig
       await tapRect(page, await rect(page, 'stall:unicorn'));
       await expect.poll(() => page.evaluate(() => (window as any).__menu.lastMount), { timeout: 20_000 }).toBe('unicorn');
       await expect.poll(() => page.evaluate(() => (window as any).__menu.hintText?.text ?? ''), { timeout: 20_000 }).toContain('Unicorn');
+      // Slice 2: a tap pets it (hearts + hop + its own happy sound).
+      await expect.poll(() => page.evaluate(() => (window as any).__menu.lastPet), { timeout: 20_000 }).toMatchObject({ id: 'unicorn', kind: 'tap' });
+      expect(await page.evaluate(() => (window as any).__menu.lastPet.hearts)).toBeGreaterThanOrEqual(4);
       await page.waitForTimeout(150);
       await page.screenshot({ path: `${SHOTS}/stable.png` });
+      // Stroking a friend back and forth makes a trail of hearts.
+      const cdp = await ctx.newCDPSession(page);
+      const pt = (x: number, y: number) => [{ x, y, id: 1, radiusX: 8, radiusY: 8, force: 1 }];
+      const stroke = async (k: string) => {
+        const r = await rect(page, k);
+        const y = r.y + r.h * 0.45;
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: pt(r.x + r.w * 0.2, y) });
+        for (let i = 1; i <= 16; i++) { const f = (i % 8) / 8; const x = r.x + r.w * (0.2 + 0.6 * (Math.floor(i / 8) % 2 ? 1 - f : f)); await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: pt(x, y + (i % 2) * 3) }); await page.waitForTimeout(40); }
+        await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      };
+      const h0 = await page.evaluate(() => (window as any).__menu.petHearts);
+      await stroke('stall:eagle');
+      await expect.poll(() => page.evaluate(() => (window as any).__menu.lastPet), { timeout: 20_000 }).toMatchObject({ id: 'eagle', kind: 'stroke' });
+      expect(await page.evaluate(() => (window as any).__menu.petHearts)).toBeGreaterThanOrEqual(h0 + 3);
+      await page.waitForTimeout(100);
+      await page.screenshot({ path: `${SHOTS}/stable-petting.png` });
+      // Stroking a locked silhouette does nothing.
+      await page.waitForTimeout(1200);
+      const h1 = await page.evaluate(() => (window as any).__menu.petHearts);
+      await stroke('stall:snail');
+      await page.waitForTimeout(300);
+      expect(await page.evaluate(() => (window as any).__menu.petHearts)).toBe(h1);
       // Tap a locked one: a hint about where to look.
       await tapRect(page, await rect(page, 'stall:bumblebee'));
       await expect.poll(() => page.evaluate(() => (window as any).__menu.hintText?.text ?? ''), { timeout: 20_000 }).toContain('Golden Honeycomb');

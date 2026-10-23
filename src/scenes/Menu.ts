@@ -1113,6 +1113,46 @@ export class MenuScene extends Phaser.Scene {
   /** 9.38: a barn with a stall for every mount. Unlocked friends flap and bob; locked ones are silhouettes. */
   stablePets: { id: string; c: Phaser.GameObjects.Container; body: Phaser.GameObjects.Image; wing: Phaser.GameObjects.Image; wingFar: Phaser.GameObjects.Image; m: MountDef; flap: number; ph: number; on: boolean; k: number }[] = [];
   lastMount = '';
+  /** Last petting reaction, for tests: which mount, tap or stroke, and the running heart count. */
+  lastPet: { id: string; kind: 'tap' | 'stroke'; hearts: number } | null = null;
+  petHearts = 0;
+  private petSoundAt = 0;
+
+  /** Pop a few hearts up out of a stall. */
+  private hearts(x: number, y: number, n: number) {
+    if (!this.textures.exists('stable-heart')) {
+      const g = this.make.graphics({ x: 0, y: 0 }, false);
+      g.fillStyle(0xff5c8a, 1); g.fillCircle(9, 9, 8); g.fillCircle(23, 9, 8); g.fillTriangle(1.5, 12, 30.5, 12, 16, 30);
+      g.fillStyle(0xffffff, 0.7); g.fillCircle(7, 6, 3);
+      g.generateTexture('stable-heart', 32, 32); g.destroy();
+    }
+    for (let i = 0; i < n; i++) {
+      const h = this.add.image(x + Phaser.Math.Between(-24, 24), y + Phaser.Math.Between(-6, 10), 'stable-heart').setScale(0.4).setAlpha(0);
+      this.content.add(h);
+      this.petHearts++;
+      const dur = 1000 + i * 90;
+      this.tweens.add({ targets: h, scale: { from: 0.8, to: 1.3 + Math.random() * 0.4 }, y: h.y - 70 - Math.random() * 40, x: h.x + Phaser.Math.Between(-24, 24), duration: dur, delay: i * 70, ease: 'Sine.easeOut', onStart: () => h.setAlpha(1), onComplete: () => h.destroy() });
+      this.tweens.add({ targets: h, alpha: 0, duration: dur * 0.4, delay: i * 70 + dur * 0.6 });
+    }
+  }
+
+  /** Petting: tap = hop + hearts + its happy sound; stroke = wiggle + a trail of hearts. */
+  private pet(p: { id: string; c: Phaser.GameObjects.Container; m: MountDef }, kind: 'tap' | 'stroke', px: number, py: number) {
+    const now = this.time.now;
+    if (kind === 'tap' || now - this.petSoundAt > 450) { sfx.mountHappy(p.m.id); this.petSoundAt = now; }
+    const y0 = p.c.getData('y0') as number, k0 = p.c.getData('k0') as number;
+    if (kind === 'tap') {
+      this.tweens.killTweensOf(p.c);
+      p.c.y = y0; p.c.setScale(k0); p.c.rotation = 0;
+      this.tweens.add({ targets: p.c, y: y0 - 16, duration: 160, yoyo: true, ease: 'Quad.easeOut' });
+      this.tweens.add({ targets: p.c, scaleX: k0 * 1.12, scaleY: k0 * 0.9, duration: 90, yoyo: true, delay: 300 });
+      this.hearts(p.c.x, y0 - 20, 6);
+    } else {
+      if (!this.tweens.isTweening(p.c)) this.tweens.add({ targets: p.c, rotation: { from: -0.08, to: 0.08 }, duration: 110, yoyo: true, repeat: 1, onComplete: () => { p.c.rotation = 0; } });
+      this.hearts(px, py - 10, 2);
+    }
+    this.lastPet = { id: p.m.id, kind, hearts: this.petHearts };
+  }
 
   private puppet(m: MountDef, x: number, y: number, targetW: number, on: boolean) {
     const SC = m.scale, prop = m.style === 'prop';
@@ -1148,12 +1188,8 @@ export class MenuScene extends Phaser.Scene {
       this.tweens.add({ targets: p.c, x: p.c.x + 5, duration: 50, yoyo: true, repeat: 2 });
       return;
     }
-    sfx.blip();
-    this.hint(`${m.name}! ${m.blurb}`);
-    const y0 = p.c.getData('y0') as number;
-    this.tweens.killTweensOf(p.c);
-    p.c.y = y0;
-    this.tweens.add({ targets: p.c, y: y0 - 14, duration: 150, yoyo: true, ease: 'Quad.easeOut' });
+    this.hint(`${m.name}! ${m.blurb} Stroke me for more hearts!`);
+    this.pet(p, 'tap', p.c.x, p.c.y);
   }
 
   renderStable(a: { x: number; y: number; w: number; h: number }) {
@@ -1199,7 +1235,7 @@ export class MenuScene extends Phaser.Scene {
       this.content.add(nm);
       const py = y + sh * 0.46;
       const pp = this.puppet(m, x + sw / 2, py, Math.min(sw * 0.82, 130), on);
-      pp.c.setData('y0', py);
+      pp.c.setData('y0', py); pp.c.setData('k0', pp.k);
       this.content.add(pp.c);
       if (!on) this.content.add(this.text(x + sw / 2, py - 4, '?', 30, '#f3dfae', 900).setOrigin(0.5).setStroke('#2e2219', 5));
       if (on && m.id === currentPick()) {
@@ -1212,7 +1248,16 @@ export class MenuScene extends Phaser.Scene {
       }
       this.stablePets.push({ id: m.id, ...pp, m, flap: i * 0.9, ph: i * 1.3, on });
       const z = this.add.zone(x, y, sw, sh).setOrigin(0, 0).setInteractive();
-      z.on('pointerup', (p: Phaser.Input.Pointer) => { if (p.getDistance() < 24) this.tapStall(m); });
+      // Stroking: every ~40 px of finger travel over a friend is one pet. A stroke that ends where it began is not a tap.
+      let lastX = 0, lastY = 0, run = 0, moved = 0;
+      z.on('pointerup', (p: Phaser.Input.Pointer) => { if (p.getDistance() < 24 && moved < 30) this.tapStall(m); });
+      z.on('pointerdown', (p: Phaser.Input.Pointer) => { lastX = p.worldX; lastY = p.worldY; run = 0; moved = 0; });
+      z.on('pointermove', (p: Phaser.Input.Pointer) => {
+        if (!p.isDown) return;
+        if (!on) { moved += Math.hypot(p.worldX - lastX, p.worldY - lastY); lastX = p.worldX; lastY = p.worldY; return; }
+        { const dd = Math.hypot(p.worldX - lastX, p.worldY - lastY); run += dd; moved += dd; } lastX = p.worldX; lastY = p.worldY;
+        if (run >= 40) { run = 0; const q = this.stablePets.find((s) => s.id === m.id); if (q) { this.pet(q, 'stroke', p.worldX - this.content.x, p.worldY - this.content.y); } }
+      });
       this.content.add(z);
       this.rects[`stall:${m.id}`] = { x, y, w: sw, h: sh };
     });
