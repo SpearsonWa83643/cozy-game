@@ -27,6 +27,13 @@ export class MenuScene extends Phaser.Scene {
   box = { x: 0, y: 0, w: 0, h: 0 };
   heroDir = 0;
   heroImg: Phaser.GameObjects.Image | null = null;
+  /** 9.36 slice 2: the item being dragged (a floating copy that springs after your finger). */
+  drag: null | {
+    c: Cosmetic; ghost: Phaser.GameObjects.Image; src: Phaser.GameObjects.Image | null;
+    home: { x: number; y: number; s: number }; tx: number; ty: number; vx: number;
+    fromHero: boolean; live: boolean; done: boolean;
+  } = null;
+  private stageGlow: Phaser.GameObjects.Graphics | null = null;
   playerDot: Phaser.GameObjects.Graphics | null = null;
   mapGeom = { x: 0, y: 0, s: 1 };
   resetArmed = 0;
@@ -88,7 +95,8 @@ export class MenuScene extends Phaser.Scene {
   render() {
     this.rects = {};
     this.root.removeAll(true);
-    this.heroImg = null; this.playerDot = null; this.hintText = null;
+    this.cancelDrag();
+    this.heroImg = null; this.playerDot = null; this.hintText = null; this.stageGlow = null;
     this.w = this.scale.width / DPR; this.h = this.scale.height / DPR;
     const si = safeInsets();
     const m = 18;
@@ -245,13 +253,30 @@ export class MenuScene extends Phaser.Scene {
     pg.lineStyle(3, theme.ui.accentDark ?? 0xc9822a, 0.35); pg.strokeEllipse(a.x + pw / 2, floorY, pw * 0.78, 42);
     pg.fillStyle(0x2a1d14, 0.14); pg.fillEllipse(a.x + pw / 2, floorY, pw * 0.36, 18);
     this.content.add(pg);
+    // Lights up while you drag something over the character ("let go to wear it").
+    this.stageGlow = this.add.graphics().setAlpha(0);
+    this.stageGlow.fillStyle(0xffe27a, 0.35); this.stageGlow.fillEllipse(a.x + pw / 2, a.y + ph * 0.5, pw * 0.86, ph * 0.8);
+    this.stageGlow.lineStyle(5, 0xf2a93b, 0.7); this.stageGlow.strokeEllipse(a.x + pw / 2, a.y + ph * 0.5, pw * 0.86, ph * 0.8);
+    this.content.add(this.stageGlow);
     const key = this.world.heroKey;
     const sc = Math.min((ph * 0.8) / (HERO_H * S), (pw * 0.95) / (HERO_W * S));
     this.heroImg = this.add.image(a.x + pw / 2, floorY + 8, key, `${this.heroDir}_0`).setOrigin(0.5, 1).setScale(sc);
     this.content.add(this.heroImg);
     this.rects.hero = { x: a.x, y: a.y, w: pw, h: ph };
     const turn = this.add.zone(a.x, a.y, pw, ph).setOrigin(0, 0).setInteractive();
-    turn.on('pointerup', () => { this.heroDir = (this.heroDir + 1) % 5; this.heroImg?.setFrame(`${this.heroDir}_0`); sfx.blip(); });
+    turn.on('pointerup', (p: Phaser.Input.Pointer) => { if (p.getDistance() >= 14) return; this.heroDir = (this.heroDir + 1) % 5; this.heroImg?.setFrame(`${this.heroDir}_0`); sfx.blip(); });
+    // Drag something off the character to take it off: head = hat, neck = scarf, body = back / extras.
+    turn.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      const h = this.heroImg; if (!h) return;
+      const top = h.y - h.displayHeight, f = (p.y - top) / h.displayHeight;
+      const look = save.look as any;
+      let c: Cosmetic | undefined;
+      if (f < 0.38) c = COSMETICS.find((k) => k.slot === 'hat' && k.value === look.hat && !isNoneItem(k));
+      else if (f < 0.58) c = COSMETICS.find((k) => k.slot === 'scarf' && k.value === look.scarf && !isNoneItem(k));
+      else if (f < 1.05) c = COSMETICS.find((k) => k.slot === 'back' && k.value === look.back && !isNoneItem(k))
+        ?? COSMETICS.find((k) => (k.slot === 'shells' || k.slot === 'feather') && look[k.slot]);
+      if (c) this.armDrag(c, null, p, true);
+    });
     this.content.add([turn, this.text(a.x + pw / 2, a.y + ph - 14, 'tap to turn', 14, '#8a6a50', 700).setOrigin(0.5, 1)]);
 
     // --- The wardrobe.
@@ -327,6 +352,96 @@ export class MenuScene extends Phaser.Scene {
     this.content.bringToTop(fg);
   }
 
+  private itemImgs: Record<string, Phaser.GameObjects.Image> = {};
+
+  /** Put it on (or, for the on/off extras, toggle it), save, and let the hero show it off. */
+  private wear(c: Cosmetic) {
+    equip(c, save.look);
+    persist();
+    sfx.pickup();
+    this.world.refreshHero();
+    this.game.events.emit('equipped', c.id);
+    this.render();
+    // A little hop for the hero, and the name of what you picked.
+    if (this.heroImg) { const hy = this.heroImg.y; this.tweens.add({ targets: this.heroImg, y: hy - 18, duration: 140, yoyo: true, ease: 'Sine.easeOut' }); }
+    this.hint(isEquipped(c, save.look) ? c.name : `${c.name} off`);
+  }
+
+  /** Finger down on an item: it becomes a drag once the finger travels a little (a short press stays a tap). */
+  private armDrag(c: Cosmetic, src: Phaser.GameObjects.Image | null, p: Phaser.Input.Pointer, fromHero: boolean) {
+    if (this.drag) return;
+    const tex = this.textures.get('wardrobe-items');
+    if (!tex || !tex.has(c.id)) return;
+    let home = { x: p.x, y: p.y, s: 1.2 };
+    if (src) { const b = src.getBounds(); home = { x: b.centerX, y: b.centerY, s: src.scaleX }; }
+    else if (this.heroImg) home.s = Math.max(0.8, this.heroImg.scaleX / 2.2);
+    const ghost = this.add.image(home.x, home.y, 'wardrobe-items', c.id).setScale(home.s).setVisible(false).setDepth(50);
+    this.drag = { c, ghost, src, home, tx: home.x, ty: home.y, vx: 0, fromHero, live: false, done: false };
+    const sx = p.x, sy = p.y;
+    const move = (q: Phaser.Input.Pointer) => {
+      const d = this.drag; if (!d || d.done) return;
+      if (!d.live && Math.hypot(q.x - sx, q.y - sy) >= 14) {
+        d.live = true; d.ghost.setVisible(true);
+        this.tweens.add({ targets: d.ghost, scale: d.home.s * 1.5, duration: 160, ease: 'Back.easeOut' });
+        if (d.src) d.src.setAlpha(0.25);
+        sfx.blip();
+      }
+      if (d.live) { d.tx = q.x; d.ty = q.y - 10; this.stageGlow?.setAlpha(this.overStage(q.x, q.y) && !d.fromHero ? 1 : 0); }
+    };
+    const up = (q: Phaser.Input.Pointer) => {
+      this.input.off('pointermove', move); this.input.off('pointerup', up); this.input.off('gameout', up);
+      const d = this.drag; if (!d) return;
+      if (!d.live) { d.ghost.destroy(); this.drag = null; return; }
+      this.drop(d, q?.x ?? d.tx, q?.y ?? d.ty);
+    };
+    this.input.on('pointermove', move); this.input.on('pointerup', up); this.input.on('gameout', up);
+    this.dragOff = () => { this.input.off('pointermove', move); this.input.off('pointerup', up); this.input.off('gameout', up); };
+  }
+  private dragOff: (() => void) | null = null;
+
+  private overStage(x: number, y: number) {
+    const r = this.rects.hero; return !!r && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+  }
+
+  /** Let go: on the character = wear it; a worn item dropped anywhere off the character = take it off; else it springs home. */
+  private drop(d: NonNullable<MenuScene['drag']>, x: number, y: number) {
+    d.done = true; this.stageGlow?.setAlpha(0); this.tweens.killTweensOf(d.ghost);
+    const finish = () => { d.ghost.destroy(); if (this.drag === d) this.drag = null; this.dragOff = null; };
+    const onStage = this.overStage(x, y);
+    if (!d.fromHero && onStage && this.heroImg) {
+      // Fly into the character and pop on.
+      const h = this.heroImg, ty = h.y - h.displayHeight * (d.c.slot === 'hat' ? 0.78 : d.c.slot === 'scarf' ? 0.5 : 0.35);
+      this.tweens.add({ targets: d.ghost, x: h.x, y: ty, scale: d.home.s * 0.6, alpha: 0.2, duration: 180, ease: 'Quad.easeIn',
+        onComplete: () => {
+          finish();
+          if (!isEquipped(d.c, save.look)) { this.wear(d.c); return; }
+          // Already wearing it: just a happy hop.
+          this.render(); this.hint(d.c.name);
+          if (this.heroImg) { const hy = this.heroImg.y; this.tweens.add({ targets: this.heroImg, y: hy - 18, duration: 140, yoyo: true, ease: 'Sine.easeOut' }); }
+        } });
+      return;
+    }
+    if (d.fromHero && !onStage) {
+      // Take it off: it flies back to its spot in the wardrobe.
+      const off = d.c.slot === 'feather' || d.c.slot === 'shells' ? d.c : COSMETICS.find((k) => k.slot === d.c.slot && isNoneItem(k));
+      const r = this.rects[d.c.id];
+      const tx = r ? r.x + r.w / 2 : x, ty = r ? r.y + r.h / 2 : y;
+      this.tweens.add({ targets: d.ghost, x: tx, y: ty, scale: d.home.s, duration: 240, ease: 'Back.easeOut',
+        onComplete: () => { finish(); if (off) this.wear(off); } });
+      return;
+    }
+    // Spring back home with a little wobble.
+    sfx.tock();
+    this.tweens.add({ targets: d.ghost, x: d.home.x, y: d.home.y, scale: d.home.s, angle: 0, duration: 320, ease: 'Back.easeOut',
+      onComplete: () => { d.src?.setAlpha(1); finish(); } });
+  }
+
+  private cancelDrag() {
+    this.dragOff?.(); this.dragOff = null;
+    if (this.drag) { this.drag.ghost.destroy(); this.drag = null; }
+    this.itemImgs = {};
+  }
+
   /** One item in its place in the wardrobe; the whole cell is the tap target. */
   private wardrobeItem(c: Cosmetic, slot: string, x: number, y: number, w: number, h: number) {
     const unlocked = isUnlocked(c);
@@ -378,18 +493,12 @@ export class MenuScene extends Phaser.Scene {
     }
     const z = this.add.zone(x, y, w, h).setOrigin(0, 0).setInteractive();
     this.rects[c.id] = { x, y, w, h };
+    if (img) this.itemImgs[c.id] = img;
+    z.on('pointerdown', (p: Phaser.Input.Pointer) => { if (unlocked && img) this.armDrag(c, img, p, false); });
     z.on('pointerup', (p: Phaser.Input.Pointer) => {
-      if (p.getDistance() >= 24) return;
+      if (p.getDistance() >= 14 || this.drag?.live) return;
       if (!unlocked) { sfx.tock(); this.hint(`Locked \u2014 ${c.hint}`); if (img) this.tweens.add({ targets: img, x: cx + 4, duration: 50, yoyo: true, repeat: 2 }); return; }
-      equip(c, save.look);
-      persist();
-      sfx.pickup();
-      this.world.refreshHero();
-      this.game.events.emit('equipped', c.id);
-      this.render();
-      // A little hop for the hero, and the name of what you picked.
-      if (this.heroImg) { const hy = this.heroImg.y; this.tweens.add({ targets: this.heroImg, y: hy - 18, duration: 140, yoyo: true, ease: 'Sine.easeOut' }); }
-      this.hint(isEquipped(c, save.look) ? c.name : `${c.name} off`);
+      this.wear(c);
     });
     this.content.add(z);
   }
@@ -468,8 +577,16 @@ export class MenuScene extends Phaser.Scene {
     });
   }
 
-  update(time: number) {
+  update(time: number, delta = 16) {
     if (!this.open) return;
+    const d = this.drag;
+    if (d && d.live && !d.done) {
+      // Springy follow: catches up fast but not instantly, and tilts with the swing.
+      const k = 1 - Math.exp(-Math.min(delta, 100) / 55);
+      const nx = d.ghost.x + (d.tx - d.ghost.x) * k;
+      d.vx = d.vx * 0.6 + (nx - d.ghost.x) * 0.4;
+      d.ghost.setPosition(nx, d.ghost.y + (d.ty - d.ghost.y) * k).setAngle(Phaser.Math.Clamp(d.vx * 1.6, -22, 22));
+    }
     if (this.heroImg) this.heroImg.setScale(this.heroImg.scaleX, this.heroImg.scaleX * (1 + Math.sin(time / 420) * 0.018));
     if (this.playerDot) {
       const { x, y, s } = this.mapGeom;
