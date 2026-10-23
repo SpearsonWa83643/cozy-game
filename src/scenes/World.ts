@@ -1563,6 +1563,12 @@ export class WorldScene extends Phaser.Scene {
           bulbs: d.litTrees.reduce((n, l) => n + l.bulbs.filter((b) => b.visible).length, 0),
           taps: { presents: d.taps.presents, snowman: d.taps.snowman, lights: d.taps.lights } };
       },
+      /** Test hook: Summer props (visible sunflowers and beach balls, tap point) and their tap counts. */
+      summer() {
+        const d = self.dresser, r = Math.round;
+        return { sunflowers: d.sunflowers.filter((p) => p.visible).map((p) => [r(p.x), r(p.y - 30 * (p.scaleY * 2.5))]),
+          balls: d.balls.filter((p) => p.visible).map((p) => [r(p.x), r(p.y - 16)]), taps: { sunflower: d.taps.sunflower, ball: d.taps.ball } };
+      },
       villageEvent: (e: 'merchant' | 'rain' | 'festival') => self.village.start(e),
       mount: () => self.mount.snapshot(),
       callMount: (id?: string) => self.mount.call(id),

@@ -219,9 +219,50 @@ function paintSummerIcon(c: Ctx, w: number) {
   c.fillStyle = hsl(52, 100, 86, 0.7); c.beginPath(); c.ellipse(cx - r * 0.35, cx - r * 0.4, r * 0.45, r * 0.26, -0.5, 0, Math.PI * 2); c.fill();
 }
 
+/** Summer: a tall, bold sunflower (40x96) with two leaves; origin at the stem base. */
+function paintSunflower(c: Ctx, w: number, h: number) {
+  const cx = w / 2, hy = 20;
+  dab(c, cx, h - 3, w * 0.28, 3.5, 0, hsl(100, 40, 25, 0.28));
+  c.strokeStyle = hsl(108, 55, 32); c.lineWidth = 4; c.lineCap = 'round';
+  c.beginPath(); c.moveTo(cx, h - 4); c.quadraticCurveTo(cx + 3, (h + hy) / 2, cx, hy + 6); c.stroke();
+  c.fillStyle = hsl(112, 55, 40);
+  for (const [s, y] of [[-1, h - 30], [1, h - 46]] as [number, number][]) {
+    c.beginPath(); c.ellipse(cx + s * 9, y, 9, 4.5, s * -0.5, 0, Math.PI * 2); c.fill();
+  }
+  c.fillStyle = hsl(46, 100, 55); c.strokeStyle = hsl(36, 90, 42); c.lineWidth = 1.2;
+  for (let i = 0; i < 12; i++) {
+    const a = (i * Math.PI) / 6;
+    c.beginPath(); c.ellipse(cx + Math.cos(a) * 11, hy + Math.sin(a) * 11, 7, 3.6, a, 0, Math.PI * 2); c.fill(); c.stroke();
+  }
+  c.fillStyle = hsl(24, 60, 26); c.beginPath(); c.arc(cx, hy, 8.5, 0, Math.PI * 2); c.fill();
+  c.fillStyle = hsl(30, 55, 40);
+  const rng = mulberry32(77);
+  for (let i = 0; i < 14; i++) { const a = rng() * Math.PI * 2, d = rr(rng, 1, 6.5); c.beginPath(); c.arc(cx + Math.cos(a) * d, hy + Math.sin(a) * d, 1, 0, Math.PI * 2); c.fill(); }
+}
+
+/** Summer: a striped beach ball (40x40) with a soft ground shadow; origin at the shadow. */
+function paintBeachBall(c: Ctx, w: number, h: number) {
+  const cx = w / 2, r = 15, cy = h - 4 - r;
+  dab(c, cx, h - 4, r * 0.95, 3.5, 0, hsl(100, 40, 25, 0.3));
+  const cols = [hsl(2, 85, 56), hsl(0, 0, 98), hsl(205, 85, 52), hsl(0, 0, 98), hsl(48, 100, 56), hsl(0, 0, 98)];
+  c.save(); c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.clip();
+  cols.forEach((col, i) => {
+    const a0 = -Math.PI / 2 + (i * Math.PI) / 3, a1 = a0 + Math.PI / 3;
+    c.fillStyle = col; c.beginPath(); c.moveTo(cx, cy - r * 0.15); c.arc(cx, cy - r * 0.15, r * 1.6, a0, a1); c.closePath(); c.fill();
+  });
+  const g = c.createRadialGradient(cx - r * 0.4, cy - r * 0.45, r * 0.1, cx, cy, r);
+  g.addColorStop(0, 'rgba(255,255,255,0.45)'); g.addColorStop(0.6, 'rgba(255,255,255,0)'); g.addColorStop(1, 'rgba(20,30,60,0.28)');
+  c.fillStyle = g; c.fillRect(cx - r, cy - r, r * 2, r * 2);
+  c.restore();
+  c.fillStyle = hsl(0, 0, 100); c.beginPath(); c.arc(cx, cy - r * 0.15, 2.4, 0, Math.PI * 2); c.fill();
+  c.strokeStyle = hsl(220, 30, 30, 0.7); c.lineWidth = 1.4; c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.stroke();
+}
+
 export function paintChristmasArt(scene: Phaser.Scene) {
   canvasTex(scene, 'i_winter', 48, 48, (c) => paintWinterIcon(c, 48), 2);
   canvasTex(scene, 'i_summer', 48, 48, (c) => paintSummerIcon(c, 48), 2);
+  canvasTex(scene, 'su_sunflower', 40, 96, (c) => paintSunflower(c, 40, 96));
+  canvasTex(scene, 'su_ball', 40, 40, (c) => paintBeachBall(c, 40, 40));
   ([['xm_present0', 2, 46], ['xm_present1', 142, 2], ['xm_present2', 212, 46], ['xm_present3', 46, 2]] as [string, number, number][])
     .forEach(([k, hue, rib]) => canvasTex(scene, k, 44, 44, (c) => paintPresent(c, 44, 44, hue, rib)));
   canvasTex(scene, 'xm_snowman', 56, 90, (c) => paintSnowman(c, 56, 90));

@@ -61,6 +61,33 @@ test('summer: sunny look, own soundscape, picker', async ({ page }) => {
     expect(c.snowmen.length).toBe(0);
     expect((await cozy(page, 'state')).soundscape).toBe('summer');
 
+    // Slice 2: sunflower patches and beach balls to tap, only in Summer.
+    let su = await cozy(page, 'summer()');
+    expect(su.sunflowers.length).toBeGreaterThanOrEqual(8);
+    expect(su.balls.length).toBeGreaterThanOrEqual(3);
+    const tp = (x: number, y: number) => page.evaluate(([x, y]) => (window as any).__cozy.teleport(x, y), [x, y]);
+    const tapWorld = async ([x, y]: [number, number]) => {
+      const s = await cozy(page, `worldToScreen(${x}, ${y})`);
+      await page.touchscreen.tap(Math.round(s.x), Math.round(s.y));
+      await page.waitForTimeout(600);
+    };
+    await tp(su.sunflowers[0][0], su.sunflowers[0][1] + 110); await page.waitForTimeout(1500); await tapWorld(su.sunflowers[0]);
+    await tp(su.balls[0][0], su.balls[0][1] + 110); await page.waitForTimeout(1500); await tapWorld(su.balls[0]);
+    await page.waitForTimeout(250);
+    su = await cozy(page, 'summer()');
+    expect(su.taps.sunflower).toBeGreaterThanOrEqual(1);
+    expect(su.taps.ball).toBeGreaterThanOrEqual(1);
+    await tp(905, 1300);
+    await page.waitForTimeout(3500);
+    await page.screenshot({ path: `${SHOTS}/summer-props.png` });
+    await cozy(page, "setTheme('fall')");
+    await page.waitForTimeout(800);
+    su = await cozy(page, 'summer()');
+    expect(su.sunflowers.length + su.balls.length).toBe(0);
+    await cozy(page, "setTheme('summer')");
+    await page.waitForTimeout(800);
+    expect((await cozy(page, 'summer()')).balls.length).toBeGreaterThanOrEqual(3);
+
     // The menu has all six theme buttons, clear of the tabs and inside the panel.
     const bag = await page.evaluate(() => { const u = (window as any).__game.scene.getScene('ui'); return { x: u.bagC.x, y: u.bagC.y }; });
     await page.touchscreen.tap(bag.x, bag.y);

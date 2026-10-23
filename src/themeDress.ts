@@ -35,13 +35,18 @@ export class ThemeDresser {
   peeks: Peek[] = [];
   orchardBats: { img: Phaser.GameObjects.Image; ph: number }[] = [];
   wisps: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
-  taps = { jack: 0, pumpkin: 0, bats: 0, peek: 0, candy: 0, leaves: 0, hay: 0, presents: 0, snowman: 0, lights: 0 };
+  taps = { jack: 0, pumpkin: 0, bats: 0, peek: 0, candy: 0, leaves: 0, hay: 0, presents: 0, snowman: 0, lights: 0, sunflower: 0, ball: 0 };
   /** Christmas: presents, snowmen and lit trees to tap (made once, shown only in Christmas). */
   xmasProps: Phaser.GameObjects.Image[] = [];
   presents: Phaser.GameObjects.Image[] = [];
   snowmen: Phaser.GameObjects.Image[] = [];
   litTrees: { tree: Phaser.GameObjects.Image; bulbs: Phaser.GameObjects.Image[]; glow: Phaser.GameObjects.Image; until: number }[] = [];
   xmasBuilt = false;
+  /** Summer: sunflowers to sway and beach balls to bounce (made once, shown only in Summer). */
+  summerProps: Phaser.GameObjects.Image[] = [];
+  sunflowers: Phaser.GameObjects.Image[] = [];
+  balls: Phaser.GameObjects.Image[] = [];
+  summerBuilt = false;
   /** Fall: leaf piles + hay bales (made once, shown only in Fall). */
   fallProps: Phaser.GameObjects.Image[] = [];
   leafPiles: Phaser.GameObjects.Image[] = [];
@@ -137,6 +142,66 @@ export class ThemeDresser {
         },
       });
     }
+  }
+
+  /** Summer props: little sunflower patches that sway and shed petals when tapped, and beach balls
+   *  (by the pond, the pier and home) that bounce up and spin. Made the first time Summer is shown. */
+  private buildSummerProps() {
+    if (this.summerBuilt) return;
+    this.summerBuilt = true;
+    const w = this.w;
+    const rng = mulberry32(621);
+    const free = (x: number, y: number) => !waterAt(x, y, 12) && !w.nav.isBlocked(...w.nav.cellOf(x, y));
+    const put = (x: number, y: number, frame: string, scale: number) => {
+      const img = w.add.image(x, y, atlasOf(frame), frame).setOrigin(0.5, 1).setScale(scale / (frameScale[frame] ?? 2.5)).setDepth(y);
+      this.summerProps.push(img);
+      return img;
+    };
+    const flower = (x: number, y: number, scale: number) => {
+      if (!free(x, y)) return;
+      const img = put(x, y, 'su_sunflower', scale);
+      this.sunflowers.push(img);
+      w.tappables.push({
+        x: () => img.x, y: () => img.y - 30 * scale, r: 34, enabled: () => img.visible,
+        tap: () => {
+          this.taps.sunflower++; w.life.reactions++;
+          sfx.rustle();
+          w.floatText(img.x, img.y - 100 * scale, ['Sunny!', 'Hello sun!', 'So tall!', 'Swish!'][Math.floor(Math.random() * 4)], '#fff1a0');
+          w.burst(img.x, img.y - 80 * scale, 0xffd84a, 10, 'petal');
+          w.tweens.killTweensOf(img);
+          img.setAngle(0);
+          w.tweens.add({ targets: img, angle: { from: -14, to: 14 }, duration: 220, yoyo: true, repeat: 2, ease: 'Sine.easeInOut', onComplete: () => img.setAngle(0) });
+        },
+      });
+    };
+    const ball = (x: number, y: number) => {
+      if (!free(x, y)) return;
+      const img = put(x, y, 'su_ball', 0.95);
+      this.balls.push(img);
+      w.tappables.push({
+        x: () => img.x, y: () => img.y - 16, r: 34, enabled: () => img.visible,
+        tap: () => {
+          this.taps.ball++; w.life.reactions++;
+          sfx.thump();
+          w.floatText(img.x, img.y - 70, ['Boing!', 'Bounce!', 'Wheee!', 'Catch!'][Math.floor(Math.random() * 4)], '#bff4f0');
+          w.burst(img.x, img.y - 14, 0xffffff, 8, 'spark');
+          w.tweens.killTweensOf(img);
+          img.setPosition(img.x, y).setAngle(0);
+          w.tweens.add({ targets: img, y: y - 70, duration: 320, yoyo: true, ease: 'Quad.easeOut', repeat: 1, onComplete: () => img.setY(y) });
+          w.tweens.add({ targets: img, angle: 360, duration: 1280, ease: 'Linear', onComplete: () => img.setAngle(0) });
+        },
+      });
+    };
+    const patch = (x: number, y: number) => { flower(x, y, 1.0); flower(x + 26, y + 10, 0.85); if (rng() < 0.7) flower(x - 24, y + 12, 0.78); };
+    patch(PLAYER_START.x + 120, PLAYER_START.y - 60);
+    patch(COTTAGE.x + 110, COTTAGE.y + 40);
+    patch(VILLAGE_SIGN.x + 90, VILLAGE_SIGN.y - 20);
+    patch(WINDMILL.x - 110, WINDMILL.y + 40);
+    patch(COTTAGE.x - 120, COTTAGE.y + 60);
+    ball(PLAYER_START.x - 130, PLAYER_START.y + 30);
+    ball(POND.x + 190, POND.y - 150);
+    ball(PIER.x - 90, PIER.y0 - 30);
+    ball(VILLAGE_SIGN.x - 40, VILLAGE_SIGN.y + 120);
   }
 
   /** Fall props: crunchy leaf piles along the paths and under trees, hay bales (with pumpkins) at cozy spots. */
@@ -429,6 +494,9 @@ export class ThemeDresser {
     const fp = !!t.fallProps;
     if (fp) this.buildFallProps();
     for (const p of this.fallProps) p.setVisible(fp);
+    const sp = t.id === 'summer';
+    if (sp) this.buildSummerProps();
+    for (const p of this.summerProps) p.setVisible(sp);
     const xp = t.id === 'christmas', wp = t.id === 'winter';
     if (xp || wp) this.buildXmasProps();
     for (const p of this.xmasProps) p.setVisible(xp);
