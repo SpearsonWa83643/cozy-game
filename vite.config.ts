@@ -47,6 +47,8 @@ function pwa(single: boolean): Plugin {
 // runs straight from disk via file://. Normal builds keep separate assets.
 export default defineConfig(({ mode }) => ({
   base: './', // relative asset URLs so dist works at the root (Cloudflare Pages) or any subpath
+  // Walker watches live over his tailnet (WebDev maps webdev-box:5182 to the local dev server).
+  server: { allowedHosts: ['webdev-box.tail237f3c.ts.net', 'webdev-box', '.ts.net'] },
   plugins: [pwa(mode === 'single'), ...(mode === 'single' ? [viteSingleFile({ removeViteModuleLoader: true })] : [])],
   build: {
     target: 'es2022',
