@@ -624,6 +624,8 @@ class Synth {
       case 'pumpkin': this.giggle(); break;
       case 'goose': this.quack(); break;
       case 'reindeer': [2349, 2637, 2349, 2637].forEach((f, i) => this.bell(f, i * 0.08, 0.05, 0.5)); break;
+      case 'snowy_owl': [392, 330].forEach((f, i) => v(f, i * 0.28, 0.08, 0.24, 'sine')); break;
+      case 'flamingo': [523, 659, 523].forEach((f, i) => v(f, i * 0.09, 0.06, 0.1, 'square')); break;
       default: this.sparkle();
     }
   }

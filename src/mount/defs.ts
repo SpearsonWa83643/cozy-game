@@ -118,15 +118,35 @@ export const MOUNTS: MountDef[] = [
     blurb: 'Jingle jingle! A flying reindeer with a glowing red nose!',
     flapRate: 1.2,
   },
+  {
+    // Winter's default mount (free in Winter): a round snowy owl in a cosy blue scarf.
+    id: 'snowy_owl',
+    name: 'Snowy Owl',
+    treasure: 'snowy_owl_feather',
+    body: 'owl_body', wing: 'owl_wing', wingFar: 'owl_wing_far', icon: 'i_owl',
+    scale: 0.85,
+    blurb: 'Hoo hoo! A fluffy snowy owl in a cosy scarf!',
+    flapRate: 0.9,
+  },
+  {
+    // Summer's default mount (free in Summer): a pink flamingo with a flower behind its ear.
+    id: 'flamingo',
+    name: 'Flamingo',
+    treasure: 'flamingo_feather',
+    body: 'flam_body', wing: 'flam_wing', wingFar: 'flam_wing_far', icon: 'i_flamingo',
+    scale: 0.85,
+    blurb: 'A pretty pink flamingo for sunny days!',
+    flapRate: 1.1,
+  },
 ];
 
 export function mountById(id: string): MountDef {
   return MOUNTS.find((m) => m.id === id) ?? MOUNTS[0];
 }
 
-/** The theme's own default mount: pumpkin in Halloween, Canada goose in Fall, reindeer in Christmas and Winter, bald eagle otherwise. */
+/** The theme's own default mount: pumpkin in Halloween, goose in Fall, reindeer in Christmas, snowy owl in Winter, flamingo in Summer, bald eagle otherwise (Spring). */
 export function themeDefaultMount(): string {
-  return theme.id === 'halloween' ? 'pumpkin' : theme.id === 'fall' ? 'goose' : theme.id === 'christmas' || theme.id === 'winter' ? 'reindeer' : 'eagle';
+  return theme.id === 'halloween' ? 'pumpkin' : theme.id === 'fall' ? 'goose' : theme.id === 'christmas' ? 'reindeer' : theme.id === 'winter' ? 'snowy_owl' : theme.id === 'summer' ? 'flamingo' : 'eagle';
 }
 
 export function isMountUnlocked(m: MountDef): boolean {

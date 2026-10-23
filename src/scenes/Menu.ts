@@ -1225,6 +1225,8 @@ export class MenuScene extends Phaser.Scene {
     if (m.id === 'goose') return 'The Canada Goose comes to ride in Fall. Tap the leaf button to try Fall!';
     if (m.id === 'reindeer') return 'The Reindeer comes to ride at Christmas. Tap the tree button to try Christmas!';
     if (m.id === 'pumpkin') return 'The Pumpkin rides along at Halloween!';
+    if (m.id === 'snowy_owl') return 'The Snowy Owl comes to ride in Winter. Tap the snowflake button to try Winter!';
+    if (m.id === 'flamingo') return 'The Flamingo comes to ride in Summer. Tap the sun button to try Summer!';
     return `Keep exploring to meet the ${m.name}!`;
   }
 
