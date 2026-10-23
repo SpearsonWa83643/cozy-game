@@ -6,7 +6,8 @@ import { safeInsets } from '../device';
 import { theme, themeEvents } from '../theme';
 import { ATLAS3 } from '../wild/wart';
 import { WILD_COMBAT, type WildScene } from './Wild';
-import { TouchStick } from '../controls';
+import { TouchStick, ZoomButtons } from '../controls';
+import { sfx } from '../audio';
 
 const FONT = 'Nunito, "Trebuchet MS", sans-serif';
 const INK = '#4a3426';
@@ -29,6 +30,7 @@ export class WildUIScene extends Phaser.Scene {
   bagTexts: Record<string, Phaser.GameObjects.Text> = {};
   /** The same floating joystick + tap-to-walk as the glade's UI. */
   stick!: TouchStick;
+  zoomBtns!: ZoomButtons;
 
   constructor() { super('wildui'); }
   get wild() { return this.scene.get('wild') as WildScene; }
@@ -39,9 +41,13 @@ export class WildUIScene extends Phaser.Scene {
     this.rects = {};
 
     // Walking: tap to go, drag to steer (shared with the glade). HUD buttons keep their taps.
-    this.stick = new TouchStick(this, { onTap: (px, py) => this.wild.tapScreen(px, py), onStick: (v) => this.wild.setStick(v) });
+    this.stick = new TouchStick(this, {
+      onTap: (px, py) => this.wild.tapScreen(px, py), onStick: (v) => this.wild.setStick(v),
+      onPinch: (ph, r, mx, my) => this.wild.zoom?.onPinch(ph, r, mx, my),
+    });
+    this.zoomBtns = new ZoomButtons(this, (dir) => { if (this.wild.zoom?.step(dir)) sfx.blip(); else sfx.tock(); });
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-      if (this.stick.pointer || this.wild.leaving || this.hit(p.x / DPR, p.y / DPR)) return;
+      if (this.stick.busy || this.wild.leaving || this.hit(p.x / DPR, p.y / DPR)) return;
       this.stick.begin(p);
     });
 
@@ -156,6 +162,8 @@ export class WildUIScene extends Phaser.Scene {
     if (WILD_COMBAT) this.rects.attack = { x: ax - 62, y: ay - 62, w: 124, h: 124 };
     this.bagC.setPosition(24 + si.left, this.h - 54 - si.bottom);
     this.rects.bag = { x: 24 + si.left, y: this.h - 84 - si.bottom, w: 200, h: 60 };
+    this.zoomBtns.layout(68 + si.left, this.h - 340 - si.bottom); // same spot as the glade: above Call Mount
+    [this.rects.zoomIn, this.rects.zoomOut] = this.zoomBtns.rects;
   }
 
   hit(x: number, y: number) {

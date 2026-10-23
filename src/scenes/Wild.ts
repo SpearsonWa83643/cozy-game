@@ -12,7 +12,7 @@ import { paintWildArt, ATLAS3 } from '../wild/wart';
 import type { WorldScene } from './World';
 import { Monster, SWING_RANGE } from '../wild/monsters';
 import { NavGrid } from '../pathfind';
-import { stickInput, steerBody, stepPath, pulseTapMarker, slideOutOfWater } from '../controls';
+import { stickInput, steerBody, stepPath, pulseTapMarker, slideOutOfWater, CamZoom } from '../controls';
 
 const TREE_FRAMES = ['tree0', 'tree1', 'tree2', 'tree3', 'tree4', 'tree5'];
 /** Round tree frame for a variant; Spring swaps the autumn-amber tree4 for its fresh-green twin. */
@@ -43,6 +43,8 @@ export class WildScene extends Phaser.Scene {
   groundTS!: Phaser.GameObjects.TileSprite;
   snow: Phaser.GameObjects.Particles.ParticleEmitter | null = null;
   deco!: Phaser.GameObjects.Graphics;
+  /** Pinch / +/- zoom (same rules as the glade). */
+  zoom!: CamZoom;
   trees: { img: Phaser.GameObjects.Image; v: number; pine: boolean; cap?: Phaser.GameObjects.Image }[] = [];
   portal!: Phaser.GameObjects.Container;
   // Movement: the exact same model as the glade (shared src/controls.ts).
@@ -139,8 +141,9 @@ export class WildScene extends Phaser.Scene {
 
     const cam = this.cameras.main;
     cam.setBounds(0, 0, WILD_W, WILD_H);
-    cam.setZoom(this.world.baseZoom());
     cam.startFollow(this.feet, true, 0.1, 0.1, 0, 18);
+    this.zoom = new CamZoom(cam, { base: () => this.world.baseZoom(), worldW: WILD_W, worldH: WILD_H, follow: () => cam.startFollow(this.feet, true, 0.1, 0.1, 0, 18) });
+    this.zoom.fit();
     cam.fadeIn(500, 255, 250, 235);
     this.scale.on('resize', this.onResize, this);
 
@@ -155,7 +158,7 @@ export class WildScene extends Phaser.Scene {
     sfx.chimes();
   }
 
-  onResize() { this.cameras.main.setZoom(this.world.baseZoom()); }
+  onResize() { this.zoom.fit(); }
 
   solid(x: number, y: number, r: number) {
     const z = this.add.zone(x, y, r * 2, r * 2);

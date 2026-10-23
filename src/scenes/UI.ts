@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { TouchStick } from '../controls';
+import { TouchStick, ZoomButtons } from '../controls';
 import { S, ATLAS, frameScale, atlasOf } from '../art';
 import { NumBadge, SeqCard } from '../seq';
 import { DPR } from '../dpr';
@@ -24,6 +24,7 @@ export class UIScene extends Phaser.Scene {
   // Floating joystick.
   /** Shared floating joystick + tap-to-walk (same module the Wild Woods uses). */
   stick!: TouchStick;
+  zoomBtns!: ZoomButtons;
   stickStart = { x: 0, y: 0 };
   stickDownAt = 0;
   stickActive = false;
@@ -201,6 +202,8 @@ export class UIScene extends Phaser.Scene {
     this.mapZone.setPosition(this.mapC.x, this.mapC.y);
     this.bagC.setPosition(this.w - 172 - si.right, 58 + si.top);
     this.bagZone.setPosition(this.bagC.x, this.bagC.y);
+    // Left column, stacked above Call Mount / Build (same spot in the Wild).
+    this.zoomBtns?.layout(68 + si.left, this.h - 340 - si.bottom);
     this.layoutFishUI();
     const abx = this.w - 74 - si.right;
     const aby = this.h - 78 - si.bottom;
@@ -482,7 +485,12 @@ export class UIScene extends Phaser.Scene {
   get world() { return this.scene.get('world') as WorldScene; }
 
   buildTouchControls() {
-    this.stick = new TouchStick(this, { onTap: (px, py) => this.world.tapScreen(px, py), onStick: (v) => this.world.setStick(v) });
+    this.stick = new TouchStick(this, {
+      onTap: (px, py) => this.world.tapScreen(px, py), onStick: (v) => this.world.setStick(v),
+      onPinch: (ph, r, mx, my) => this.world.zoom?.onPinch(ph, r, mx, my),
+    });
+    // Big + / - zoom buttons for anyone who can't pinch.
+    this.zoomBtns = new ZoomButtons(this, (dir) => { if (this.registry.get('menuOpen')) return; sfx.unlock(); if (this.world.zoom?.step(dir)) sfx.blip(); else sfx.tock(); });
 
     // Big contextual action button (96 px), bottom-right inside the safe area.
     this.actionBg = this.add.graphics();
@@ -504,12 +512,12 @@ export class UIScene extends Phaser.Scene {
     this.input.on('pointerdown', (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (p.wasTouch && !this.touchMode) { this.touchMode = true; this.applyTouchMode(); }
       if (this.registry.get('menuOpen') || this.registry.get('vcard')) return;
-      if (over.some((o) => o === this.volZone || o === this.mapZone || o === this.bagZone || (o === this.actionZone && this.actionShown))) return;
+      if (over.some((o) => this.zoomBtns.zones.includes(o as Phaser.GameObjects.Zone) || o === this.volZone || o === this.mapZone || o === this.bagZone || (o === this.actionZone && this.actionShown))) return;
       if (this.cardOpen) { this.closeCard(); return; }
       if (this.registry.get('dialogOpen')) { this.world.tryInteract(); return; }
       const fs = this.world.fishing?.state;
       if (fs === 'bite' || fs === 'reel') { this.world.fishing.tap(p.downTime); return; }
-      if (this.stick.pointer || this.dragP) return;
+      if (this.stick.busy || this.dragP) return;
       // Press on a villager: drag them onto a building (or just tap for their card).
       const vg = this.world.village;
       if (vg && !vg.building && !this.world.fishing.active && !this.world.mount?.carrying) {

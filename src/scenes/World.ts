@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { stickInput, steerBody, stepPath, pulseTapMarker, slideOutOfWater } from '../controls';
+import { stickInput, steerBody, stepPath, pulseTapMarker, slideOutOfWater, CamZoom, ZOOM } from '../controls';
 import { S, ATLAS, atlasOf, frameScale, mulberry32, pondValue, distToPaths, pathDist, ALL_PATHS , TREE_SCALE} from '../art';
 import { GroundStreamer } from '../ground';
 import { waterBlocks, areaAt, waterAt } from '../geo';
@@ -171,6 +171,8 @@ export class WorldScene extends Phaser.Scene {
   village!: Village;
   dresser!: ThemeDresser;
   buildView = false;
+  /** Pinch / +/- zoom (shared rules in controls.ts). */
+  zoom!: CamZoom;
   mount!: Mount;
   windmill: { blades: Phaser.GameObjects.Image; speed: number; boost: number } | null = null;
 
@@ -258,6 +260,12 @@ export class WorldScene extends Phaser.Scene {
     const cam = this.cameras.main;
     cam.setBounds(0, 0, WORLD_W, WORLD_H);
     cam.startFollow(this.feet, false, 0.085, 0.085, 0, 18);
+    this.zoom = new CamZoom(cam, {
+      base: () => this.baseZoom(), worldW: WORLD_W, worldH: WORLD_H,
+      follow: () => { if (!this.buildView) cam.startFollow(this.feet, false, 0.085, 0.085, 0, 18); },
+      allowed: () => !this.buildView && !this.locked,
+    });
+    cam.setZoom(this.zoom.zoomFor());
     cam.setBackgroundColor('#2b3a2f');
     this.fitCamera();
     cam.centerOn(this.feet.x, this.feet.y + 18);
@@ -315,7 +323,7 @@ export class WorldScene extends Phaser.Scene {
   exitBuildView() {
     this.buildView = false;
     const cam = this.cameras.main;
-    cam.zoomTo(this.baseZoom(), 550, 'Sine.easeInOut', true);
+    cam.zoomTo(this.zoom.zoomFor(), 550, 'Sine.easeInOut', true);
     cam.pan(this.feet.x, this.feet.y + 18, 550, 'Sine.easeInOut', true, (_c: unknown, p: number) => {
       if (p === 1 && !this.buildView) cam.startFollow(this.feet, false, 0.085, 0.085, 0, 18);
     });
@@ -323,7 +331,7 @@ export class WorldScene extends Phaser.Scene {
 
   fitCamera() {
     if (this.buildView) { const t = this.buildViewTarget(); this.cameras.main.setZoom(t.z).centerOn(t.cx, t.cy); return; }
-    this.cameras.main.setZoom(this.baseZoom());
+    this.zoom ? this.zoom.fit() : this.cameras.main.setZoom(this.baseZoom());
     // Snap to the player after a resize/rotation instead of lerping in from far away.
     if (this.feet) this.cameras.main.centerOn(this.feet.x, this.feet.y + 18);
   }
@@ -1297,6 +1305,15 @@ export class WorldScene extends Phaser.Scene {
       },
       lanterns: LANTERNS,
       enterWild: (seed?: number) => self.enterWild(seed),
+      zoomInfo() {
+        const inW = self.scene.isActive('wild');
+        const sc = (inW ? self.scene.get('wild') : self) as any;
+        const ui = self.scene.get(inW ? 'wildui' : 'ui') as any;
+        const c = sc.cameras.main;
+        return { mul: ZOOM.mul, min: ZOOM.min, max: ZOOM.max, zoom: c.zoom / DPR, base: self.baseZoom() / DPR, floor: sc.zoom.zoomFor(0.01) / DPR, ceil: sc.zoom.zoomFor(99) / DPR,
+          view: [Math.round(c.worldView.x), Math.round(c.worldView.y), Math.round(c.worldView.width), Math.round(c.worldView.height)],
+          following: !!c._follow, buttons: ui?.zoomBtns?.rects ?? [] };
+      },
       wild() {
         const wl = self.scene.get('wild') as any;
         const on = self.scene.isActive('wild') && wl.ready;

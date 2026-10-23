@@ -90,8 +90,13 @@ export class TouchStick {
   private base: Phaser.GameObjects.Graphics;
   private knob: Phaser.GameObjects.Graphics;
 
-  constructor(private scene: Phaser.Scene, private cb: { onTap: (px: number, py: number) => void; onStick: (v: { x: number; y: number } | null) => void }) {
+  /** Two-finger pinch in progress (both pointers + starting finger distance in canvas px). */
+  private pinch: { a: Phaser.Input.Pointer; b: Phaser.Input.Pointer; d0: number } | null = null;
+
+  constructor(private scene: Phaser.Scene, private cb: { onTap: (px: number, py: number) => void; onStick: (v: { x: number; y: number } | null) => void; onPinch?: PinchCb }) {
     scene.input.addPointer(2);
+    // Registered before the scene's own pointerdown so a second finger turns the walk press into a pinch first.
+    scene.input.on('pointerdown', this.down, this);
     this.base = scene.add.graphics().setVisible(false);
     this.base.fillStyle(0xfff6e2, 0.16); this.base.fillCircle(0, 0, STICK_R);
     this.base.lineStyle(3, 0xfff6e2, 0.55); this.base.strokeCircle(0, 0, STICK_R);
@@ -106,7 +111,33 @@ export class TouchStick {
     scene.input.on('gameout', () => { if (this.pointer) this.release(this.pointer); });
   }
 
+  /** True while a walk press or a pinch owns the touch (a new press should not start anything). */
+  get busy() { return !!this.pointer || !!this.pinch; }
+  get pinching() { return !!this.pinch; }
+
+  private down(p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[] = []) {
+    const a = this.pointer;
+    if (!this.cb.onPinch || this.pinch || !a || a === p || !a.isDown || over.length) return;
+    // Second finger while walking: no tap, no joystick; it's a pinch now.
+    this.reset();
+    this.pinch = { a, b: p, d0: Math.max(8, Math.hypot(a.x - p.x, a.y - p.y)) };
+    this.cb.onPinch('start', 1, (a.x + p.x) / 2, (a.y + p.y) / 2);
+  }
+
+  private pinchMove() {
+    const pi = this.pinch!;
+    const { a, b } = pi;
+    this.cb.onPinch?.('move', Math.hypot(a.x - b.x, a.y - b.y) / pi.d0, (a.x + b.x) / 2, (a.y + b.y) / 2);
+  }
+
+  private endPinch() {
+    if (!this.pinch) return;
+    this.pinch = null;
+    this.cb.onPinch?.('end', 1, 0, 0);
+  }
+
   begin(p: Phaser.Input.Pointer) {
+    if (this.pinch) return;
     this.pointer = p;
     this.start = { x: p.x / DPR, y: p.y / DPR };
     this.origin = { ...this.start };
@@ -115,6 +146,7 @@ export class TouchStick {
   }
 
   private move(p: Phaser.Input.Pointer) {
+    if (this.pinch && (p === this.pinch.a || p === this.pinch.b)) { this.pinchMove(); return; }
     if (p !== this.pointer || !p.isDown) return;
     const x = p.x / DPR, y = p.y / DPR;
     let dx = x - this.origin.x, dy = y - this.origin.y, d = Math.hypot(dx, dy);
@@ -137,6 +169,7 @@ export class TouchStick {
   }
 
   private release(p: Phaser.Input.Pointer) {
+    if (this.pinch && (p === this.pinch.a || p === this.pinch.b)) { this.endPinch(); return; }
     if (p !== this.pointer) return;
     if (!this.active && this.scene.time.now - this.downAt < TAP_MS) this.cb.onTap(p.x, p.y);
     this.reset();
@@ -149,7 +182,7 @@ export class TouchStick {
   }
 
   /** Drop the stick without a tap (focus lost, scene leaving). */
-  cancel() { if (this.pointer) this.reset(); }
+  cancel() { if (this.pointer) this.reset(); this.endPinch(); }
 
   private reset() {
     this.pointer = null;
@@ -159,5 +192,103 @@ export class TouchStick {
   }
 
   /** Safety net: a pointer that is no longer down but never sent pointerup. */
-  update() { if (this.pointer && !this.pointer.isDown) this.release(this.pointer); }
+  update() {
+    if (this.pointer && !this.pointer.isDown) this.release(this.pointer);
+    if (this.pinch && (!this.pinch.a.isDown || !this.pinch.b.isDown)) this.endPinch();
+  }
+}
+
+// ------------------------------------------------------------------ zoom (shared by the glade and the Wild Woods)
+export type PinchCb = (phase: 'start' | 'move' | 'end', ratio: number, midX: number, midY: number) => void;
+
+/** Player zoom on top of each scene's base zoom: one setting shared everywhere this session. */
+export const ZOOM = { mul: 1, min: 0.7, max: 1.8, step: 1.25 };
+
+/**
+ * Pinch / +/- zoom for a camera that normally follows the hero. The final zoom is base * ZOOM.mul,
+ * clamped so the view never shows past the map edges. Pinch zooms around the fingers' midpoint,
+ * then the camera eases back onto the hero when the fingers lift.
+ */
+export class CamZoom {
+  private pinchMul = 1;
+  private pinchOn = false;
+  constructor(private cam: Phaser.Cameras.Scene2D.Camera, private o: { base: () => number; worldW: number; worldH: number; follow: () => void; allowed?: () => boolean }) {}
+
+  /** Lowest zoom (canvas px per world unit) that still fits inside the map. */
+  private floor() { return Math.max(this.cam.width / this.o.worldW, this.cam.height / this.o.worldH); }
+  /** The zoom the camera should sit at for a given multiplier. */
+  zoomFor(mul = ZOOM.mul) { return Math.max(this.o.base() * Phaser.Math.Clamp(mul, ZOOM.min, ZOOM.max), this.floor()); }
+
+  /** Keep the world point under (sx, sy) canvas px still while zooming to z. */
+  private zoomAt(z: number, sx: number, sy: number) {
+    const c = this.cam, w = c.width, h = c.height, z0 = c.zoom;
+    const wx = c.scrollX + w * c.originX + (sx - w * c.originX) / z0;
+    const wy = c.scrollY + h * c.originY + (sy - h * c.originY) / z0;
+    c.setZoom(z);
+    c.setScroll(wx - w * c.originX - (sx - w * c.originX) / z, wy - h * c.originY - (sy - h * c.originY) / z);
+  }
+
+  onPinch: PinchCb = (phase, ratio, mx, my) => {
+    if (phase === 'start') {
+      if (this.o.allowed && !this.o.allowed()) return;
+      this.pinchOn = true; this.pinchMul = ZOOM.mul;
+      this.cam.stopFollow();
+      this.cam.zoomEffect?.reset?.();
+    } else if (phase === 'move') {
+      if (!this.pinchOn) return;
+      ZOOM.mul = Phaser.Math.Clamp(this.pinchMul * ratio, ZOOM.min, ZOOM.max);
+      this.zoomAt(this.zoomFor(), mx, my);
+    } else if (this.pinchOn) {
+      this.pinchOn = false;
+      this.o.follow();
+    }
+  };
+
+  /** +/- buttons: one step in or out around the hero, with a quick ease. */
+  step(dir: 1 | -1) {
+    if (this.o.allowed && !this.o.allowed()) return false;
+    const before = ZOOM.mul;
+    ZOOM.mul = Phaser.Math.Clamp(ZOOM.mul * (dir > 0 ? ZOOM.step : 1 / ZOOM.step), ZOOM.min, ZOOM.max);
+    if (Math.abs(ZOOM.mul - before) < 1e-3) return false;
+    this.cam.zoomTo(this.zoomFor(), 220, 'Sine.easeOut', true);
+    return true;
+  }
+
+  /** Re-apply after a resize or when the scene (re)enters. */
+  fit() { this.cam.setZoom(this.zoomFor()); }
+}
+
+/** The big round + / - pair (same look and place in every scene): left column, above Call Mount / Build. */
+export class ZoomButtons {
+  zones: Phaser.GameObjects.Zone[] = [];
+  rects: { x: number; y: number; w: number; h: number }[] = [];
+  private cs: Phaser.GameObjects.Container[] = [];
+  constructor(private scene: Phaser.Scene, onZoom: (dir: 1 | -1) => void) {
+    for (const dir of [1, -1] as const) {
+      const g = scene.add.graphics();
+      g.fillStyle(0x2c2420, 0.3); g.fillCircle(0, 3, 29);
+      g.fillStyle(0xf3e6cc, 0.94); g.fillCircle(0, 0, 28);
+      g.lineStyle(3, 0xb59b7c, 1); g.strokeCircle(0, 0, 28);
+      g.fillStyle(0x6b4a33, 1); g.fillRoundedRect(-12, -3.5, 24, 7, 3.5);
+      if (dir > 0) g.fillRoundedRect(-3.5, -12, 7, 24, 3.5);
+      const c = scene.add.container(0, 0, [g]).setDepth(40);
+      const z = scene.add.zone(0, 0, 68, 68).setInteractive(new Phaser.Geom.Circle(34, 34, 34), Phaser.Geom.Circle.Contains).setDepth(40);
+      z.on('pointerdown', (p: Phaser.Input.Pointer) => {
+        p.event?.stopPropagation?.();
+        scene.tweens.add({ targets: c, scale: { from: 0.85, to: 1 }, duration: 200, ease: 'Back.easeOut' });
+        onZoom(dir);
+      });
+      this.cs.push(c); this.zones.push(z);
+    }
+  }
+  /** Stack the pair at (x, y) top (CSS px). */
+  layout(x: number, y: number) {
+    this.rects = [];
+    this.cs.forEach((c, i) => {
+      const cy = y + i * 66;
+      c.setPosition(x, cy); this.zones[i].setPosition(x, cy);
+      this.rects.push({ x: x - 34, y: cy - 34, w: 68, h: 68 });
+    });
+  }
+  setVisible(v: boolean) { this.cs.forEach((c) => c.setVisible(v)); this.zones.forEach((z) => (z.input!.enabled = v)); }
 }
