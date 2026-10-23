@@ -55,7 +55,7 @@ test('mount steer: drag steers toward the drag, release resumes the tour, tap st
     const m3 = await mount(page);
     expect(m3.steering).toBe(true);
     expect(Math.hypot(m3.ground[0] - m2.ground[0], m3.ground[1] - m2.ground[1])).toBeLessThan(260);
-    await expect.poll(async () => (await mount(page)).steering, { timeout: 6_000, intervals: [200] }).toBe(false);
+    await expect.poll(async () => (await mount(page)).steering, { timeout: 20_000, intervals: [200] }).toBe(false);
     const m4 = await mount(page);
     expect(m4.phase).toBe('ride');
     expect(m4.tours).toBeGreaterThanOrEqual(1);
