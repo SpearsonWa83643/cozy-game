@@ -1111,11 +1111,42 @@ export class MenuScene extends Phaser.Scene {
 
   // ------------------------------------------------------------ mount stable
   /** 9.38: a barn with a stall for every mount. Unlocked friends flap and bob; locked ones are silhouettes. */
-  stablePets: { id: string; c: Phaser.GameObjects.Container; body: Phaser.GameObjects.Image; wing: Phaser.GameObjects.Image; wingFar: Phaser.GameObjects.Image; m: MountDef; flap: number; ph: number; on: boolean; k: number }[] = [];
+  stablePets: { id: string; c: Phaser.GameObjects.Container; body: Phaser.GameObjects.Image; wing: Phaser.GameObjects.Image; wingFar: Phaser.GameObjects.Image; m: MountDef; flap: number; ph: number; on: boolean; k: number; idleAt?: number }[] = [];
   lastMount = '';
   /** Last petting reaction, for tests: which mount, tap or stroke, and the running heart count. */
   lastPet: { id: string; kind: 'tap' | 'stroke'; hearts: number } | null = null;
   petHearts = 0;
+  idleCount = 0;
+  lastIdle = '';
+  private rideBtn: Phaser.GameObjects.Container | null = null;
+
+  /** Slice 3: a big Ride! button on the friend you just petted. */
+  private showRide(m: MountDef) {
+    this.rideBtn?.destroy(); this.rideBtn = null;
+    for (const k of Object.keys(this.rects)) if (k.startsWith('ride:')) delete this.rects[k];
+    const r = this.rects[`stall:${m.id}`];
+    if (!r) return;
+    const bw = Math.min(r.w - 20, 140), bh = 48;
+    const x = r.x + (r.w - bw) / 2, y = r.y + r.h - 64 - bh - 6;
+    const c = this.add.container(0, 0);
+    const [bg, z] = this.btn(x, y, bw, bh, () => this.rideMount(m), theme.ui.accent, theme.ui.accentDark, 24);
+    const label = this.text(x + bw / 2, y + bh / 2, m.id === currentPick() ? 'Ride now!' : 'Ride!', 20, '#ffffff', 900).setOrigin(0.5).setStroke('#' + theme.ui.accentDark.toString(16).padStart(6, '0'), 4);
+    c.add([bg, z, label]);
+    this.content.add(c);
+    c.setScale(0.6).setAlpha(0);
+    c.setPosition((x + bw / 2) * 0.4, (y + bh / 2) * 0.4);
+    this.tweens.add({ targets: c, scale: 1, x: 0, y: 0, alpha: 1, duration: 220, ease: 'Back.easeOut' });
+    this.rideBtn = c;
+    this.rects[`ride:${m.id}`] = { x, y, w: bw, h: bh };
+  }
+
+  /** Pick this friend as your ride, close the satchel and call it in. */
+  rideMount(m: MountDef) {
+    save.mountPick = m.id; persist();
+    sfx.sparkle();
+    this.close();
+    this.time.delayedCall(180, () => { const mt = this.world.mount; if (mt?.canCall()) mt.call(m.id); });
+  }
   private petSoundAt = 0;
 
   /** Pop a few hearts up out of a stall. */
@@ -1190,10 +1221,11 @@ export class MenuScene extends Phaser.Scene {
     }
     this.hint(`${m.name}! ${m.blurb} Stroke me for more hearts!`);
     this.pet(p, 'tap', p.c.x, p.c.y);
+    this.showRide(m);
   }
 
   renderStable(a: { x: number; y: number; w: number; h: number }) {
-    this.stablePets = [];
+    this.stablePets = []; this.rideBtn = null;
     const list = MOUNTS;
     const got = list.filter(isMountUnlocked).length;
     const cols = Math.ceil(list.length / 2), rows = 2;
@@ -1300,6 +1332,27 @@ export class MenuScene extends Phaser.Scene {
         p.wingFar.setScale(ws * 0.9, sy * 0.88).setRotation(-sweep * 1.15);
       }
       p.body.y = Math.sin(time / 600 + p.ph) * 2.5 / p.k;
+      // Idle life: now and then a friend looks around, hops, wiggles or dozes.
+      if (p.idleAt === undefined) p.idleAt = time + 1200 + Math.random() * 3000;
+      if (time >= p.idleAt) { p.idleAt = time + 3500 + Math.random() * 4500; if (!this.tweens.isTweening(p.c)) this.idle(p); }
+    }
+  }
+
+  private idle(p: { c: Phaser.GameObjects.Container; m: MountDef }) {
+    const y0 = p.c.getData('y0') as number, k0 = p.c.getData('k0') as number;
+    const kinds = ['look', 'hop', 'wiggle', 'doze'] as const;
+    const kind = kinds[Math.floor(Math.random() * kinds.length)];
+    this.idleCount++; this.lastIdle = `${p.m.id}:${kind}`;
+    if (kind === 'look') this.tweens.add({ targets: p.c, scaleX: -k0, duration: 160, yoyo: true, hold: 900, onComplete: () => p.c.setScale(k0) });
+    else if (kind === 'hop') this.tweens.add({ targets: p.c, y: y0 - 10, duration: 140, yoyo: true, repeat: 1, ease: 'Quad.easeOut', onComplete: () => { p.c.y = y0; } });
+    else if (kind === 'wiggle') this.tweens.add({ targets: p.c, rotation: { from: -0.1, to: 0.1 }, duration: 120, yoyo: true, repeat: 2, onComplete: () => { p.c.rotation = 0; } });
+    else {
+      this.tweens.add({ targets: p.c, scaleY: k0 * 0.93, duration: 500, yoyo: true, hold: 900, onComplete: () => p.c.setScale(k0) });
+      for (let i = 0; i < 3; i++) {
+        const z = this.text(p.c.x + 20 + i * 8, y0 - 24, 'z', 16 + i * 4, '#fff3d6', 900).setOrigin(0.5).setStroke('#4a2a16', 4).setAlpha(0);
+        this.content.add(z);
+        this.tweens.add({ targets: z, alpha: { from: 1, to: 0 }, y: z.y - 34, x: z.x + 12, duration: 1100, delay: i * 300, onComplete: () => z.destroy() });
+      }
     }
   }
 

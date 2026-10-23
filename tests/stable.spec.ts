@@ -85,7 +85,19 @@ test('stable: every mount in a stall, locked ones give hints', async ({ playwrig
       await expect.poll(() => page.evaluate(() => (window as any).__menu.hintText?.text ?? ''), { timeout: 20_000 }).toContain('Golden Honeycomb');
       await tapRect(page, await rect(page, 'stall:goose'));
       await expect.poll(() => page.evaluate(() => (window as any).__menu.hintText?.text ?? ''), { timeout: 20_000 }).toContain('Fall');
-      await page.evaluate(() => (window as any).__menu.close());
+      // Slice 3: friends have idle moments on their own.
+      await expect.poll(() => page.evaluate(() => (window as any).__menu.idleCount), { timeout: 30_000 }).toBeGreaterThanOrEqual(2);
+      // Tap the Toy Airplane, then its Ride! button: it becomes your ride, the satchel closes and it flies in.
+      await page.waitForTimeout(1500);
+      await tapRect(page, await rect(page, 'stall:airplane'));
+      await expect.poll(() => page.evaluate(() => !!(window as any).__menu.rects['ride:airplane']), { timeout: 20_000 }).toBe(true);
+      await page.waitForTimeout(400);
+      await page.screenshot({ path: `${SHOTS}/stable-ride.png` });
+      await tapRect(page, await rect(page, 'ride:airplane'));
+      await expect.poll(() => page.evaluate(() => (window as any).__menu.open), { timeout: 20_000 }).toBe(false);
+      await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('cozy.save.v2')!).mountPick), { timeout: 10_000 }).toBe('airplane');
+      await expect.poll(() => page.evaluate(() => (window as any).__game.scene.getScene('world').mount.phase), { timeout: 20_000 }).not.toBe('off');
+      expect(await page.evaluate(() => (window as any).__game.scene.getScene('world').mount.def.id)).toBe('airplane');
       await page.waitForTimeout(500);
       expect(errors).toEqual([]);
     } finally { await page.close(); }
