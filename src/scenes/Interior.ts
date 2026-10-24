@@ -7,6 +7,7 @@ import { sfx } from '../audio';
 import { save, persist } from '../save';
 import { theme } from '../theme';
 import { FURN, furnTexture, roomOf, RECIPES, type FurnDef } from '../interior/furniture';
+import { openToolPicker, type ToolState } from '../interior/toolgame';
 import type { WorldScene } from './World';
 
 const INK = '#3d2c20';
@@ -37,6 +38,9 @@ export class InteriorScene extends Phaser.Scene {
   /** Workshop: what the bench is building, and how many hammer taps so far (3 to finish). */
   craft: null | { id: string; taps: number } = null;
   pickerOpen = false;
+  /** 12.2 tool games: the open tool picker / station (null when none) and how many of each were finished this visit. */
+  tool: ToolState | null = null;
+  toolsDone: Record<string, number> = {};
   /** Garden: pot growth steps and flowers picked; fishing hut: fish caught (cosmetic). */
   grown = 0;
   picked = 0;
@@ -79,7 +83,7 @@ export class InteriorScene extends Phaser.Scene {
     if (!r) { r = all[String(this.bid)] = { items: roomOf(this.btype).start.map((s) => ({ ...s })), lampOn: true }; persist(); }
     return r;
   }
-  private store() {
+  store() {
     const r = this.roomSave();
     r.items = this.items.map((i) => ({ k: i.k, x: +i.x.toFixed(3), y: +i.y.toFixed(3) }));
     r.lampOn = this.lampOn;
@@ -117,7 +121,7 @@ export class InteriorScene extends Phaser.Scene {
     // NB: DisplayList.removeAll(true) only SKIPS the remove-callback (it never destroys), which left the full-screen
     // 'swallow taps' rectangle registered in this scene's input list after exit, so it kept eating every tap/drag.
     for (const c of this.children.list.slice()) c.destroy();
-    this.items = []; this.rects = {}; this.dark = null; this.glow = null; this.pan = null; this.cookStage = 0; this.brewing = false; this.winG = null; this.bin = null; this.hint = null; this.ghost = null; this.pickerOpen = false; this.fishing = false;
+    this.items = []; this.rects = {}; this.dark = null; this.glow = null; this.pan = null; this.cookStage = 0; this.brewing = false; this.winG = null; this.bin = null; this.hint = null; this.ghost = null; this.pickerOpen = false; this.tool = null; this.fishing = false;
   }
 
   // ------------------------------------------------------------------ layout + drawing
@@ -243,7 +247,7 @@ export class InteriorScene extends Phaser.Scene {
     this.glow = this.add.graphics().setDepth(501).setBlendMode(Phaser.BlendModes.ADD);
     this.updateGlow();
   }
-  private updateGlow() {
+  updateGlow() {
     const g = this.glow; if (!g) return;
     g.clear();
     if (!this.lampOn) return;
@@ -304,6 +308,9 @@ export class InteriorScene extends Phaser.Scene {
     this.text(dx + dw / 2 + 14, T + 28, on ? 'Done!' : 'Decorate', 24, on ? INK : '#fffaf0', 900).setOrigin(0.5).setStroke(on ? '#fff2b0' : hex(theme.ui.accentDark), on ? 0 : 5).setDepth(1002);
   }
 
+  workshopHint() { return `Tap the workbench to build things! Tap the tool wall to wrench, hammer, saw and paint. You have ${save.village.res.wood} wood and ${save.village.res.stone} stone.`; }
+  refreshHint() { if (this.hint && this.btype === 'workshop') this.hint.setText(this.workshopHint()); }
+
   private drawBottom(y: number, L: number, R: number, H: number) {
     const g = this.add.graphics().setDepth(1000);
     g.fillStyle(0x2a1d14, 0.25); g.fillRoundedRect(L + 2, y + 6, R - L, H, 24);
@@ -311,7 +318,7 @@ export class InteriorScene extends Phaser.Scene {
     g.lineStyle(3, 0xd9b98f, 1); g.strokeRoundedRect(L + 4, y + 4, R - L - 8, H - 8, 20);
     if (!this.decorating) {
       this.hint = this.text((L + R) / 2, y + H / 2, this.btype === 'kitchen' ? 'Tap the stove to cook breakfast! Tap the coffee maker for coffee. Tap Decorate to move things.'
-      : this.btype === 'workshop' ? `Tap the workbench to build things from wood and stone! You have ${save.village.res.wood} wood and ${save.village.res.stone} stone.` : this.btype === 'garden' ? 'Tap a flower pot to help it grow! Tap the watering can to water them all. Tap Decorate to move things.'
+      : this.btype === 'workshop' ? this.workshopHint() : this.btype === 'garden' ? 'Tap a flower pot to help it grow! Tap the watering can to water them all. Tap Decorate to move things.'
       : this.btype === 'fishhut' ? 'Tap the fishing hole to cast your line! Tap Decorate to move things.'
       : 'Tap things to play with them!  Tap Decorate to move things around.', 21, '#6b4f3a', 800)
         .setOrigin(0.5).setDepth(1001).setWordWrapWidth(R - L - 40).setAlign('center');
@@ -378,7 +385,7 @@ export class InteriorScene extends Phaser.Scene {
   }
   private depthOf(d: FurnDef, py: number) { return d.layer === 'rug' ? 1 : d.layer === 'wall' ? 2 : 10 + py / 10; }
 
-  private spawn(k: string, x: number, y: number, fresh: boolean) {
+  spawn(k: string, x: number, y: number, fresh: boolean) {
     const d = FURN[k];
     const { px, py } = this.place(d, x, y);
     const sc = Phaser.Math.Clamp(this.room.h / 470, 0.75, 1.25);
@@ -405,7 +412,7 @@ export class InteriorScene extends Phaser.Scene {
   }
 
   /** The emptiest spot on a thing's layer, so new things don't hide behind old ones. */
-  private emptiest(f: FurnDef) {
+  emptiest(f: FurnDef) {
     let x = 0.5, y = 0.5, best = -1;
     const same = this.items.filter((i) => FURN[i.k].layer === f.layer || (f.layer !== 'wall' && FURN[i.k].layer !== 'wall'));
     for (let t = 0; t < 24; t++) {
@@ -556,7 +563,7 @@ export class InteriorScene extends Phaser.Scene {
         this.say(`${r.wood} wood and ${r.stone} stone!`, cx, top - 16);
         break;
       }
-      case 'toolwall': act = 'tools'; sfx.tock(); wiggle(); this.say(Phaser.Utils.Array.GetRandom(['Hammer, saw and wrench!', 'Measure twice, cut once!', 'Tools all tidy!']), cx, top - 16); break;
+      case 'toolwall': act = 'tools'; sfx.tock(); wiggle(); this.say('Pick a tool!', cx, top - 16); openToolPicker(this); break;
       case 'toyboat':
         act = 'sail'; sfx.plip();
         this.tweens.add({ targets: img, angle: { from: -9, to: 9 }, duration: 260, yoyo: true, repeat: 2, ease: 'Sine.easeInOut', onComplete: () => img.setAngle(0) });
@@ -579,6 +586,26 @@ export class InteriorScene extends Phaser.Scene {
         this.tweens.add({ targets: img, angle: { from: -8, to: 8 }, duration: 320, yoyo: true, repeat: 3, ease: 'Sine.easeInOut', onComplete: () => img.setAngle(0) });
         this.say('Giddy up!', cx, top - 16);
         break;
+      case 'cog': act = 'spin'; sfx.clank(); this.tweens.add({ targets: img, angle: 360, duration: 900, ease: 'Cubic.easeOut', onComplete: () => img.setAngle(0) }); this.say('Whirr, clank!', cx, top - 16); break;
+      case 'sign': act = 'swing'; sfx.tock(); this.tweens.add({ targets: img, angle: { from: -7, to: 7 }, duration: 240, yoyo: true, repeat: 3, ease: 'Sine.easeInOut', onComplete: () => img.setAngle(0) }); this.say('Welcome!', cx, top - 16); break;
+      case 'musicbox': {
+        act = 'play';
+        [659.25, 783.99, 880, 1046.5, 880, 783.99].forEach((f, i) => sfx.bell(f, i * 0.28, 0.07, 1.2));
+        squash();
+        for (let i = 0; i < 3; i++) {
+          const n = this.text(cx - 18 + i * 18, top + 4, '\u266A', 30, '#e0608a', 900).setStroke('#fffaf0', 5).setOrigin(0.5).setDepth(img.depth + 1);
+          this.tweens.add({ targets: n, y: n.y - 56, x: n.x + (i - 1) * 16, alpha: { from: 1, to: 0 }, duration: 1100, delay: i * 280, ease: 'Sine.easeOut', onComplete: () => n.destroy() });
+        }
+        break;
+      }
+      case 'stool': act = 'sit'; sfx.creak(); squash(); this.say('Sturdy!', cx, top - 16); break;
+      case 'paintedhouse': {
+        act = 'tweet'; [1760, 1976, 1760].forEach((f, i) => sfx.bell(f, i * 0.12, 0.05, 0.3));
+        const bird = this.add.ellipse(cx, img.y - 72 * it.sc, 18, 15, 0xff8fb4).setStrokeStyle(2.5, 0x4a3022).setDepth(img.depth + 0.5).setScale(0.2);
+        this.tweens.add({ targets: bird, scale: 1, y: bird.y - 30, duration: 300, ease: 'Back.easeOut', yoyo: true, hold: 600, onComplete: () => bird.destroy() });
+        this.say('Tweet tweet!', cx, top - 16);
+        break;
+      }
       case 'pot': case 'pot_1': case 'pot_2': act = this.grow(it, true) ? 'grow' : 'wait'; break;
       case 'pot_3': {
         act = 'pick'; this.picked++; sfx.pickup(); squash();
@@ -886,18 +913,18 @@ export class InteriorScene extends Phaser.Scene {
     this.hearts(made.img.x, made.img.y - f.h * made.sc * (f.layer === 'floor' ? 1 : 0.5), 5);
     this.say(`You built a ${f.name}!`, made.img.x, made.img.y - f.h * made.sc - 20);
     this.store(); this.updateGlow();
-    if (this.hint) this.hint.setText(`Tap the workbench to build things from wood and stone! You have ${r.wood} wood and ${r.stone} stone.`);
+    this.refreshHint();
     return 'built';
   }
 
-  private sparkles(x: number, y: number, n: number, color: number) {
+  sparkles(x: number, y: number, n: number, color: number) {
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2, r = 30 + Math.random() * 30;
       const s = this.add.star(x, y, 4, 3, 8, color).setStrokeStyle(1.5, 0x4a3022, 0.6).setDepth(960);
       this.tweens.add({ targets: s, x: x + Math.cos(a) * r, y: y + Math.sin(a) * r, alpha: 0, angle: 90, duration: 600, ease: 'Quad.easeOut', onComplete: () => s.destroy() });
     }
   }
-  private hearts(x: number, y: number, n: number) {
+  hearts(x: number, y: number, n: number) {
     if (!this.textures.exists('stable-heart')) {
       const g = this.make.graphics({ x: 0, y: 0 }, false);
       g.fillStyle(0xff5c8a, 1); g.fillCircle(9, 9, 8); g.fillCircle(23, 9, 8); g.fillTriangle(1.5, 12, 30.5, 12, 16, 30);

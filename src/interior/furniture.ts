@@ -296,6 +296,50 @@ export const FURNITURE: FurnDef[] = [
     for (let i = 0; i < 4; i++) { c.beginPath(); c.arc(w / 2, h / 2, r, i * Math.PI / 2, (i + 1) * Math.PI / 2); c.arc(w / 2, h / 2, r * 0.52, (i + 1) * Math.PI / 2, i * Math.PI / 2, true); c.closePath(); c.fillStyle = i % 2 ? '#fffaf0' : '#e8604c'; c.fill(); }
     c.lineWidth = 4; c.strokeStyle = OUT; c.beginPath(); c.arc(w / 2, h / 2, r, 0, Math.PI * 2); c.stroke(); c.beginPath(); c.arc(w / 2, h / 2, r * 0.52, 0, Math.PI * 2); c.stroke();
   } },
+  // ---- Workshop tools (12.2): things you make with the tool wall's wrench, hammer, screwdriver, saw and paintbrush
+  { id: 'cog', name: 'Golden Cog', layer: 'wall', w: 96, h: 96, draw: (c, w, h) => {
+    const cx = w / 2, cy = h / 2;
+    c.beginPath();
+    for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2, a2 = a + Math.PI / 8; c.lineTo(cx + Math.cos(a - 0.17) * 36, cy + Math.sin(a - 0.17) * 36); c.lineTo(cx + Math.cos(a - 0.12) * 46, cy + Math.sin(a - 0.12) * 46); c.lineTo(cx + Math.cos(a + 0.12) * 46, cy + Math.sin(a + 0.12) * 46); c.lineTo(cx + Math.cos(a + 0.17) * 36, cy + Math.sin(a + 0.17) * 36); void a2; }
+    c.closePath(); fillOut(c, vgrad(c, 4, h, '#ffe27a', '#e0a020'), 4);
+    c.beginPath(); c.arc(cx, cy, 28, 0, Math.PI * 2); fillOut(c, vgrad(c, 20, 76, '#ffd34d', '#f0b030'), 3.5);
+    c.beginPath(); c.arc(cx, cy, 11, 0, Math.PI * 2); fillOut(c, '#fff1c4', 3.5);
+    c.fillStyle = 'rgba(255,255,255,0.7)'; c.beginPath(); c.arc(cx - 12, cy - 14, 5, 0, Math.PI * 2); c.fill();
+  } },
+  { id: 'sign', name: 'Welcome Sign', layer: 'wall', w: 138, h: 80, draw: (c, w, h) => {
+    c.lineWidth = 3; c.strokeStyle = OUT; c.beginPath(); c.moveTo(34, 8); c.lineTo(34, 22); c.moveTo(w - 34, 8); c.lineTo(w - 34, 22); c.stroke();
+    rr(c, 6, 20, w - 12, h - 28, 10); fillOut(c, vgrad(c, 20, h, '#e9b676', '#c98a55'), 4);
+    c.strokeStyle = 'rgba(90,50,25,0.4)'; c.lineWidth = 2; for (const y of [38, 52]) { c.beginPath(); c.moveTo(14, y); c.lineTo(w - 14, y); c.stroke(); }
+    c.fillStyle = '#7d8a96'; for (const [x, y] of [[16, 30], [w - 16, 30], [16, h - 18], [w - 16, h - 18]]) { c.beginPath(); c.arc(x, y, 3.5, 0, Math.PI * 2); c.fill(); }
+    c.beginPath(); c.moveTo(w / 2, 52); c.bezierCurveTo(w / 2 - 22, 36, w / 2 - 10, 28, w / 2, 40); c.bezierCurveTo(w / 2 + 10, 28, w / 2 + 22, 36, w / 2, 52); fillOut(c, '#e8604c', 3);
+  } },
+  { id: 'musicbox', name: 'Music Box', layer: 'floor', w: 104, h: 92, draw: (c, w, h) => {
+    shadow(c, w / 2, h - 5, w * 0.42);
+    rr(c, 10, 34, w - 20, h - 42, 10); fillOut(c, vgrad(c, 34, h, '#d98aa8', '#b8607f'), 4);
+    rr(c, 4, 22, w - 8, 20, 8); fillOut(c, vgrad(c, 22, 42, '#f6b8cc', '#e08aa8'), 4);
+    rr(c, 18, 50, w - 36, 18, 6); fillOut(c, '#fff1d6', 3);
+    c.fillStyle = '#4a3022'; for (let i = 0; i < 5; i++) c.fillRect(24 + i * 11, 54, 3, 10);
+    c.lineWidth = 3; c.strokeStyle = OUT; c.beginPath(); c.arc(w / 2, 14, 7, 0, Math.PI * 2); c.stroke();
+    c.beginPath(); c.arc(w / 2, 14, 7, 0, Math.PI * 2); c.fillStyle = '#ffd34d'; c.fill(); c.stroke();
+    c.beginPath(); c.moveTo(w / 2, 21); c.lineTo(w / 2, 26); c.stroke();
+  } },
+  { id: 'stool', name: 'Wooden Stool', layer: 'floor', w: 90, h: 84, draw: (c, w, h) => {
+    shadow(c, w / 2, h - 5, w * 0.4);
+    c.lineCap = 'round';
+    for (const [x0, x1] of [[20, 14], [w - 20, w - 14], [w / 2, w / 2]] as [number, number][]) { c.lineWidth = 12; c.strokeStyle = OUT; c.beginPath(); c.moveTo(x0, 40); c.lineTo(x1, h - 10); c.stroke(); c.lineWidth = 6; c.strokeStyle = '#a8693c'; c.stroke(); }
+    c.beginPath(); c.ellipse(w / 2, 34, w / 2 - 6, 18, 0, 0, Math.PI * 2); fillOut(c, vgrad(c, 16, 52, '#f0c48a', '#d29a62'), 4);
+    c.strokeStyle = 'rgba(120,70,30,0.5)'; c.lineWidth = 2; c.beginPath(); c.ellipse(w / 2, 34, 22, 8, 0, 0, Math.PI * 2); c.stroke(); c.beginPath(); c.ellipse(w / 2, 34, 9, 3, 0, 0, Math.PI * 2); c.stroke();
+  } },
+  { id: 'paintedhouse', name: 'Painted Birdhouse', layer: 'floor', w: 96, h: 134, draw: (c, w, h) => {
+    shadow(c, w / 2, h - 5, w * 0.3);
+    rr(c, w / 2 - 6, 70, 12, h - 76, 4); fillOut(c, '#9a6238', 3.5);
+    rr(c, 14, 36, w - 28, 54, 7); fillOut(c, vgrad(c, 36, 90, '#7fd1e8', '#4aa8d0'), 4);
+    c.beginPath(); c.moveTo(4, 42); c.lineTo(w / 2, 4); c.lineTo(w - 4, 42); c.closePath(); fillOut(c, '#ff6f8f', 4);
+    c.fillStyle = '#ffd34d'; for (const x of [28, 48, 68]) { c.beginPath(); c.arc(x, 34, 4, 0, Math.PI * 2); c.fill(); }
+    c.beginPath(); c.arc(w / 2, 62, 12, 0, Math.PI * 2); fillOut(c, '#4a3022', 3.5);
+    c.beginPath(); c.arc(w / 2, 62, 17, 0, Math.PI * 2); c.lineWidth = 5; c.strokeStyle = '#ffd34d'; c.stroke(); c.lineWidth = 2; c.strokeStyle = OUT; c.stroke();
+    rr(c, w / 2 - 14, 86, 28, 6, 3); fillOut(c, '#7cc463', 2.5);
+  } },
 ];
 
 export const FURN: Record<string, FurnDef> = Object.fromEntries(FURNITURE.map((f) => [f.id, f]));
