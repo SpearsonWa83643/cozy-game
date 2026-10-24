@@ -5,7 +5,7 @@ import { DPR } from '../dpr';
 import { safeInsets } from '../device';
 import { theme, themeEvents } from '../theme';
 import { ATLAS3 } from '../wild/wart';
-import { WILD_COMBAT, type WildScene } from './Wild';
+import { WILD_COMBAT, LUNCHBOX_TINT, type WildScene } from './Wild';
 import { TouchStick, ZoomButtons } from '../controls';
 import { sfx } from '../audio';
 
@@ -31,6 +31,15 @@ export class WildUIScene extends Phaser.Scene {
   /** The same floating joystick + tap-to-walk as the glade's UI. */
   stick!: TouchStick;
   zoomBtns!: ZoomButtons;
+
+  /** Self-added 12.4: after a little while, a tiny lunchbox bubble at the screen edge points toward
+   *  the creature carrying the mount lunchbox (or the dropped box), so younger kids can find it. */
+  lbPtr!: Phaser.GameObjects.Container;
+  lbArrow!: Phaser.GameObjects.Graphics;
+  lbBubble!: Phaser.GameObjects.Container;
+  lbT0 = 0;
+  lbShown = false;
+  static LB_DELAY = 10_000;
 
   constructor() { super('wildui'); }
   get wild() { return this.scene.get('wild') as WildScene; }
@@ -107,6 +116,8 @@ export class WildUIScene extends Phaser.Scene {
     this.toastC.add([this.toastBg, this.toastText]);
     this.wild.events.on('toast', this.toast, this);
     this.wild.events.on('newMount', this.newMount, this);
+
+    this.buildLunchboxPointer();
 
     this.paintButtons();
     if (!WILD_COMBAT) { this.heartsC.setVisible(false); this.atkC.setVisible(false); this.bagC.setVisible(false); }
@@ -206,5 +217,82 @@ export class WildUIScene extends Phaser.Scene {
     this.tweens.add({ targets: c, alpha: 0, scale: 0.9, delay: 3600, duration: 400, onComplete: () => { c.destroy(); if (this.newMountC === c) { this.newMountC = null; delete this.rects.newMount; } } });
   }
 
-  update() { this.stick?.update(); }
+  buildLunchboxPointer() {
+    const [top, bot] = LUNCHBOX_TINT[theme.id] ?? LUNCHBOX_TINT.classic;
+    this.lbPtr = this.add.container(0, 0).setDepth(40).setVisible(false).setAlpha(0);
+    this.lbArrow = this.add.graphics();
+    this.lbArrow.fillStyle(0xfff6e4, 1).fillTriangle(30, -15, 30, 15, 52, 0);
+    this.lbArrow.lineStyle(3, 0xf2b630, 1).strokeTriangle(30, -15, 30, 15, 52, 0);
+    const bg = this.add.graphics();
+    bg.fillStyle(0x000000, 0.16).fillCircle(0, 4, 32);
+    bg.fillStyle(0xfff6e4, 0.96).fillCircle(0, 0, 32);
+    bg.lineStyle(4, 0xf2b630, 1).strokeCircle(0, 0, 30);
+    const glow = this.add.image(0, 0, ATLAS, 'glow').setBlendMode('ADD').setTint(0xffe27a).setScale(0.9 / (frameScale.glow ?? 1)).setAlpha(0.6);
+    const k = 44 / 64; // logical lunchbox (64 px wide) drawn 44 px wide
+    const mk = (key: string, y: number) => { const im = this.add.image(0, y, atlasOf(key), key).setOrigin(0.5, 1); im.setScale(k * (im.width ? 64 / im.width : 1)); return im; };
+    const bodyY = 16, bodyTop = bodyY - 36 * k;
+    const body = mk('lunchbox_body', bodyY).setTint(top, top, bot, bot);
+    const lid = mk('lunchbox_lid', bodyTop + 4 * k).setTint(top, top, top, top);
+    const latch = mk('lunchbox_latch', bodyTop + 10 * k);
+    latch.setScale(body.scaleX);
+    lid.setScale(body.scaleX);
+    this.lbBubble = this.add.container(0, 0, [glow, bg, body, lid, latch]);
+    this.lbPtr.add([this.lbArrow, this.lbBubble]);
+    this.tweens.add({ targets: this.lbBubble, scale: { from: 0.94, to: 1.06 }, duration: 650, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.lbT0 = this.time.now;
+  }
+
+  /** Where the mount lunchbox is right now (on the carrier's head, or dropped and still shut). */
+  lunchboxTarget(): { x: number; y: number } | null {
+    const wl = this.wild;
+    if (!wl?.ready || wl.leaving) return null;
+    if (wl.carrier?.alive && wl.carrierFx) return { x: wl.carrier.x, y: wl.carrier.y - 50 };
+    const c = wl.chests.find((ch) => ch.lunchbox && !ch.opened);
+    return c ? { x: c.x, y: c.y - 30 } : null;
+  }
+
+  /** Screen-space state for tests. */
+  get lunchboxPointer() { return { visible: this.lbShown, x: Math.round(this.lbPtr?.x ?? 0), y: Math.round(this.lbPtr?.y ?? 0), angle: this.lbArrow?.rotation ?? 0 }; }
+
+  tickLunchboxPointer() {
+    if (!this.lbPtr) return;
+    const tgt = this.time.now - this.lbT0 >= WildUIScene.LB_DELAY ? this.lunchboxTarget() : null;
+    let show = false;
+    if (tgt) {
+      const cam = this.wild.cameras.main;
+      const sx = (tgt.x - cam.worldView.x) * cam.zoom / DPR, sy = (tgt.y - cam.worldView.y) * cam.zoom / DPR;
+      const pad = 24;
+      const onScreen = sx > pad && sx < this.w - pad && sy > pad && sy < this.h - pad;
+      if (!onScreen) {
+        const si = safeInsets();
+        const cx = this.w / 2, cy = this.h / 2, dx = sx - cx, dy = sy - cy;
+        const mx = this.w / 2 - 64 - Math.max(si.left, si.right), my = this.h / 2 - 64 - Math.max(si.top, si.bottom);
+        const t = Math.min(dx ? mx / Math.abs(dx) : Infinity, dy ? my / Math.abs(dy) : Infinity);
+        let px = cx + dx * t, py = cy + dy * t;
+        // Slide along the edge so it never sits on a HUD button (Home, Bop!, bag, zoom).
+        for (let pass = 0; pass < 2; pass++) {
+          for (const [key, r] of Object.entries(this.rects)) {
+            if (key === 'newMount') continue;
+            const m = 40, x0 = r.x - m, x1 = r.x + r.w + m, y0 = r.y - m, y1 = r.y + r.h + m;
+            if (px < x0 || px > x1 || py < y0 || py > y1) continue;
+            const opts: [number, number][] = [[px, y0], [px, y1], [x0, py], [x1, py]];
+            const ok = opts.filter(([ox, oy]) => ox >= 40 && ox <= this.w - 40 && oy >= 40 && oy <= this.h - 40);
+            ok.sort((a, b) => Math.hypot(a[0] - px, a[1] - py) - Math.hypot(b[0] - px, b[1] - py));
+            if (ok.length) [px, py] = ok[0];
+          }
+        }
+        this.lbPtr.setPosition(px, py);
+        this.lbArrow.setRotation(Math.atan2(sy - py, sx - px));
+        show = true;
+      }
+    }
+    if (show !== this.lbShown) {
+      this.lbShown = show;
+      this.tweens.killTweensOf(this.lbPtr);
+      if (show) { this.lbPtr.setVisible(true); this.tweens.add({ targets: this.lbPtr, alpha: 1, duration: 300 }); }
+      else this.tweens.add({ targets: this.lbPtr, alpha: 0, duration: 200, onComplete: () => { if (!this.lbShown) this.lbPtr.setVisible(false); } });
+    }
+  }
+
+  update() { this.stick?.update(); this.tickLunchboxPointer(); }
 }
