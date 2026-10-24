@@ -74,7 +74,7 @@ export class WildScene extends Phaser.Scene {
   chests: WildChest[] = [];
   /** 12.3: the one random creature carrying this trip's mount lunchbox. Bop it and the box pops out. */
   carrier: Monster | null = null;
-  carrierFx: Phaser.GameObjects.Image | null = null;
+  carrierFx: { body: Phaser.GameObjects.Image; lid: Phaser.GameObjects.Image; latch: Phaser.GameObjects.Image; glow: Phaser.GameObjects.Image } | null = null;
   swings = 0;
 
   constructor() { super('wild'); }
@@ -252,27 +252,31 @@ export class WildScene extends Phaser.Scene {
   makeCarrier(mo: Monster) {
     this.carrier = mo;
     const [top, bot] = LUNCHBOX_TINT[theme.id] ?? LUNCHBOX_TINT.classic;
-    const box = this.img(mo.x, mo.y - 56, 'lunchbox_body', 0.5).setDepth(9000).setTint(top, top, bot, bot);
-    this.carrierFx = box;
-    const glow = this.add.image(mo.x, mo.y - 70, ATLAS, 'glow').setBlendMode('ADD').setTint(0xffe27a).setDepth(8999).setScale(1.1 / (frameScale.glow ?? 1));
-    this.tweens.add({ targets: glow, alpha: { from: 0.4, to: 0.95 }, duration: 700, yoyo: true, repeat: -1 });
-    box.setData('glow', glow);
+    const SC = 0.62;
+    const body = this.img(mo.x, mo.y - 56, 'lunchbox_body', SC).setDepth(9000).setTint(top, top, bot, bot);
+    const lid = this.img(mo.x, mo.y - 56, 'lunchbox_lid', SC).setDepth(9000.2).setTint(top, top, top, top);
+    const latch = this.img(mo.x, mo.y - 56, 'lunchbox_latch', SC).setDepth(9000.3);
+    const glow = this.add.image(mo.x, mo.y - 70, ATLAS, 'glow').setBlendMode('ADD').setTint(0xffe27a).setDepth(8999).setScale(0.8 / (frameScale.glow ?? 1));
+    this.tweens.add({ targets: glow, alpha: { from: 0.35, to: 0.8 }, duration: 700, yoyo: true, repeat: -1 });
+    this.carrierFx = { body, lid, latch, glow };
   }
 
   /** Keep the carried lunchbox riding on the carrier's head. */
   private tickCarrier(t: number) {
-    const mo = this.carrier, box = this.carrierFx;
-    if (!mo || !box || !mo.alive) return;
-    const y = mo.img.y - mo.img.displayHeight - 16 + Math.sin(t / 220) * 3;
-    box.setPosition(mo.x, y);
-    (box.getData('glow') as Phaser.GameObjects.Image | undefined)?.setPosition(mo.x, y - 14);
+    const mo = this.carrier, fx = this.carrierFx;
+    if (!mo || !fx || !mo.alive) return;
+    const SC = 0.62;
+    const y = mo.img.y - mo.img.displayHeight - 14 + Math.sin(t / 220) * 3;
+    const bodyTop = y - 34 * SC;
+    fx.body.setPosition(mo.x, y);
+    fx.lid.setPosition(mo.x, bodyTop + 4 * SC);
+    fx.latch.setPosition(mo.x, bodyTop + 10 * SC);
+    fx.glow.setPosition(mo.x, y - 16);
   }
 
   /** The carrier poofed: the lunchbox tumbles out right where it stood. */
   dropLunchbox(mo: Monster) {
-    const box = this.carrierFx;
-    (box?.getData('glow') as Phaser.GameObjects.Image | undefined)?.destroy();
-    box?.destroy();
+    if (this.carrierFx) { this.tweens.killTweensOf(this.carrierFx.glow); for (const o of Object.values(this.carrierFx)) o.destroy(); }
     this.carrierFx = null;
     const x = Phaser.Math.Clamp(Math.round(mo.x), 90, this.map.w - 90), y = Phaser.Math.Clamp(Math.round(mo.y + 8), 140, this.map.h - 90);
     const before = this.children.list.length;
