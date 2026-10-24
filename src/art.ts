@@ -1181,6 +1181,7 @@ import { paintFallArt } from './mount/gooseArt';
 import { paintChristmasArt } from './mount/xmasArt';
 import { paintReindeer } from './mount/reindeerArt';
 import { paintSeasonBirds } from './mount/seasonBirdsArt';
+import { paintFunMounts } from './mount/funArt';
 import { paintVillageArt } from './village/vart';
 
 export function paintAll(scene: Phaser.Scene) {
@@ -1311,6 +1312,7 @@ export function paintAll(scene: Phaser.Scene) {
   paintChristmasArt(scene);
   paintReindeer(scene);
   paintSeasonBirds(scene);
+  paintFunMounts(scene);
   buildAtlas(scene);
   paintVillageArt(scene);
 }

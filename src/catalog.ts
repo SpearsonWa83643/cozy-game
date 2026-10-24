@@ -23,12 +23,18 @@ export const TREASURES: Treasure[] = [
   { id: 'toy_propeller', name: 'Toy Propeller', icon: 'ic_toy_prop', blurb: 'Zoom! Call Mount to fly a toy airplane!', hint: 'A chest in the Wild Woods.' },
   { id: 'pumpkin_seed', name: 'Magic Pumpkin Seed', icon: 'ic_pumpkin_seed', blurb: 'Spooky-sweet! Call Mount to ride a flying pumpkin!', hint: 'A chest in the Wild Woods.' },
   { id: 'golden_honeycomb', name: 'Golden Honeycomb', icon: 'ic_honeycomb', blurb: 'Sweet! Call Mount to ride a bumblebee!', hint: 'A chest in the Wild Woods.' },
+  { id: 'cowboy_hat', name: 'Tiny Cowboy Hat', icon: 'ic_cowboy_hat', blurb: 'Howdy! Call Mount to ride a cowboy cookie!', hint: 'A lunchbox in the Wild Woods.' },
+  { id: 'chili_poncho', name: 'Tiny Poncho', icon: 'ic_chili_poncho', blurb: 'So stripy! Call Mount to ride a chili in a poncho!', hint: 'A lunchbox in the Wild Woods.' },
+  { id: 'magic_tassel', name: 'Golden Tassel', icon: 'ic_magic_tassel', blurb: 'Swish! Call Mount to ride a magic carpet!', hint: 'A lunchbox in the Wild Woods.' },
+  { id: 'duck_squeak', name: 'Squeaky Duck', icon: 'ic_duck_squeak', blurb: 'Squeak! Call Mount to ride a big rubber duck!', hint: 'A lunchbox in the Wild Woods.' },
+  { id: 'jelly_gem', name: 'Jelly Gem', icon: 'ic_jelly_gem', blurb: 'It wobbles! Call Mount to ride a sky jellyfish!', hint: 'A lunchbox in the Wild Woods.' },
+  { id: 'berry_seed', name: 'Golden Berry Seed', icon: 'ic_berry_seed', blurb: 'Yum! Call Mount to ride a strawberry!', hint: 'A lunchbox in the Wild Woods.' },
 ];
 
 export type MinorId = 'petal' | 'shell' | 'apple' | 'acorn' | 'beetle' | 'glowmoss' | 'starshard';
 export const WILD_SET = ['acorn_cap', 'glow_scarf', 'ranger_coat'];
 /** Mounts found in Wild Woods chests after the cosmetic set. */
-export const WILD_MOUNTS = ['pterodactyl_egg', 'cloud_puppy_tuft', 'rainbow_horseshoe', 'golden_honeycomb', 'glow_pearl', 'sugar_cube', 'toy_propeller', 'pumpkin_seed'];
+export const WILD_MOUNTS = ['pterodactyl_egg', 'cloud_puppy_tuft', 'rainbow_horseshoe', 'golden_honeycomb', 'glow_pearl', 'sugar_cube', 'toy_propeller', 'pumpkin_seed', 'cowboy_hat', 'chili_poncho', 'magic_tassel', 'duck_squeak', 'jelly_gem', 'berry_seed'];
 export const MINORS: { id: MinorId; name: string; icon: string }[] = [
   { id: 'petal', name: 'Petals', icon: 'petal' }, { id: 'shell', name: 'Shells', icon: 'shell0' },
   { id: 'apple', name: 'Fruit', icon: 'apple' }, { id: 'acorn', name: 'Acorns', icon: 'acorn' }, { id: 'beetle', name: 'Beetles spotted', icon: 'beetle' },
