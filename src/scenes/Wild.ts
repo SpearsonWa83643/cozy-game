@@ -24,7 +24,7 @@ export const WILD_COMBAT = true;
 type WildChest = { img: Phaser.GameObjects.Image; x: number; y: number; opened: boolean; armedAt?: number; lunchbox?: { lid: Phaser.GameObjects.Image; latch: Phaser.GameObjects.Image; fx: Phaser.GameObjects.GameObject[] } };
 
 /** Lunchbox colour per theme (multiplied onto the white-painted box). */
-const LUNCHBOX_TINT: Record<string, [number, number]> = {
+export const LUNCHBOX_TINT: Record<string, [number, number]> = {
   classic: [0xff6f61, 0xe0443a], spring: [0x8fdcff, 0x52b4f0], fall: [0xffa040, 0xe0702a],
   halloween: [0xb488ff, 0x8a55e8], christmas: [0xff5a5a, 0x3fae5a], winter: [0x9fd8ff, 0x6aaee8], summer: [0xffd84a, 0xffa030],
 };
