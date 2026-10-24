@@ -544,6 +544,11 @@ class Synth {
     if (bird) { this.voice(f, 0, 0.06, 0.18, 'sine', 0.02); this.voice(f * 1.12, 0.07, 0.04, 0.12, 'sine', 0.01); }
     else this.bell(f, 0, 0.16, 2.6);
   }
+  /** 12.2 workshop tools: a metal clank, a ratchet click, a saw rasp and a soft brush swish (built from the same voices). */
+  clank() { if (!this.ready) return; this.bell(740, 0, 0.09, 0.4); this.voice(180, 0, 0.1, 0.12, 'square'); this.noiseBurst(0.06, 3200, 3, 0.05, 'highpass'); }
+  ratchet() { if (!this.ready) return; for (let i = 0; i < 3; i++) { this.voice(1400 + i * 120, i * 0.05, 0.035, 0.04, 'square'); this.noiseBurst(0.03, 2600, 3, 0.03, 'bandpass', i * 0.05); } }
+  saw() { if (!this.ready) return; this.noiseBurst(0.22, 1800, 1.5, 0.07, 'bandpass', 0, 0.35); this.noiseBurst(0.22, 2400, 1.5, 0.05, 'bandpass', 0.24, 2.8); }
+  swish() { if (!this.ready) return; this.noiseBurst(0.3, 1600, 0.8, 0.04, 'bandpass', 0, 0.5); this.plip(); }
   softFail() { if (!this.ready) return; this.voice(330, 0, 0.06, 0.4, 'triangle'); this.voice(311, 0.12, 0.05, 0.5, 'triangle'); }
 
   private get ready() {
