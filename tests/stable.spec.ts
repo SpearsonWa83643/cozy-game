@@ -39,7 +39,7 @@ test('stable: every mount in a stall, locked ones give hints', async ({ playwrig
       await expect.poll(() => page.evaluate(() => (window as any).__menu.tab), { timeout: 20_000 }).toBe('stable');
       await page.waitForTimeout(800);
       const pets = await page.evaluate(() => (window as any).__menu.stablePets.map((p: any) => [p.id, p.on]));
-      expect(pets.length).toBe(13);
+      expect(pets.length).toBe(19);
       const on = pets.filter((p: any) => p[1]).map((p: any) => p[0]).sort();
       expect(on).toEqual(['airplane', 'eagle', 'pterodactyl', 'unicorn']);
       // 11.4: seasonal friends wear their theme's badge; the eagle and treasure friends don't.

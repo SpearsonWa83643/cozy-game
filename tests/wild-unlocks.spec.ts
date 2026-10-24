@@ -30,13 +30,19 @@ test('wild unlocks: glow scarf, ranger coat, then mount treasures; outfits weara
   await page.waitForTimeout(1200);
   await closeDialogs(page);
 
-  const expected = ['glow_scarf', 'ranger_coat', 'pterodactyl_egg', 'cloud_puppy_tuft', 'rainbow_horseshoe', 'golden_honeycomb', 'glow_pearl', 'sugar_cube', 'toy_propeller', 'pumpkin_seed'];
+  const expected = ['glow_scarf', 'ranger_coat', 'pterodactyl_egg', 'cloud_puppy_tuft', 'rainbow_horseshoe', 'golden_honeycomb', 'glow_pearl', 'sugar_cube', 'toy_propeller', 'pumpkin_seed', 'cowboy_hat', 'chili_poncho', 'magic_tassel', 'duck_squeak', 'jelly_gem', 'berry_seed'];
   for (const [i, id] of expected.entries()) {
     await cozy(page, `enterWild(${101 + i})`);
     await expect.poll(async () => (await wild(page)).on, { timeout: 90_000, intervals: [500] }).toBe(true);
     await page.waitForTimeout(1500);
     await closeDialogs(page);
-    // Clothes come from the regular chest; mounts from the glowing lunchbox near the start.
+    // Clothes come from the regular chest; mounts from the lunchbox that pops out of the carrier creature.
+    // (12.3: the lunchbox is carried by a random creature; poof it to make the box pop out.)
+    if (!id.endsWith('_cap') && id !== 'glow_scarf' && id !== 'ranger_coat') {
+      await page.evaluate(() => { const w = (window as any).__game.scene.getScene('wild'); w.carrier.poof(); });
+      await expect.poll(async () => (await wild(page)).chests.some((c: any) => c.lunchbox), { timeout: 10_000 }).toBe(true);
+      await page.waitForTimeout(1300);
+    }
     const chests = (await wild(page)).chests;
     const chest = id.endsWith('_cap') || id === 'glow_scarf' || id === 'ranger_coat' ? chests.find((c: any) => !c.lunchbox) : chests.find((c: any) => c.lunchbox);
     expect(chest).toBeTruthy();

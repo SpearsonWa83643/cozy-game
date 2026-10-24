@@ -1251,7 +1251,8 @@ export class MenuScene extends Phaser.Scene {
     this.stablePets = []; this.rideBtn = null; this.badges = {};
     const list = MOUNTS;
     const got = list.filter(isMountUnlocked).length;
-    const cols = Math.ceil(list.length / 2), rows = 2;
+    // 12.3: with lots of friends the barn gets a third row so every stall stays a good size.
+    const rows = list.length > 14 ? 3 : 2, cols = Math.ceil(list.length / rows);
     const g = this.add.graphics();
     // Barn: red plank walls under a roof beam, with a hay loft glow.
     g.fillStyle(0x2a1a0e, 0.3); g.fillRoundedRect(a.x + 4, a.y + 8, a.w, a.h, 16);

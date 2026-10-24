@@ -248,10 +248,13 @@ export class VillageUIScene extends Phaser.Scene {
     this.closeMountPicker(true);
     this.registry.set('mountPicker', true);
     const si = safeInsets();
-    const tile = 150, gap = 16;
+    const gap = 16;
     const n = list.length;
-    const cols = Math.min(n, 3);
+    // 12.3: up to 9 friends stay in the roomy 3-wide grid; more get a wider grid and smaller (still big) tiles.
+    const cols = n <= 9 ? Math.min(n, 3) : n <= 16 ? 4 : 6;
     const rows = Math.ceil(n / cols);
+    const maxH = this.h - si.top - 150;
+    const tile = Math.max(104, Math.min(150, Math.floor((maxH - 78 + gap) / rows - gap)));
     const tw = cols * (tile + gap) - gap + 40;
     const th = rows * (tile + gap) - gap + 78;
     const tx = (this.w - tw) / 2, ty = Math.max(si.top + 60, (this.h - th) / 2 - 20);
@@ -282,8 +285,9 @@ export class VillageUIScene extends Phaser.Scene {
         // Your pick (or the theme's default) gets a bold ring.
         const ring = this.add.graphics(); ring.lineStyle(6, theme.ui.accentDark, 1); ring.strokeRoundedRect(x - 4, y - 4, tile + 8, tile + 8, 24); c.add(ring);
       }
-      const ic = this.icon(x + tile / 2, y + tile * 0.42, m.icon, 80);
-      const name = this.text(x + tile / 2, y + tile - 24, m.name, 17, INK, 900).setOrigin(0.5);
+      const ic = this.icon(x + tile / 2, y + tile * 0.42, m.icon, Math.round(tile * 0.53));
+      const name = this.text(x + tile / 2, y + tile - 24, m.name, tile < 140 ? 14 : 17, INK, 900).setOrigin(0.5);
+      if (name.width > tile - 12) name.setScale((tile - 12) / name.width);
       c.add([ic, name]);
     });
     this.mountPicker = c;

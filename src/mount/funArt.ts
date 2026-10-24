@@ -3,7 +3,10 @@
 // 124x84 body facing right (the rider sits on top, around (60, 22)), little wings pointing up, a Call
 // Mount icon (i_*) and a treasure icon (ic_*). Bold outlines, flat bright colours, happy faces.
 import Phaser from 'phaser';
-import { Ctx, canvasTex, hsl, dab } from '../art';
+import { Ctx, canvasTex, dab } from '../art';
+
+// Local copy: art.ts imports this file, so its own `hsl` is not ready when top-level constants below run.
+const hsl = (h: number, s: number, l: number, a = 1) => `hsla(${h.toFixed(1)},${s.toFixed(1)}%,${l.toFixed(1)}%,${a.toFixed(3)})`;
 
 const INK = hsl(20, 45, 18);
 

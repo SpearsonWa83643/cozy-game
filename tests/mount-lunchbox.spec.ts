@@ -2,8 +2,9 @@ import { test, expect, chromium, type Page } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 
-// Walker, Oct 20: easier mounts. Every Wild Woods trip has a glowing mount lunchbox a short walk
-// from the start while any mount treasure is unowned; it always gives the next mount.
+// Walker, Oct 24: the mount lunchbox is not parked by the entrance any more. One random creature in
+// the woods carries it (a tiny glowing lunchbox on its head). Bop that creature and the box pops out
+// where it stood; walk to it (or tap it) and it opens and gives the next mount.
 const FILE = pathToFileURL(resolve('dist-single/index.html')).href;
 const SHOT = process.env.MOUNT_LUNCHBOX_SHOT ?? '/workspace/shots/mount-lunchbox.png';
 const cozy = (page: Page, expr: string) => page.evaluate(`(window.__cozy.${expr})`) as Promise<any>;
@@ -13,7 +14,7 @@ async function closeDialogs(page: Page) {
   for (let i = 0; i < 14 && (await state(page)).dialogOpen; i++) { await page.touchscreen.tap(590, 650); await page.waitForTimeout(700); }
 }
 
-test('mount lunchbox: near the start, walk-to by tap, unlocks pterodactyl in the picker', async ({ playwright: _pw }, info) => {
+test('mount lunchbox: carried by a random creature, pops out when it is bopped, unlocks pterodactyl', async ({ playwright: _pw }, info) => {
   test.setTimeout(600_000);
   const use = info.project.use as any;
   const browser = await chromium.launch(use.launchOptions);
@@ -34,19 +35,38 @@ test('mount lunchbox: near the start, walk-to by tap, unlocks pterodactyl in the
     await expect.poll(async () => (await wild(page)).on, { timeout: 90_000, intervals: [500] }).toBe(true);
     await page.waitForTimeout(1500);
     await closeDialogs(page);
-    const w = await wild(page);
+    let w = await wild(page);
+    // Not by the entrance any more: no lunchbox yet, but a random creature carries it.
+    expect(w.chests.find((c: any) => c.lunchbox)).toBeFalsy();
+    expect(w.carrier).toBeTruthy();
+    expect(w.carrier.alive).toBe(true);
+    expect(w.mons.some((m: any) => m.id === w.carrier.id)).toBe(true);
+    // Show the carrier with its tiny lunchbox.
+    await page.evaluate(([x, y]) => (window as any).__cozy.wildTeleport(x - 130, y + 24), [w.carrier.x, w.carrier.y]);
+    await page.waitForTimeout(1200);
+    await page.screenshot({ path: SHOT.replace(/\.png$/, '-carrier.png') });
+
+    // Bop it with the big Bop! button until it poofs.
+    for (let i = 0; i < 16 && (await wild(page)).carrier?.alive; i++) {
+      const c = (await wild(page)).carrier;
+      await page.evaluate(([x, y]) => (window as any).__cozy.wildTeleport(x - 64, y), [c.x, c.y]);
+      const at = await page.evaluate(() => (window as any).__game.scene.getScene('wildui').rects.attack);
+      await page.touchscreen.tap(at.x + at.w / 2, at.y + at.h / 2);
+      await page.waitForTimeout(700);
+    }
+    expect((await wild(page)).carrier.alive).toBe(false);
+    // The lunchbox popped out right where the creature stood.
+    await expect.poll(async () => (await wild(page)).chests.some((c: any) => c.lunchbox), { timeout: 10_000 }).toBe(true);
+    w = await wild(page);
     const lb = w.chests.find((c: any) => c.lunchbox);
-    expect(lb).toBeTruthy();
-    const dist = Math.hypot(lb.x - w.start[0], lb.y - w.start[1]);
-    expect(dist).toBeLessThan(300);
+    expect(Math.hypot(lb.x - w.carrier.x, lb.y - w.carrier.y)).toBeLessThan(60);
     expect(lb.opened).toBe(false);
-    // On screen right at arrival.
-    const sp = await page.evaluate(([x, y]) => (window as any).__cozy.wildToScreen(x, y - 20), [lb.x, lb.y]);
-    expect(sp.x).toBeGreaterThan(0); expect(sp.x).toBeLessThan(1180); expect(sp.y).toBeGreaterThan(0); expect(sp.y).toBeLessThan(820);
-    await page.waitForTimeout(2500);
+    await page.waitForTimeout(300);
     await page.screenshot({ path: SHOT });
 
-    // A real tap on the lunchbox walks there (nav grid) and opens it.
+    // A real tap on the lunchbox (or just standing by it) opens it.
+    const sp = await page.evaluate(([x, y]) => (window as any).__cozy.wildToScreen(x, y - 20), [lb.x, lb.y]);
+    await page.waitForTimeout(1200);
     await page.touchscreen.tap(sp.x, sp.y);
     await expect.poll(async () => (await wild(page)).found, { timeout: 60_000, intervals: [400] }).toContain('pterodactyl_egg');
     await expect.poll(() => page.evaluate(() => !!(window as any).__game.scene.getScene('wildui').newMountC), { timeout: 5_000 }).toBe(true);

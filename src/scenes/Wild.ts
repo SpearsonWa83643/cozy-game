@@ -21,7 +21,7 @@ const treeFrame = (v: number) => { const f = TREE_FRAMES[v % TREE_FRAMES.length]
 /** Gentle monsters, bopping and loot in the Wild Woods. */
 export const WILD_COMBAT = true;
 
-type WildChest = { img: Phaser.GameObjects.Image; x: number; y: number; opened: boolean; lunchbox?: { lid: Phaser.GameObjects.Image; latch: Phaser.GameObjects.Image; fx: Phaser.GameObjects.GameObject[] } };
+type WildChest = { img: Phaser.GameObjects.Image; x: number; y: number; opened: boolean; armedAt?: number; lunchbox?: { lid: Phaser.GameObjects.Image; latch: Phaser.GameObjects.Image; fx: Phaser.GameObjects.GameObject[] } };
 
 /** Lunchbox colour per theme (multiplied onto the white-painted box). */
 const LUNCHBOX_TINT: Record<string, [number, number]> = {
@@ -72,6 +72,9 @@ export class WildScene extends Phaser.Scene {
   found: string[] = [];
   pickups: { img: Phaser.GameObjects.Image; glow: Phaser.GameObjects.Image; bub: Phaser.GameObjects.Image; kind: string; x: number; y: number; taken: boolean }[] = [];
   chests: WildChest[] = [];
+  /** 12.3: the one random creature carrying this trip's mount lunchbox. Bop it and the box pops out. */
+  carrier: Monster | null = null;
+  carrierFx: Phaser.GameObjects.Image | null = null;
   swings = 0;
 
   constructor() { super('wild'); }
@@ -87,7 +90,7 @@ export class WildScene extends Phaser.Scene {
 
   create() {
     paintWildArt(this);
-    this.leaving = false; this.trees = []; this.path = []; this.stick = null; this.monsters = []; this.hearts = this.maxHearts; this.invulnT = 0; this.chase = null; this.runPoofs = 0; this.swings = 0; this.bag = { glowmoss: 0, starshard: 0 }; this.found = []; this.pickups = []; this.chests = [];
+    this.leaving = false; this.trees = []; this.path = []; this.stick = null; this.monsters = []; this.hearts = this.maxHearts; this.invulnT = 0; this.chase = null; this.runPoofs = 0; this.swings = 0; this.bag = { glowmoss: 0, starshard: 0 }; this.found = []; this.pickups = []; this.chests = []; this.carrier = null; this.carrierFx = null;
     this.map = generateWild(this.seed);
     const m = this.map;
     this.physics.world.setBounds(0, 0, WILD_W, WILD_H);
@@ -125,7 +128,11 @@ export class WildScene extends Phaser.Scene {
       this.solid(c.x, c.y - 8, 16);
     }
     // The glowing mount lunchbox: near the arrival point every trip while a mount is still to find.
-    if (WILD_COMBAT && nextMountTreasure([])) this.buildLunchbox(m.lunchbox.x, m.lunchbox.y);
+    // 12.3: no longer parked by the entrance. A random creature carries it; bop that creature and it pops out.
+    if (WILD_COMBAT && nextMountTreasure([])) {
+      if (this.monsters.length) this.makeCarrier(this.monsters[Math.floor(Math.random() * this.monsters.length)]);
+      else this.buildLunchbox(m.lunchbox.x, m.lunchbox.y);
+    }
 
     // Player.
     this.feet = this.add.zone(m.start.x, m.start.y, 20, 12);
@@ -241,6 +248,45 @@ export class WildScene extends Phaser.Scene {
     this.events.emit('theme');
   }
 
+  /** One creature carries a tiny glowing lunchbox above its head (so kids can spot the special one). */
+  makeCarrier(mo: Monster) {
+    this.carrier = mo;
+    const [top, bot] = LUNCHBOX_TINT[theme.id] ?? LUNCHBOX_TINT.classic;
+    const box = this.img(mo.x, mo.y - 56, 'lunchbox_body', 0.5).setDepth(9000).setTint(top, top, bot, bot);
+    this.carrierFx = box;
+    const glow = this.add.image(mo.x, mo.y - 70, ATLAS, 'glow').setBlendMode('ADD').setTint(0xffe27a).setDepth(8999).setScale(1.1 / (frameScale.glow ?? 1));
+    this.tweens.add({ targets: glow, alpha: { from: 0.4, to: 0.95 }, duration: 700, yoyo: true, repeat: -1 });
+    box.setData('glow', glow);
+  }
+
+  /** Keep the carried lunchbox riding on the carrier's head. */
+  private tickCarrier(t: number) {
+    const mo = this.carrier, box = this.carrierFx;
+    if (!mo || !box || !mo.alive) return;
+    const y = mo.img.y - mo.img.displayHeight - 16 + Math.sin(t / 220) * 3;
+    box.setPosition(mo.x, y);
+    (box.getData('glow') as Phaser.GameObjects.Image | undefined)?.setPosition(mo.x, y - 14);
+  }
+
+  /** The carrier poofed: the lunchbox tumbles out right where it stood. */
+  dropLunchbox(mo: Monster) {
+    const box = this.carrierFx;
+    (box?.getData('glow') as Phaser.GameObjects.Image | undefined)?.destroy();
+    box?.destroy();
+    this.carrierFx = null;
+    const x = Phaser.Math.Clamp(Math.round(mo.x), 90, this.map.w - 90), y = Phaser.Math.Clamp(Math.round(mo.y + 8), 140, this.map.h - 90);
+    const before = this.children.list.length;
+    this.buildLunchbox(x, y);
+    const made = this.children.list.slice(before);
+    for (const o of made) { const a = o as unknown as { alpha?: number; setAlpha?: (v: number) => void }; if (typeof a.alpha === 'number') { const a0 = a.alpha; a.setAlpha?.(0); this.tweens.add({ targets: o, alpha: a0, duration: 420, delay: 120 }); } }
+    const c = this.chests[this.chests.length - 1];
+    c.armedAt = this.time.now + 1100;
+    const pop = this.add.particles(x, y - 30, ATLAS3, { frame: 'w_star', speed: { min: 80, max: 220 }, lifespan: 800, scale: { start: 0.22, end: 0 }, gravityY: 120, emitting: false } as any).setDepth(9001);
+    pop.explode(16); this.time.delayedCall(1000, () => pop.destroy());
+    sfx.sparkle();
+    this.events.emit('toast', 'Something shiny fell out!');
+  }
+
   /** A bright, softly glowing lunchbox with sparkles and a little mount bubble: it always holds a new mount. */
   buildLunchbox(x: number, y: number) {
     const fx: Phaser.GameObjects.GameObject[] = [];
@@ -352,7 +398,7 @@ export class WildScene extends Phaser.Scene {
       return;
     }
     const ch = this.chests.find((c) => !c.opened && Math.hypot(c.x - x, c.y - 20 - y) < 50);
-    if (ch) { if (Math.hypot(ch.x - this.feet.x, ch.y + 20 - this.feet.y) < 130) { this.path = []; this.openChest(ch); } else this.walkTo(ch.x, ch.y + 30); return; }
+    if (ch && (ch.armedAt ?? 0) <= this.time.now) { if (Math.hypot(ch.x - this.feet.x, ch.y + 20 - this.feet.y) < 130) { this.path = []; this.openChest(ch); } else this.walkTo(ch.x, ch.y + 30); return; }
     this.walkTo(x, y);
   }
 
@@ -462,6 +508,7 @@ export class WildScene extends Phaser.Scene {
     else if (mo.kind === 'slime') this.drop(mo.x, mo.y, r < 0.85 ? 'glowmoss' : 'starshard');
     else this.drop(mo.x, mo.y, r < 0.6 ? 'starshard' : 'glowmoss');
     save.wild.poofs++;
+    if (this.carrier === mo && !this.chests.some((c) => c.lunchbox)) this.dropLunchbox(mo);
     if (this.chase === mo) this.chase = null;
     this.events.emit('poof', mo);
     if (this.monsters.every((x) => !x.alive)) this.events.emit('toast', 'All poofed! Super job!');
@@ -486,7 +533,7 @@ export class WildScene extends Phaser.Scene {
   testState() {
     return {
       path: this.path.length, chasing: !!this.chase, speed: Math.round(Math.hypot(this.body.velocity.x, this.body.velocity.y)), stick: !!this.stick,
-      hearts: this.hearts, ground: this.groundTS.texture.key, snowing: !!this.snow?.visible && !!this.snow?.emitting, bag: { ...this.bag }, found: [...this.found], pickups: this.pickups.filter((p) => !p.taken).map((p) => ({ kind: p.kind, x: Math.round(p.x), y: Math.round(p.y) })), chests: this.chests.map((c) => ({ x: c.x, y: c.y, opened: c.opened, lunchbox: !!c.lunchbox })), start: [this.map.start.x, this.map.start.y], monsters: this.monsters.filter((m) => m.alive).length, total: this.monsters.length, poofs: this.runPoofs, swings: this.swings,
+      hearts: this.hearts, ground: this.groundTS.texture.key, snowing: !!this.snow?.visible && !!this.snow?.emitting, bag: { ...this.bag }, found: [...this.found], pickups: this.pickups.filter((p) => !p.taken).map((p) => ({ kind: p.kind, x: Math.round(p.x), y: Math.round(p.y) })), chests: this.chests.map((c) => ({ x: c.x, y: c.y, opened: c.opened, lunchbox: !!c.lunchbox })), carrier: this.carrier ? { id: this.carrier.id, alive: this.carrier.alive, x: Math.round(this.carrier.x), y: Math.round(this.carrier.y) } : null, start: [this.map.start.x, this.map.start.y], monsters: this.monsters.filter((m) => m.alive).length, total: this.monsters.length, poofs: this.runPoofs, swings: this.swings,
       mons: this.monsters.filter((m) => m.alive).map((m) => ({ id: m.id, x: Math.round(m.x), y: Math.round(m.y), kind: m.kind, hp: m.hp })),
     };
   }
@@ -526,7 +573,8 @@ export class WildScene extends Phaser.Scene {
       if (d < 34) this.pickUp(p);
       else if (d < 90 && p.kind !== 'heart') { p.x += (this.feet.x - p.x) * 0.08; p.y += (this.feet.y - p.y) * 0.08; p.img.setPosition(p.x, p.y - 8); p.bub.setPosition(p.x, p.y); p.glow.setPosition(p.x, p.y - 10); }
     }
-    for (const c of this.chests) if (!c.opened && Math.hypot(c.x - this.feet.x, c.y + 20 - this.feet.y) < 60) this.openChest(c);
+    this.tickCarrier(_t);
+    for (const c of this.chests) if (!c.opened && (c.armedAt ?? 0) <= this.time.now && Math.hypot(c.x - this.feet.x, c.y + 20 - this.feet.y) < 60) this.openChest(c);
     // Same steering as the glade: joystick, else path following; same speed + acceleration blend.
     const sec = Math.min(dt, 50) / 1000;
     let ix = 0, iy = 0, len = 0;
