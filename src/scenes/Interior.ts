@@ -114,7 +114,9 @@ export class InteriorScene extends Phaser.Scene {
 
   private clear() {
     this.tweens.killAll();
-    this.children.removeAll(true);
+    // NB: DisplayList.removeAll(true) only SKIPS the remove-callback (it never destroys), which left the full-screen
+    // 'swallow taps' rectangle registered in this scene's input list after exit, so it kept eating every tap/drag.
+    for (const c of this.children.list.slice()) c.destroy();
     this.items = []; this.rects = {}; this.dark = null; this.glow = null; this.pan = null; this.cookStage = 0; this.brewing = false; this.winG = null; this.bin = null; this.hint = null; this.ghost = null; this.pickerOpen = false; this.fishing = false;
   }
 
