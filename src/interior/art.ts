@@ -341,7 +341,7 @@ function garden(s: Phaser.Scene, r: Rect, ft: number, lampOn: boolean): RoomArt 
   const g = s.add.graphics().setDepth(0);
   const hz = ft - 8; // horizon (the fence line)
   // Sky.
-  g.fillGradientStyle(0x4fb4ff, 0x4fb4ff, 0xcdf0ff, 0xcdf0ff, 1); g.fillRoundedRect(r.x, r.y, r.w, hz - r.y + 4, { tl: rad, tr: rad, bl: 0, br: 0 });
+  g.fillGradientStyle(0x4fb4ff, 0x4fb4ff, 0xcdf0ff, 0xcdf0ff, 1); g.fillRect(r.x, r.y, r.w, hz - r.y + 4);
   // Sun with soft halo.
   const sx = r.x + r.w * 0.82, sy = r.y + 70;
   g.fillStyle(0xfff2a0, 0.25); g.fillCircle(sx, sy, 78); g.fillStyle(0xfff2a0, 0.4); g.fillCircle(sx, sy, 54); g.fillStyle(0xffd23a, 1); g.fillCircle(sx, sy, 32);
