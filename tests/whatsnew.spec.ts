@@ -25,11 +25,11 @@ test("what's new: after entry, shows once, closes, stays closed; none when empty
   await expect(page.locator('#entry')).toHaveCount(0);
   await expect(page.locator('#whatsnew h2')).toContainText("What's new");
   await expect(page.locator('#whatsnew li')).toHaveCount(5);
-  await expect(page.locator('#whatsnew li').first()).toContainText('lunchbox bubble');
-  await expect(page.locator('#whatsnew li').nth(1)).toContainText('Six new flying friends');
-  await expect(page.locator('#whatsnew li').nth(2)).toContainText('workshop has real tools');
-  await expect(page.locator('#whatsnew li').nth(3)).toContainText('decorations run smoother');
-  await expect(page.locator('#whatsnew li').nth(4)).toContainText('friends notice the decorations');
+  await expect(page.locator('#whatsnew li').first()).toContainText('Pinch to zoom keeps your hero');
+  await expect(page.locator('#whatsnew li').nth(1)).toContainText('lunchbox bubble');
+  await expect(page.locator('#whatsnew li').nth(2)).toContainText('Six new flying friends');
+  await expect(page.locator('#whatsnew li').nth(3)).toContainText('workshop has real tools');
+  await expect(page.locator('#whatsnew li').nth(4)).toContainText('decorations run smoother');
   const ok = await page.locator('#whatsnew .w-ok').boundingBox();
   expect(ok!.height).toBeGreaterThanOrEqual(70);
   await page.waitForTimeout(700);

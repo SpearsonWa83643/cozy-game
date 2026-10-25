@@ -1612,6 +1612,15 @@ export class WorldScene extends Phaser.Scene {
         }
         return null;
       },
+      /** Hero's follow point on screen (css px) next to the screen centre: the pinch-zoom centring check. */
+      /** Call fn after every rendered frame (the camera's view is final then); returns an unsubscribe. */
+      onRender(fn: () => void) { self.game.events.on('postrender', fn); return () => self.game.events.off('postrender', fn); },
+      heroScreen(wild = false) {
+        const sc = (wild ? self.scene.get('wild') : self) as any;
+        const cam = sc.cameras.main;
+        const tx = sc.feet.x, ty = sc.feet.y - 18; // the follow offset (0, 18) puts the camera centre 18 above the feet
+        return { x: (tx - cam.worldView.x) * cam.zoom / DPR, y: (ty - cam.worldView.y) * cam.zoom / DPR, cx: cam.width / 2 / DPR, cy: cam.height / 2 / DPR, zoom: cam.zoom / DPR, lerp: cam.lerp.x };
+      },
       worldToScreen(x: number, y: number) {
         const cam = self.cameras.main;
         return { x: (x - cam.worldView.x) * cam.zoom / DPR, y: (y - cam.worldView.y) * cam.zoom / DPR };
