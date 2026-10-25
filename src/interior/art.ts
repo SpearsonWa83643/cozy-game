@@ -452,7 +452,30 @@ function garden(s: Phaser.Scene, r: Rect, ft: number, lampOn: boolean): RoomArt 
   gg.fillStyle(0xffe08a, 1); gg.fillRoundedRect(-9, 14, 18, 30, 5); gg.lineStyle(3, 0x3a2a1c, 1); gg.strokeRoundedRect(-9, 14, 18, 30, 5); gg.fillStyle(0xfff6c8, 1); gg.fillEllipse(0, 30, 8, 14);
   gc.add(gg); s.tweens.add({ targets: gc, angle: { from: -2, to: 2 }, duration: 2400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
   const gprop: Prop = { id: 'lantern', x: glx + 20, y: gly - 136, w: 50, h: 70, obj: gc };
-  return { window: null, redraw: () => {}, frame: 0x3f7a3a, warm: 0xffe9a8, props: [gprop] };
+  // 12.9 Potting corner against the fence: a bench with pots, a trowel and seed packets, a rake and a soil sack. Tap the pots to clink.
+  const bx = r.x + r.w * 0.27, by = hz + 22;
+  const pg = s.add.graphics().setDepth(0.3);
+  pg.fillStyle(0x2a1d14, 0.18); pg.fillEllipse(bx + 20, by + 2, 190, 12);
+  pg.fillStyle(0x8a6038, 1); pg.fillRoundedRect(bx - 66, by - 34, 8, 34, 2); pg.fillRoundedRect(bx + 58, by - 34, 8, 34, 2); pg.fillRect(bx - 62, by - 16, 124, 5);
+  pg.fillStyle(0xb98a52, 1); pg.fillRoundedRect(bx - 80, by - 50, 160, 16, 4); pg.lineStyle(2.5, 0x5a3a1e, 1); pg.strokeRoundedRect(bx - 80, by - 50, 160, 16, 4);
+  pg.lineStyle(3, 0x5a3a1e, 1); pg.lineBetween(bx + 104, by - 118, bx + 118, by - 4); pg.lineBetween(bx + 98, by - 118, bx + 124, by - 112); // rake handle + head
+  pg.lineBetween(bx + 98, by - 112, bx + 98, by - 102); pg.lineBetween(bx + 110, by - 112, bx + 110, by - 102); pg.lineBetween(bx + 124, by - 112, bx + 124, by - 102);
+  pg.fillStyle(0xd8a45c, 1); pg.fillRoundedRect(bx + 76, by - 38, 42, 38, 9); pg.lineStyle(2.5, 0x6a4524, 1); pg.strokeRoundedRect(bx + 76, by - 38, 42, 38, 9); // soil sack
+  pg.fillStyle(0x6a4524, 1); pg.fillTriangle(bx + 84, by - 38, bx + 110, by - 38, bx + 97, by - 48);
+  pg.fillStyle(0xe9d7a9, 1); pg.fillRect(bx + 84, by - 28, 26, 12);
+  const pots = s.add.container(bx - 44, by - 50).setDepth(0.31);
+  const pp = s.add.graphics();
+  const pot = (x: number, w: number, h: number, leaf: number) => {
+    pp.fillStyle(0xd8754a, 1); pp.fillTriangle(x - w / 2, -h, x + w / 2, -h, x + w / 2 - 4, 0); pp.fillTriangle(x - w / 2, -h, x - w / 2 + 4, 0, x + w / 2 - 4, 0);
+    pp.fillStyle(0xc4623a, 1); pp.fillRoundedRect(x - w / 2 - 2, -h - 5, w + 4, 7, 2); pp.fillStyle(0x5a3a22, 1); pp.fillRect(x - w / 2 + 2, -h - 3, w - 4, 3);
+    pp.fillStyle(leaf, 1); pp.fillEllipse(x - 4, -h - 10, 8, 14); pp.fillEllipse(x + 4, -h - 9, 8, 12);
+  };
+  pot(0, 26, 22, 0x58b85a); pot(32, 20, 18, 0x7ad06a); pot(86, 24, 20, 0x58b85a);
+  pp.fillStyle(0xe85a5a, 1); pp.fillCircle(86, -36, 4); // a flower
+  pp.fillStyle(0x9a9aa8, 1); pp.fillRoundedRect(54, -8, 22, 5, 2); pp.fillStyle(0x8a6038, 1); pp.fillRoundedRect(46, -8, 12, 5, 2); // trowel
+  pots.add(pp);
+  const bprop: Prop = { id: 'bench', x: bx - 82, y: by - 74, w: 164, h: 76, obj: pots };
+  return { window: null, redraw: () => {}, frame: 0x3f7a3a, warm: 0xffe9a8, props: [gprop, bprop] };
 }
 
 // --------------------------------------------------------------------------------------------------- FISH HUT

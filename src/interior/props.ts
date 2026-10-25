@@ -3,7 +3,7 @@ import Phaser from 'phaser';
 import { sfx } from '../audio';
 import type { Rect } from './art';
 
-export type PropKind = 'fire' | 'kettle' | 'clock' | 'lantern' | 'net';
+export type PropKind = 'fire' | 'kettle' | 'clock' | 'lantern' | 'net' | 'bench';
 export type Prop = Rect & { id: PropKind; obj?: Phaser.GameObjects.Components.Transform & Phaser.GameObjects.GameObject };
 
 /** Little round puffs (steam, embers, drops). Capped so rapid taps never pile up. */
@@ -58,6 +58,12 @@ export function react(s: Phaser.Scene, p: Prop): string {
       s.tweens.add({ targets: g, alpha: 0, duration: 900, onComplete: () => g.destroy() });
       puffs(s, cx, p.y + p.h * 0.6, 6, { color: 0xfff1a0, r: 3, dy: -50, dx: 60, ms: 1000, add: true });
       return 'The lantern glows and sways.';
+    }
+    case 'bench': {
+      sfx.ting(); sfx.pickup(); s.tweens.killTweensOf(p.obj as any);
+      s.tweens.add({ targets: p.obj, y: (p.obj as any).y - 9, duration: 110, yoyo: true, repeat: 1, ease: 'Quad.easeOut' });
+      puffs(s, cx - 20, p.y + 26, 8, { color: 0x7a5232, r: 4, dy: -40, dx: 70, ms: 700, grow: 0.4 });
+      return 'Clink-clonk! The pots hop.';
     }
     default: {
       sfx.splash(); sfx.rustle(); wobble(s, p.obj, 3, 80);
