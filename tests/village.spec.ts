@@ -131,6 +131,8 @@ test('village: invite, build, assign a job, resources, theme toggle', async ({ p
 
   // 5b. A hungry friend shows an alert with a one-tap fix.
   await cozy(page, 'villageSpeed(1)');
+  await cozy(page, 'villageCalm()'); // random merchant/festival visits would hide the alerts for up to 2 minutes
+  await page.waitForTimeout(2500);
   const vid = (await village(page)).villagers[0].id;
   const foodBefore = (await village(page)).res.food;
   await page.evaluate((id) => { (window as any).__cozy.setRes({ food: 0 }); (window as any).__cozy.setNeeds(id, { food: 0.05 }); }, vid);

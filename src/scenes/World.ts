@@ -1497,6 +1497,8 @@ export class WorldScene extends Phaser.Scene {
         };
       },
       villageSpeed: (n: number) => { self.village.speed = n; },
+      /** Tests: stop random events (merchant, festival, rain) so need/wood alerts aren't suppressed by chance. */
+      villageCalm: () => { const v = self.village; v.eventTimer = 1e9; if (v.merchant > 0) v.merchant = 0.001; if (v.festival > 0) v.festival = 0.001; if (v.rain > 0) v.rain = 0.001; },
       /** Centre of a village grid cell (world), for build-mode taps. */
       villageCell: (gx: number, gy: number) => { const [x, y] = self.village.cellXY(gx, gy); return [Math.round(x + VILLAGE.cell / 2), Math.round(y + VILLAGE.cell / 2)]; },
       villageGhostCross: () => { const g = self.village.ghost; return g ? [Math.round(g.cross.x), Math.round(g.cross.y)] : null; },
