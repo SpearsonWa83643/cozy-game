@@ -1,6 +1,7 @@
 // 12.6 Interior art: every building type paints its OWN room (palette, background, ambient motion). Nothing here is shared
 // between rooms except the helpers, so each one can keep its own feel. Painted under the furniture (depth < 1).
 import Phaser from 'phaser';
+import type { Prop } from './props';
 
 export type Rect = { x: number; y: number; w: number; h: number };
 export type RoomArt = {
@@ -12,6 +13,8 @@ export type RoomArt = {
   frame: number;
   /** Where the lamp-lit overlay should sit. */
   warm: number;
+  /** 12.8: tappable props (fireplace, kettle, clock, lantern, net) with their hit boxes. */
+  props: Prop[];
 };
 
 type Gfx = Phaser.GameObjects.Graphics;
@@ -164,7 +167,7 @@ function home(s: Phaser.Scene, r: Rect, ft: number, lampOn: boolean): RoomArt {
     const m = s.add.circle(win.x + win.w * (0.2 + 0.15 * i), win.y + win.h + 20 + i * 12, 2, 0xfff6d0, 0.8).setDepth(0.43);
     s.tweens.add({ targets: m, x: m.x + 26, y: m.y + 40, alpha: { from: 0.9, to: 0 }, duration: 3200 + i * 500, repeat: -1, delay: i * 700 });
   }
-  return { window: win, redraw: draw, frame: 0x4a2810, warm: 0xff9a3c };
+  return { window: win, redraw: draw, frame: 0x4a2810, warm: 0xff9a3c, props: [{ id: 'fire', x: fx - 24, y: fy - 22, w: fw + 48, h: fhh + 22 }] };
 }
 
 function sky(g: Gfx, win: Rect, night: boolean, top = 0x7cc8ff, bottom = 0xe3f6ff) {
@@ -254,7 +257,18 @@ function kitchen(s: Phaser.Scene, r: Rect, ft: number, lampOn: boolean): RoomArt
   cg.fillStyle(0xe8604c, 1); cg.fillRoundedRect(win.x + 10, win.y + win.h + 2, 30, 18, { tl: 2, tr: 2, bl: 8, br: 8 }); cg.fillStyle(0x4e9a3c, 1); cg.fillCircle(win.x + 25, win.y + win.h - 4, 10); cg.fillCircle(win.x + 16, win.y + win.h, 7); // sill pot
   // Sunny glints.
   for (let i = 0; i < 4; i++) { const sp = s.add.star(win.x + win.w * (0.2 + 0.2 * i), win.y + win.h * 0.3, 4, 1.5, 5, 0xffffff, 0.9).setDepth(0.55); loop(s, sp, { alpha: { from: 0.1, to: 1 }, scale: { from: 0.6, to: 1.3 }, duration: 900 + i * 220, delay: i * 250 }); }
-  return { window: win, redraw: draw, frame: 0x2f6f6a, warm: 0xffe08a };
+  // 12.8 Kettle on the counter (tap: it whistles).
+  const kx = r.x + r.w * 0.95, ky = ft - 54;
+  const kc = s.add.container(kx, ky).setDepth(0.32);
+  const kg = s.add.graphics();
+  kg.fillStyle(0x2a1d14, 0.2); kg.fillEllipse(0, 0, 48, 8);
+  kg.fillStyle(0xe8604c, 1); kg.fillRoundedRect(-19, -34, 38, 32, { tl: 14, tr: 14, bl: 8, br: 8 }); kg.fillTriangle(16, -22, 30, -34, 18, -12);
+  kg.lineStyle(3, 0x4a3022, 1); kg.strokeRoundedRect(-19, -34, 38, 32, { tl: 14, tr: 14, bl: 8, br: 8 }); kg.lineBetween(16, -22, 30, -34);
+  kg.lineStyle(4, 0x4a3022, 1); kg.beginPath(); kg.arc(-4, -34, 14, Math.PI * 1.05, Math.PI * 1.95); kg.strokePath();
+  kg.fillStyle(0xffd45e, 1); kg.fillCircle(0, -38, 4); kg.fillStyle(0xffffff, 0.5); kg.fillEllipse(-9, -22, 6, 14);
+  kc.add(kg);
+  const kprop: Prop = { id: 'kettle', x: kx - 34, y: ky - 56, w: 68, h: 60, obj: kc };
+  return { window: win, redraw: draw, frame: 0x2f6f6a, warm: 0xffe08a, props: [kprop] };
 }
 
 // -------------------------------------------------------------------------------------------------- WORKSHOP
@@ -330,7 +344,18 @@ function workshop(s: Phaser.Scene, r: Rect, ft: number, lampOn: boolean): RoomAr
     const m = s.add.circle(bx - 70 + rnd() * 140, r.y + 90, 1.8 + rnd() * 1.4, 0xf4dc9a, 0.8).setDepth(0.46);
     s.tweens.add({ targets: m, y: ft + 40, x: m.x + (rnd() - 0.5) * 40, alpha: { from: 0.9, to: 0.1 }, duration: 5200 + rnd() * 2600, repeat: -1, delay: i * 550 });
   }
-  return { window: win, redraw: draw, frame: 0x3a2614, warm: 0xffb84a };
+  // 12.8 Wall clock (tap: the cuckoo pops out).
+  const wcx = r.x + r.w * 0.83, wcy = r.y + 100;
+  const wc = s.add.container(wcx, wcy).setDepth(0.32);
+  const wcg = s.add.graphics();
+  wcg.fillStyle(0xb8744a, 1); wcg.fillTriangle(-30, -26, 0, -52, 30, -26); wcg.lineStyle(3, 0x3a2a1c, 1); wcg.strokeTriangle(-30, -26, 0, -52, 30, -26);
+  wcg.fillStyle(0xfff4dc, 1); wcg.fillCircle(0, 0, 28); wcg.lineStyle(4, 0x3a2a1c, 1); wcg.strokeCircle(0, 0, 28);
+  wcg.lineStyle(3, 0x3a2a1c, 1); wcg.lineBetween(0, 0, 0, -17); wcg.lineBetween(0, 0, 11, 6); wcg.fillStyle(0x3a2a1c, 1); wcg.fillCircle(0, 0, 3);
+  for (let k = 0; k < 12; k++) { const a = (k * Math.PI) / 6; wcg.fillCircle(Math.sin(a) * 22, -Math.cos(a) * 22, 1.6); }
+  wcg.fillStyle(0x9aa6b2, 1); wcg.fillCircle(-12, 44, 6); wcg.fillCircle(12, 50, 6); wcg.lineStyle(2, 0x3a2a1c, 1); wcg.lineBetween(-12, 28, -12, 38); wcg.lineBetween(12, 28, 12, 44);
+  wc.add(wcg);
+  const wprop: Prop = { id: 'clock', x: wcx - 34, y: wcy - 54, w: 68, h: 110, obj: wc };
+  return { window: win, redraw: draw, frame: 0x3a2614, warm: 0xffb84a, props: [wprop] };
 }
 
 // ---------------------------------------------------------------------------------------------------- GARDEN
@@ -416,7 +441,18 @@ function garden(s: Phaser.Scene, r: Rect, ft: number, lampOn: boolean): RoomArt 
   };
   bfly(r.x + r.w * 0.35, hz + 90, 0xff9f43, 1); bfly(r.x + r.w * 0.6, hz + 70, 0x6fb8e8, 3); bfly(r.x + r.w * 0.8, hz + 110, 0xff7aa8, 5);
   if (night) s.add.rectangle(r.x, r.y, r.w, r.h, 0x0b1440, 0.2).setOrigin(0).setDepth(497);
-  return { window: null, redraw: () => {}, frame: 0x3f7a3a, warm: 0xffe9a8 };
+  // 12.8 Lantern post by the path (tap: it swings and glows).
+  const glx = r.x + r.w * 0.87, gly = hz + 34;
+  const gp = s.add.graphics().setDepth(0.33);
+  gp.fillStyle(0x2a1d14, 0.2); gp.fillEllipse(glx, gly, 40, 9);
+  gp.fillStyle(0x4a3c2c, 1); gp.fillRoundedRect(glx - 5, gly - 130, 10, 130, 3); gp.fillRoundedRect(glx - 5, gly - 130, 54, 8, 3);
+  const gc = s.add.container(glx + 44, gly - 122).setDepth(0.34);
+  const gg = s.add.graphics();
+  gg.lineStyle(3, 0x3a2a1c, 1); gg.lineBetween(0, 0, 0, 10); gg.fillStyle(0x3a2a1c, 1); gg.fillRoundedRect(-11, 8, 22, 6, 3); gg.fillRoundedRect(-11, 44, 22, 6, 3);
+  gg.fillStyle(0xffe08a, 1); gg.fillRoundedRect(-9, 14, 18, 30, 5); gg.lineStyle(3, 0x3a2a1c, 1); gg.strokeRoundedRect(-9, 14, 18, 30, 5); gg.fillStyle(0xfff6c8, 1); gg.fillEllipse(0, 30, 8, 14);
+  gc.add(gg); s.tweens.add({ targets: gc, angle: { from: -2, to: 2 }, duration: 2400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+  const gprop: Prop = { id: 'lantern', x: glx + 20, y: gly - 136, w: 50, h: 70, obj: gc };
+  return { window: null, redraw: () => {}, frame: 0x3f7a3a, warm: 0xffe9a8, props: [gprop] };
 }
 
 // --------------------------------------------------------------------------------------------------- FISH HUT
@@ -493,5 +529,5 @@ function fishhut(s: Phaser.Scene, r: Rect, ft: number, lampOn: boolean): RoomArt
   const rip = s.add.graphics().setDepth(0.42).setBlendMode(Phaser.BlendModes.ADD);
   rip.fillStyle(0x8ad8ff, 0.07); rip.fillPoints([new Phaser.Math.Vector2(win.x, win.y + win.h), new Phaser.Math.Vector2(win.x + win.w, win.y + win.h), new Phaser.Math.Vector2(win.x + win.w + 120, ft + 140), new Phaser.Math.Vector2(win.x - 40, ft + 140)], true);
   loop(s, rip, { alpha: { from: 0.45, to: 1 }, duration: 2200 });
-  return { window: win, redraw: draw, frame: 0x24485f, warm: 0xffa83a };
+  return { window: win, redraw: draw, frame: 0x24485f, warm: 0xffa83a, props: [{ id: 'net', x: nx - 6, y: ny - 6, w: nw + 12, h: nh + 12, obj: ng }, { id: 'lantern', x: lx - 24, y: r.y + 6, w: 40, h: 54, obj: lc }] };
 }
