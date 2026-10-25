@@ -395,7 +395,7 @@ function garden(s: Phaser.Scene, r: Rect, ft: number, lampOn: boolean): RoomArt 
   }
   // Soft light shafts from the sun + a golden wash.
   const rays = s.add.graphics().setDepth(0.04).setBlendMode(Phaser.BlendModes.ADD);
-  for (let i = 0; i < 4; i++) { rays.fillStyle(0xfff4b0, 0.07); rays.fillTriangle(sx, sy, sx - 220 - i * 90, hz + 40, sx - 130 - i * 90, hz + 40); }
+  for (let i = 0; i < 3; i++) { rays.fillStyle(0xfff4b0, 0.08); const bx = sx - 60 - i * 200; rays.fillTriangle(sx - 14, sy + 10, bx - 70, hz + 150, bx + 70, hz + 150); }
   loop(s, rays, { alpha: { from: 0.5, to: 1 }, duration: 3400 });
   s.add.rectangle(r.x, r.y, r.w, r.h, 0xffe9a8, 0.06).setOrigin(0).setDepth(498).setBlendMode(Phaser.BlendModes.ADD);
   // Butterflies and a bee, wandering.
