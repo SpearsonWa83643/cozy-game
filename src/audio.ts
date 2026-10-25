@@ -555,6 +555,11 @@ class Synth {
     }
   }
   rustle() { if (!this.ready) return; this.noiseBurst(0.35, 2600, 0.8, 0.05); this.noiseBurst(0.25, 4200, 1.2, 0.025, 'bandpass', 0.12); }
+  /** 12.8 room props: fire crackle, kettle whistle, cuckoo, lantern ting. */
+  crackle() { if (!this.ready) return; for (let i = 0; i < 6; i++) this.noiseBurst(0.04, 2400 + Math.random() * 2400, 3, 0.05, 'highpass', i * 0.07 + Math.random() * 0.04); this.noiseBurst(0.5, 260, 0.7, 0.05, 'lowpass'); }
+  whistle() { if (!this.ready) return; this.voice(1320, 0, 0.05, 0.5, 'sine', 0.06); this.voice(1980, 0.02, 0.025, 0.45, 'sine', 0.06); this.voice(1480, 0.5, 0.035, 0.3, 'sine', 0.03); this.noiseBurst(0.7, 3800, 1.5, 0.02, 'bandpass', 0, 0.3); }
+  cuckoo() { if (!this.ready) return; this.tock(); for (const w of [0.25, 0.6]) { this.voice(880, w, 0.08, 0.22, 'sine', 0.02); this.voice(698, w + 0.2, 0.07, 0.25, 'sine', 0.02); } }
+  ting() { if (!this.ready) return; this.bell(1568, 0, 0.07, 1.2); this.creak(); }
   tock() { if (!this.ready) return; this.voice(320, 0, 0.06, 0.12, 'triangle'); this.noiseBurst(0.06, 900, 2, 0.04); }
   pickup() { if (!this.ready) return; this.bell(1318.5, 0, 0.07, 0.6); this.bell(1760, 0.07, 0.06, 0.8); }
   chimes() { if (!this.ready) return; [1568, 1975.5, 2349.3, 1760, 2637].forEach((f, i) => this.bell(f, i * 0.09 + Math.random() * 0.04, 0.06, 2.4)); }

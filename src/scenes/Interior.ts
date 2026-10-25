@@ -7,6 +7,7 @@ import { sfx } from '../audio';
 import { save, persist } from '../save';
 import { theme } from '../theme';
 import { FURN, furnTexture, roomOf, RECIPES, type FurnDef } from '../interior/furniture';
+import { react as propReact, type Prop } from '../interior/props';
 import { paintRoom, paintDoor, type RoomArt } from '../interior/art';
 import { openToolPicker, type ToolState } from '../interior/toolgame';
 import type { WorldScene } from './World';
@@ -153,6 +154,14 @@ export class InteriorScene extends Phaser.Scene {
   }
 
   private art: RoomArt | null = null;
+  props: Prop[] = [];
+  propLog: string[] = [];
+  private propTap(p: Prop) {
+    this.propLog.push(p.id);
+    const msg = propReact(this, p);
+    this.lastAction = 'prop:' + p.id;
+    this.hint?.setText(msg);
+  }
   private drawRoom(r: Rect) {
     const ft = this.floorTop;
     // 12.6: each building type paints its own room (see interior/art.ts); the exit door sits in the same spot in all of them.
@@ -168,6 +177,12 @@ export class InteriorScene extends Phaser.Scene {
     const arrow = this.text(dx + dw / 2, dy - 22, 'Out', 18, '#fffaf0', 900).setOrigin(0.5).setStroke('#4a3022', 5).setDepth(0.8);
     this.tweens.add({ targets: arrow, y: arrow.y - 5, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     this.rects.door = { x: dx, y: dy, w: dw, h: dh };
+    // 12.8: tappable props (fireplace, kettle, clock, lantern, net).
+    this.props = art.props; this.propLog = [];
+    art.props.forEach((p, i) => {
+      this.rects['prop' + i] = { x: p.x, y: p.y, w: p.w, h: p.h };
+      this.tapZone(p, () => { if (!this.decorating) this.propTap(p); }, 0.9);
+    });
     this.tapZone(this.rects.door, () => { if (!this.decorating) this.close(); }, 0.9);
   }
 
