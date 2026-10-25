@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { TouchStick, ZoomButtons } from '../controls';
+import { TouchStick, ZoomButtons, ZOOM } from '../controls';
+import { save, tipOnce } from '../save';
 import { ThemePicker } from '../themePicker';
 import { S, ATLAS, frameScale, atlasOf } from '../art';
 import { NumBadge, SeqCard } from '../seq';
@@ -494,7 +495,7 @@ export class UIScene extends Phaser.Scene {
       onPinch: (ph, r, mx, my) => this.world.zoom?.onPinch(ph, r, mx, my),
     });
     // Big + / - zoom buttons for anyone who can't pinch.
-    this.zoomBtns = new ZoomButtons(this, (dir) => { if (this.registry.get('menuOpen')) return; sfx.unlock(); if (this.world.zoom?.step(dir)) sfx.blip(); else sfx.tock(); });
+    this.zoomBtns = new ZoomButtons(this, (dir) => { if (this.registry.get('menuOpen')) return; this.zoomBtns.pulse(false); sfx.unlock(); if (this.world.zoom?.step(dir)) sfx.blip(); else sfx.tock(); });
 
     // Theme picker: one button showing the current look; tap to fan out the others.
     this.themePick = new ThemePicker(this, () => !this.registry.get('menuOpen') && !this.world.locked);
@@ -671,11 +672,32 @@ export class UIScene extends Phaser.Scene {
   dragP: Phaser.Input.Pointer | null = null;
   dragV: import('../village/village').Villager | null = null;
   dragOn = false;
+  /** 13.1 One-time, gentle nudge about pinch / +/- zoom: after ~40 s of free play, never while a menu is open. */
+  private zoomHintMs = 0; private zoomHintShownAt = 0;
+  updateZoomHint(delta: number) {
+    if (save.tips.includes('zoomhint') && !this.zoomBtns?.pulsing) return;
+    if (this.zoomBtns?.pulsing) {
+      // Fades on the first zoom or after ~6 s.
+      if (Math.abs(ZOOM.mul - 1) > 0.01 || this.time.now - this.zoomHintShownAt > 6000) this.zoomBtns.pulse(false);
+      return;
+    }
+    const w = this.world;
+    if (!w || this.registry.get('menuOpen') || this.registry.get('dialogOpen') || w.locked || (w as any).buildView || w.mount?.carrying) return;
+    this.zoomHintMs += delta;
+    if (this.zoomHintMs < 40_000) return;
+    tipOnce('zoomhint');
+    if (Math.abs(ZOOM.mul - 1) > 0.01) return; // already zoomed on their own
+    this.zoomHintShownAt = this.time.now;
+    this.toast('Tip: pinch with two fingers to zoom, or tap + and −');
+    this.zoomBtns.pulse(true);
+  }
+
   update(time: number, delta: number) {
     // A release can be swallowed by an overlay scene; never leave the stick or a drag stuck.
     this.stick.update();
     if (this.dragP && !this.dragP.isDown) this.input.emit('pointerup', this.dragP);
     this.updateFps(time);
+    this.updateZoomHint(delta);
     this.updateFishUI(time);
     this.updateTouchUI(time);
     this.updateDayTint(time);
