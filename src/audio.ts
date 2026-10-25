@@ -513,6 +513,47 @@ class Synth {
     this.voice(3520, 0.12, 0.02, 0.35, 'sine', 0.002);
     this.plip();
   }
+  // ------------------------------------------------------------ 12.6 room ambience (each interior has its own quiet bed)
+  private roomTimer: ReturnType<typeof setTimeout> | null = null;
+  roomKind = '';
+  /** Start (or stop, with null) a sparse, gentle ambience for the room you are standing in. */
+  roomAmbience(type: string | null) {
+    if (this.roomTimer) { clearTimeout(this.roomTimer); this.roomTimer = null; }
+    this.roomKind = type ?? '';
+    if (!type) return;
+    const tick = () => {
+      if (this.roomKind !== type) return;
+      if (this.ready) this.roomTick(type);
+      this.roomTimer = setTimeout(tick, 900 + Math.random() * 1900);
+    };
+    this.roomTimer = setTimeout(tick, 400);
+  }
+  private roomTick(type: string) {
+    const r = Math.random();
+    switch (type) {
+      case 'home': // fireplace: soft crackles, now and then a clock tick
+        for (let i = 0; i < 2 + Math.floor(r * 3); i++) this.noiseBurst(0.04 + Math.random() * 0.05, 2200 + Math.random() * 2600, 1.5, 0.03, 'highpass', i * (0.05 + Math.random() * 0.1));
+        if (r > 0.8) this.voice(1100, 0.1, 0.03, 0.05, 'triangle');
+        break;
+      case 'kitchen': // a simmering pot: tiny bubbles, a kettle-ish hush
+        for (let i = 0; i < 3; i++) this.voice(500 + Math.random() * 500, i * 0.11, 0.018, 0.06, 'sine', 0.01);
+        if (r > 0.6) this.noiseBurst(0.7, 5200, 1, 0.012, 'highpass');
+        break;
+      case 'workshop': // wood ticking, a far-off tap, a gentle saw hiss
+        if (r < 0.5) { this.voice(240, 0, 0.04, 0.08, 'triangle'); this.noiseBurst(0.05, 1400, 3, 0.03); }
+        else if (r < 0.8) this.noiseBurst(0.35, 1700, 1.5, 0.014, 'bandpass', 0, 0.5);
+        else this.bell(880, 0, 0.03, 0.6);
+        break;
+      case 'garden': // birds, a breeze through leaves
+        if (r < 0.6) { const f = 2200 + Math.random() * 1400; for (let i = 0; i < 2 + Math.floor(Math.random() * 3); i++) { this.voice(f, i * 0.09, 0.025, 0.07, 'sine', 0.01); this.voice(f * 1.18, i * 0.09 + 0.04, 0.02, 0.05, 'sine', 0.01); } }
+        else this.noiseBurst(1.2, 2400, 0.5, 0.015, 'bandpass', 0, 0.6);
+        break;
+      case 'fishhut': // water lapping at the pier, a creak of rope
+        this.noiseBurst(1.1, 520, 0.8, 0.035, 'lowpass', 0, 0.5);
+        if (r > 0.7) this.noiseBurst(0.9, 330, 3, 0.02, 'bandpass', 0.5, 1.4);
+        break;
+    }
+  }
   rustle() { if (!this.ready) return; this.noiseBurst(0.35, 2600, 0.8, 0.05); this.noiseBurst(0.25, 4200, 1.2, 0.025, 'bandpass', 0.12); }
   tock() { if (!this.ready) return; this.voice(320, 0, 0.06, 0.12, 'triangle'); this.noiseBurst(0.06, 900, 2, 0.04); }
   pickup() { if (!this.ready) return; this.bell(1318.5, 0, 0.07, 0.6); this.bell(1760, 0.07, 0.06, 0.8); }

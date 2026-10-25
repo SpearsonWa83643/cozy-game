@@ -7,6 +7,7 @@ import { sfx } from '../audio';
 import { save, persist } from '../save';
 import { theme } from '../theme';
 import { FURN, furnTexture, roomOf, RECIPES, type FurnDef } from '../interior/furniture';
+import { paintRoom, paintDoor, type RoomArt } from '../interior/art';
 import { openToolPicker, type ToolState } from '../interior/toolgame';
 import type { WorldScene } from './World';
 
@@ -54,7 +55,7 @@ export class InteriorScene extends Phaser.Scene {
   private res = 2;
   private dark: Phaser.GameObjects.Rectangle | null = null;
   private glow: Phaser.GameObjects.Graphics | null = null;
-  private winG: Phaser.GameObjects.Graphics | null = null;
+  private ambient: Phaser.Time.TimerEvent[] = [];
   private bin: Phaser.GameObjects.Container | null = null;
   private hint: Phaser.GameObjects.Text | null = null;
   private drag: null | { it: Item; dx: number; dy: number; sx: number; sy: number; moved: boolean; overBin: boolean } = null;
@@ -99,6 +100,7 @@ export class InteriorScene extends Phaser.Scene {
     this.world.setStick(null);
     this.lampOn = this.roomSave().lampOn !== false;
     sfx.creak();
+    sfx.roomAmbience(b.type);
     this.render();
     this.cameras.main.fadeIn(260, 40, 26, 18);
     this.game.events.emit('interior-opened', b.type);
@@ -109,6 +111,7 @@ export class InteriorScene extends Phaser.Scene {
     this.open = false;
     this.drag = null; this.craft = null; this.pickerOpen = false;
     sfx.creak();
+    sfx.roomAmbience(null);
     this.store();
     this.cameras.main.fadeOut(200, 40, 26, 18);
     this.cameras.main.once('camerafadeoutcomplete', () => { if (!this.open) { this.clear(); this.cameras.main.resetFX(); } });
@@ -121,7 +124,7 @@ export class InteriorScene extends Phaser.Scene {
     // NB: DisplayList.removeAll(true) only SKIPS the remove-callback (it never destroys), which left the full-screen
     // 'swallow taps' rectangle registered in this scene's input list after exit, so it kept eating every tap/drag.
     for (const c of this.children.list.slice()) c.destroy();
-    this.items = []; this.rects = {}; this.dark = null; this.glow = null; this.pan = null; this.cookStage = 0; this.brewing = false; this.winG = null; this.bin = null; this.hint = null; this.ghost = null; this.pickerOpen = false; this.tool = null; this.fishing = false;
+    this.items = []; this.rects = {}; this.dark = null; this.glow = null; this.pan = null; this.cookStage = 0; this.brewing = false; this.art = null; for (const e of this.ambient) e.remove(false); this.ambient = []; this.bin = null; this.hint = null; this.ghost = null; this.pickerOpen = false; this.tool = null; this.fishing = false;
   }
 
   // ------------------------------------------------------------------ layout + drawing
@@ -135,111 +138,53 @@ export class InteriorScene extends Phaser.Scene {
     this.floorTop = room.y + Math.round(room.h * 0.5);
     // Backdrop (outside the room: warm wood frame).
     const bg = this.add.graphics().setDepth(-10);
-    bg.fillStyle(0x6b4226, 1); bg.fillRect(0, 0, this.w, this.h);
-    bg.fillStyle(0x845232, 1); for (let y = 0; y < this.h; y += 26) bg.fillRect(0, y, this.w, 12);
+    const [bgA, bgB] = ({ home: [0x6b4226, 0x845232], kitchen: [0x23706a, 0x2d8a82], workshop: [0x2e2218, 0x3d2e20], garden: [0x3a7a3a, 0x4a9248], fishhut: [0x1f4258, 0x2a566f] } as Record<string, number[]>)[this.btype] ?? [0x6b4226, 0x845232];
+    bg.fillStyle(bgA, 1); bg.fillRect(0, 0, this.w, this.h);
+    bg.fillStyle(bgB, 1); for (let y = 0; y < this.h; y += 26) bg.fillRect(0, y, this.w, 12);
     this.add.rectangle(0, 0, this.w, this.h, 0, 0).setOrigin(0).setInteractive().setDepth(-11); // swallow taps
     this.drawRoom(room);
     // Items.
     for (const s of this.roomSave().items) if (FURN[s.k]) this.spawn(s.k, s.x, s.y, false);
     if (this.craft) this.showGhost();
     this.drawLight();
+    this.startAmbient();
     this.drawTopBar(T, L, Rr);
     this.drawBottom(B - 100, L, Rr, 100);
   }
 
+  private art: RoomArt | null = null;
   private drawRoom(r: Rect) {
-    const g = this.add.graphics().setDepth(0);
     const ft = this.floorTop;
-    // Wallpaper: cream with soft stripes and little dots.
-    const st = roomOf(this.btype).style;
-    g.fillStyle(st.wall, 1); g.fillRoundedRect(r.x, r.y, r.w, ft - r.y + 20, { tl: 22, tr: 22, bl: 0, br: 0 });
-    if (st.tiles) {
-      // Kitchen: shiny square tiles.
-      g.lineStyle(2, st.dot, 1);
-      for (let x = r.x + 30; x < r.x + r.w; x += 40) g.lineBetween(x, r.y + 4, x, ft - 46);
-      for (let y = r.y + 30; y < ft - 46; y += 40) g.lineBetween(r.x + 4, y, r.x + r.w - 4, y);
-      g.fillStyle(0xffffff, 0.5);
-      for (let x = r.x + 34; x < r.x + r.w - 20; x += 80) for (let y = r.y + 34; y < ft - 60; y += 80) g.fillRoundedRect(x, y, 10, 4, 2);
-    } else {
-      g.fillStyle(st.stripe, 1);
-      for (let x = r.x + 18; x < r.x + r.w - 10; x += 56) g.fillRect(x, r.y + 6, 22, ft - r.y - 6);
-      g.fillStyle(st.dot, 1);
-      for (let x = r.x + 46; x < r.x + r.w - 10; x += 56) for (let y = r.y + 30; y < ft - 40; y += 48) g.fillCircle(x, y, 3);
-    }
-    // Wainscot.
-    g.fillStyle(st.wains, 1); g.fillRect(r.x, ft - 46, r.w, 46);
-    g.fillStyle(st.wainsDark, 1); for (let x = r.x + 10; x < r.x + r.w - 40; x += 64) g.fillRoundedRect(x, ft - 38, 54, 30, 5);
-    g.fillStyle(st.wainsTop, 1); g.fillRect(r.x, ft - 50, r.w, 8);
-    const fh = r.y + r.h - ft;
-    const rows = 6;
-    if (st.checker) {
-      // Kitchen: a checkerboard floor, with a terracotta skirting strip at the front.
-      const fb = r.y + r.h - 26;
-      g.fillStyle(st.floorA, 1); g.fillRect(r.x, ft, r.w, fb - ft);
-      g.fillStyle(st.floorB, 1);
-      const cw = 64, rh = (fb - ft) / rows;
-      for (let i = 0; i < rows; i++) {
-        const y0 = ft + i * rh;
-        for (let x = r.x + (i % 2) * cw; x < r.x + r.w; x += cw * 2) g.fillRect(x, y0, Math.min(cw, r.x + r.w - x), rh);
-      }
-      g.fillStyle(st.line, 1); g.fillRoundedRect(r.x, fb, r.w, r.y + r.h - fb, { tl: 0, tr: 0, bl: 22, br: 22 });
-    } else {
-      // Floor: planks with a gradient toward the front.
-      g.fillGradientStyle(st.floorA, st.floorA, st.floorB, st.floorB, 1); g.fillRect(r.x, ft, r.w, fh - 22);
-      g.fillStyle(st.floorB, 1); g.fillRoundedRect(r.x, r.y + r.h - 40, r.w, 40, { tl: 0, tr: 0, bl: 22, br: 22 });
-      g.lineStyle(2, st.line, 0.55);
-      for (let i = 1; i <= rows; i++) { const y = ft + (fh * i) / (rows + 0.5); g.lineBetween(r.x, y, r.x + r.w, y); }
-      for (let i = 0; i <= rows; i++) {
-        const y0 = ft + (fh * i) / (rows + 0.5), y1 = ft + (fh * (i + 1)) / (rows + 0.5);
-        for (let x = r.x + ((i * 97) % 160) + 40; x < r.x + r.w; x += 190) g.lineBetween(x, y0, x, Math.min(y1, r.y + r.h - 4));
-      }
-    }
-    g.fillStyle(0x6b4226, 1); g.fillRect(r.x, ft, r.w, 6); // baseboard shadow
-    // Frame.
-    g.lineStyle(6, 0x4a3022, 1); g.strokeRoundedRect(r.x, r.y, r.w, r.h, 22);
-    // Window (center-ish), with curtains.
-    const ww = Math.min(200, r.w * 0.22), wh = Math.min(140, (ft - r.y) * 0.62);
-    const wx = r.x + r.w * 0.4 - ww / 2, wy = r.y + (ft - 50 - r.y - wh) / 2 + 4;
-    this.rects.window = { x: wx, y: wy, w: ww, h: wh };
-    this.winG = this.add.graphics().setDepth(0.5);
-    this.drawWindow();
-    const cg = this.add.graphics().setDepth(0.6);
-    cg.fillStyle(0xe8604c, 1);
-    cg.fillRoundedRect(wx - 26, wy - 14, 34, wh + 28, 12); cg.fillRoundedRect(wx + ww - 8, wy - 14, 34, wh + 28, 12);
-    cg.fillStyle(0xffffff, 0.25); cg.fillRect(wx - 18, wy - 10, 6, wh + 20); cg.fillRect(wx + ww, wy - 10, 6, wh + 20);
-    cg.lineStyle(3.5, 0x4a3022, 1); cg.strokeRoundedRect(wx - 26, wy - 14, 34, wh + 28, 12); cg.strokeRoundedRect(wx + ww - 8, wy - 14, 34, wh + 28, 12);
-    cg.fillStyle(0x9a6238, 1); cg.fillRoundedRect(wx - 36, wy - 22, ww + 72, 12, 6); cg.strokeRoundedRect(wx - 36, wy - 22, ww + 72, 12, 6);
+    // 12.6: each building type paints its own room (see interior/art.ts); the exit door sits in the same spot in all of them.
+    const art = paintRoom(this, this.btype, r, ft, this.lampOn);
+    this.art = art;
+    this.rects.window = art.window ?? { x: -999, y: -999, w: 0, h: 0 };
+    const fg = this.add.graphics().setDepth(0.65);
+    fg.lineStyle(8, art.frame, 1); fg.strokeRoundedRect(r.x, r.y, r.w, r.h, 12);
     // Door on the left: tap it to go back outside.
     const dw = Math.min(96, r.w * 0.1), dh = Math.min(ft - r.y - 24, 200);
     const dx = r.x + 26, dy = ft - dh + 4;
-    const dg = this.add.graphics().setDepth(0.7);
-    dg.fillStyle(0x4a3022, 1); dg.fillRoundedRect(dx - 7, dy - 7, dw + 14, dh + 7, { tl: 48, tr: 48, bl: 0, br: 0 });
-    dg.fillGradientStyle(0x7cc463, 0x7cc463, 0x4e9a3c, 0x4e9a3c, 1); dg.fillRoundedRect(dx, dy, dw, dh, { tl: 42, tr: 42, bl: 0, br: 0 });
-    dg.lineStyle(3, 0x3d7a2f, 1); dg.strokeRoundedRect(dx + 12, dy + 22, dw - 24, dh * 0.34, 14); dg.strokeRoundedRect(dx + 12, dy + dh * 0.5, dw - 24, dh * 0.4, 8);
-    dg.fillStyle(0xf2c14e, 1); dg.fillCircle(dx + dw - 16, dy + dh * 0.55, 6); dg.lineStyle(2.5, 0x4a3022, 1); dg.strokeCircle(dx + dw - 16, dy + dh * 0.55, 6);
+    paintDoor(this, this.btype, dx, dy, dw, dh);
     const arrow = this.text(dx + dw / 2, dy - 22, 'Out', 18, '#fffaf0', 900).setOrigin(0.5).setStroke('#4a3022', 5).setDepth(0.8);
     this.tweens.add({ targets: arrow, y: arrow.y - 5, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     this.rects.door = { x: dx, y: dy, w: dw, h: dh };
     this.tapZone(this.rects.door, () => { if (!this.decorating) this.close(); }, 0.9);
   }
 
-  private drawWindow() {
-    const g = this.winG!, r = this.rects.window, night = !this.lampOn;
-    g.clear();
-    g.fillGradientStyle(night ? 0x1d2b5a : 0x8fd0f5, night ? 0x1d2b5a : 0x8fd0f5, night ? 0x3a4a85 : 0xd8f0ff, night ? 0x3a4a85 : 0xd8f0ff, 1);
-    g.fillRect(r.x, r.y, r.w, r.h);
-    if (night) {
-      g.fillStyle(0xfff6c8, 1); g.fillCircle(r.x + r.w * 0.72, r.y + r.h * 0.3, 14);
-      g.fillStyle(0x1d2b5a, 1); g.fillCircle(r.x + r.w * 0.72 + 7, r.y + r.h * 0.3 - 4, 12);
-      g.fillStyle(0xffffff, 0.9); for (const [a, b] of [[0.2, 0.25], [0.4, 0.15], [0.3, 0.55], [0.55, 0.4], [0.85, 0.65]]) g.fillCircle(r.x + r.w * a, r.y + r.h * b, 2);
-    } else {
-      g.fillStyle(0xffd34d, 1); g.fillCircle(r.x + r.w * 0.78, r.y + r.h * 0.28, 15);
-      g.fillStyle(0xffffff, 0.95); g.fillEllipse(r.x + r.w * 0.3, r.y + r.h * 0.35, 54, 20); g.fillEllipse(r.x + r.w * 0.38, r.y + r.h * 0.3, 34, 22);
-      g.fillStyle(0x7cc463, 1); g.fillEllipse(r.x + r.w * 0.3, r.y + r.h, r.w * 0.9, r.h * 0.5); g.fillStyle(0x5fa84c, 1); g.fillEllipse(r.x + r.w * 0.85, r.y + r.h, r.w * 0.7, r.h * 0.4);
+  /** Gentle living-room motion that depends on the furniture: kitchen steam over the stove, coffee maker and any simmering pot. */
+  private startAmbient() {
+    if (this.btype === 'kitchen') {
+      this.ambient.push(this.time.addEvent({ delay: 700, loop: true, callback: () => {
+        for (const it of this.items) if (it.k === 'stove' || it.k === 'coffee') {
+          const x = it.img.x + (Math.random() - 0.5) * 18, y = it.img.y - FURN[it.k].h * it.sc * 0.8;
+          const p = this.add.ellipse(x, y, 12, 9, 0xffffff, 0.7).setDepth(30);
+          this.tweens.add({ targets: p, y: y - 46, x: x + (Math.random() - 0.5) * 24, scale: 2.2, alpha: 0, duration: 1700, onComplete: () => p.destroy() });
+        }
+      } }));
     }
-    g.lineStyle(7, 0xfffaf0, 1); g.strokeRect(r.x, r.y, r.w, r.h); g.lineBetween(r.x + r.w / 2, r.y, r.x + r.w / 2, r.y + r.h); g.lineBetween(r.x, r.y + r.h / 2, r.x + r.w, r.y + r.h / 2);
-    g.lineStyle(3, 0x4a3022, 1); g.strokeRect(r.x - 4, r.y - 4, r.w + 8, r.h + 8);
   }
+
+  private drawWindow() { this.art?.redraw(!this.lampOn); }
 
   private drawLight() {
     const r = this.room;
