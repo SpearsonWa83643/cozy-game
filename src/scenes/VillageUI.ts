@@ -123,7 +123,7 @@ export class VillageUIScene extends Phaser.Scene {
     this.scale.on('resize', this.layout, this);
     const ev = this.game.events;
     ev.on('res', this.onRes, this);
-    ev.on('build-mode', (on: boolean) => { this.drawBuildBtn(); if (on) this.openTray(); else this.closeTray(); });
+    ev.on('build-mode', (on: boolean) => { this.drawBuildBtn(); if (on) { this.trayCollapsed = false; this.openTray(); } else this.closeTray(); });
     ev.on('built', () => this.openTray());
     ev.on('build-moving', () => this.openTray());
     ev.on('card', this.openCard, this);
@@ -347,56 +347,96 @@ export class VillageUIScene extends Phaser.Scene {
   }
 
   // ------------------------------------------------------------ build tray
+  // 12.7: a thin, semi-transparent bar along the bottom (one row of compact cards, two tabs, a collapse toggle)
+  // so the buildable area stays visible. It never grows past TRAY_H.
+  trayTab: 0 | 1 = 0;
+  trayCollapsed = false;
+  static readonly TRAY_H = 104;
+  static readonly TABS: { label: string; types: BuildingType[] }[] = [
+    { label: 'Houses', types: ['home', 'garden', 'kitchen', 'pantry', 'workshop', 'fishhut'] },
+    { label: 'Decor', types: ['flowerbed', 'lamp', 'well', 'bench', 'statue'] },
+  ];
   openTray() {
     this.closeTray(true);
     const v = this.village;
     const si = safeInsets();
-    const cw = 108, ch = 128, gap = 10;
-    const avail = this.w - 40 - si.left - si.right - 120;
-    const cols = Math.max(4, Math.floor((avail + gap) / (cw + gap)));
-    const rows = Math.ceil(BUILD_ORDER.length / cols);
-    const tw = Math.min(BUILD_ORDER.length, cols) * (cw + gap) - gap + 36;
-    const th = rows * (ch + gap) - gap + 58;
-    const tx = (this.w - tw) / 2 + 50, ty = this.h - th - 14 - si.bottom;
+    const H = VillageUIScene.TRAY_H, gap = 6;
+    const x0 = 22 + si.left + 92 + 14; // right of the Build/Done button
+    const y0 = this.h - H - 12 - si.bottom;
     const c = this.add.container(0, 0);
+    // Collapsed: just a small round toggle sitting where the bar was.
+    const tg = this.add.graphics();
+    const tx0 = x0, ty0 = this.h - 56 - 12 - si.bottom;
+    const drawToggle = (x: number, y: number, up: boolean) => {
+      tg.fillStyle(0xfbf1dc, 0.88); tg.fillRoundedRect(x, y, 56, 56, 28);
+      tg.lineStyle(3, theme.ui.accent, 1); tg.strokeRoundedRect(x + 1.5, y + 1.5, 53, 53, 27);
+      tg.lineStyle(5, 0x5a3d28, 1); tg.beginPath();
+      const m = up ? 6 : -6; tg.moveTo(x + 17, y + 28 + m / 2); tg.lineTo(x + 28, y + 28 - m / 2); tg.lineTo(x + 39, y + 28 + m / 2); tg.strokePath();
+    };
+    if (this.trayCollapsed) {
+      drawToggle(tx0, ty0, true);
+      const z = this.add.zone(tx0, ty0, 56, 56).setOrigin(0, 0).setInteractive();
+      z.on('pointerup', (p: Phaser.Input.Pointer) => { if (p.getDistance() < 30) { sfx.unlock(); this.trayCollapsed = false; this.openTray(); } });
+      this.rects['tray:toggle'] = { x: tx0, y: ty0, w: 56, h: 56 };
+      c.add([tg, z]);
+      this.tray = c; return;
+    }
+    const tabW = 62;
+    const avail = this.w - x0 - 16 - si.right;
+    const types = VillageUIScene.TABS[this.trayTab].types;
+    const cw = Math.max(64, Math.min(84, Math.floor((avail - 8 - tabW - 8 - 56 - 8 + gap) / 6) - gap));
+    const tw = 8 + tabW + 8 + types.length * (cw + gap) - gap + 8 + 56 + 8;
     const g = this.add.graphics();
-    g.fillStyle(0x2a1d14, 0.3); g.fillRoundedRect(tx + 2, ty + 6, tw, th, 24);
-    g.fillStyle(0xfbf1dc, 0.97); g.fillRoundedRect(tx, ty, tw, th, 24);
-    g.lineStyle(3, theme.ui.accent, 1); g.strokeRoundedRect(tx + 6, ty + 6, tw - 12, th - 12, 19);
-    const block = this.add.zone(tx, ty, tw, th).setOrigin(0, 0).setInteractive();
-    const tip = v.moving ? 'Tap a new spot. Then tap the green check!' : v.selected ? 'Tap a spot. Then tap the green check!' : 'Pick something to build! Tap a building to move it.';
-    const title = this.text(tx + 22, ty + 14, tip, 18, INK, 800);
-    c.add([g, block, title]);
-    BUILD_ORDER.forEach((t, i) => {
+    g.fillStyle(0xfbf1dc, 0.82); g.fillRoundedRect(x0, y0, tw, H, 22);
+    g.lineStyle(3, theme.ui.accent, 0.9); g.strokeRoundedRect(x0 + 1.5, y0 + 1.5, tw - 3, H - 3, 21);
+    const block = this.add.zone(x0, y0, tw, H).setOrigin(0, 0).setInteractive();
+    c.add([g, block]);
+    // Tabs (stacked, left), each 62x44.
+    VillageUIScene.TABS.forEach((t, i) => {
+      const on = i === this.trayTab, x = x0 + 8, y = y0 + 6 + i * 48;
+      const [bg, z] = this.button(x, y, tabW, 44, on ? 0xfff2b0 : 0xf0e2c6, on ? theme.ui.accentDark : 0xd9b98f, () => { this.trayTab = i as 0 | 1; this.openTray(); }, 14, `tray:tab${i}`);
+      c.add([bg, z, this.text(x + tabW / 2, y + 22, t.label, 14, INK, 800).setOrigin(0.5)]);
+    });
+    const tip = v.moving ? 'Tap a new spot. Then tap the green check!' : v.selected ? 'Tap a spot. Then tap the green check!' : 'Pick something! Tap a building to move it.';
+    const cx0 = x0 + 8 + tabW + 8;
+    c.add(this.text(cx0, y0 + 5, tip, 13, INK, 800));
+    types.forEach((t, i) => {
       const d = BUILD[t];
-      const x = tx + 18 + (i % cols) * (cw + gap), y = ty + 46 + Math.floor(i / cols) * (ch + gap);
+      const x = cx0 + i * (cw + gap), y = y0 + 24, ch = H - 24 - 8;
       const unlocked = isUnlockedB(t), afford = canAfford(d.cost), sel = v.selected === t;
-      const [bg, z] = this.button(x, y, cw, ch, sel ? 0xfff2b0 : 0xf6ead2, sel ? theme.ui.accentDark : 0xd9b98f, () => this.pick(t), 16, `tray:${t}`);
+      const [bg, z] = this.button(x, y, cw, ch, sel ? 0xfff2b0 : 0xf6ead2, sel ? theme.ui.accentDark : 0xd9b98f, () => this.pick(t), 14, `tray:${t}`);
       c.add([bg, z]);
-      const im = this.add.image(x + cw / 2, y + 74, atlasOf(d.frame), d.frame).setOrigin(0.5, 1);
-      const sc = Math.min((cw - 18) / im.width, 66 / im.height);
-      im.setScale(sc);
+      const im = this.add.image(x + cw / 2, y + 36, atlasOf(d.frame), d.frame).setOrigin(0.5, 1);
+      im.setScale(Math.min((cw - 14) / im.width, 34 / im.height));
       if (!unlocked) im.setTint(0x6f6a72).setAlpha(0.6);
       c.add(im);
-      c.add(this.text(x + cw / 2, y + 88, d.name, 14, INK, 800).setOrigin(0.5));
+      c.add(this.text(x + cw / 2, y + 44, d.name, 11, INK, 800).setOrigin(0.5));
       if (unlocked) {
         const keys = Object.keys(d.cost) as ResId[];
         keys.forEach((k, j) => {
-          const cx = x + cw / 2 + (j - (keys.length - 1) / 2) * 46;
+          const kx = x + cw / 2 + (j - (keys.length - 1) / 2) * 34;
           const ok = save.village.res[k] >= (d.cost[k] ?? 0);
-          c.add(this.icon(cx - 9, y + 112, RES_ICON[k], 22).setAlpha(ok ? 1 : 0.5));
-          c.add(this.text(cx + 4, y + 112, String(d.cost[k]), 16, ok ? INK : '#c0563a', 900).setOrigin(0, 0.5));
+          c.add(this.icon(kx - 7, y + 58, RES_ICON[k], 16).setAlpha(ok ? 1 : 0.5));
+          c.add(this.text(kx + 3, y + 58, String(d.cost[k]), 13, ok ? INK : '#c0563a', 900).setOrigin(0, 0.5));
         });
-        if (!afford) { const dim = this.add.graphics(); dim.fillStyle(0xffffff, 0.35); dim.fillRoundedRect(x, y, cw, ch, 16); c.add(dim); }
+        if (!afford) { const dim = this.add.graphics(); dim.fillStyle(0xffffff, 0.35); dim.fillRoundedRect(x, y, cw, ch, 14); c.add(dim); }
       } else {
-        // Padlock.
         const lg = this.add.graphics();
-        lg.lineStyle(4, 0x6b5a50, 1); lg.beginPath(); lg.arc(x + cw / 2, y + 44, 9, Math.PI, 0); lg.strokePath();
-        lg.fillStyle(0x8a7a70, 1); lg.fillRoundedRect(x + cw / 2 - 13, y + 44, 26, 20, 5);
+        lg.lineStyle(3, 0x6b5a50, 1); lg.beginPath(); lg.arc(x + cw / 2, y + 53, 6, Math.PI, 0); lg.strokePath();
+        lg.fillStyle(0x8a7a70, 1); lg.fillRoundedRect(x + cw / 2 - 9, y + 53, 18, 13, 4);
         c.add(lg);
-        c.add(this.text(x + cw / 2, y + 112, 'Locked', 13, '#8a6a50', 800).setOrigin(0.5));
       }
     });
+    // Collapse toggle (right end).
+    const gx = x0 + tw - 8 - 56, gy = y0 + (H - 56) / 2;
+    const tg2 = this.add.graphics(); tg2.fillStyle(0xf0e2c6, 1); tg2.fillRoundedRect(gx, gy, 56, 56, 28);
+    tg2.lineStyle(3, 0xd9b98f, 1); tg2.strokeRoundedRect(gx + 1.5, gy + 1.5, 53, 53, 27);
+    tg2.lineStyle(5, 0x5a3d28, 1); tg2.beginPath(); tg2.moveTo(gx + 17, gy + 25); tg2.lineTo(gx + 28, gy + 32); tg2.lineTo(gx + 39, gy + 25); tg2.strokePath();
+    const tz = this.add.zone(gx, gy, 56, 56).setOrigin(0, 0).setInteractive();
+    tz.on('pointerup', (p: Phaser.Input.Pointer) => { if (p.getDistance() < 30) { sfx.unlock(); this.trayCollapsed = true; this.openTray(); } });
+    this.rects['tray:toggle'] = { x: gx, y: gy, w: 56, h: 56 };
+    this.rects['tray:bar'] = { x: x0, y: y0, w: tw, h: H };
+    c.add([tg2, tz]);
     this.tray = c;
     c.setAlpha(0); this.tweens.add({ targets: c, alpha: 1, duration: 160 });
   }
@@ -411,6 +451,7 @@ export class VillageUIScene extends Phaser.Scene {
     if (!isUnlockedB(t)) { this.game.events.emit('toast', d.hint); sfx.softFail(); return; }
     if (!canAfford(d.cost)) { this.game.events.emit('toast', 'Not enough yet. Gather more!'); sfx.softFail(); return; }
     sfx.blip();
+    this.trayTab = VillageUIScene.TABS[1].types.includes(t) ? 1 : 0;
     this.village.select(this.village.selected === t ? null : t);
     this.openTray();
   }

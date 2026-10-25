@@ -311,13 +311,16 @@ export class WorldScene extends Phaser.Scene {
     return Math.max(0.6, base) * DPR;
   }
 
-  /** Build mode: frame the whole village above the build tray. */
+  /** Build mode: zoom all the way out to frame the whole village between the top bar and the thin build tray. */
   buildViewTarget() {
     const w = this.scale.width / DPR, h = this.scale.height / DPR;
-    const tray = h > w ? 230 : 190;
-    const z = Math.max(0.45, Math.min(w / 800, (h - tray - 70) / 420));
-    const cx = VILLAGE.x + VILLAGE.cols * VILLAGE.cell / 2;
-    const cy = VILLAGE.y + VILLAGE.rows * VILLAGE.cell / 2 - 30 + (tray - 70) / 2 / z;
+    const top = 64, bottom = 118; // resource bar / the 104px tray (+margin)
+    const vw = VILLAGE.cols * VILLAGE.cell, vh = VILLAGE.rows * VILLAGE.cell;
+    const fit = Math.min((w - 40) / (vw + 80), (h - top - bottom) / (vh + 60));
+    const z = Math.max(0.3, Math.min(fit, (this.baseZoom() / DPR) * ZOOM.min)); // the pinch minimum, or less if the village needs it
+    const free = (top + (h - bottom)) / 2; // screen y of the free area's middle
+    const cx = VILLAGE.x + vw / 2;
+    const cy = VILLAGE.y + vh / 2 + (h / 2 - free) / z;
     return { z: z * DPR, cx, cy };
   }
   enterBuildView() {
