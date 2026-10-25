@@ -40,6 +40,18 @@ const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 
 type Seg = { x0: number; y0: number; vx0: number; vy0: number; x1: number; y1: number; vx1: number; vy1: number; a0: number; a1: number; T: number; t: number; altEase: (t: number) => number; arc?: number };
 
+/** 13: a tiny unique ride effect per fun mount (cookie crumbs, chili sparks, carpet glitter, duck bubbles, jelly glow, berry seeds) + an idle wobble. */
+type Fx = { tint: number[]; add: boolean; life: number; vx: [number, number]; vy: [number, number]; gy: number; sc: number; every: number; at: [number, number] };
+const FX: Record<string, Fx> = {
+  cowboy_cookie: { tint: [0x6b3f1d, 0xa8692e, 0xd9a05a], add: false, life: 700, vx: [-30, 0], vy: [-10, 20], gy: 380, sc: 0.42, every: 80, at: [-22, 8] },
+  chili_poncho: { tint: [0xff3b1f, 0xff9a1f, 0xffd23a], add: true, life: 520, vx: [-70, -20], vy: [-60, -10], gy: -40, sc: 0.5, every: 60, at: [-40, -2] },
+  magic_carpet: { tint: [0xffd34d, 0xfff1a0, 0xffffff], add: true, life: 800, vx: [-40, -8], vy: [-10, 14], gy: 30, sc: 0.4, every: 90, at: [-44, 10] },
+  rubber_duck: { tint: [0xffffff, 0xcdeeff, 0x9fdcf5], add: false, life: 1100, vx: [-16, 6], vy: [-45, -20], gy: -20, sc: 0.5, every: 130, at: [-10, -14] },
+  sky_jelly: { tint: [0xff8fd0, 0xc99bff, 0xffd0f0], add: true, life: 1000, vx: [-14, 14], vy: [10, 40], gy: 20, sc: 0.55, every: 100, at: [0, 16] },
+  strawberry: { tint: [0x3fae49, 0xe8384f, 0xfff1a0], add: false, life: 800, vx: [-26, 0], vy: [-5, 20], gy: 300, sc: 0.36, every: 110, at: [-24, 8] },
+};
+const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+
 export class Mount {
   phase: MountPhase = 'off';
   /** Ground point under the eagle (the shadow), its height above it, heading and speed. */
@@ -59,6 +71,7 @@ export class Mount {
   wingFar!: Phaser.GameObjects.Image;
   shadow!: Phaser.GameObjects.Image;
   trail!: Phaser.GameObjects.Particles.ParticleEmitter;
+  fx?: Phaser.GameObjects.Particles.ParticleEmitter; fxId = '';
   hopT = 0;
   hopFrom: [number, number] = [0, 0];
   riderOn = false;
@@ -84,6 +97,7 @@ export class Mount {
       frame: 'spark', lifespan: 520, speed: { min: 4, max: 20 }, scale: { start: 0.5, end: 0 }, alpha: { start: 0.85, end: 0 },
       tint: [0xffffff, 0xdff3ff, 0xfff1c4], blendMode: 'ADD', frequency: 22, quantity: 2, emitting: false,
     }).setDepth(DEPTH - 2);
+    this.buildFx();
     this.applyTheme();
     const onTheme = () => this.applyTheme();
     themeEvents.on('change', onTheme);
@@ -107,6 +121,20 @@ export class Mount {
     this.wing.setOrigin(0.5, prop ? 0.5 : 0.96).setDepth(prop ? DEPTH + 0.2 : DEPTH + 0.5);
     this.wingFar.setOrigin(0.5, prop ? 0.5 : 0.96);
     this.applyTheme();
+    if (this.trail) this.buildFx();
+  }
+
+  /** (Re)build the little ride-effect emitter for the current mount. Capped, tiny, off until riding. */
+  buildFx() {
+    this.fx?.destroy(); this.fx = undefined; this.fxId = '';
+    const f = FX[this.def.id];
+    if (!f) return;
+    this.fxId = this.def.id;
+    this.fx = this.w.add.particles(0, 0, atlasOf('spark'), {
+      frame: 'spark', lifespan: f.life, speedX: { min: f.vx[0], max: f.vx[1] }, speedY: { min: f.vy[0], max: f.vy[1] }, gravityY: f.gy,
+      scale: { start: f.sc, end: 0 }, alpha: { start: 0.9, end: 0 }, tint: f.tint, blendMode: f.add ? 'ADD' : 'NORMAL',
+      frequency: f.every, quantity: 1, maxParticles: 0, emitting: false,
+    }).setDepth(DEPTH + 0.1);
   }
 
   /** Eagle is on screen at all. */
@@ -479,7 +507,7 @@ export class Mount {
           break;
         }
         case 'leave':
-          if (this.stepSeg(dt)) { this.phase = 'off'; this.show(false); this.trail.stop(); w.game.events.emit('mount', 'off'); return; }
+          if (this.stepSeg(dt)) { this.phase = 'off'; this.show(false); this.trail.stop(); this.fx?.stop(); w.game.events.emit('mount', 'off'); return; }
           if (this.seg!.t > 0.6) { const a = 1 - (this.seg!.t - 0.6) / 0.4; for (const o of [this.body, this.wing, this.wingFar, this.shadow]) o.setAlpha(a); }
           break;
       }
@@ -513,9 +541,19 @@ export class Mount {
     const d = this.dir;
     const x = this.ex, y = this.ey + bob;
     const vy = Math.sin(this.heading) * this.speed;
-    const tilt = Phaser.Math.Clamp(vy / 900, -0.14, 0.14) * d + (this.phase === 'hop' ? -0.12 * d : 0);
+    let tilt = Phaser.Math.Clamp(vy / 900, -0.14, 0.14) * d + (this.phase === 'hop' ? -0.12 * d : 0);
     const bs = this.SCALE / (frameScale[this.def.body] ?? S);
-    this.body.setPosition(x, y).setFlipX(d < 0).setRotation(tilt).setScale(bs);
+    // Idle wobble per mount (skipped for reduced motion): carpet sways, jelly pulses, duck waddles, chili shivers, berry squishes.
+    let bsx = 1, bsy = 1;
+    if (!reduceMotion()) switch (this.def.id) {
+      case 'magic_carpet': tilt += Math.sin(time / 380) * 0.06; break;
+      case 'sky_jelly': bsy = 1 + Math.sin(time / 240) * 0.05; bsx = 1 - Math.sin(time / 240) * 0.04; break;
+      case 'rubber_duck': tilt += Math.sin(time / 260) * 0.045 * d; break;
+      case 'chili_poncho': tilt += Math.sin(time / 90) * 0.015; break;
+      case 'strawberry': bsy = 1 + Math.sin(time / 300) * 0.035; bsx = 1 - Math.sin(time / 300) * 0.03; break;
+      case 'cowboy_cookie': tilt += Math.sin(time / 420) * 0.03 * d; break;
+    }
+    this.body.setPosition(x, y).setFlipX(d < 0).setRotation(tilt).setScale(bs * bsx, bs * bsy);
     const ws = this.SCALE / (frameScale[this.def.wing] ?? S);
     const sy = ws * (lift >= 0 ? 0.35 + 0.65 * lift : 0.35 + 0.95 * lift); // through 0 the wing flips to point down
     const sweep = d * (0.32 + 0.08 * Math.sin(this.flap));
@@ -540,6 +578,14 @@ export class Mount {
     const [tx, ty] = at(-48 * this.SCALE, 2);
     this.trail.setPosition(tx, ty);
     if (fast && !this.trail.emitting) this.trail.start(); else if (!fast && this.trail.emitting) this.trail.stop();
+    // Ride effect: only while a rider is aboard and flying.
+    if (this.fx) {
+      const [ox, oy] = FX[this.fxId].at;
+      const [fx0, fy0] = at(ox * this.SCALE, oy * this.SCALE);
+      this.fx.setPosition(fx0, fy0);
+      const on = this.riderOn && (this.phase === 'ride' || this.phase === 'travel' || this.phase === 'leave') && !paused && !reduceMotion();
+      if (on && !this.fx.emitting) this.fx.start(); else if (!on && this.fx.emitting) this.fx.stop();
+    }
     // Rider sits on the eagle's back (legs tucked into the feathers).
     if (this.riderOn || this.phase === 'arrive' || this.phase === 'hop') this.drawRider(at, d, time);
   }
@@ -573,6 +619,7 @@ export class Mount {
       boosts: this.boosts, rides: this.rides, landings: this.landings, dropAt: this.dropAt ? this.dropAt.map(Math.round) : null,
       canCall: this.canCall(), reachable: this.reachList.length, seg: this.seg ? +this.seg.t.toFixed(2) : null,
       travels: this.travels, arrivals: this.arrivals, travelName: this.travelName, travelTarget: this.travelTarget ? this.travelTarget.map(Math.round) : null,
+      fx: this.fxId, fxOn: !!this.fx?.emitting, fxAlive: this.fx?.getAliveParticleCount() ?? 0,
       reachableHere: this.reach ? this.isReachable(this.w.feet.x, this.w.feet.y) : null,
     };
   }
