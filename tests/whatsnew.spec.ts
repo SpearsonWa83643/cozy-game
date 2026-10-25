@@ -25,9 +25,9 @@ test("what's new: after entry, shows once, closes, stays closed; none when empty
   await expect(page.locator('#entry')).toHaveCount(0);
   await expect(page.locator('#whatsnew h2')).toContainText("What's new");
   await expect(page.locator('#whatsnew li')).toHaveCount(5);
-  await expect(page.locator('#whatsnew li').first()).toContainText('Every room has its own look');
-  await expect(page.locator('#whatsnew li').nth(1)).toContainText('The garden is outside now');
-  await expect(page.locator('#whatsnew li').nth(2)).toContainText('Pinch to zoom keeps your hero');
+  await expect(page.locator('#whatsnew li').first()).toContainText('Poke things inside the rooms');
+  await expect(page.locator('#whatsnew li').nth(1)).toContainText('Every room has its own look');
+  await expect(page.locator('#whatsnew li').nth(2)).toContainText('The garden is outside now');
   await expect(page.locator('#whatsnew li').nth(3)).toContainText('Six new flying friends');
   await expect(page.locator('#whatsnew li').nth(4)).toContainText('workshop has real tools');
   const ok = await page.locator('#whatsnew .w-ok').boundingBox();
