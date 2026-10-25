@@ -1612,6 +1612,12 @@ export class WorldScene extends Phaser.Scene {
         }
         return null;
       },
+      /** Hero's follow point on screen (css px) next to the screen centre: the pinch-zoom centring check. */
+      heroScreen() {
+        const cam = self.cameras.main;
+        const tx = self.feet.x, ty = self.feet.y + 18;
+        return { x: (tx - cam.worldView.x) * cam.zoom / DPR, y: (ty - cam.worldView.y) * cam.zoom / DPR, cx: cam.width / 2 / DPR, cy: cam.height / 2 / DPR, zoom: cam.zoom / DPR, lerp: cam.lerp.x };
+      },
       worldToScreen(x: number, y: number) {
         const cam = self.cameras.main;
         return { x: (x - cam.worldView.x) * cam.zoom / DPR, y: (y - cam.worldView.y) * cam.zoom / DPR };

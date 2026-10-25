@@ -206,8 +206,8 @@ export const ZOOM = { mul: 1, min: 0.7, max: 1.8, step: 1.25 };
 
 /**
  * Pinch / +/- zoom for a camera that normally follows the hero. The final zoom is base * ZOOM.mul,
- * clamped so the view never shows past the map edges. Pinch zooms around the fingers' midpoint,
- * then the camera eases back onto the hero when the fingers lift.
+ * clamped so the view never shows past the map edges. Pinch zooms about the hero (the camera keeps following
+ * the whole time), so the hero stays centred and nothing re-centres on release.
  */
 export class CamZoom {
   private pinchMul = 1;
@@ -219,28 +219,44 @@ export class CamZoom {
   /** The zoom the camera should sit at for a given multiplier. */
   zoomFor(mul = ZOOM.mul) { return Math.max(this.o.base() * Phaser.Math.Clamp(mul, ZOOM.min, ZOOM.max), this.floor()); }
 
-  /** Keep the world point under (sx, sy) canvas px still while zooming to z. */
-  private zoomAt(z: number, sx: number, sy: number) {
-    const c = this.cam, w = c.width, h = c.height, z0 = c.zoom;
-    const wx = c.scrollX + w * c.originX + (sx - w * c.originX) / z0;
-    const wy = c.scrollY + h * c.originY + (sy - h * c.originY) / z0;
-    c.setZoom(z);
-    c.setScroll(wx - w * c.originX - (sx - w * c.originX) / z, wy - h * c.originY - (sy - h * c.originY) / z);
+  private lerp: [number, number] | null = null;
+  private ramp: Phaser.Tweens.Tween | null = null;
+
+  /** Ease the follow lerp toward `to` (so tightening or relaxing the follow never makes the view jump). */
+  private rampLerp(to: [number, number], ms: number, done?: () => void) {
+    this.ramp?.stop(); this.ramp = null;
+    const from: [number, number] = [this.cam.lerp.x, this.cam.lerp.y];
+    const sc = (this.cam as any).scene as Phaser.Scene | undefined;
+    if (!sc || ms <= 0) { this.cam.setLerp(to[0], to[1]); done?.(); return; }
+    this.ramp = sc.tweens.addCounter({
+      from: 0, to: 1, duration: ms, ease: 'Sine.easeInOut',
+      onUpdate: (t) => { const k = t.getValue() ?? 1; this.cam.setLerp(from[0] + (to[0] - from[0]) * k, from[1] + (to[1] - from[1]) * k); },
+      onComplete: () => { this.ramp = null; this.cam.setLerp(to[0], to[1]); done?.(); },
+    });
   }
 
-  onPinch: PinchCb = (phase, ratio, mx, my) => {
+  onPinch: PinchCb = (phase, ratio) => {
+    // The hero stays dead centre the whole time: the camera never lets go of its follow target and zooms about
+    // its own centre (no pivot about the fingers), so there is no drift while pinching and nothing to
+    // re-centre on release. Near a map edge the camera's own bounds clamp it, continuously with the zoom.
     if (phase === 'start') {
       if (this.o.allowed && !this.o.allowed()) return;
       this.pinchOn = true; this.pinchMul = ZOOM.mul;
-      this.cam.stopFollow();
       this.cam.zoomEffect?.reset?.();
+      if (!(this.cam as any)._follow) this.o.follow();
+      // Lock the follow tight while the fingers are down (eased in, never a snap), relax it again on release.
+      if (!this.lerp) this.lerp = [this.cam.lerp.x, this.cam.lerp.y];
+      this.rampLerp([1, 1], 160);
     } else if (phase === 'move') {
       if (!this.pinchOn) return;
       ZOOM.mul = Phaser.Math.Clamp(this.pinchMul * ratio, ZOOM.min, ZOOM.max);
-      this.zoomAt(this.zoomFor(), mx, my);
+      this.cam.zoomTo(this.zoomFor(), 90, 'Sine.easeOut', true);
     } else if (this.pinchOn) {
       this.pinchOn = false;
-      this.o.follow();
+      const back = this.lerp ?? [this.cam.lerp.x, this.cam.lerp.y];
+      this.lerp = null;
+      this.rampLerp([back[0], back[1]], 450);
+      if (!(this.cam as any)._follow) this.o.follow();
     }
   };
 
