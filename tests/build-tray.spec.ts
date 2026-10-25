@@ -69,15 +69,13 @@ test('build mode: zoomed out, thin tray, place / move / remove, restores the vie
   await page.waitForTimeout(800);
   const g1 = await village(page);
   expect(g1.buildings.length).toBe(1); expect(g1.ghost.gx).toBe(4);
-  console.log('ghost', JSON.stringify(g1.ghost), JSON.stringify(await page.evaluate(([x, y]) => (window as any).__cozy.worldToScreen(x, y), g1.ghost.check)));
   await tapWorld(page, g1.ghost.check[0], g1.ghost.check[1]);
   await expect.poll(async () => (await village(page)).buildings.length, { timeout: 30_000 }).toBe(2);
 
-  // Move it, then remove it.
+  // Move it (tap a building in build mode picks it up).
   const gardenAt = async () => (await village(page)).buildings.find((b: any) => b.type === 'garden');
   let gb = await gardenAt();
   await tapWorld(page, gb.x, gb.y);
-  await tapId(page, 'card:move');
   const [mx, my] = await cozy(page, 'villageCell(8, 3)');
   await expect.poll(async () => (await village(page)).moving, { timeout: 30_000 }).not.toBeNull();
   await tapWorld(page, mx, my);
@@ -85,14 +83,8 @@ test('build mode: zoomed out, thin tray, place / move / remove, restores the vie
   const g2 = await village(page);
   await tapWorld(page, g2.ghost.check[0], g2.ghost.check[1]);
   await expect.poll(async () => (await gardenAt())?.gx, { timeout: 30_000 }).toBe(7);
-  gb = await gardenAt();
-  await tapWorld(page, gb.x, gb.y);
-  await tapId(page, 'card:remove');
-  await page.waitForTimeout(500);
-  await tapId(page, 'card:remove'); // "Sure?"
-  await expect.poll(async () => (await village(page)).buildings.length, { timeout: 30_000 }).toBe(1);
-
   // Collapse and expand the tray.
+  await page.waitForTimeout(1500); // let the tray rebuild after the move settle
   await tapId(page, 'tray:toggle');
   await expect.poll(() => vui(page, 'tray:bar'), { timeout: 15_000 }).toBeFalsy();
   await tapId(page, 'tray:toggle');
@@ -104,5 +96,13 @@ test('build mode: zoomed out, thin tray, place / move / remove, restores the vie
   await expect.poll(() => zoom(page), { timeout: 60_000, intervals: [500] }).toBeGreaterThan(z0 * 0.97);
   expect(Math.abs((await zoom(page)) - z0) / z0).toBeLessThan(0.05);
   await expect.poll(async () => { const h = await cozy(page, 'heroScreen()'); return Math.hypot(h.x - h.cx, h.y - h.cy); }, { timeout: 60_000, intervals: [500] }).toBeLessThan(4);
+  // Remove (building card, outside build mode) still works.
+  await page.waitForTimeout(1500);
+  gb = await gardenAt();
+  await tapWorld(page, gb.x, gb.y);
+  await tapId(page, 'card:remove');
+  await page.waitForTimeout(500);
+  await tapId(page, 'card:remove'); // "Sure?"
+  await expect.poll(async () => (await village(page)).buildings.length, { timeout: 30_000 }).toBe(1);
   expect(errors).toEqual([]);
 });
