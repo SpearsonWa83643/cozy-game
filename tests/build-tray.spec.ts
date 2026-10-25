@@ -36,8 +36,10 @@ test('build mode: zoomed out, thin tray, place / move / remove, restores the vie
   await page.waitForFunction(() => (window as any).__cozy?.ready, null, { timeout: 180_000 });
   await page.evaluate(() => (window as any).__cozy.teleport(470, 1820));
   await page.waitForTimeout(3000);
+  
+  await page.evaluate(() => (window as any).__cozy.teleport(560, 1975)); // out of the village cells
+  await page.waitForTimeout(2500);
   const z0 = await zoom(page);
-
   await tapId(page, 'build');
   await expect.poll(async () => (await village(page)).building, { timeout: 30_000 }).toBe(true);
   await expect.poll(() => zoom(page), { timeout: 60_000, intervals: [500] }).toBeLessThan(z0 * 0.95);
@@ -67,6 +69,7 @@ test('build mode: zoomed out, thin tray, place / move / remove, restores the vie
   await page.waitForTimeout(800);
   const g1 = await village(page);
   expect(g1.buildings.length).toBe(1); expect(g1.ghost.gx).toBe(4);
+  console.log('ghost', JSON.stringify(g1.ghost), JSON.stringify(await page.evaluate(([x, y]) => (window as any).__cozy.worldToScreen(x, y), g1.ghost.check)));
   await tapWorld(page, g1.ghost.check[0], g1.ghost.check[1]);
   await expect.poll(async () => (await village(page)).buildings.length, { timeout: 30_000 }).toBe(2);
 

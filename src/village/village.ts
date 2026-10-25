@@ -1,3 +1,4 @@
+import { DPR } from '../dpr';
 // Willow Village: friendly villagers, snap-grid building, simple jobs and gentle events.
 // Rules for a young audience: no fail states, few numbers, big obvious feedback.
 import Phaser from 'phaser';
@@ -469,6 +470,8 @@ export class Village {
     this.ghost = { img, gx: spot[0], gy: spot[1], ok: true, check, cross };
     this.moveGhost(spot[0], spot[1]);
   }
+  /** 12.7: build mode is zoomed out, so the check / cross buttons grow to stay easy to tap. */
+  btnK() { return Math.max(1, 1.2 / (this.w.buildViewTarget().z / DPR)); }
   moveGhost(gx: number, gy: number) {
     const g = this.ghost; if (!g || !this.selected) return;
     const t = this.selected, d = BUILD[t];
@@ -478,8 +481,9 @@ export class Village {
     const fw = this.w.textures.getFrame(atlasOf(d.frame), d.frame).width;
     g.img.setPosition(f.cx, f.by).setScale((f.w * (d.w === 1 ? 1.1 : 1.08)) / fw).setTint(g.ok ? 0xffffff : 0xff9a9a);
     const top = f.by - g.img.displayHeight;
-    g.check.setPosition(f.cx + 30, top - 24).setVisible(g.ok);
-    g.cross.setPosition(f.cx - 30, top - 24);
+    const k = this.btnK();
+    g.check.setScale((1.15 / 2.5) * k).setPosition(f.cx + 30 * k, top - 24 * k).setVisible(g.ok);
+    g.cross.setScale((0.95 / 2.5) * k).setPosition(f.cx - 30 * k, top - 24 * k);
     this.drawGrid();
     this.grid.fillStyle(g.ok ? 0x7cc463 : 0xf08a7a, 0.35); this.grid.fillRoundedRect(f.x + 3, f.y + 3, f.w - 6, f.h - 6, 12);
   }
@@ -496,8 +500,8 @@ export class Village {
     // Order 19: nothing picked yet, so a tap on a building picks it up to move it.
     if (!g) { const b = this.buildingAt(wx, wy); if (b) this.startMove(b); return; }
     if (g) {
-      if (g.check.visible && Math.hypot(wx - g.check.x, wy - g.check.y) < 34) { this.confirm(); return; }
-      if (Math.hypot(wx - g.cross.x, wy - g.cross.y) < 30) { this.select(null); sfx.blip(); this.drawGrid(); return; }
+      if (g.check.visible && Math.hypot(wx - g.check.x, wy - g.check.y) < 34 * this.btnK()) { this.confirm(); return; }
+      if (Math.hypot(wx - g.cross.x, wy - g.cross.y) < 30 * this.btnK()) { this.select(null); sfx.blip(); this.drawGrid(); return; }
       const d = BUILD[this.selected!];
       const gx = Math.floor((wx - VILLAGE.x) / VILLAGE.cell - (d.w - 1) / 2), gy = Math.floor((wy - VILLAGE.y) / VILLAGE.cell - (d.h - 1) / 2);
       if (wx > VILLAGE.x - 40 && wx < VILLAGE.x + VILLAGE.cols * VILLAGE.cell + 40 && wy > VILLAGE.y - 60 && wy < VILLAGE.y + VILLAGE.rows * VILLAGE.cell + 40) { this.moveGhost(gx, gy); sfx.tock(); }
