@@ -246,7 +246,7 @@ export class CamZoom {
       if (!(this.cam as any)._follow) this.o.follow();
       // Lock the follow tight while the fingers are down (eased in, never a snap), relax it again on release.
       if (!this.lerp) this.lerp = [this.cam.lerp.x, this.cam.lerp.y];
-      this.rampLerp([1, 1], 160);
+      this.rampLerp([1, 1], 250);
     } else if (phase === 'move') {
       if (!this.pinchOn) return;
       ZOOM.mul = Phaser.Math.Clamp(this.pinchMul * ratio, ZOOM.min, ZOOM.max);
