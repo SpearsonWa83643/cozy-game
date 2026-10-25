@@ -306,5 +306,13 @@ export class ZoomButtons {
       this.rects.push({ x: x - 34, y: cy - 34, w: 68, h: 68 });
     });
   }
+  /** 13.1 Gentle attention pulse on the pair (never blocks input). */
+  private pulseTw: Phaser.Tweens.Tween[] = [];
+  pulse(on: boolean) {
+    this.pulseTw.forEach((t) => t.stop()); this.pulseTw = [];
+    this.cs.forEach((c) => c.setScale(1));
+    if (on) this.pulseTw = this.cs.map((c) => this.scene.tweens.add({ targets: c, scale: 1.18, duration: 550, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' }));
+  }
+  get pulsing() { return this.pulseTw.length > 0; }
   setVisible(v: boolean) { this.cs.forEach((c) => c.setVisible(v)); this.zones.forEach((z) => (z.input!.enabled = v)); }
 }
