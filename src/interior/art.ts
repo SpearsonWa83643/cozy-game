@@ -13,7 +13,7 @@ export type RoomArt = {
   frame: number;
   /** Where the lamp-lit overlay should sit. */
   warm: number;
-  /** 12.8: tappable props (fireplace, kettle, clock, lantern, net) with their hit boxes. */
+  /** 12.8/13.2: tappable props (fireplace, cat, kettle, cookie jar, clock, pegboard, lantern, net, bench) with their hit boxes. */
   props: Prop[];
 };
 
@@ -167,7 +167,28 @@ function home(s: Phaser.Scene, r: Rect, ft: number, lampOn: boolean): RoomArt {
     const m = s.add.circle(win.x + win.w * (0.2 + 0.15 * i), win.y + win.h + 20 + i * 12, 2, 0xfff6d0, 0.8).setDepth(0.43);
     s.tweens.add({ targets: m, x: m.x + 26, y: m.y + 40, alpha: { from: 0.9, to: 0 }, duration: 3200 + i * 500, repeat: -1, delay: i * 700 });
   }
-  return { window: win, redraw: draw, frame: 0x4a2810, warm: 0xff9a3c, props: [{ id: 'fire', x: fx - 24, y: fy - 22, w: fw + 48, h: fhh + 22 }] };
+  // 13.2 Sleepy cat curled on a cushion by the hearth (tap: purr + hearts).
+  const ccx = fx - 64, ccy = ft + 22;
+  const cat = s.add.container(ccx, ccy).setDepth(0.34);
+  const cu = s.add.graphics();
+  cu.fillStyle(0x2a1d14, 0.18); cu.fillEllipse(0, 14, 92, 14);
+  cu.fillStyle(0xc0392b, 1); cu.fillEllipse(0, 6, 86, 26); cu.lineStyle(3, 0x6e1f17, 1); cu.strokeEllipse(0, 6, 86, 26);
+  cu.fillStyle(0xffd34d, 1); for (const t of [-34, 34]) cu.fillCircle(t, 4, 4);
+  const kit = s.add.container(0, 0);
+  const kg2 = s.add.graphics();
+  kg2.fillStyle(0xf0a24a, 1); kg2.fillEllipse(-2, -6, 60, 30); kg2.lineStyle(3, 0x6b3a1c, 1); kg2.strokeEllipse(-2, -6, 60, 30);
+  kg2.lineStyle(4, 0xc97a2a, 1); for (const sx of [-14, -2, 10]) kg2.lineBetween(sx, -19, sx + 3, -11);
+  kg2.lineStyle(7, 0xf0a24a, 1); kg2.beginPath(); kg2.arc(-6, 0, 26, Math.PI * 0.15, Math.PI * 0.75); kg2.strokePath(); // tail around the front
+  kg2.fillStyle(0xf0a24a, 1); kg2.fillCircle(22, -12, 14); kg2.lineStyle(3, 0x6b3a1c, 1); kg2.strokeCircle(22, -12, 14);
+  kg2.fillStyle(0xf0a24a, 1); kg2.fillTriangle(12, -20, 16, -33, 22, -24); kg2.fillTriangle(24, -25, 32, -33, 34, -18);
+  kg2.lineStyle(2.5, 0x6b3a1c, 1); kg2.strokeTriangle(12, -20, 16, -33, 22, -24); kg2.strokeTriangle(24, -25, 32, -33, 34, -18);
+  kg2.fillStyle(0xff9fb2, 1); kg2.fillTriangle(15, -22, 17, -29, 20, -24);
+  kg2.lineStyle(2, 0x4a3022, 1); kg2.beginPath(); kg2.arc(17, -11, 3.5, 0.2, Math.PI - 0.2); kg2.strokePath(); kg2.beginPath(); kg2.arc(28, -11, 3.5, 0.2, Math.PI - 0.2); kg2.strokePath();
+  kg2.fillStyle(0xff7a8a, 1); kg2.fillCircle(23, -6, 2);
+  kit.add(kg2); cat.add([cu, kit]);
+  loop(s, kg2, { scaleY: { from: 1, to: 1.05 }, y: { from: 0, to: -1 }, duration: 1500 });
+  const catProp: Prop = { id: 'cat', x: ccx - 50, y: ccy - 44, w: 100, h: 66, obj: kit };
+  return { window: win, redraw: draw, frame: 0x4a2810, warm: 0xff9a3c, props: [{ id: 'fire', x: fx - 24, y: fy - 22, w: fw + 48, h: fhh + 22 }, catProp] };
 }
 
 function sky(g: Gfx, win: Rect, night: boolean, top = 0x7cc8ff, bottom = 0xe3f6ff) {
@@ -268,7 +289,20 @@ function kitchen(s: Phaser.Scene, r: Rect, ft: number, lampOn: boolean): RoomArt
   kg.fillStyle(0xffd45e, 1); kg.fillCircle(0, -38, 4); kg.fillStyle(0xffffff, 0.5); kg.fillEllipse(-9, -22, 6, 14);
   kc.add(kg);
   const kprop: Prop = { id: 'kettle', x: kx - 34, y: ky - 56, w: 68, h: 60, obj: kc };
-  return { window: win, redraw: draw, frame: 0x2f6f6a, warm: 0xffe08a, props: [kprop] };
+  // 13.2 Cookie jar on the counter (tap: the lid pops and a cookie hops out).
+  const jx = r.x + r.w * 0.875, jy = ft - 54;
+  const jc = s.add.container(jx, jy).setDepth(0.32);
+  const jg = s.add.graphics();
+  jg.fillStyle(0x2a1d14, 0.2); jg.fillEllipse(0, 0, 44, 8);
+  jg.fillStyle(0xdff3ff, 0.9); jg.fillRoundedRect(-18, -38, 36, 37, 9); jg.lineStyle(3, 0x4a3022, 1); jg.strokeRoundedRect(-18, -38, 36, 37, 9);
+  jg.fillStyle(0xc98a4a, 1); for (const [ox, oy] of [[-7, -10], [7, -12], [0, -23]]) { jg.fillCircle(ox, oy, 7.5); }
+  jg.fillStyle(0x5a3416, 1); for (const [ox, oy] of [[-9, -11], [-5, -8], [6, -14], [9, -10], [-2, -24], [2, -21]]) jg.fillCircle(ox, oy, 1.4);
+  jg.fillStyle(0xffffff, 0.6); jg.fillRoundedRect(-14, -34, 5, 26, 3);
+  const lid = s.add.graphics();
+  lid.fillStyle(0xe8604c, 1); lid.fillRoundedRect(-20, -46, 40, 10, 4); lid.fillCircle(0, -48, 5); lid.lineStyle(3, 0x4a3022, 1); lid.strokeRoundedRect(-20, -46, 40, 10, 4);
+  jc.add([jg, lid]);
+  const jprop: Prop = { id: 'jars', x: jx - 28, y: jy - 58, w: 56, h: 62, obj: lid };
+  return { window: win, redraw: draw, frame: 0x2f6f6a, warm: 0xffe08a, props: [kprop, jprop] };
 }
 
 // -------------------------------------------------------------------------------------------------- WORKSHOP
@@ -355,7 +389,9 @@ function workshop(s: Phaser.Scene, r: Rect, ft: number, lampOn: boolean): RoomAr
   wcg.fillStyle(0x9aa6b2, 1); wcg.fillCircle(-12, 44, 6); wcg.fillCircle(12, 50, 6); wcg.lineStyle(2, 0x3a2a1c, 1); wcg.lineBetween(-12, 28, -12, 38); wcg.lineBetween(12, 28, 12, 44);
   wc.add(wcg);
   const wprop: Prop = { id: 'clock', x: wcx - 34, y: wcy - 54, w: 68, h: 110, obj: wc };
-  return { window: win, redraw: draw, frame: 0x3a2614, warm: 0xffb84a, props: [wprop] };
+  // 13.2 The pegboard rattles when tapped (tools jiggle, sawdust falls).
+  const pprop: Prop = { id: 'pegboard', x: pbx, y: pby, w: pbw, h: pbh, obj: pg };
+  return { window: win, redraw: draw, frame: 0x3a2614, warm: 0xffb84a, props: [wprop, pprop] };
 }
 
 // ---------------------------------------------------------------------------------------------------- GARDEN

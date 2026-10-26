@@ -2,10 +2,10 @@ import { test, expect } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 
-// 12.8 Each room has a tappable prop with a cute reaction: fireplace, kettle, clock, lantern, net (+ a lantern in the garden).
+// 12.8 / 13.2 Each room has tappable props with a cute reaction: fireplace, kettle, clock, lantern, net (+ a lantern in the garden).
 const FILE = pathToFileURL(resolve(process.env.COZY_SINGLE ?? 'dist-single/index.html')).href;
 const SHOTS = process.env.INTERIOR_SHOTS ?? 'screenshots';
-const ROOMS: [string, string, string[]][] = [['home', 'Home', ['fire']], ['kitchen', 'Kitchen', ['kettle']], ['workshop', 'Workshop', ['clock']], ['garden', 'Garden', ['lantern', 'bench']], ['fishhut', 'Fishing Hut', ['net', 'lantern']]];
+const ROOMS: [string, string, string[]][] = [['home', 'Home', ['fire', 'cat']], ['kitchen', 'Kitchen', ['kettle', 'jars']], ['workshop', 'Workshop', ['clock', 'pegboard']], ['garden', 'Garden', ['lantern', 'bench']], ['fishhut', 'Fishing Hut', ['net', 'lantern']]];
 
 test('tap the fireplace, kettle, clock, lantern and net', async ({ page }) => {
   test.setTimeout(300_000);
