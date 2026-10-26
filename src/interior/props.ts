@@ -1,9 +1,9 @@
-// 12.8 Room props: one tappable thing per room with a cute little reaction + sound. Pure fun: no saves, no mechanics.
+// 12.8 / 13.2 Room props: tappable things in every room with a cute little reaction + sound. Pure fun: no saves, no mechanics.
 import Phaser from 'phaser';
 import { sfx } from '../audio';
 import type { Rect } from './art';
 
-export type PropKind = 'fire' | 'kettle' | 'clock' | 'lantern' | 'net' | 'bench';
+export type PropKind = 'fire' | 'kettle' | 'clock' | 'lantern' | 'net' | 'bench' | 'cat' | 'jars' | 'pegboard';
 export type Prop = Rect & { id: PropKind; obj?: Phaser.GameObjects.Components.Transform & Phaser.GameObjects.GameObject };
 
 /** Little round puffs (steam, embers, drops). Capped so rapid taps never pile up. */
@@ -64,6 +64,36 @@ export function react(s: Phaser.Scene, p: Prop): string {
       s.tweens.add({ targets: p.obj, y: (p.obj as any).y - 9, duration: 110, yoyo: true, repeat: 1, ease: 'Quad.easeOut' });
       puffs(s, cx - 20, p.y + 26, 8, { color: 0x7a5232, r: 4, dy: -40, dx: 70, ms: 700, grow: 0.4 });
       return 'Clink-clonk! The pots hop.';
+    }
+    case 'cat': {
+      // 13.2: wakes for a moment, stretches, purrs; little hearts float up.
+      sfx.purr(); const o = p.obj as any;
+      if (o) { s.tweens.killTweensOf(o); o.setScale(1); o.y = 0; s.tweens.add({ targets: o, scaleX: 1.14, scaleY: 0.9, y: -3, duration: 260, yoyo: true, repeat: 1, ease: 'Sine.easeInOut', onComplete: () => { o.setScale(1); o.y = 0; } }); }
+      for (let i = 0; i < 4; i++) {
+        const h = s.add.text(cx + 14 + (Math.random() - 0.5) * 30, p.y + 16, '\u2665', { fontFamily: 'Nunito, system-ui, sans-serif', fontSize: '22px', color: '#ff6f91', stroke: '#b83a5c', strokeThickness: 3 }).setOrigin(0.5).setDepth(31).setAlpha(0);
+        s.tweens.add({ targets: h, y: h.y - 60 - Math.random() * 30, x: h.x + (Math.random() - 0.5) * 30, alpha: { from: 1, to: 0 }, scale: { from: 0.6, to: 1.2 }, duration: 1200, delay: i * 160, ease: 'Sine.easeOut', onComplete: () => h.destroy() });
+      }
+      return 'Purrrr... the kitty stretches and goes back to sleep.';
+    }
+    case 'jars': {
+      // 13.2: cookie jar. The lid pops up and a cookie hops out, crumbs fly.
+      sfx.ting(); sfx.plip(); const o = p.obj as any;
+      if (o) { s.tweens.killTweensOf(o); o.y = 0; o.setAngle?.(0); s.tweens.add({ targets: o, y: -16, angle: -12, duration: 160, yoyo: true, hold: 260, ease: 'Back.easeOut', onComplete: () => { o.y = 0; o.setAngle?.(0); } }); }
+      const ck = s.add.circle(cx, p.y + 22, 9, 0xc98a4a).setStrokeStyle(2.5, 0x5a3416).setDepth(31);
+      s.tweens.chain({ targets: ck, tweens: [
+        { y: p.y - 30, x: cx - 10, duration: 260, ease: 'Quad.easeOut' },
+        { angle: 360, duration: 380 },
+        { y: p.y + 22, x: cx, alpha: 0, duration: 260, ease: 'Quad.easeIn', onComplete: () => ck.destroy() },
+      ] });
+      puffs(s, cx, p.y + 12, 6, { color: 0xc98a4a, r: 2.5, dy: -40, dx: 50, ms: 700, grow: 0.5 });
+      return 'Pop! A cookie hops out to say hi.';
+    }
+    case 'pegboard': {
+      // 13.2: the tools rattle on their pegs and sawdust trickles down.
+      sfx.clank(); sfx.ratchet(); const o = p.obj as any;
+      if (o) { s.tweens.killTweensOf(o); o.x = 0; s.tweens.add({ targets: o, x: { from: -3, to: 3 }, duration: 55, yoyo: true, repeat: 4, ease: 'Sine.easeInOut', onComplete: () => { o.x = 0; } }); }
+      puffs(s, cx, p.y + p.h - 6, 10, { color: 0xf4dc9a, r: 2.5, dy: 110, dx: p.w * 0.8, ms: 1200, grow: 0.6 });
+      return 'Rattle-rattle! The tools jiggle on their pegs.';
     }
     default: {
       sfx.splash(); sfx.rustle(); wobble(s, p.obj, 3, 80);
