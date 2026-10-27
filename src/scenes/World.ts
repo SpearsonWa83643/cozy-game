@@ -1493,6 +1493,7 @@ export class WorldScene extends Phaser.Scene {
           alert: v.alert ? { id: v.alert.id, text: v.alert.text } : null, gifts: v.gifts, fruitFed: v.fruitFed,
           guest: v.wanderer ? { name: v.wanderer.data.name, x: Math.round(v.wanderer.x), y: Math.round(v.wanderer.y - 26) } : null,
           produced: v.produced, rain: v.rain > 0, weather: v.weather.kind, rainbows: v.weather.rainbows, rainbow: !!v.weather.rainbow, festival: v.festival > 0, merchant: !!v.cart, theme: save.theme,
+          fidgets: v.villagers.reduce((n, q) => n + q.fidgets, 0), fidgeting: v.villagers.filter((q) => !!q.fidget).length,
           cheers: v.cheers, admires: v.admires, said: v.said, cheering: v.villagers.filter((q) => q.cheer > 0).length,
         };
       },
@@ -1597,6 +1598,8 @@ export class WorldScene extends Phaser.Scene {
         const ms = (performance.now() - t0) / n; d.cullOn = was; return ms;
       },
       /** 11.9: make the next idle-admire check happen now. */
+      /** 25: make the idle friends fidget right now. */
+      villageFidget: () => { for (const q of self.village.villagers) q.fidgetWait = 0.01; },
       villageAdmire: () => { self.village.admireT = 0; },
       weatherLeft: (n: number) => { if (self.village.rain > 0) self.village.rain = n; },
       mount: () => self.mount.snapshot(),

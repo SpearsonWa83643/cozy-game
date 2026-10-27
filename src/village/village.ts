@@ -74,6 +74,9 @@ export class Villager {
   /** 11.9: seconds left of a happy little cheer-hop. */
   cheer = 0;
   idleT = 0;
+  /** 25: a tiny idle fidget (stretch / yawn / wave); purely visual. */
+  fidget: 'stretch' | 'yawn' | 'wave' | null = null;
+  fidgetT = 0; fidgetWait = 7 + Math.random() * 12; fidgets = 0;
   walkT = 0;
   suggest: Suggest | null = null;
   bubble: Phaser.GameObjects.Container | null = null;
@@ -874,6 +877,18 @@ export class Village {
       v.think -= dt;
       if (v.think <= 0) { v.think = 1.5; this.decide(v); }
     }
+    // 25: little idle fidgets (calm moments only).
+    const FIDGET_LEN = { stretch: 1.6, yawn: 2.2, wave: 1.8 } as const;
+    const fidgetOk = v.task === 'idle' && !v.bubble && v.cheer <= 0 && !v.guest;
+    if (v.fidget) { v.fidgetT += dt; if (v.fidgetT >= FIDGET_LEN[v.fidget] || !fidgetOk) { v.fidget = null; v.fidgetT = 0; } }
+    else if (fidgetOk) {
+      v.fidgetWait -= dt;
+      if (v.fidgetWait <= 0) {
+        const kinds = ['stretch', 'yawn', 'wave'] as const;
+        v.fidget = kinds[Math.floor(Math.random() * 3)]; v.fidgetT = 0; v.fidgets++; v.fidgetWait = 10 + Math.random() * 16;
+        this.w.floatText(v.x, v.y - 78, v.fidget === 'stretch' ? 'Ahh~' : v.fidget === 'yawn' ? 'Yaaawn…' : 'Hi!');
+      }
+    }
     // Draw.
     if (v.task === 'drag') { v.hop += dt * 14; }
     if (moving) { v.stepT += dt; if (v.stepT > 0.17) { v.stepT = 0; v.frame ^= 1; v.img.setFrame(v.key()); } }
@@ -883,7 +898,16 @@ export class Village {
     const cheering = v.cheer > 0 && v.task !== 'drag' && v.task !== 'sleep';
     const bob = cheering ? -Math.abs(Math.sin(v.cheer * 11)) * 11 : v.task === 'drag' ? -10 + Math.sin(v.hop) * 3 : v.task === 'work' ? -Math.abs(Math.sin(time / 180 + d.id)) * 4 : (v.task === 'play' || festive) ? -Math.abs(Math.sin(v.hop + time / 160 + d.id)) * 9 : moving ? -Math.abs(Math.sin(v.stepT * 18)) * 2 : 0;
     v.img.setPosition(v.x, v.y + bob).setDepth(v.task === 'drag' ? 9200 : v.y);
-    v.img.setAngle(v.task === 'sleep' ? (v.img.flipX ? -80 : 80) : v.task === 'drag' ? Math.sin(v.hop * 0.7) * 10 : 0);
+    const bsc = 0.62 / (frameScale[v.key()] ?? 3);
+    let fsx = 1, fsy = 1, fang = 0;
+    if (v.fidget) {
+      const k = v.fidgetT / FIDGET_LEN[v.fidget], e = Math.sin(Math.min(1, k) * Math.PI);
+      if (v.fidget === 'stretch') { fsy = 1 + 0.12 * e; fsx = 1 - 0.06 * e; }
+      else if (v.fidget === 'yawn') { fsy = 1 + 0.06 * e; fsx = 1 + 0.05 * e; fang = Math.sin(k * Math.PI * 2) * 3; }
+      else fang = Math.sin(v.fidgetT * 12) * 9 * e;
+    }
+    v.img.setScale(bsc * fsx, bsc * fsy);
+    v.img.setAngle(v.task === 'sleep' ? (v.img.flipX ? -80 : 80) : v.task === 'drag' ? Math.sin(v.hop * 0.7) * 10 : fang);
     v.shadow.setPosition(v.x, v.y - 2).setVisible(v.task !== 'sleep');
     if (!v.guest) { const m = v.task === 'sleep' ? 'i_sleep' : v.mood(); if (v.face.frame.name !== m) v.face.setTexture(atlasOf(m), m); }
     const fy = v.y + bob - 58 + Math.sin(time / 300 + d.id) * 1.5;
