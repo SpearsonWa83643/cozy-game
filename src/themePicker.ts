@@ -44,7 +44,7 @@ export class ThemePicker {
         if (!this.open) return;
         sfx.unlock();
         this.close();
-        if (theme.id !== id) { setTheme(id); sfx.sparkle(); }
+        if (theme.id !== id) { setTheme(id); sfx.themeChime(id); }
       });
       this.opts.push({ id, c, z });
       this.zones.push(z);
