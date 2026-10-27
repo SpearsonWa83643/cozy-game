@@ -661,6 +661,23 @@ class Synth {
     for (const f of [261.63, 329.63, 392]) this.voice(f, 0, 0.05, 3.2, 'triangle', 0.6);
   }
 
+  /** 22: a tiny sound motif for each theme when you pick it (replaces the generic sparkle). */
+  lastThemeChime = '';
+  themeChime(id: string) {
+    this.lastThemeChime = id; (window as any).__chime = id;
+    if (!this.ready) return;
+    const v = (f: number, w: number, vol: number, d: number, ty: OscillatorType = 'triangle') => this.voice(f, w, vol, d, ty, 0.01);
+    switch (id) {
+      case 'spring': [1318.5, 1568, 1975.5, 2349].forEach((f, i) => this.bell(f, i * 0.07, 0.07, 1.1)); this.chirp(); break;
+      case 'summer': [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => { v(f, i * 0.09, 0.07, 0.35); this.bell(f * 2, i * 0.09, 0.04, 0.9); }); break;
+      case 'fall': [783.99, 659.25, 587.33, 493.88].forEach((f, i) => { v(f, i * 0.13, 0.08, 0.3, 'sine'); this.noiseBurst(0.05, 1800, 1, 0.02, 'bandpass', i * 0.13, 0.2); }); break;
+      case 'halloween': [659.25, 622.25, 466.16, 440].forEach((f, i) => v(f, i * 0.14, 0.06, 0.4, 'sine')); this.giggle(); break;
+      case 'christmas': for (let i = 0; i < 6; i++) { this.bell(2349 + (i % 2) * 300, i * 0.07, 0.05, 0.6); } this.bell(1046.5, 0.5, 0.1, 2); break;
+      case 'winter': [2093, 2637, 3136, 2637].forEach((f, i) => this.bell(f, i * 0.12, 0.05, 1.8)); this.noiseBurst(0.4, 5200, 1, 0.015, 'bandpass', 0, 0.3); break;
+      default: this.sparkle();
+    }
+  }
+
   sparkle() {
     if (!this.ready) return;
     const arp = [1046.5, 1318.5, 1568, 2093, 2637];
