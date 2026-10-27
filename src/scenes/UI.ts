@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { TouchStick, ZoomButtons, ZOOM } from '../controls';
 import { save, tipOnce } from '../save';
 import { ThemePicker } from '../themePicker';
+import { PhotoMode } from '../photo';
 import { S, ATLAS, frameScale, atlasOf } from '../art';
 import { NumBadge, SeqCard } from '../seq';
 import { DPR } from '../dpr';
@@ -205,6 +206,8 @@ export class UIScene extends Phaser.Scene {
     this.mapZone.setPosition(this.mapC.x, this.mapC.y);
     this.bagC.setPosition(this.w - 172 - si.right, 58 + si.top);
     this.bagZone.setPosition(this.bagC.x, this.bagC.y);
+    this.camC.setPosition(this.w - 236 - si.right, 58 + si.top);
+    this.camZone.setPosition(this.camC.x, this.camC.y);
     // Left column, stacked above Call Mount / Build (same spot in the Wild).
     this.zoomBtns?.layout(68 + si.left, this.h - 340 - si.bottom);
     // Under the lantern sigils, top-left; the choices fan out to the right.
@@ -364,6 +367,12 @@ export class UIScene extends Phaser.Scene {
     z.on('pointerdown', () => { if (this.registry.get('menuOpen')) return; sfx.unlock(); this.tweens.add({ targets: c, scale: { from: 0.85, to: 1 }, duration: 220, ease: 'Back.easeOut' }); onTap(); });
     return [c, z] as const;
   }
+  camC!: Phaser.GameObjects.Container; camZone!: Phaser.GameObjects.Zone;
+  photo = new PhotoMode(this as any);
+  takePhoto() {
+    if (this.registry.get('menuOpen') || this.registry.get('dialogOpen') || this.cardOpen) return;
+    this.photo.snap();
+  }
   buildMenuButtons() {
     [this.mapC, this.mapZone] = this.roundButton((g) => {
       g.fillStyle(0xe9d3a6, 1); g.lineStyle(2, 0x6b4a33, 1);
@@ -378,6 +387,12 @@ export class UIScene extends Phaser.Scene {
       g.fillStyle(0xc98f52, 1); g.fillRoundedRect(-11, -6, 22, 7, 4);
       g.fillStyle(0xf2c14e, 1); g.fillCircle(0, 1, 2.4);
     }, () => this.game.events.emit('menu', 'wardrobe'));
+    // 23: camera button, left of the bag.
+    [this.camC, this.camZone] = this.roundButton((g) => {
+      g.fillStyle(0x6b4a33, 1); g.fillRoundedRect(-12, -7, 24, 17, 4); g.fillRoundedRect(-5, -11, 10, 6, 2);
+      g.fillStyle(0xf3e6cc, 1); g.fillCircle(0, 1, 6); g.fillStyle(0x5b9bd5, 1); g.fillCircle(0, 1, 3.6);
+      g.fillStyle(0xf2c14e, 1); g.fillCircle(8.5, -3, 1.6);
+    }, () => this.takePhoto());
     this.badge = this.add.graphics().setVisible(false);
     this.badge.fillStyle(0xe85d3a, 1); this.badge.fillCircle(17, -17, 7); this.badge.lineStyle(2, 0xfffaf0, 1); this.badge.strokeCircle(17, -17, 7);
     this.bagC.add(this.badge);
@@ -520,8 +535,9 @@ export class UIScene extends Phaser.Scene {
     this.input.on('pointerdown', (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (p.wasTouch && !this.touchMode) { this.touchMode = true; this.applyTouchMode(); }
       if (this.registry.get('menuOpen') || this.registry.get('vcard')) return;
+      if (this.photo.open) return;
       if (this.themePick.open && !over.some((o) => this.themePick.zones.includes(o as Phaser.GameObjects.Zone))) { this.themePick.close(); return; }
-      if (over.some((o) => this.themePick.zones.includes(o as Phaser.GameObjects.Zone) || this.zoomBtns.zones.includes(o as Phaser.GameObjects.Zone) || o === this.volZone || o === this.mapZone || o === this.bagZone || (o === this.actionZone && this.actionShown))) return;
+      if (over.some((o) => this.themePick.zones.includes(o as Phaser.GameObjects.Zone) || this.zoomBtns.zones.includes(o as Phaser.GameObjects.Zone) || o === this.volZone || o === this.mapZone || o === this.bagZone || o === this.camZone || this.photo.zones.includes(o as Phaser.GameObjects.Zone) || (o === this.actionZone && this.actionShown))) return;
       if (this.cardOpen) { this.closeCard(); return; }
       if (this.registry.get('dialogOpen')) { this.world.tryInteract(); return; }
       const fs = this.world.fishing?.state;

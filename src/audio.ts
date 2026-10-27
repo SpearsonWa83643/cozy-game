@@ -678,6 +678,9 @@ class Synth {
     }
   }
 
+  /** 23: soft camera shutter. */
+  shutter() { if (!this.ready) return; this.noiseBurst(0.05, 3200, 1.5, 0.05, 'bandpass', 0, 0.2); this.noiseBurst(0.07, 2200, 1.5, 0.05, 'bandpass', 0.09, 0.2); this.voice(1568, 0.12, 0.03, 0.3, 'sine', 0.01); }
+
   sparkle() {
     if (!this.ready) return;
     const arp = [1046.5, 1318.5, 1568, 2093, 2637];
