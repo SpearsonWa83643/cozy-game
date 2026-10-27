@@ -288,6 +288,8 @@ export class WildScene extends Phaser.Scene {
     const pop = this.add.particles(x, y - 30, ATLAS3, { frame: 'w_star', speed: { min: 80, max: 220 }, lifespan: 800, scale: { start: 0.22, end: 0 }, gravityY: 120, emitting: false } as any).setDepth(9001);
     pop.explode(16); this.time.delayedCall(1000, () => pop.destroy());
     sfx.sparkle();
+    // 24: everyone still around hops for joy (visual only).
+    this.monsters.filter((m) => m.alive && m !== mo).forEach((m, i) => m.cheer(150 + (i % 6) * 120));
     this.events.emit('toast', 'Something shiny fell out!');
   }
 
@@ -538,7 +540,7 @@ export class WildScene extends Phaser.Scene {
     return {
       path: this.path.length, chasing: !!this.chase, speed: Math.round(Math.hypot(this.body.velocity.x, this.body.velocity.y)), stick: !!this.stick,
       hearts: this.hearts, ground: this.groundTS.texture.key, snowing: !!this.snow?.visible && !!this.snow?.emitting, bag: { ...this.bag }, found: [...this.found], pickups: this.pickups.filter((p) => !p.taken).map((p) => ({ kind: p.kind, x: Math.round(p.x), y: Math.round(p.y) })), chests: this.chests.map((c) => ({ x: c.x, y: c.y, opened: c.opened, lunchbox: !!c.lunchbox })), carrier: this.carrier ? { id: this.carrier.id, alive: this.carrier.alive, x: Math.round(this.carrier.x), y: Math.round(this.carrier.y) } : null, start: [this.map.start.x, this.map.start.y], monsters: this.monsters.filter((m) => m.alive).length, total: this.monsters.length, poofs: this.runPoofs, swings: this.swings,
-      mons: this.monsters.filter((m) => m.alive).map((m) => ({ id: m.id, x: Math.round(m.x), y: Math.round(m.y), kind: m.kind, hp: m.hp })),
+      mons: this.monsters.filter((m) => m.alive).map((m) => ({ cheer: m.cheerT > 0 || m.cheerWait > 0, id: m.id, x: Math.round(m.x), y: Math.round(m.y), kind: m.kind, hp: m.hp })),
     };
   }
 

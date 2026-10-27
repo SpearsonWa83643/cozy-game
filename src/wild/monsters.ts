@@ -1,7 +1,7 @@
 // Cute wilderness monsters: slimes and bramble critters (spooky-cute in Halloween). They wander
 // their glade, hop after you when you come close, and poof into sparkles when bopped.
 import Phaser from 'phaser';
-import { ATLAS, frameScale } from '../art';
+import { ATLAS, frameScale, atlasOf } from '../art';
 import { theme } from '../theme';
 import { sfx } from '../audio';
 import { ATLAS3 } from './wart';
@@ -24,6 +24,8 @@ export class Monster {
   hurtT = 0;
   kx = 0; ky = 0;
   home: WildClearing;
+  /** 24: happy-hop timer (ms) when the carrier is found; purely visual, never changes movement. */
+  cheerT = 0; cheerWait = 0;
   constructor(private s: WildScene, public kind: 'slime' | 'bramble', sp: WildMonsterSpawn, public id: number) {
     this.x = sp.x; this.y = sp.y; this.home = sp.home;
     this.shadow = s.add.image(this.x, this.y, ATLAS, 'shadow').setScale(44 / 64 / (frameScale.shadow ?? 1)).setDepth(-500).setAlpha(0.75);
@@ -38,6 +40,8 @@ export class Monster {
   update(dt: number, px: number, py: number) {
     if (!this.alive) return;
     this.t += dt;
+    if (this.cheerWait > 0) { this.cheerWait -= dt; if (this.cheerWait <= 0) this.startCheer(); }
+    else if (this.cheerT > 0) this.cheerT -= dt;
     const d = Math.hypot(px - this.x, py - this.y);
     let vx = 0, vy = 0;
     const speed = this.kind === 'slime' ? 52 : 44;
@@ -65,11 +69,22 @@ export class Monster {
     // Bouncy hop.
     const moving = Math.abs(vx) + Math.abs(vy) > 5;
     const ph = (this.t / (this.kind === 'slime' ? 420 : 300)) % 1;
-    const hop = moving ? Math.abs(Math.sin(ph * Math.PI)) * (this.kind === 'slime' ? 10 : 4) : Math.sin(this.t / 500) * 1.2;
+    let hop = moving ? Math.abs(Math.sin(ph * Math.PI)) * (this.kind === 'slime' ? 10 : 4) : Math.sin(this.t / 500) * 1.2;
+    if (this.cheerT > 0) hop += Math.abs(Math.sin(this.cheerT / 120 * Math.PI * 0.5)) * 16;
     this.img.setFrame(this.frame(moving && ph < 0.15 ? 1 : this.kind === 'bramble' && moving && ph > 0.5 ? 1 : 0));
     this.img.setPosition(this.x, this.y - hop).setDepth(this.y);
     if (vx !== 0) this.img.setFlipX(vx < 0);
     this.shadow.setPosition(this.x, this.y + 2).setAlpha(0.75 - hop * 0.02);
+  }
+
+  /** 24: hop for joy with a little heart after `delay` ms. */
+  cheer(delay = 0) { if (this.alive) this.cheerWait = Math.max(1, delay); }
+  private startCheer() {
+    if (!this.alive) return;
+    this.cheerT = 900;
+    const h = this.s.add.image(this.x, this.y - this.img.displayHeight - 4, atlasOf('heart'), 'heart').setDepth(9000).setAlpha(0);
+    h.setScale(22 / Math.max(h.width, h.height));
+    this.s.tweens.add({ targets: h, y: h.y - 34, alpha: { from: 1, to: 0 }, duration: 1000, ease: 'Sine.easeOut', onComplete: () => h.destroy() });
   }
 
   /** A bop from the stick: a little knock back, a white flash, and after two bops, a poof. */
