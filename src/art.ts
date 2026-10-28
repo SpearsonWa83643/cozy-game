@@ -1161,6 +1161,36 @@ function paintNote(ctx: Ctx, w: number, h: number) {
   ctx.beginPath(); ctx.moveTo(w * 0.55, h * 0.1); ctx.quadraticCurveTo(w * 0.95, h * 0.25, w * 0.85, h * 0.5); ctx.stroke();
 }
 
+/** 28: a dandelion clock (stem + fluffy seed ball), or just the stem once the seeds have flown. */
+function paintDandelion(ctx: Ctx, w: number, h: number, full: boolean) {
+  const cx = w / 2, cy = h * 0.32;
+  ctx.strokeStyle = '#5f9a45'; ctx.lineWidth = 1.3;
+  ctx.beginPath(); ctx.moveTo(cx, h); ctx.quadraticCurveTo(cx - 2, h * 0.65, cx, cy); ctx.stroke();
+  ctx.fillStyle = '#6fae4f';
+  ctx.beginPath(); ctx.ellipse(cx - 4, h - 3, 4.5, 1.6, -0.5, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx + 4, h - 4, 4.5, 1.6, 0.6, 0, Math.PI * 2); ctx.fill();
+  if (!full) { ctx.fillStyle = '#86b860'; ctx.beginPath(); ctx.arc(cx, cy, 1.8, 0, Math.PI * 2); ctx.fill(); return; }
+  const R = w * 0.42;
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.9)'; ctx.lineWidth = 0.5;
+  for (let i = 0; i < 26; i++) {
+    const a = (i / 26) * Math.PI * 2;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + Math.cos(a) * R, cy + Math.sin(a) * R); ctx.stroke();
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(cx + Math.cos(a) * R, cy + Math.sin(a) * R, 0.9, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = '#d9c9a0'; ctx.beginPath(); ctx.arc(cx, cy, 1.4, 0, Math.PI * 2); ctx.fill();
+}
+
+/** 28: one floating dandelion seed (a tiny parachute). */
+function paintSeed(ctx: Ctx, w: number, h: number) {
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 0.5;
+  for (let i = -3; i <= 3; i++) { ctx.beginPath(); ctx.moveTo(w / 2, h * 0.45); ctx.lineTo(w / 2 + i * w * 0.14, 0.5); ctx.stroke(); }
+  ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(w / 2, h * 0.45); ctx.lineTo(w / 2, h - 1); ctx.stroke();
+  ctx.fillStyle = '#cdb98a'; ctx.beginPath(); ctx.arc(w / 2, h - 1, 0.7, 0, Math.PI * 2); ctx.fill();
+}
+
 function paintLeafBig(ctx: Ctx, w: number, h: number) {
   ctx.save();
   ctx.translate(w / 2, h / 2);
@@ -1307,6 +1337,9 @@ export function paintAll(scene: Phaser.Scene) {
   canvasTex(scene, 'fish', 26, 10, (c) => paintFish(c, 26, 10));
   canvasTex(scene, 'heart', 12, 11, (c) => paintHeart(c, 12, 11));
   canvasTex(scene, 'note', 10, 14, (c) => paintNote(c, 10, 14));
+  canvasTex(scene, 'dandelion', 16, 30, (c) => paintDandelion(c, 16, 30, true));
+  canvasTex(scene, 'dandelion_bare', 16, 30, (c) => paintDandelion(c, 16, 30, false));
+  canvasTex(scene, 'dseed', 8, 9, (c) => paintSeed(c, 8, 9));
   canvasTex(scene, 'leafw', 14, 9, (c) => paintLeafBig(c, 14, 9), 3);
   canvasTex(scene, 'white', 4, 4, (c) => { c.fillStyle = '#fff'; c.fillRect(0, 0, 4, 4); }, 2);
   paintAll2(scene);

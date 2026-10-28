@@ -26,6 +26,7 @@ import { NavGrid } from '../pathfind';
 import { startCandidates, pickStart, rng32, StartOpts } from '../startSpot';
 import { Life } from '../life';
 import { HeroJoy } from '../heroJoy';
+import { Dandelions } from '../dandelions';
 import { Mount } from '../mount/mount';
 
 export type Interactable = {
@@ -92,6 +93,8 @@ export class WorldScene extends Phaser.Scene {
   playerImg!: Phaser.GameObjects.Image;
   /** 26: tap your hero for a hop / twirl / hearts. */
   joy!: HeroJoy;
+  /** 28: tap-to-blow dandelion clocks in the glade. */
+  dandelions!: Dandelions;
   playerShadow!: Phaser.GameObjects.Image;
   solids!: Phaser.Physics.Arcade.StaticGroup;
   keys!: Record<string, Phaser.Input.Keyboard.Key>;
@@ -260,6 +263,7 @@ export class WorldScene extends Phaser.Scene {
     this.fishing = new Fishing(this);
     this.restoreProgress();
     this.buildNav();
+    this.dandelions = new Dandelions(this);
     this.village = new Village(this);
     this.dresser = new ThemeDresser(this);
     this.mount = new Mount(this);
@@ -1282,6 +1286,7 @@ export class WorldScene extends Phaser.Scene {
     this.puzzles.update(time, dt);
     this.fishing.update(time, dt);
     this.reacts.update(time, dt);
+    this.dandelions.update();
     this.village.update(dt, time);
     this.dresser.update(time, dt);
     const view = this.cameras.main.worldView;
@@ -1643,6 +1648,9 @@ export class WorldScene extends Phaser.Scene {
       /** 27: idle hum state; humNow() skips the wait. */
       hum() { const j = self.joy; return { humming: j.humming, notes: j.notes, live: j.live.length, idle: j.idle }; },
       humNow() { self.joy.idle = 8; self.joy.humGap = 0; },
+      /** 28: dandelion clocks (positions, full or blown). */
+      dandelions() { const d = self.dandelions; return { blown: d.blown, puffs: d.puffs.map((p) => ({ x: Math.round(p.img.x), y: Math.round(p.img.y), full: p.full, visible: p.img.visible })), seeds: d.seeds.getAliveParticleCount() }; },
+      setDandelionRegrowMs(ms: number) { self.dandelions.regrowMs = ms; },
       joy() { const j = self.joy; return { joys: j.joys, kind: j.kind, can: j.canJoy(), angle: self.playerImg.angle, dy: j.dy, sx: j.sx }; },
       worldToScreen(x: number, y: number) {
         const cam = self.cameras.main;
