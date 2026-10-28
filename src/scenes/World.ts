@@ -27,6 +27,7 @@ import { startCandidates, pickStart, rng32, StartOpts } from '../startSpot';
 import { Life } from '../life';
 import { HeroJoy } from '../heroJoy';
 import { Dandelions } from '../dandelions';
+import { SnowPrints } from '../snowPrints';
 import { Mount } from '../mount/mount';
 
 export type Interactable = {
@@ -95,6 +96,8 @@ export class WorldScene extends Phaser.Scene {
   joy!: HeroJoy;
   /** 28: tap-to-blow dandelion clocks in the glade. */
   dandelions!: Dandelions;
+  /** 29: fading footprints in the snowy themes. */
+  prints!: SnowPrints;
   playerShadow!: Phaser.GameObjects.Image;
   solids!: Phaser.Physics.Arcade.StaticGroup;
   keys!: Record<string, Phaser.Input.Keyboard.Key>;
@@ -264,6 +267,7 @@ export class WorldScene extends Phaser.Scene {
     this.restoreProgress();
     this.buildNav();
     this.dandelions = new Dandelions(this);
+    this.prints = new SnowPrints(this);
     this.village = new Village(this);
     this.dresser = new ThemeDresser(this);
     this.mount = new Mount(this);
@@ -1216,6 +1220,9 @@ export class WorldScene extends Phaser.Scene {
     if (stepFrame !== this.lastStepFrame && stepFrame !== 0 && speed > 80) {
       this.dust.emitParticleAt(this.feet.x, this.feet.y + 4, 2);
     }
+    if (stepFrame !== this.lastStepFrame && stepFrame !== 0 && !carried && !this.mount?.riding && !this.boat?.hopping) {
+      this.prints.step(this.feet.x, this.feet.y, Math.atan2(v.y, v.x));
+    }
     this.lastStepFrame = stepFrame;
     if (!carried && !this.boat?.hopping) {
     this.playerImg.setTexture(this.heroKey, `${this.facing}_${stepFrame}`).setFlipX(this.flip);
@@ -1649,6 +1656,8 @@ export class WorldScene extends Phaser.Scene {
       hum() { const j = self.joy; return { humming: j.humming, notes: j.notes, live: j.live.length, idle: j.idle }; },
       humNow() { self.joy.idle = 8; self.joy.humGap = 0; },
       /** 28: dandelion clocks (positions, full or blown). */
+      /** 29: snow footprints. */
+      prints() { const p = self.prints; return { made: p.made, visible: p.visible(), snowy: p.snowy, pool: p.pool.length }; },
       dandelions() { const d = self.dandelions; return { blown: d.blown, puffs: d.puffs.map((p) => ({ x: Math.round(p.img.x), y: Math.round(p.img.y), full: p.full, visible: p.img.visible })), seeds: d.seeds.getAliveParticleCount() }; },
       setDandelionRegrowMs(ms: number) { self.dandelions.regrowMs = ms; },
       joy() { const j = self.joy; return { joys: j.joys, kind: j.kind, can: j.canJoy(), angle: self.playerImg.angle, dy: j.dy, sx: j.sx }; },

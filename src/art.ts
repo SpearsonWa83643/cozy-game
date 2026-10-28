@@ -1191,6 +1191,13 @@ function paintSeed(ctx: Ctx, w: number, h: number) {
   ctx.fillStyle = '#cdb98a'; ctx.beginPath(); ctx.arc(w / 2, h - 1, 0.7, 0, Math.PI * 2); ctx.fill();
 }
 
+/** 29: one little boot print pressed into snow (white-ish; tinted blue-grey in game). */
+function paintSnowPrint(ctx: Ctx, w: number, h: number) {
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath(); ctx.ellipse(w / 2, h * 0.34, w * 0.38, h * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(w / 2, h * 0.8, w * 0.3, h * 0.18, 0, 0, Math.PI * 2); ctx.fill();
+}
+
 function paintLeafBig(ctx: Ctx, w: number, h: number) {
   ctx.save();
   ctx.translate(w / 2, h / 2);
@@ -1340,6 +1347,7 @@ export function paintAll(scene: Phaser.Scene) {
   canvasTex(scene, 'dandelion', 16, 30, (c) => paintDandelion(c, 16, 30, true));
   canvasTex(scene, 'dandelion_bare', 16, 30, (c) => paintDandelion(c, 16, 30, false));
   canvasTex(scene, 'dseed', 8, 9, (c) => paintSeed(c, 8, 9));
+  canvasTex(scene, 'sprint', 6, 10, (c) => paintSnowPrint(c, 6, 10));
   canvasTex(scene, 'leafw', 14, 9, (c) => paintLeafBig(c, 14, 9), 3);
   canvasTex(scene, 'white', 4, 4, (c) => { c.fillStyle = '#fff'; c.fillRect(0, 0, 4, 4); }, 2);
   paintAll2(scene);
