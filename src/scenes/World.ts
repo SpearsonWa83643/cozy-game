@@ -1220,6 +1220,7 @@ export class WorldScene extends Phaser.Scene {
     // In a boat you sit up on the seat so your top half shows over the side.
     this.playerImg.setPosition(this.feet.x, this.feet.y + 6 - bob - (boating ? 34 - Math.sin(time / 520) * 1.6 : 0));
     this.joy.update(dt);
+    this.joy.hum(dt, speed < 5 && !frozen && !boating && !this.fishing?.active);
     if (this.joy.kind && (speed > 25 || boating)) this.joy.kind = null;
     this.playerImg.setScale((1 / S) * (1 - breathe * 0.5) * this.joy.sx, (1 / S) * (1 + breathe) * this.joy.sy);
     this.playerImg.y -= this.joy.dy;
@@ -1227,6 +1228,7 @@ export class WorldScene extends Phaser.Scene {
     this.playerImg.setDepth(this.feet.y + 6);
     this.playerShadow.setPosition(this.feet.x, this.feet.y + 5).setScale((34 / 64) * (1 - bob * 0.03) / frameScale.shadow);
     }
+    if (carried || this.boat?.hopping) this.joy.hum(dt, false);
     this.boat?.update(time, dt, speed, v.x);
     if (boating !== this.wasBoating) { this.wasBoating = boating; this.playerShadow.setVisible(!boating); }
 
@@ -1638,6 +1640,9 @@ export class WorldScene extends Phaser.Scene {
         return { x: (tx - cam.worldView.x) * cam.zoom / DPR, y: (ty - cam.worldView.y) * cam.zoom / DPR, cx: cam.width / 2 / DPR, cy: cam.height / 2 / DPR, zoom: cam.zoom / DPR, lerp: cam.lerp.x };
       },
       /** 26: hero joy state. */
+      /** 27: idle hum state; humNow() skips the wait. */
+      hum() { const j = self.joy; return { humming: j.humming, notes: j.notes, live: j.live.length, idle: j.idle }; },
+      humNow() { self.joy.idle = 8; self.joy.humGap = 0; },
       joy() { const j = self.joy; return { joys: j.joys, kind: j.kind, can: j.canJoy(), angle: self.playerImg.angle, dy: j.dy, sx: j.sx }; },
       worldToScreen(x: number, y: number) {
         const cam = self.cameras.main;
