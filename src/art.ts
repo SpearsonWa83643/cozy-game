@@ -1151,6 +1151,16 @@ function paintHeart(ctx: Ctx, w: number, h: number) {
   dab(ctx, w * 0.32, h * 0.32, 1.2, 0.8, -0.5, 'rgba(255,255,255,0.8)');
 }
 
+/** 27: a little eighth note for the idle hum (white, tinted per note). */
+function paintNote(ctx: Ctx, w: number, h: number) {
+  ctx.fillStyle = '#fff';
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.ellipse(w * 0.32, h * 0.8, w * 0.26, h * 0.15, -0.4, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(w * 0.55, h * 0.78); ctx.lineTo(w * 0.55, h * 0.1); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(w * 0.55, h * 0.1); ctx.quadraticCurveTo(w * 0.95, h * 0.25, w * 0.85, h * 0.5); ctx.stroke();
+}
+
 function paintLeafBig(ctx: Ctx, w: number, h: number) {
   ctx.save();
   ctx.translate(w / 2, h / 2);
@@ -1296,6 +1306,7 @@ export function paintAll(scene: Phaser.Scene) {
   canvasTex(scene, 'cattail', 18, 16, (c) => paintCatTail(c, 18, 16));
   canvasTex(scene, 'fish', 26, 10, (c) => paintFish(c, 26, 10));
   canvasTex(scene, 'heart', 12, 11, (c) => paintHeart(c, 12, 11));
+  canvasTex(scene, 'note', 10, 14, (c) => paintNote(c, 10, 14));
   canvasTex(scene, 'leafw', 14, 9, (c) => paintLeafBig(c, 14, 9), 3);
   canvasTex(scene, 'white', 4, 4, (c) => { c.fillStyle = '#fff'; c.fillRect(0, 0, 4, 4); }, 2);
   paintAll2(scene);
