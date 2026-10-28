@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-10-28 (CT). Live: main 9dc3d3b, https://willowmere-glade.pages.dev (bundle index-av8VOatz.js).
+Updated: 2026-10-28 (CT). Live: main af05273, https://willowmere-glade.pages.dev (bundle index-BLg9FjcT.js).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -9,9 +9,9 @@ Self-added polish tasks (2026-10-28, backlog was empty; no Walker decision or sp
 
 | Order | Task | Status | ETA live | Estimate (dev days) |
 |---|---|---|---|---|
-| 26 | Tap your hero: a happy hop / twirl / hearts with sparkles and a giggle | Not started | 2026-10-28 | 0.25 |
-| 27 | Idle hum: stand still a while and little music notes float up from your hero | Not started | 2026-10-28 | 0.25 |
-| 28 | Dandelion puffs in the meadows: tap to blow seeds away on the breeze (they grow back; not in Winter) | Not started | 2026-10-28 | 0.5 |
+| 26 | Tap your hero: a happy hop / twirl / hearts with sparkles and a giggle | Done/Live 80fd110 | 2026-10-28 | 0.25 |
+| 27 | Idle hum: stand still a while and little music notes float up from your hero | Done/Live be806f0 | 2026-10-28 | 0.25 |
+| 28 | Dandelion puffs in the meadows: tap to blow seeds away on the breeze (they grow back; not in Winter) | Done/Live af05273 | 2026-10-28 | 0.5 |
 | 29 | Winter snow footprints: your hero leaves little prints in the snow that slowly fade | Not started | 2026-10-28 | 0.25 |
 
 ## Recently done
