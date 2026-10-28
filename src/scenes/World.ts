@@ -25,6 +25,7 @@ import { DPR } from '../dpr';
 import { NavGrid } from '../pathfind';
 import { startCandidates, pickStart, rng32, StartOpts } from '../startSpot';
 import { Life } from '../life';
+import { HeroJoy } from '../heroJoy';
 import { Mount } from '../mount/mount';
 
 export type Interactable = {
@@ -89,6 +90,8 @@ export class WorldScene extends Phaser.Scene {
   feet!: Phaser.GameObjects.Zone;
   body!: Phaser.Physics.Arcade.Body;
   playerImg!: Phaser.GameObjects.Image;
+  /** 26: tap your hero for a hop / twirl / hearts. */
+  joy!: HeroJoy;
   playerShadow!: Phaser.GameObjects.Image;
   solids!: Phaser.Physics.Arcade.StaticGroup;
   keys!: Record<string, Phaser.Input.Keyboard.Key>;
@@ -783,6 +786,7 @@ export class WorldScene extends Phaser.Scene {
       lifespan: 600, speed: { min: 6, max: 22 }, angle: { min: 200, max: 340 },
       scale: { start: 0.12, end: 0.3 }, alpha: { start: 0.45, end: 0 }, tint: 0xe9d8b4, emitting: false,
     }).setDepth(-450);
+    this.joy = new HeroJoy(this);
   }
 
   buildAtmosphere() {
@@ -1215,7 +1219,11 @@ export class WorldScene extends Phaser.Scene {
     const breathe = speed > 25 ? 0 : Math.sin(time / 420) * 0.018;
     // In a boat you sit up on the seat so your top half shows over the side.
     this.playerImg.setPosition(this.feet.x, this.feet.y + 6 - bob - (boating ? 34 - Math.sin(time / 520) * 1.6 : 0));
-    this.playerImg.setScale((1 / S) * (1 - breathe * 0.5), (1 / S) * (1 + breathe));
+    this.joy.update(dt);
+    if (this.joy.kind && (speed > 25 || boating)) this.joy.kind = null;
+    this.playerImg.setScale((1 / S) * (1 - breathe * 0.5) * this.joy.sx, (1 / S) * (1 + breathe) * this.joy.sy);
+    this.playerImg.y -= this.joy.dy;
+    this.playerImg.setAngle(this.joy.angle);
     this.playerImg.setDepth(this.feet.y + 6);
     this.playerShadow.setPosition(this.feet.x, this.feet.y + 5).setScale((34 / 64) * (1 - bob * 0.03) / frameScale.shadow);
     }
@@ -1629,6 +1637,8 @@ export class WorldScene extends Phaser.Scene {
         const tx = sc.feet.x, ty = sc.feet.y - 18; // the follow offset (0, 18) puts the camera centre 18 above the feet
         return { x: (tx - cam.worldView.x) * cam.zoom / DPR, y: (ty - cam.worldView.y) * cam.zoom / DPR, cx: cam.width / 2 / DPR, cy: cam.height / 2 / DPR, zoom: cam.zoom / DPR, lerp: cam.lerp.x };
       },
+      /** 26: hero joy state. */
+      joy() { const j = self.joy; return { joys: j.joys, kind: j.kind, can: j.canJoy(), angle: self.playerImg.angle, dy: j.dy, sx: j.sx }; },
       worldToScreen(x: number, y: number) {
         const cam = self.cameras.main;
         return { x: (x - cam.worldView.x) * cam.zoom / DPR, y: (y - cam.worldView.y) * cam.zoom / DPR };
