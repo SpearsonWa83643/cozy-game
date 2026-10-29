@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-10-29 (CT). Live: main ff6632a, https://willowmere-glade.pages.dev (bundle index-P7Zk2Buz.js).
+Updated: 2026-10-29 (CT). Live: main 186e93d, https://willowmere-glade.pages.dev (bundle index-BdKPHqxg.js).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -15,8 +15,8 @@ Self-added polish tasks (26-29 on 2026-10-28, 30-33 on 2026-10-29; backlog was e
 | 29 | Winter snow footprints: your hero leaves little prints in the snow that slowly fade | Done/Live 17ba132 | 2026-10-28 | 0.25 |
 | 30 | Snow angels: in Winter/Christmas, tapping your hero adds a snow angel to the joy moves (lie back, flap, a fading angel shape) | Done/Live cff0a3a | 2026-10-29 | 0.25 |
 | 31 | Rain puddles: on rainy days (Spring rain, Summer sun shower) little puddles appear in the glade; walk through for a splash; they dry up after | Done/Live ff6632a | 2026-10-29 | 0.5 |
-| 32 | Windy-day kite: on Fall windy days your hero flies a little kite; tap it for a loop-de-loop | In progress (wip/kite) | 2026-10-29 | 0.5 |
-| 33 | Garden pinwheels: colorful pinwheels in the glade spin in the breeze, faster when you walk past or tap them (not in snowy themes) | Not started | 2026-10-29 | 0.25 |
+| 32 | Windy-day kite: on Fall windy days your hero flies a little kite; tap it for a loop-de-loop | Done/Live 186e93d | 2026-10-29 | 0.5 |
+| 33 | Garden pinwheels: colorful pinwheels in the glade spin in the breeze, faster when you walk past or tap them (not in snowy themes) | In progress (wip/pinwheels) | 2026-10-29 | 0.25 |
 
 ## Recently done
 
