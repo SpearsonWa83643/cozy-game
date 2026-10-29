@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-10-29 (CT). Live: main 17ba132, https://willowmere-glade.pages.dev (bundle index-BIg4k4S6.js).
+Updated: 2026-10-29 (CT). Live: main cff0a3a, https://willowmere-glade.pages.dev (bundle index-BlsfMH3y.js).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -13,8 +13,8 @@ Self-added polish tasks (26-29 on 2026-10-28, 30-33 on 2026-10-29; backlog was e
 | 27 | Idle hum: stand still a while and little music notes float up from your hero | Done/Live be806f0 | 2026-10-28 | 0.25 |
 | 28 | Dandelion puffs in the meadows: tap to blow seeds away on the breeze (they grow back; not in Winter) | Done/Live af05273 | 2026-10-28 | 0.5 |
 | 29 | Winter snow footprints: your hero leaves little prints in the snow that slowly fade | Done/Live 17ba132 | 2026-10-28 | 0.25 |
-| 30 | Snow angels: in Winter/Christmas, tapping your hero adds a snow angel to the joy moves (lie back, flap, a fading angel shape) | Not started | 2026-10-29 | 0.25 |
-| 31 | Rain puddles: on rainy days (Spring rain, Summer sun shower) little puddles appear in the glade; walk through for a splash; they dry up after | Not started | 2026-10-29 | 0.5 |
+| 30 | Snow angels: in Winter/Christmas, tapping your hero adds a snow angel to the joy moves (lie back, flap, a fading angel shape) | Done/Live cff0a3a | 2026-10-29 | 0.25 |
+| 31 | Rain puddles: on rainy days (Spring rain, Summer sun shower) little puddles appear in the glade; walk through for a splash; they dry up after | In progress (wip/puddles) | 2026-10-29 | 0.5 |
 | 32 | Windy-day kite: on Fall windy days your hero flies a little kite; tap it for a loop-de-loop | Not started | 2026-10-29 | 0.5 |
 | 33 | Garden pinwheels: colorful pinwheels in the glade spin in the breeze, faster when you walk past or tap them (not in snowy themes) | Not started | 2026-10-29 | 0.25 |
 
