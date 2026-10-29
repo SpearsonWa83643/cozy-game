@@ -3,7 +3,7 @@ import { defineConfig } from '@playwright/test';
 // iPad touch run against the single-file build over file:// (no server needed).
 export default defineConfig({
   testDir: './tests',
-  testMatch: /(touch|world|village|seq|reset|wild|wild-combat|harvest|fruit|entry|whatsnew|mount|mount-picker|mood|wild-unlocks|halloween|pumpkin-default|wild-walk|scarf-coat|spring|care|stones|trail|feedfriend|berries|move|fall|mount-lunchbox|mount-steer|christmas|christmas-reindeer|christmas-props|christmas-wild|pinch-zoom|theme-hud|random-start|fast-travel|boat|wardrobe|map|treasures|fish|stable|exit-move|interior|kitchen|workshop|workshop-tools|mounts-fun|rooms|winter|summer|theme-mounts|tap-audit|ice-fishing|village-dress|weather|villager-cheers|season-cull|lunchbox-pointer|pinch-center|build-tray|interior-art|interior-props|mount-fx|zoom-hint|theme-chime|photo-mode|wild-cheer|village-idle|hero-joy|hero-hum|dandelions|snow-prints|snow-angel)\.spec\.ts/,
+  testMatch: /(touch|world|village|seq|reset|wild|wild-combat|harvest|fruit|entry|whatsnew|mount|mount-picker|mood|wild-unlocks|halloween|pumpkin-default|wild-walk|scarf-coat|spring|care|stones|trail|feedfriend|berries|move|fall|mount-lunchbox|mount-steer|christmas|christmas-reindeer|christmas-props|christmas-wild|pinch-zoom|theme-hud|random-start|fast-travel|boat|wardrobe|map|treasures|fish|stable|exit-move|interior|kitchen|workshop|workshop-tools|mounts-fun|rooms|winter|summer|theme-mounts|tap-audit|ice-fishing|village-dress|weather|villager-cheers|season-cull|lunchbox-pointer|pinch-center|build-tray|interior-art|interior-props|mount-fx|zoom-hint|theme-chime|photo-mode|wild-cheer|village-idle|hero-joy|hero-hum|dandelions|snow-prints|snow-angel|puddles)\.spec\.ts/,
   timeout: 900_000,
   retries: 0,
   workers: 1,
