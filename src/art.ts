@@ -1198,6 +1198,19 @@ function paintSnowPrint(ctx: Ctx, w: number, h: number) {
   ctx.beginPath(); ctx.ellipse(w / 2, h * 0.8, w * 0.3, h * 0.18, 0, 0, Math.PI * 2); ctx.fill();
 }
 
+/** 30: a snow angel pressed into snow, seen from above (white; tinted blue-grey in game). */
+function paintSnowAngel(ctx: Ctx, w: number, h: number) {
+  const cx = w / 2;
+  ctx.fillStyle = '#ffffff';
+  // Wings: a wide fan swept by the arms.
+  ctx.beginPath(); ctx.moveTo(cx, h * 0.42); ctx.arc(cx, h * 0.42, w * 0.48, Math.PI * 1.08, Math.PI * 1.92); ctx.closePath(); ctx.fill();
+  // Skirt: swept by the legs.
+  ctx.beginPath(); ctx.moveTo(cx, h * 0.5); ctx.lineTo(cx - w * 0.3, h * 0.97); ctx.quadraticCurveTo(cx, h * 1.02, cx + w * 0.3, h * 0.97); ctx.closePath(); ctx.fill();
+  // Body and head.
+  ctx.beginPath(); ctx.ellipse(cx, h * 0.47, w * 0.13, h * 0.17, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.arc(cx, h * 0.2, w * 0.12, 0, Math.PI * 2); ctx.fill();
+}
+
 function paintLeafBig(ctx: Ctx, w: number, h: number) {
   ctx.save();
   ctx.translate(w / 2, h / 2);
@@ -1348,6 +1361,7 @@ export function paintAll(scene: Phaser.Scene) {
   canvasTex(scene, 'dandelion_bare', 16, 30, (c) => paintDandelion(c, 16, 30, false));
   canvasTex(scene, 'dseed', 8, 9, (c) => paintSeed(c, 8, 9));
   canvasTex(scene, 'sprint', 6, 10, (c) => paintSnowPrint(c, 6, 10));
+  canvasTex(scene, 'sangel', 30, 34, (c) => paintSnowAngel(c, 30, 34));
   canvasTex(scene, 'leafw', 14, 9, (c) => paintLeafBig(c, 14, 9), 3);
   canvasTex(scene, 'white', 4, 4, (c) => { c.fillStyle = '#fff'; c.fillRect(0, 0, 4, 4); }, 2);
   paintAll2(scene);
