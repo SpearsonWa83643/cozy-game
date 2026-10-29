@@ -1250,6 +1250,28 @@ function paintKite(ctx: Ctx, w: number, h: number) {
   });
 }
 
+function paintPinwheelStick(ctx: Ctx, w: number, h: number) {
+  ctx.fillStyle = '#8a5a34'; ctx.fillRect(w / 2 - 1.2, 2, 2.4, h - 2);
+  ctx.fillStyle = 'rgba(255,255,255,0.35)'; ctx.fillRect(w / 2 - 1.2, 2, 0.9, h - 2);
+}
+
+function paintPinwheelHead(ctx: Ctx, w: number, h: number) {
+  const cx = w / 2, cy = h / 2, R = w / 2 - 1;
+  const cols = ['#ff6b8a', '#ffd84d', '#5fc8e8', '#8fdc7a'];
+  for (let i = 0; i < 4; i++) {
+    const a = i * Math.PI / 2;
+    const ax = cx + Math.cos(a) * R, ay = cy + Math.sin(a) * R;
+    const bx = cx + Math.cos(a + Math.PI / 2) * R * 0.55, by = cy + Math.sin(a + Math.PI / 2) * R * 0.55;
+    const tx = cx + Math.cos(a + 0.55) * R * 0.95, ty = cy + Math.sin(a + 0.55) * R * 0.95;
+    ctx.fillStyle = cols[i];
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ax, ay); ctx.quadraticCurveTo(tx, ty, bx, by); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(ax, ay); ctx.lineTo(cx + (ax - cx) * 0.5 + (bx - cx) * 0.2, cy + (ay - cy) * 0.5 + (by - cy) * 0.2); ctx.closePath(); ctx.fill();
+  }
+  ctx.fillStyle = '#fdf6e3'; ctx.beginPath(); ctx.arc(cx, cy, 2.4, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#c0884a'; ctx.beginPath(); ctx.arc(cx, cy, 1.2, 0, Math.PI * 2); ctx.fill();
+}
+
 function paintLeafBig(ctx: Ctx, w: number, h: number) {
   ctx.save();
   ctx.translate(w / 2, h / 2);
@@ -1403,6 +1425,8 @@ export function paintAll(scene: Phaser.Scene) {
   canvasTex(scene, 'sangel', 30, 34, (c) => paintSnowAngel(c, 30, 34));
   canvasTex(scene, 'puddle', 48, 22, (c) => paintPuddle(c, 48, 22));
   canvasTex(scene, 'kite', 22, 46, (c) => paintKite(c, 22, 46));
+  canvasTex(scene, 'pwstick', 6, 40, (c) => paintPinwheelStick(c, 6, 40));
+  canvasTex(scene, 'pwhead', 28, 28, (c) => paintPinwheelHead(c, 28, 28));
   canvasTex(scene, 'leafw', 14, 9, (c) => paintLeafBig(c, 14, 9), 3);
   canvasTex(scene, 'white', 4, 4, (c) => { c.fillStyle = '#fff'; c.fillRect(0, 0, 4, 4); }, 2);
   paintAll2(scene);

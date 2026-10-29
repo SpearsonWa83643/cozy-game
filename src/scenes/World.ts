@@ -30,6 +30,7 @@ import { Dandelions } from '../dandelions';
 import { SnowPrints } from '../snowPrints';
 import { Puddles } from '../puddles';
 import { Kite } from '../kite';
+import { Pinwheels } from '../pinwheels';
 import { Mount } from '../mount/mount';
 
 export type Interactable = {
@@ -104,6 +105,8 @@ export class WorldScene extends Phaser.Scene {
   puddles!: Puddles;
   /** 32: windy-day kite. */
   kite!: Kite;
+  /** 33: garden pinwheels. */
+  pinwheels!: Pinwheels;
   playerShadow!: Phaser.GameObjects.Image;
   solids!: Phaser.Physics.Arcade.StaticGroup;
   keys!: Record<string, Phaser.Input.Keyboard.Key>;
@@ -277,6 +280,7 @@ export class WorldScene extends Phaser.Scene {
     this.village = new Village(this);
     this.puddles = new Puddles(this);
     this.kite = new Kite(this);
+    this.pinwheels = new Pinwheels(this);
     this.dresser = new ThemeDresser(this);
     this.mount = new Mount(this);
     this.placeStart();
@@ -1304,6 +1308,7 @@ export class WorldScene extends Phaser.Scene {
     this.dandelions.update();
     this.puddles.update(dt);
     this.kite.update(dt);
+    this.pinwheels.update(dt);
     this.village.update(dt, time);
     this.dresser.update(time, dt);
     const view = this.cameras.main.worldView;
@@ -1670,6 +1675,8 @@ export class WorldScene extends Phaser.Scene {
       prints() { const p = self.prints; return { made: p.made, visible: p.visible(), snowy: p.snowy, pool: p.pool.length }; },
       dandelions() { const d = self.dandelions; return { blown: d.blown, puffs: d.puffs.map((p) => ({ x: Math.round(p.img.x), y: Math.round(p.img.y), full: p.full, visible: p.img.visible })), seeds: d.seeds.getAliveParticleCount() }; },
       setDandelionRegrowMs(ms: number) { self.dandelions.regrowMs = ms; },
+      /** 33: garden pinwheels (spin in rad/s). */
+      pinwheels() { const p = self.pinwheels; return { taps: p.taps, whooshes: p.whooshes, windy: p.windy, list: p.wheels.map((q) => ({ x: Math.round(q.stick.x), y: Math.round(q.stick.y), hx: Math.round(q.head.x), hy: Math.round(q.head.y), spin: +q.spin.toFixed(2), boost: +q.boost.toFixed(2), visible: q.head.visible })) }; },
       /** 32: windy-day kite (shown 0..1, screen-free world position, loops). */
       kite() { const k = self.kite; return { show: +k.show.toFixed(2), windy: k.windy, x: Math.round(k.img.x), y: Math.round(k.img.y), loops: k.loops, looping: k.loopT >= 0 }; },
       /** 31: rain puddles (level 0 dry .. 1 full) and splashes. */
