@@ -1211,6 +1211,21 @@ function paintSnowAngel(ctx: Ctx, w: number, h: number) {
   ctx.beginPath(); ctx.arc(cx, h * 0.2, w * 0.12, 0, Math.PI * 2); ctx.fill();
 }
 
+/** 31: a shallow rain puddle seen from above: soft blue with a lighter rim and a sky glint. */
+function paintPuddle(ctx: Ctx, w: number, h: number) {
+  const cx = w / 2, cy = h / 2;
+  ctx.fillStyle = 'rgba(120,150,170,0.55)';
+  ctx.beginPath(); ctx.ellipse(cx, cy + 0.6, w * 0.47, h * 0.42, 0, 0, Math.PI * 2); ctx.fill();
+  const g = ctx.createLinearGradient(0, 0, 0, h);
+  g.addColorStop(0, '#a9d4ee'); g.addColorStop(1, '#6fa6cc');
+  ctx.fillStyle = g;
+  ctx.beginPath(); ctx.ellipse(cx, cy, w * 0.43, h * 0.36, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx + w * 0.22, cy + h * 0.08, w * 0.18, h * 0.26, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  ctx.beginPath(); ctx.ellipse(cx - w * 0.14, cy - h * 0.12, w * 0.12, h * 0.07, -0.15, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx + w * 0.06, cy - h * 0.16, w * 0.04, h * 0.04, 0, 0, Math.PI * 2); ctx.fill();
+}
+
 function paintLeafBig(ctx: Ctx, w: number, h: number) {
   ctx.save();
   ctx.translate(w / 2, h / 2);
@@ -1362,6 +1377,7 @@ export function paintAll(scene: Phaser.Scene) {
   canvasTex(scene, 'dseed', 8, 9, (c) => paintSeed(c, 8, 9));
   canvasTex(scene, 'sprint', 6, 10, (c) => paintSnowPrint(c, 6, 10));
   canvasTex(scene, 'sangel', 30, 34, (c) => paintSnowAngel(c, 30, 34));
+  canvasTex(scene, 'puddle', 48, 22, (c) => paintPuddle(c, 48, 22));
   canvasTex(scene, 'leafw', 14, 9, (c) => paintLeafBig(c, 14, 9), 3);
   canvasTex(scene, 'white', 4, 4, (c) => { c.fillStyle = '#fff'; c.fillRect(0, 0, 4, 4); }, 2);
   paintAll2(scene);
