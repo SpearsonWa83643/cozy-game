@@ -1660,6 +1660,8 @@ export class WorldScene extends Phaser.Scene {
       prints() { const p = self.prints; return { made: p.made, visible: p.visible(), snowy: p.snowy, pool: p.pool.length }; },
       dandelions() { const d = self.dandelions; return { blown: d.blown, puffs: d.puffs.map((p) => ({ x: Math.round(p.img.x), y: Math.round(p.img.y), full: p.full, visible: p.img.visible })), seeds: d.seeds.getAliveParticleCount() }; },
       setDandelionRegrowMs(ms: number) { self.dandelions.regrowMs = ms; },
+      /** 30: snow angels (made so far, shapes showing now). */
+      angels() { const j = self.joy; return { made: j.angels, showing: j.angelImgs.filter((i) => i.alpha > 0.02).length, alive: j.angelImgs.length }; },
       joy() { const j = self.joy; return { joys: j.joys, kind: j.kind, can: j.canJoy(), angle: self.playerImg.angle, dy: j.dy, sx: j.sx }; },
       worldToScreen(x: number, y: number) {
         const cam = self.cameras.main;
