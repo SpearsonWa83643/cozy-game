@@ -29,6 +29,7 @@ import { HeroJoy } from '../heroJoy';
 import { Dandelions } from '../dandelions';
 import { SnowPrints } from '../snowPrints';
 import { Puddles } from '../puddles';
+import { Kite } from '../kite';
 import { Mount } from '../mount/mount';
 
 export type Interactable = {
@@ -101,6 +102,8 @@ export class WorldScene extends Phaser.Scene {
   prints!: SnowPrints;
   /** 31: rain puddles you can splash through. */
   puddles!: Puddles;
+  /** 32: windy-day kite. */
+  kite!: Kite;
   playerShadow!: Phaser.GameObjects.Image;
   solids!: Phaser.Physics.Arcade.StaticGroup;
   keys!: Record<string, Phaser.Input.Keyboard.Key>;
@@ -273,6 +276,7 @@ export class WorldScene extends Phaser.Scene {
     this.prints = new SnowPrints(this);
     this.village = new Village(this);
     this.puddles = new Puddles(this);
+    this.kite = new Kite(this);
     this.dresser = new ThemeDresser(this);
     this.mount = new Mount(this);
     this.placeStart();
@@ -1299,6 +1303,7 @@ export class WorldScene extends Phaser.Scene {
     this.reacts.update(time, dt);
     this.dandelions.update();
     this.puddles.update(dt);
+    this.kite.update(dt);
     this.village.update(dt, time);
     this.dresser.update(time, dt);
     const view = this.cameras.main.worldView;
@@ -1665,6 +1670,8 @@ export class WorldScene extends Phaser.Scene {
       prints() { const p = self.prints; return { made: p.made, visible: p.visible(), snowy: p.snowy, pool: p.pool.length }; },
       dandelions() { const d = self.dandelions; return { blown: d.blown, puffs: d.puffs.map((p) => ({ x: Math.round(p.img.x), y: Math.round(p.img.y), full: p.full, visible: p.img.visible })), seeds: d.seeds.getAliveParticleCount() }; },
       setDandelionRegrowMs(ms: number) { self.dandelions.regrowMs = ms; },
+      /** 32: windy-day kite (shown 0..1, screen-free world position, loops). */
+      kite() { const k = self.kite; return { show: +k.show.toFixed(2), windy: k.windy, x: Math.round(k.img.x), y: Math.round(k.img.y), loops: k.loops, looping: k.loopT >= 0 }; },
       /** 31: rain puddles (level 0 dry .. 1 full) and splashes. */
       puddles() { const p = self.puddles; return { wet: p.wet, splashes: p.splashes, list: p.puddles.map((q) => ({ x: Math.round(q.x), y: Math.round(q.y), level: +q.level.toFixed(2), visible: q.img.visible })) }; },
       setPuddleDry(s: number) { self.puddles.dryS = s; },

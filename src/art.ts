@@ -1226,6 +1226,30 @@ function paintPuddle(ctx: Ctx, w: number, h: number) {
   ctx.beginPath(); ctx.ellipse(cx + w * 0.06, cy - h * 0.16, w * 0.04, h * 0.04, 0, 0, Math.PI * 2); ctx.fill();
 }
 
+/** 32: a little diamond kite (four bright panels, cross spars) with a bow-tied tail. */
+function paintKite(ctx: Ctx, w: number, h: number) {
+  const cx = w / 2, top = 1, mid = h * 0.3, bot = h * 0.62, l = 1, r = w - 1;
+  const panel = (pts: number[][], col: string) => { ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (const p of pts.slice(1)) ctx.lineTo(p[0], p[1]); ctx.closePath(); ctx.fill(); };
+  panel([[cx, top], [l, mid], [cx, mid]], '#ff6b6b');
+  panel([[cx, top], [r, mid], [cx, mid]], '#ffd84d');
+  panel([[l, mid], [cx, bot], [cx, mid]], '#5fc8e8');
+  panel([[r, mid], [cx, bot], [cx, mid]], '#8fdc7a');
+  ctx.strokeStyle = '#7a4f2e'; ctx.lineWidth = 0.9;
+  ctx.beginPath(); ctx.moveTo(cx, top); ctx.lineTo(cx, bot); ctx.moveTo(l, mid); ctx.lineTo(r, mid); ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)'; ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.moveTo(cx, top); ctx.lineTo(l, mid); ctx.lineTo(cx, bot); ctx.lineTo(r, mid); ctx.closePath(); ctx.stroke();
+  // Tail with little bows.
+  ctx.strokeStyle = '#fdf6e3'; ctx.lineWidth = 0.9;
+  ctx.beginPath(); ctx.moveTo(cx, bot); ctx.quadraticCurveTo(cx + 4, bot + (h - bot) * 0.4, cx - 1, h - 1); ctx.stroke();
+  const bows = ['#ff9ccf', '#ffd84d', '#9fd8ff'];
+  bows.forEach((c, i) => {
+    const by = bot + (h - bot) * (0.25 + i * 0.28), bx = cx + (i === 1 ? 2 : 0);
+    ctx.fillStyle = c;
+    ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx - 3.5, by - 2); ctx.lineTo(bx - 3.5, by + 2); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx + 3.5, by - 2); ctx.lineTo(bx + 3.5, by + 2); ctx.closePath(); ctx.fill();
+  });
+}
+
 function paintLeafBig(ctx: Ctx, w: number, h: number) {
   ctx.save();
   ctx.translate(w / 2, h / 2);
@@ -1378,6 +1402,7 @@ export function paintAll(scene: Phaser.Scene) {
   canvasTex(scene, 'sprint', 6, 10, (c) => paintSnowPrint(c, 6, 10));
   canvasTex(scene, 'sangel', 30, 34, (c) => paintSnowAngel(c, 30, 34));
   canvasTex(scene, 'puddle', 48, 22, (c) => paintPuddle(c, 48, 22));
+  canvasTex(scene, 'kite', 22, 46, (c) => paintKite(c, 22, 46));
   canvasTex(scene, 'leafw', 14, 9, (c) => paintLeafBig(c, 14, 9), 3);
   canvasTex(scene, 'white', 4, 4, (c) => { c.fillStyle = '#fff'; c.fillRect(0, 0, 4, 4); }, 2);
   paintAll2(scene);
