@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-10-29 9:25 PM (CT). Live: main ae971fc, https://willowmere-glade.pages.dev (bundle index-C62BSV5A.js).
+Updated: 2026-10-29 9:35 PM (CT). Live: main ae971fc, https://willowmere-glade.pages.dev (bundle index-C62BSV5A.js).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -30,6 +30,7 @@ Walker: flying mounts, and finding them, score high on engagement; wardrobe-styl
 | 37 | Mounts page: all mounts on a single page (no paging or scrolling); seasonal mounts are shown like the others (no "???" hiding); riding a seasonal mount forces its theme to load (UX rule) | Not started | 2026-10-31 | 1 |
 | 38 | Per-mount view: each flying mount gets its own view with final, very stylized, high-res, high-detail art in the style Walker picks in the Style Lab (35) | Blocked on 35 (style choice) and 39 (motion choice) | ~2026-11-09 (after style pick) | 6 |
 | 39 | Mount Motion Lab (temporary): Cowboy Cookie + Eagle side by side, 6 whole-body animation styles (Gentle Float, Springy Squash & Stretch, Floaty Dreamy Drift, Snappy Cartoon, Natural Physics, Playful Bounce) with breathing, blinks/glances, head tilts, hat lag, cape follow-through, tail/talon sway, banking, personality beats, rider-weight dip; any Style Lab skin; Calm (prefers-reduced-motion) fallback; ?motionlab=1&m=<id>. Walker (Oct 29, 9:00 PM CT): keep the Style Lab around. The chosen motion applies to all mounts in 36 and 38. Never merged to main | In progress, live on branch preview https://stylelab.willowmere-glade.pages.dev/?motionlab=1 | 2026-10-29 (preview) | 0.5 + iterations |
+| 40 | Walker (Oct 29, 9:18 PM CT): Mount Thief event (replayability, re-hides mounts). A button triggers it: a thief animal (random species each time) in a cartoony thief mask enters the screen, big and easy to see. The player can arrest it just in time with a simple, kid-friendly tap/chase mechanic (no combat). If it escapes, it takes one owned mount and runs off to hide it as the prize behind one randomly chosen existing puzzle; even a completed puzzle is reset so the player can rescue the mount | Not started (backlog only; after 36/37) | ~2026-11-03 | 2 |
 
 ## Recently done
 
