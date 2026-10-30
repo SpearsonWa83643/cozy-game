@@ -125,7 +125,8 @@ const wc: LabStyle = {
       if (p.role === 'blush') continue;
       c.save(); path(c, p); c.clip();
       // Wet-in-wet shadow pooling bottom-right + lifted highlight top-left.
-      c.shadowColor = css(shade(p.color, 0.45), 0.55); c.shadowBlur = 26; c.shadowOffsetX = 2000;
+      const k = c.getTransform().a;
+      c.shadowColor = css(shade(p.color, 0.45), 0.55); c.shadowBlur = 26 * k; c.shadowOffsetX = 2000 * k;
       c.fillStyle = '#000';
       c.beginPath(); c.ellipse(b.cx + b.w * 0.32 - 2000, b.cy + b.h * 0.34, b.w * 0.5, b.h * 0.42, 0, 0, TAU); c.fill();
       c.shadowColor = 'rgba(255,252,240,0.65)';
@@ -178,7 +179,7 @@ const gouache: LabStyle = {
         const nx = (jx - cx) / (b.w / 2 + 1), ny = (jy - cy) / (b.h / 2 + 1);
         const d = Math.min(1, Math.hypot(nx, ny));
         const lit = -(nx * LIGHT[0] + ny * LIGHT[1]) * 0.8 + (0.35 - d * 0.5);
-        const col: RGB = lit > 0 ? mix(base, light(p.color, 0.55), Math.min(1, lit)) : mix(base, shade(p.color, 0.6), Math.min(1, -lit));
+        const col: RGB = lit > 0 ? mix(base, light(p.color, 0.55), Math.min(1, lit)) : mix(base, shade(p.color, 0.5), Math.min(0.8, -lit));
         const jc = (r() - 0.5) * 18;
         c.strokeStyle = css([col[0] + jc, col[1] + jc * 0.8, col[2] + jc * 0.6], 0.82);
         c.lineWidth = step * (0.9 + r() * 0.7);
@@ -209,7 +210,8 @@ const clay: LabStyle = {
     for (const p of parts) {
       const r = rng('clay' + p.id);
       c.save();
-      c.shadowColor = 'rgba(60,30,20,0.28)'; c.shadowBlur = p.role === 'major' ? 18 : 8; c.shadowOffsetX = 4; c.shadowOffsetY = 8;
+      const k = c.getTransform().a;
+      c.shadowColor = 'rgba(60,30,20,0.28)'; c.shadowBlur = (p.role === 'major' ? 18 : 8) * k; c.shadowOffsetX = 4 * k; c.shadowOffsetY = 8 * k;
       if (isLine(p)) {
         c.strokeStyle = css(shade(p.color, 0.15)); c.lineWidth = (p.width ?? 4) * 1.6; path(c, p); c.stroke();
         c.shadowColor = 'transparent';
@@ -268,14 +270,15 @@ const ink: LabStyle = {
       if (p.role === 'eye') { c.fillStyle = '#16131a'; path(c, p); c.fill(); continue; }
       if (!isLine(p)) {
         const v = 255 - (255 - lum(p.color)) * 0.6;
-        const wash: RGB = p.accent ? mix(p.color, '#efe8d8', 0.15) : [v - 4, v - 2, v + 4];
+        const wash: RGB = p.accent ? mix(p.color, '#efe8d8', 0.15) : [v + 2, v - 4, v - 14];
         c.fillStyle = '#efe8d8'; path(c, p); c.fill();
         c.save(); path(c, p); c.clip();
         const b = bbox(p.pts);
-        c.shadowColor = css(wash, p.role === 'blush' ? 0.5 : 0.95); c.shadowBlur = 14; c.shadowOffsetX = 3000;
+        const k = c.getTransform().a;
+        c.shadowColor = css(wash, p.role === 'blush' ? 0.5 : 0.95); c.shadowBlur = 14 * k; c.shadowOffsetX = 3000 * k;
         c.fillStyle = '#000';
         path(c, p, shift(scaleAbout(p.pts, b.cx, b.cy, 0.9), -3000 + 4, 6)); c.fill();
-        c.shadowColor = css(mix(wash, '#2a2833', 0.35), 0.5); c.shadowBlur = 22;
+        c.shadowColor = css(mix(wash, '#2a2833', 0.35), 0.5); c.shadowBlur = 22 * k;
         c.beginPath(); c.ellipse(b.cx + b.w * 0.28 - 3000, b.cy + b.h * 0.32, b.w * 0.42, b.h * 0.3, 0, 0, TAU); c.fill();
         c.restore();
         if (p.role === 'blush') continue;
