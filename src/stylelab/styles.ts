@@ -60,22 +60,9 @@ function softBlob(c: C, x: number, y: number, rx: number, ry: number, col: strin
 }
 const lightOffset = (k: number): [number, number] => [LIGHT[0] * k, LIGHT[1] * k];
 
-// ================================================================== 1. Bold cel-shaded
-const INK = '#2a1a22';
-const cel: LabStyle = {
-  id: 'cel', name: 'Bold Cel-Shaded', blurb: 'Comic-book punch: flat colour, hard-edged shadow, thick ink outline.',
-  backdrop(c, w, h) {
-    c.fillStyle = '#bfe3df'; c.fillRect(0, 0, w, h);
-    c.fillStyle = '#d7efe9'; c.beginPath(); c.arc(w / 2, h * 0.46, Math.min(w, h) * 0.38, 0, TAU); c.fill();
-    const s = Math.max(10, Math.round(Math.min(w, h) / 40));
-    c.fillStyle = 'rgba(70,140,140,0.16)';
-    for (let y = 0; y < h; y += s) for (let x = (y / s) % 2 ? s / 2 : 0; x < w; x += s) {
-      const d = Math.hypot(x - w / 2, y - h * 0.46) / Math.max(w, h);
-      const r = Math.max(0, d - 0.2) * s * 0.9;
-      if (r > 0.4) { c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); }
-    }
-  },
-  render(c, parts) {
+
+// Classic chunky cel (kept for the 160px pixel style, where fine detail would turn to mush).
+function celBasic(c: C, parts: Part[]) {
     c.lineJoin = 'round'; c.lineCap = 'round';
     for (const p of parts) {
       if (isLine(p)) { c.strokeStyle = p.color === '#f0bf4c' ? p.color : INK; c.lineWidth = (p.width ?? 4) * 1.5; path(c, p); c.stroke(); continue; }
@@ -95,7 +82,179 @@ const cel: LabStyle = {
       }
       c.strokeStyle = INK; c.lineWidth = p.role === 'major' ? 7 : 4.5; path(c, p); c.stroke();
     }
+}
+
+// Fine cel (Walker, Oct 29): bold OUTER silhouette only, thin tapered interior linework, 3-step cel
+// shading with crisp shadow shapes, a small rim light, fine hatching in the shade and per-part detail.
+const INTERIOR = /^(chip\d|cape-lining|band|covert|iris|dent)$/;
+const pathOf = (p: Part, pts: Pt[] = p.pts) => { const P2 = new Path2D(); trace({ beginPath() {}, moveTo: P2.moveTo.bind(P2), lineTo: P2.lineTo.bind(P2), bezierCurveTo: P2.bezierCurveTo.bind(P2), closePath: P2.closePath.bind(P2) } as unknown as C, pts, sm(p), cl(p)); return P2; };
+/** Tapered stroke: thick in the middle, hair-thin at both ends (or from w0 to w1). */
+function taper(c: C, pts: Pt[], w: number, col: string, smooth = true, ends: [number, number] = [0.15, 0.15]) {
+  const d = pts.length > 2 || smooth ? densify(pts, smooth, false, 6) : densify(pts, false, false, 10);
+  c.strokeStyle = col; c.lineCap = 'round';
+  for (let i = 1; i < d.length; i++) {
+    const u = i / (d.length - 1);
+    const k = Math.min(1, u / Math.max(ends[0], 1e-3), (1 - u) / Math.max(ends[1], 1e-3) + (ends[1] === 0 ? 1 : 0));
+    c.lineWidth = Math.max(0.35, w * (0.25 + 0.75 * Math.min(1, k)));
+    c.beginPath(); c.moveTo(d[i - 1][0], d[i - 1][1]); c.lineTo(d[i][0], d[i][1]); c.stroke();
+  }
+}
+function hatch(c: C, b: ReturnType<typeof bbox>, gap: number, col: string, w: number) {
+  c.strokeStyle = col; c.lineWidth = w;
+  c.beginPath();
+  for (let x = b.x0 - b.h; x < b.x1 + b.h; x += gap) { c.moveTo(x, b.y1 + 2); c.lineTo(x + b.h * 0.7, b.y0 - 2); }
+  c.stroke();
+}
+const lerpPt = (a: Pt, b: Pt, t: number): Pt => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+function celFine(c: C, parts: Part[]) {
+  c.lineJoin = 'round'; c.lineCap = 'round';
+  // 1. Bold outer silhouette: every outline part, fattened, behind everything.
+  c.strokeStyle = INK; c.fillStyle = INK; c.lineWidth = 11;
+  for (const p of parts) if (!isLine(p) && !INTERIOR.test(p.id) && !['eye', 'glint', 'blush'].includes(p.role)) { const P2 = pathOf(p); c.fill(P2); c.stroke(P2); }
+  for (const p of parts) if (isLine(p) && p.id === 'cape-trim') { c.lineWidth = (p.width ?? 4) + 9; c.strokeStyle = INK; c.stroke(pathOf(p)); }
+  for (const p of parts) {
+    const P2 = pathOf(p), id = p.id;
+    if (isLine(p)) {
+      if (id === 'cape-trim') { c.strokeStyle = p.color; c.lineWidth = p.width ?? 4; c.stroke(P2); c.strokeStyle = css(light(p.color, 0.6)); c.lineWidth = 1.2; c.stroke(pathOf(p, shift(p.pts, -1, -2))); continue; }
+      if (id === 'smile') { taper(c, p.pts, 5.5, INK, true, [0.25, 0.25]); continue; }
+      const col = /^feather/.test(id) ? '#24150c' : /^tail-l/.test(id) ? '#a69d8c' : css(shade(p.color, 0.3));
+      taper(c, p.pts, Math.max(1.4, (p.width ?? 4) * 0.55), col, sm(p), [0.1, 0.45]);
+      if (/^feather/.test(id)) { // barbs: fine angled ticks off the shaft
+        const d = densify(p.pts, false, false, 9);
+        for (let i = 2; i < d.length - 1; i += 2) { const [x, y] = d[i], u = i / d.length; taper(c, [[x, y], [x - 6 * (1 - u * 0.5), y + 5]], 0.8, 'rgba(36,21,12,.45)', false, [0, 0.7]); taper(c, [[x, y], [x + 5 * (1 - u * 0.5), y + 6]], 0.7, 'rgba(255,220,180,.25)', false, [0, 0.7]); }
+      }
+      continue;
+    }
+    if (p.role === 'glint') { c.fillStyle = '#fff'; c.fill(P2); continue; }
+    if (p.role === 'blush') {
+      c.fillStyle = css(rgb(p.color), 0.7); c.fill(P2);
+      const b = bbox(p.pts); c.strokeStyle = 'rgba(200,80,70,.45)'; c.lineWidth = 1.1;
+      for (let k = -1; k <= 1; k++) { c.beginPath(); c.moveTo(b.cx + k * 7 - 3, b.cy + 4); c.lineTo(b.cx + k * 7 + 3, b.cy - 4); c.stroke(); }
+      continue;
+    }
+    const b = bbox(p.pts), k = Math.max(5, Math.min(b.w, b.h) * 0.13), r = rng('cel-' + id);
+    // Three tone steps: deep shade, core shade, lit base.
+    c.fillStyle = css(shade(p.color, 0.42)); c.fill(P2);
+    if (p.role === 'eye') {
+      c.save(); c.clip(P2); c.fillStyle = css(mix(p.color, '#5a3a2a', 0.5)); c.beginPath(); c.ellipse(b.cx + 1, b.y1 - b.h * 0.18, b.w * 0.42, b.h * 0.2, 0, 0, TAU); c.fill(); c.restore();
+      c.strokeStyle = INK; c.lineWidth = 1.6; c.stroke(P2);
+      if (id.startsWith('eye-')) taper(c, [[b.x0 - 1, b.y0 + 3], [b.cx, b.y0 - 3], [b.x1 + 2, b.y0 + 1]], 1.8, INK, true, [0.3, 0.1]); // upper lid
+      continue;
+    }
+    const lit = pathOf(p, shift(scaleAbout(p.pts, b.cx, b.cy, 0.98), ...lightOffset(k)));
+    const lit2 = pathOf(p, shift(scaleAbout(p.pts, b.cx, b.cy, 0.97), ...lightOffset(k * 0.45)));
+    c.save(); c.clip(P2);
+    c.fillStyle = css(shade(p.color, 0.2)); c.fill(lit2);
+    c.fillStyle = p.color; c.fill(lit);
+    // Fine hatching only in the shaded crescent.
+    if (p.role === 'major' && b.w > 40) {
+      c.save(); const sh = new Path2D(); sh.addPath(P2); sh.addPath(lit2); c.clip(sh, 'evenodd');
+      hatch(c, b, 5, css(shade(p.color, 0.6), 0.5), 0.8); c.restore();
+    }
+    // Lit-side highlight + a crisp secondary highlight dot.
+    if (p.role === 'major' && !/wing/.test(id)) {
+      c.fillStyle = css(light(p.color, 0.4), 0.8);
+      c.beginPath(); c.ellipse(b.x0 + b.w * 0.3, b.y0 + b.h * 0.24, b.w * 0.11, b.h * 0.065, -0.6, 0, TAU); c.fill();
+      c.fillStyle = css(light(p.color, 0.75)); c.beginPath(); c.ellipse(b.x0 + b.w * 0.2, b.y0 + b.h * 0.33, b.w * 0.025, b.h * 0.02, -0.6, 0, TAU); c.fill();
+    }
+    // Small rim light hugging the shadow-side edge.
+    if (p.role === 'major' || id === 'knot') {
+      c.save(); const rim = new Path2D(); rim.addPath(P2); rim.addPath(pathOf(p, shift(p.pts, -2.2, -2.6))); c.clip(rim, 'evenodd');
+      c.fillStyle = css(mix(mix(p.color, '#bfe8ff', 0.35), '#fff6de', 0.55), 0.85); c.fill(P2); c.restore();
+    }
+    detail(c, p, b, r);
+    c.restore();
+    // Thin interior contour (the bold one is the silhouette pass).
+    c.strokeStyle = INTERIOR.test(id) ? css(shade(p.color, 0.55)) : INK;
+    c.lineWidth = INTERIOR.test(id) ? 1.3 : p.role === 'major' ? 2.4 : 1.8; c.stroke(P2);
+  }
+}
+/** Per-part fine detail, drawn clipped inside the part. */
+function detail(c: C, p: Part, b: ReturnType<typeof bbox>, r: () => number) {
+  const id = p.id, ink = (a: number) => `rgba(42,26,34,${a})`;
+  if (id === 'cookie-body' || (id === 'body' && p.color === '#d9944b')) {
+    for (let i = 0; i < 70; i++) { // crumbs and baked pores
+      const a = r() * TAU, d = Math.sqrt(r()) * 0.9, x = b.cx + Math.cos(a) * b.w * 0.5 * d, y = b.cy + Math.sin(a) * b.h * 0.5 * d;
+      c.fillStyle = r() < 0.6 ? 'rgba(120,64,24,.45)' : 'rgba(255,226,170,.6)'; c.beginPath(); c.ellipse(x, y, 0.8 + r() * 1.6, 0.6 + r(), r() * 3, 0, TAU); c.fill();
+    }
+    for (let i = 0; i < 7; i++) { // hairline bake cracks
+      const a = r() * TAU, d = 0.35 + r() * 0.5, x = b.cx + Math.cos(a) * b.w * 0.5 * d, y = b.cy + Math.sin(a) * b.h * 0.5 * d, l = 8 + r() * 12, q = r() * TAU;
+      taper(c, [[x, y], [x + Math.cos(q) * l * 0.5 + 3, y + Math.sin(q) * l * 0.5], [x + Math.cos(q) * l, y + Math.sin(q) * l]], 1.3, 'rgba(110,58,20,.55)', true, [0.2, 0.5]);
+    }
+  } else if (/^chip\d/.test(id)) {
+    c.fillStyle = 'rgba(255,220,180,.5)'; c.beginPath(); c.ellipse(b.x0 + b.w * 0.33, b.y0 + b.h * 0.3, b.w * 0.14, b.h * 0.09, -0.5, 0, TAU); c.fill();
+  } else if (id === 'cape') {
+    const P = p.pts; // fold lines from the tie toward the rippling hem, plus fine shadow folds
+    const top = [P[2], P[3], P[4], P[5]], hem = [P[13], P[11], P[9], P[7]];
+    for (let i = 0; i < 4; i++) for (const t of [0.0, 0.5]) {
+      const a = lerpPt(top[i], top[Math.min(3, i + 1)], t), z = lerpPt(hem[i], hem[Math.min(3, i + 1)], t), m = lerpPt(a, z, 0.5);
+      taper(c, [lerpPt(a, z, 0.12), [m[0] + 6, m[1] + 4], lerpPt(a, z, 0.86)], t ? 1.0 : 1.6, t ? ink(0.35) : ink(0.6), true, [0.5, 0.3]);
+      if (!t) taper(c, [lerpPt(a, z, 0.2), [m[0] + 9, m[1] + 6], lerpPt(a, z, 0.75)], 1.4, 'rgba(255,170,150,.45)', true, [0.5, 0.4]);
+    }
+  } else if (id === 'cape-lining') {
+    for (let i = 0; i < 5; i++) { const x = b.x0 + b.w * (0.15 + i * 0.17); taper(c, [[x, b.y0 + 4], [x - 6, b.y1 - 2]], 1, ink(0.4), false); }
+  } else if (id === 'crown') {
+    const d = densify(p.pts, true, true, 4).filter(([, y]) => y < b.y1 - 16);
+    c.fillStyle = ink(0.5); for (let i = 0; i < d.length; i += 2) { c.beginPath(); c.arc(d[i][0] * 0.94 + b.cx * 0.06, d[i][1] * 0.94 + b.cy * 0.06, 0.9, 0, TAU); c.fill(); }
+    for (let i = 0; i < 14; i++) { const x = b.x0 + r() * b.w, y = b.y0 + r() * b.h; taper(c, [[x, y], [x + 3, y + 5]], 0.8, 'rgba(255,255,255,.25)', false); }
+  } else if (id === 'band') {
+    c.setLineDash([4, 3]); c.strokeStyle = 'rgba(240,200,140,.75)'; c.lineWidth = 1.1;
+    c.beginPath(); c.moveTo(b.x0 + 4, b.cy - 1 - b.h * 0.05); c.quadraticCurveTo(b.cx, b.cy + 4, b.x1 - 4, b.cy - 2 - b.h * 0.1); c.stroke(); c.setLineDash([]);
+  } else if (id === 'brim') {
+    const d = densify(p.pts, true, true, 4);
+    c.setLineDash([3.5, 3]); c.strokeStyle = ink(0.5); c.lineWidth = 1;
+    c.beginPath(); d.forEach(([x, y], i) => { const X = b.cx + (x - b.cx) * 0.9, Y = b.cy + (y - b.cy) * 0.78; i ? c.lineTo(X, Y) : c.moveTo(X, Y); }); c.closePath(); c.stroke(); c.setLineDash([]);
+    c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = 1.4; c.beginPath(); d.slice(0, Math.floor(d.length * 0.5)).forEach(([x, y], i) => (i ? c.lineTo(x + 1, y + 2.2) : c.moveTo(x + 1, y + 2.2))); c.stroke();
+  } else if (id === 'arm-back' || id === 'arm-front' || id === 'leg-l' || id === 'leg-r') {
+    for (let i = 0; i < 10; i++) { c.fillStyle = 'rgba(110,58,20,.45)'; c.beginPath(); c.arc(b.x0 + r() * b.w, b.y0 + r() * b.h, 0.7 + r(), 0, TAU); c.fill(); }
+  } else if (id === 'body' || id === 'far-wing') { // eagle body: layered scallop feathers
+    const col = id === 'body' ? 'rgba(30,16,8,.55)' : 'rgba(20,10,4,.45)';
+    for (let row = 0; row < 7; row++) for (let i = 0; i < 12; i++) {
+      const x = b.x0 + (i + (row % 2) * 0.5) * (b.w / 11), y = b.y0 + 14 + row * (b.h / 7);
+      taper(c, [[x - 9, y - 2], [x, y + 5], [x + 9, y - 2]], 1.1, col, true, [0.4, 0.4]);
+      if (row % 2 === 0 && i % 3 === 0) taper(c, [[x - 4, y - 4], [x + 1, y + 1]], 0.8, 'rgba(255,220,170,.35)', false);
+    }
+  } else if (id === 'near-wing') {
+    for (let row = 0; row < 6; row++) for (let i = 0; i < 6; i++) { // layered covert/secondary rows
+      const x = b.x0 + 16 + i * (b.w / 6) + row * 3, y = b.y1 - 20 - row * (b.h / 7);
+      taper(c, [[x - 8, y - 3], [x, y + 4], [x + 7, y - 4]], 1.0, 'rgba(25,14,6,.5)', true, [0.4, 0.4]);
+    }
+  } else if (id === 'covert') {
+    for (let row = 0; row < 4; row++) for (let i = 0; i < 5; i++) { const x = b.x0 + 8 + i * (b.w / 5) + row * 4, y = b.y1 - 10 - row * (b.h / 4.5); taper(c, [[x - 6, y - 2], [x, y + 3], [x + 6, y - 3]], 0.9, 'rgba(40,20,8,.5)', true, [0.4, 0.4]); }
+  } else if (id === 'head') {
+    for (let i = 0; i < 16; i++) { // white neck ruff: fine tapered feather tips toward the body + grey shade strokes
+      const u = i / 15, x = lerpPt([318, 262], [366, 280], u)[0], y = lerpPt([318, 262], [366, 280], u)[1];
+      taper(c, [[x + 10, y - 12], [x + 2, y - 2]], 1.1, 'rgba(120,110,100,.6)', false, [0.6, 0.0]);
+    }
+    for (let i = 0; i < 10; i++) { const x = b.x0 + 20 + r() * b.w * 0.7, y = b.y0 + 10 + r() * b.h * 0.6; taper(c, [[x, y], [x - 6, y + 4]], 0.7, 'rgba(150,140,128,.5)', false); }
+  } else if (id === 'tail') {
+    for (let i = 0; i < 7; i++) { const y = b.y0 + 8 + i * (b.h - 16) / 6; taper(c, [[b.x1, b.cy + (y - b.cy) * 0.3], [b.x0 + 10, y]], 0.8, 'rgba(120,112,100,.6)', false, [0.0, 0.5]); }
+  } else if (id === 'beak') {
+    taper(c, [[b.x0 + 8, b.y0 + 8], [b.cx + 6, b.y0 + 4], [b.x1 - 10, b.cy]], 1.3, 'rgba(255,245,200,.8)', true, [0.3, 0.5]);
+    c.fillStyle = ink(0.8); c.beginPath(); c.ellipse(b.x0 + 18, b.y0 + 10, 2.2, 1.4, 0.2, 0, TAU); c.fill(); // nostril
+  } else if (/^talon/.test(id)) {
+    for (let i = 1; i < 4; i++) taper(c, [[b.x0 + 2, b.y0 + i * b.h / 4], [b.x1 - 2, b.y0 + i * b.h / 4 + 2]], 0.8, ink(0.45), false);
+  } else if (id === 'iris') {
+    c.strokeStyle = 'rgba(160,100,10,.6)'; c.lineWidth = 0.8; for (let i = 0; i < 12; i++) { const a = (i / 12) * TAU; c.beginPath(); c.moveTo(b.cx + Math.cos(a) * 8, b.cy + Math.sin(a) * 8); c.lineTo(b.cx + Math.cos(a) * 11.5, b.cy + Math.sin(a) * 11.5); c.stroke(); }
+  }
+}
+
+// ================================================================== 1. Bold cel-shaded
+const INK = '#2a1a22';
+const cel: LabStyle = {
+  id: 'cel', name: 'Bold Cel-Shaded', blurb: 'Comic-book punch: bold outer silhouette, fine tapered inner linework, layered cel shading with rim light and hatching.',
+  backdrop(c, w, h) {
+    c.fillStyle = '#bfe3df'; c.fillRect(0, 0, w, h);
+    c.fillStyle = '#d7efe9'; c.beginPath(); c.arc(w / 2, h * 0.46, Math.min(w, h) * 0.38, 0, TAU); c.fill();
+    const s = Math.max(10, Math.round(Math.min(w, h) / 40));
+    c.fillStyle = 'rgba(70,140,140,0.16)';
+    for (let y = 0; y < h; y += s) for (let x = (y / s) % 2 ? s / 2 : 0; x < w; x += s) {
+      const d = Math.hypot(x - w / 2, y - h * 0.46) / Math.max(w, h);
+      const r = Math.max(0, d - 0.2) * s * 0.9;
+      if (r > 0.4) { c.beginPath(); c.arc(x, y, r, 0, TAU); c.fill(); }
+    }
   },
+  render(c, parts) { celFine(c, parts); },
 };
 
 // ================================================================== 2. Storybook watercolour
@@ -319,7 +478,7 @@ const pixel: LabStyle = {
       for (let i = 0; i < 6; i++) c.fillRect(cx + (i - 3) * px * 3, cy - (i % 3) * px, px * 4, px * 2 + (i % 2) * px);
     }
   },
-  render(c, parts) { cel.render(c, parts.map((p) => ({ ...p, width: (p.width ?? 4) * 0.8 }))); },
+  render(c, parts) { celBasic(c, parts.map((p) => ({ ...p, width: (p.width ?? 4) * 0.8 }))); },
 };
 
 export const LAB_STYLES: LabStyle[] = [wc, cel, gouache, clay, ink, pixel];
