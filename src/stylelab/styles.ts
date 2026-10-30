@@ -106,11 +106,72 @@ function hatch(c: C, b: ReturnType<typeof bbox>, gap: number, col: string, w: nu
   c.stroke();
 }
 const lerpPt = (a: Pt, b: Pt, t: number): Pt => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+// Textured silhouette (Walker, Oct 29 9:34 PM): subtle, curved, pointy contours on the outer outline of the
+// body, head and tail: swept feather tips + notches on the eagle, soft tufts at the neck ruff, and a crumbly
+// baked edge on the cookie. Irregular spacing and size, seeded so every render matches.
+const isCookieBody = (p: Part) => p.id === 'cookie-body' || (p.id === 'body' && p.color === '#d9944b');
+const TEX = (p: Part) => (isCookieBody(p) ? 'crumb' : ['body', 'head', 'tail'].includes(p.id) ? 'feather' : '');
+/** Walk the closed outline at irregular arclength steps: [point, outward normal, tangent, rand()]. */
+function edgeWalk(p: Part, gap: [number, number], seed: number) {
+  const d = densify(p.pts, sm(p), true, 14), n = d.length, r = rng(seed);
+  let area = 0; for (let i = 0; i < n; i++) { const a = d[i], b = d[(i + 1) % n]; area += a[0] * b[1] - b[0] * a[1]; }
+  const sgn = area > 0 ? -1 : 1, out: { P: Pt; N: Pt; Tg: Pt; r: () => number }[] = [];
+  let next = gap[0] * r(), acc = 0;
+  for (let i = 0; i < n; i++) {
+    const a = d[i], b = d[(i + 1) % n], L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1e-6; acc += L;
+    if (acc < next) continue;
+    acc = 0; next = gap[0] + (gap[1] - gap[0]) * r() * r() * 1.6; // clustered, never evenly spaced
+    const tg: Pt = [(b[0] - a[0]) / L, (b[1] - a[1]) / L];
+    out.push({ P: a, N: [-tg[1] * sgn, tg[0] * sgn], Tg: tg, r });
+  }
+  return out;
+}
+function edgeOut(c: C, p: Part, half: number) {
+  const k = TEX(p); if (!k) return;
+  c.fillStyle = INK;
+  if (k === 'feather') {
+    const tail = p.id === 'tail', sweep = tail ? 0.35 : 0.6;
+    for (const { P, N, Tg, r } of edgeWalk(p, tail ? [11, 22] : p.id === 'head' ? [10, 24] : [14, 32], p.id.length * 131 + p.pts.length)) {
+      if (r() < 0.22) continue;
+      const h = (tail ? 3 : 2) + r() * (tail ? 4.5 : 3.5), w = (tail ? 7 : 5) + r() * 5, o = half - 1;
+      const B0: Pt = [P[0] + N[0] * o - Tg[0] * w / 2, P[1] + N[1] * o - Tg[1] * w / 2], B1: Pt = [P[0] + N[0] * o + Tg[0] * w / 2, P[1] + N[1] * o + Tg[1] * w / 2];
+      const tip: Pt = [P[0] + N[0] * (o + h) + Tg[0] * h * sweep, P[1] + N[1] * (o + h) + Tg[1] * h * sweep];
+      c.beginPath(); c.moveTo(B0[0], B0[1]);
+      c.quadraticCurveTo(B0[0] + N[0] * h * 0.75, B0[1] + N[1] * h * 0.75, tip[0], tip[1]);
+      c.quadraticCurveTo(B1[0] + N[0] * h * 0.2, B1[1] + N[1] * h * 0.2, B1[0], B1[1]); c.closePath(); c.fill();
+    }
+  } else {
+    for (const { P, N, Tg, r } of edgeWalk(p, [6, 16], 917)) {
+      const rad = 1.6 + r() * 2.8, o = half - 1.5 + r() * 1.5;
+      c.beginPath(); c.ellipse(P[0] + N[0] * o, P[1] + N[1] * o, rad * (1 + r() * 0.6), rad, Math.atan2(Tg[1], Tg[0]), 0, TAU); c.fill();
+      if (r() < 0.12) { const q = half + 4 + r() * 4; c.beginPath(); c.arc(P[0] + N[0] * q + Tg[0] * 3, P[1] + N[1] * q + Tg[1] * 3, 0.9 + r() * 1.1, 0, TAU); c.fill(); }
+    }
+  }
+}
+/** Inward notches / baked-edge marks, drawn over the part's fill. */
+function edgeIn(c: C, p: Part) {
+  const k = TEX(p); if (!k) return;
+  if (k === 'feather') {
+    const col = p.id === 'body' ? 'rgba(24,12,6,.75)' : 'rgba(60,50,40,.6)';
+    for (const { P, N, Tg, r } of edgeWalk(p, [14, 34], p.pts.length * 17 + 3)) {
+      if (r() < 0.3) continue;
+      const L = 4 + r() * 7, sw = 0.5 + r() * 0.5, tip: Pt = [P[0] - N[0] * L + Tg[0] * L * sw, P[1] - N[1] * L + Tg[1] * L * sw];
+      taper(c, [[P[0], P[1]], tip], 1.6 + r() * 0.8, col, false, [0, 1]);
+    }
+  } else {
+    for (const { P, N, Tg, r } of edgeWalk(p, [10, 26], 4421)) {
+      const L = 3 + r() * 6, j = (r() - 0.5) * 0.8;
+      taper(c, [[P[0], P[1]], [P[0] - N[0] * L + Tg[0] * L * j, P[1] - N[1] * L + Tg[1] * L * j]], 1.2 + r() * 0.7, css(shade(p.color, 0.42), 0.8), false, [0, 1]);
+      if (r() < 0.35) { c.fillStyle = css(light(p.color, 0.25), 0.7); c.beginPath(); c.arc(P[0] - N[0] * (L + 2), P[1] - N[1] * (L + 2), 0.8 + r() * 0.8, 0, TAU); c.fill(); }
+    }
+  }
+}
 function celFine(c: C, parts: Part[]) {
   c.lineJoin = 'round'; c.lineCap = 'round';
   // 1. Bold outer silhouette: every outline part, fattened, behind everything.
   c.strokeStyle = INK; c.fillStyle = INK; c.lineWidth = 11;
   for (const p of parts) if (!isLine(p) && !INTERIOR.test(p.id) && !['eye', 'glint', 'blush'].includes(p.role)) { const P2 = pathOf(p); c.fill(P2); c.stroke(P2); }
+  for (const p of parts) edgeOut(c, p, 5.5);
   for (const p of parts) if (isLine(p) && p.id === 'cape-trim') { c.lineWidth = (p.width ?? 4) + 9; c.strokeStyle = INK; c.stroke(pathOf(p)); }
   for (const p of parts) {
     const P2 = pathOf(p), id = p.id;
@@ -167,6 +228,7 @@ function celFine(c: C, parts: Part[]) {
     // Thin interior contour (the bold one is the silhouette pass).
     c.strokeStyle = INTERIOR.test(id) ? css(shade(p.color, 0.55)) : INK;
     c.lineWidth = INTERIOR.test(id) ? 1.3 : p.role === 'major' ? 2.4 : 1.8; c.stroke(P2);
+    edgeIn(c, p);
   }
 }
 /** Per-part fine detail, drawn clipped inside the part. */
