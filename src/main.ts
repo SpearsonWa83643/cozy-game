@@ -39,6 +39,11 @@ for (const ev of ['touchend', 'pointerup', 'click', 'keydown']) {
 const params = new URLSearchParams(location.search);
 
 async function start() {
+  if (params.has('motionlab')) { // temporary Mount Motion Lab (animation-direction loop)
+    const { startMotionLab } = await import('./stylelab/motion');
+    startMotionLab();
+    return;
+  }
   if (params.has('stylelab')) { // temporary Mount Style Lab (rapid art-direction loop)
     const { startStyleLab } = await import('./stylelab/lab');
     startStyleLab();

@@ -11,7 +11,7 @@ const FRAMES = 12;
 const FPS = 10;
 const DPR = Math.min(2, window.devicePixelRatio || 1);
 
-const css = `
+export const LAB_CSS = `
 #lab { position: fixed; inset: 0; display: flex; flex-direction: column; background: #1f2622; color: #f6efdc;
   font-family: Nunito, system-ui, sans-serif; user-select: none; -webkit-user-select: none; touch-action: none; }
 #lab header { display: flex; align-items: center; gap: 14px; padding: max(10px, env(safe-area-inset-top)) 18px 6px; }
@@ -41,7 +41,7 @@ type Panel = { el: HTMLDivElement; bg: HTMLCanvasElement; sprite: HTMLCanvasElem
 export function startStyleLab() {
   document.getElementById('loading')?.remove();
   document.getElementById('game')?.remove();
-  const st = document.createElement('style'); st.textContent = css; document.head.appendChild(st);
+  const st = document.createElement('style'); st.textContent = LAB_CSS; document.head.appendChild(st);
   const root = document.createElement('div'); root.id = 'lab';
   root.innerHTML = `
     <header><span class="tag">Mount Style Lab · temporary</span><span class="count"></span></header>
