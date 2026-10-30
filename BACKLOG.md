@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-10-29 (CT). Live: main 080ebfa, https://willowmere-glade.pages.dev (bundle index-D9fG1qa2.js).
+Updated: 2026-10-29 (CT). Live: main ae971fc, https://willowmere-glade.pages.dev (bundle index-C62BSV5A.js).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -16,7 +16,7 @@ Task 34 is Walker's request (Oct 29, 7:46 PM CT). Self-added polish tasks (26-29
 | 30 | Snow angels: in Winter/Christmas, tapping your hero adds a snow angel to the joy moves (lie back, flap, a fading angel shape) | Done/Live cff0a3a | 2026-10-29 | 0.25 |
 | 31 | Rain puddles: on rainy days (Spring rain, Summer sun shower) little puddles appear in the glade; walk through for a splash; they dry up after | Done/Live ff6632a | 2026-10-29 | 0.5 |
 | 32 | Windy-day kite: on Fall windy days your hero flies a little kite; tap it for a loop-de-loop | Done/Live 186e93d | 2026-10-29 | 0.5 |
-| 34 | Walker: three new flying figurine mounts (Tamale, H-E-Buddy, Chef Concha) with stable stalls, picker tiles, lunchbox treasures and ride effects | In progress (wip/food-flyers) | 2026-10-29 | 0.5 |
+| 34 | Walker: three new flying figurine mounts (Tamale, H-E-Buddy, Chef Concha) with stable stalls, picker tiles, lunchbox treasures and ride effects | Done/Live ae971fc | 2026-10-29 | 0.5 |
 | 33 | Garden pinwheels: colorful pinwheels in the glade spin in the breeze, faster when you walk past or tap them (not in snowy themes) | Done/Live 080ebfa | 2026-10-29 | 0.25 |
 
 ## Recently done
