@@ -119,7 +119,11 @@ function env(u: number, e: Ease) {
   return (1 - Math.exp(-5 * a) * Math.cos(9 * a)) * (1 - smooth(0.72, 1, u));
 }
 
-function rnd(seed: number) { let s = seed >>> 0; return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 4294967296; }; }
+// mulberry32: well-mixed PRNG (the old LCG's consecutive draws were correlated -> repeating beat pairs)
+function rnd(seed: number) {
+  let a = seed >>> 0;
+  return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
 
 // ---------------------------------------------------------------- per-mount simulation
 class Mover {
@@ -129,7 +133,7 @@ class Mover {
   wing = 0; capePh = 0; glide = 0;
   blinkAt = 1.5; blinkT0 = -9; blinks = 1;
   gaze = [0, 0]; gv = [0, 0]; gt = [0, 0]; gazeAt = 1;
-  beat: { k: string; t0: number; d: number } | null = null; beatAt: number;
+  beat: { k: string; t0: number; d: number } | null = null; beatAt: number; bag: string[] = []; lastK = '';
   constructor(public i: number, public ms: MotionStyle, public calm: boolean) {
     this.r = rnd(97 + i * 7919);
     this.beatAt = 1.8 + i * 1.7;
@@ -185,7 +189,14 @@ class Mover {
     if (!this.beat && t > this.beatAt) {
       let kinds = [...BEATS[this.i], ...(ms.extra?.[this.i] ?? [])];
       if (this.calm) kinds = kinds.filter((k) => CALM_BEATS.has(k));
-      const k = kinds[Math.floor(this.r() * kinds.length)];
+      // shuffled bag: every beat plays once per cycle, never the same one twice in a row
+      this.bag = this.bag.filter((x) => kinds.includes(x));
+      if (!this.bag.length) {
+        this.bag = [...kinds];
+        for (let j = this.bag.length - 1; j > 0; j--) { const q = Math.floor(this.r() * (j + 1)); [this.bag[j], this.bag[q]] = [this.bag[q], this.bag[j]]; }
+        if (this.bag.length > 1 && this.bag[this.bag.length - 1] === this.lastK) this.bag.unshift(this.bag.pop()!);
+      }
+      const k = this.bag.pop()!; this.lastK = k;
       this.beat = { k, t0: t, d: BEAT_LEN[k] * (this.calm ? 1.3 : 1) };
       const [a, b] = ms.beats; this.beatAt = t + BEAT_LEN[k] + a + this.r() * (b - a);
     }
