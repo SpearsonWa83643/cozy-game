@@ -106,71 +106,11 @@ function hatch(c: C, b: ReturnType<typeof bbox>, gap: number, col: string, w: nu
   c.stroke();
 }
 const lerpPt = (a: Pt, b: Pt, t: number): Pt => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
-// Feathered silhouette (Walker, Oct 29 9:34 PM; revised 10:11 PM: "eagle too spiky and cookie doesnt need it").
-// Eagle only: a few broad, low, rounded scallops that read as overlapping plumage, flowing back along the body
-// (the eagle faces +x), mostly on the back, belly edge and tail fan; the head stays smooth except for a hint of
-// soft nape feathers. The cookie keeps the clean bold outline. Seeded so every render matches.
-const TEX = (p: Part) => (p.color !== '#d9944b' && ['body', 'head', 'tail'].includes(p.id) ? p.id : '');
-/** Walk the closed outline at irregular arclength steps: [point, outward normal, tangent, rand()]. */
-function edgeWalk(p: Part, gap: [number, number], seed: number) {
-  const d = densify(p.pts, sm(p), true, 14), n = d.length, r = rng(seed);
-  let area = 0; for (let i = 0; i < n; i++) { const a = d[i], b = d[(i + 1) % n]; area += a[0] * b[1] - b[0] * a[1]; }
-  const sgn = area > 0 ? -1 : 1, out: { P: Pt; N: Pt; Tg: Pt; r: () => number }[] = [];
-  let next = gap[0] * r(), acc = 0;
-  for (let i = 0; i < n; i++) {
-    const a = d[i], b = d[(i + 1) % n], L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1e-6; acc += L;
-    if (acc < next) continue;
-    acc = 0; next = gap[0] + (gap[1] - gap[0]) * r();
-    const tg: Pt = [(b[0] - a[0]) / L, (b[1] - a[1]) / L];
-    out.push({ P: a, N: [-tg[1] * sgn, tg[0] * sgn], Tg: tg, r });
-  }
-  return out;
-}
-/** Where plumage scallops belong: tail fan tips, back + belly of the body, only the nape of the head. */
-function plumeAt(k: string, N: Pt) {
-  if (k === 'tail') return N[0] < -0.15;
-  if (k === 'head') return N[0] < -0.45 && N[1] < 0.2;
-  return Math.abs(N[1]) > 0.45 || N[0] < -0.5;
-}
-const flowOf = (Tg: Pt): Pt => (Tg[0] <= 0 ? Tg : [-Tg[0], -Tg[1]]);
-function edgeOut(c: C, p: Part, half: number) {
-  const k = TEX(p); if (!k) return;
-  c.fillStyle = INK;
-  const [w0, w1] = k === 'tail' ? [12, 18] : k === 'head' ? [10, 14] : [14, 22];
-  const hMax = k === 'tail' ? 5 : k === 'head' ? 3 : 4.2;
-  let n = 0;
-  for (const { P, N, Tg, r } of edgeWalk(p, [w0 * 1.05, w1 * 1.35], p.id.length * 131 + p.pts.length)) {
-    const skip = r() < 0.25, w = w0 + r() * (w1 - w0), h = hMax * (0.55 + 0.45 * r());
-    if (skip || !plumeAt(k, N) || (k === 'head' && ++n > 3)) continue;
-    const F = flowOf(Tg), o = half - 0.6;
-    // Upstream root -> round lobe that peaks toward the trailing end -> tucks back in (overlapping feather).
-    const B0: Pt = [P[0] + N[0] * o - F[0] * w * 0.5, P[1] + N[1] * o - F[1] * w * 0.5];
-    const B1: Pt = [P[0] + N[0] * o + F[0] * w * 0.5, P[1] + N[1] * o + F[1] * w * 0.5];
-    c.beginPath(); c.moveTo(B0[0] - N[0] * 1.5, B0[1] - N[1] * 1.5);
-    c.bezierCurveTo(B0[0] + N[0] * h * 0.9 + F[0] * w * 0.2, B0[1] + N[1] * h * 0.9 + F[1] * w * 0.2,
-      B1[0] + N[0] * h * 1.25 - F[0] * w * 0.12, B1[1] + N[1] * h * 1.25 - F[1] * w * 0.12, B1[0] - N[0] * 1.5, B1[1] - N[1] * 1.5);
-    c.closePath(); c.fill();
-  }
-}
-/** Soft inner feather-overlap lines just inside the plumage edge (low contrast, short, curved with the flow). */
-function edgeIn(c: C, p: Part) {
-  const k = TEX(p); if (!k || k === 'head') return;
-  const col = k === 'body' ? 'rgba(24,12,6,.45)' : 'rgba(60,50,40,.35)';
-  for (const { P, N, Tg, r } of edgeWalk(p, [16, 30], p.pts.length * 17 + 3)) {
-    if (r() < 0.35 || !plumeAt(k, N)) continue;
-    const F = flowOf(Tg), L = 4 + r() * 3, d = 2.5 + r() * 1.5;
-    const a: Pt = [P[0] - N[0] * d - F[0] * L * 0.5, P[1] - N[1] * d - F[1] * L * 0.5];
-    const m: Pt = [P[0] - N[0] * (d + 1.6), P[1] - N[1] * (d + 1.6)];
-    const b2: Pt = [P[0] - N[0] * d + F[0] * L * 0.5, P[1] - N[1] * d + F[1] * L * 0.5];
-    taper(c, [a, m, b2], 1.2, col, false, [0.3, 0.3]);
-  }
-}
 function celFine(c: C, parts: Part[]) {
   c.lineJoin = 'round'; c.lineCap = 'round';
   // 1. Bold outer silhouette: every outline part, fattened, behind everything.
   c.strokeStyle = INK; c.fillStyle = INK; c.lineWidth = 11;
   for (const p of parts) if (!isLine(p) && !INTERIOR.test(p.id) && !['eye', 'glint', 'blush'].includes(p.role)) { const P2 = pathOf(p); c.fill(P2); c.stroke(P2); }
-  for (const p of parts) edgeOut(c, p, 5.5);
   for (const p of parts) if (isLine(p) && p.id === 'cape-trim') { c.lineWidth = (p.width ?? 4) + 9; c.strokeStyle = INK; c.stroke(pathOf(p)); }
   for (const p of parts) {
     const P2 = pathOf(p), id = p.id;
@@ -227,7 +167,6 @@ function celFine(c: C, parts: Part[]) {
     // Thin interior contour (the bold one is the silhouette pass).
     c.strokeStyle = INTERIOR.test(id) ? css(shade(p.color, 0.55)) : INK;
     c.lineWidth = INTERIOR.test(id) ? 1.3 : p.role === 'major' ? 2.4 : 1.8; c.stroke(P2);
-    edgeIn(c, p);
   }
 }
 /** Per-part fine detail, drawn clipped inside the part. */
