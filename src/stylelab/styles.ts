@@ -106,6 +106,70 @@ function hatch(c: C, b: ReturnType<typeof bbox>, gap: number, col: string, w: nu
   c.stroke();
 }
 const lerpPt = (a: Pt, b: Pt, t: number): Pt => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+// Ink and Wash pen layer (Walker, Oct 29 11:43 PM: "a bit more pen lines around, subtle pen shading balanced
+// and with taste"). Fine, slightly irregular nib strokes: hatching (cross-hatch in the deepest core) only in the
+// shadow crescent away from the top-left light, a thin broken second contour on the shadow side, and a few
+// form-following detail marks. Restrained so the wash still breathes; no outline texture.
+function penLine(c: C, a: Pt, b: Pt, bow: number, w: number, alpha: number) {
+  const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1;
+  c.strokeStyle = `rgba(22,19,26,${alpha})`; c.lineWidth = w;
+  c.beginPath(); c.moveTo(a[0], a[1]); c.quadraticCurveTo(mx - dy / L * bow, my + dx / L * bow, b[0], b[1]); c.stroke();
+}
+function shadowClip(c: C, p: Part, b: ReturnType<typeof bbox>, k: number) {
+  // Everything inside the part but outside a copy nudged toward the light = a crescent on the shadow side.
+  const d = densify(p.pts, sm(p), true, 6);
+  c.beginPath(); c.rect(b.x0 - 60, b.y0 - 60, b.w + 120, b.h + 120);
+  d.forEach(([x, y], i) => (i ? c.lineTo : c.moveTo).call(c, x - b.w * k, y - b.h * k * 1.2));
+  c.closePath(); c.clip('evenodd');
+}
+function hatchSet(c: C, b: ReturnType<typeof bbox>, ang: number, gap: number, alpha: number, r: () => number) {
+  const ux = Math.cos(ang), uy = Math.sin(ang), nx = -uy, ny = ux, R = Math.hypot(b.w, b.h) / 2 + 4;
+  for (let o = -R; o <= R; o += gap * (0.85 + r() * 0.3)) {
+    if (r() < 0.12) continue; // a few missing strokes keep it hand-made
+    const j = (r() - 0.5) * 0.08, cx = b.cx + nx * o, cy = b.cy + ny * o;
+    const a: Pt = [cx - (ux - j) * R, cy - (uy + j) * R], e: Pt = [cx + (ux + j) * R, cy + (uy - j) * R];
+    penLine(c, a, e, R * (0.05 + r() * 0.04), 0.55 + r() * 0.45, alpha * (0.8 + r() * 0.4));
+  }
+}
+function inkPen(c: C, p: Part) {
+  const b = bbox(p.pts), size = Math.min(b.w, b.h);
+  if (size < 12 || p.role === 'blush') return;
+  const r = rng('pen' + p.id), major = p.role === 'major', dark = lum(p.color) < 90;
+  c.save(); path(c, p); c.clip();
+  c.save(); shadowClip(c, p, b, major ? 0.11 : 0.17);
+  hatchSet(c, b, -1.05, major ? 4.8 : 3.8, dark ? 0.26 : 0.28, r);
+  if (major) { c.restore(); c.save(); shadowClip(c, p, b, 0.045); hatchSet(c, b, 0.35, 5.5, 0.17, r); }
+  if (p.color === '#d9944b') {
+    // Cookie dough: a light stipple in the shadow to hint at the baked surface.
+    c.fillStyle = 'rgba(22,19,26,.5)';
+    for (let i = 0; i < 90; i++) { c.beginPath(); c.arc(b.x0 + r() * b.w, b.y0 + r() * b.h, 0.6 + r() * 0.6, 0, TAU); c.fill(); }
+  }
+  c.restore();
+  // Form marks, sparse and inside the part.
+  if (p.id === 'body' && p.color !== '#d9944b') {
+    for (let i = 0; i < 9; i++) {
+      const x = b.x0 + b.w * (0.2 + r() * 0.65), y = b.y0 + b.h * (0.3 + r() * 0.55), w = 5 + r() * 4;
+      penLine(c, [x - w, y - w * 0.35], [x + w * 0.2, y + w * 0.25], -2, 0.8, 0.5);
+    }
+  } else if (p.id === 'head') {
+    for (let i = 0; i < 4; i++) { const y = b.y0 + b.h * (0.62 + i * 0.08), x = b.x0 + b.w * (0.08 + r() * 0.12); penLine(c, [x, y], [x + 12 + r() * 8, y + 3], -1.5, 0.6, 0.35); }
+  } else if (p.id === 'body') {
+    for (let i = 0; i < 5; i++) { const x = b.x0 + b.w * (0.15 + r() * 0.7), y = b.y0 + b.h * (0.15 + r() * 0.7); penLine(c, [x, y], [x + 3 + r() * 4, y + (r() - 0.5) * 4], 1, 0.65, 0.4); }
+  } else if (p.id === 'cape') {
+    for (let i = 0; i < 3; i++) { const x = b.x0 + b.w * (0.3 + i * 0.18 + r() * 0.05); penLine(c, [x, b.y0 + b.h * 0.2], [x - b.w * 0.12, b.y1 - b.h * 0.15], 4 + r() * 4, 0.7, 0.3); }
+  }
+  c.restore();
+  if (!major) return;
+  // Second, thinner broken contour hugging the shadow side, just inside the main brush line.
+  const d = densify(p.pts, sm(p), true, 10), ph = r() * TAU;
+  for (let i = 0; i < d.length; i++) {
+    const a = d[i], e = d[(i + 1) % d.length], vx = a[0] - b.cx, vy = a[1] - b.cy, L = Math.hypot(vx, vy) || 1;
+    const facing = (vx * 0.55 + vy * 0.83) / L;
+    if (facing < 0.25 || Math.sin(i * 0.21 + ph) > 0.55) continue;
+    const ins = 3.2 + Math.sin(i * 0.37 + ph) * 0.8;
+    penLine(c, [a[0] - vx / L * ins, a[1] - vy / L * ins], [e[0] - vx / L * ins, e[1] - vy / L * ins], 0, 0.6 + facing * 0.6, 0.5);
+  }
+}
 function celFine(c: C, parts: Part[]) {
   c.lineJoin = 'round'; c.lineCap = 'round';
   // 1. Bold outer silhouette: every outline part, fattened, behind everything.
@@ -443,6 +507,7 @@ const ink: LabStyle = {
         softBlob(c, b.cx + b.w * 0.28, b.cy + b.h * 0.32, b.w * 0.46, b.h * 0.34, css(mix(wash, '#2a2833', 0.35), 0.5));
         c.restore();
         if (p.role === 'blush') continue;
+        inkPen(c, p);
       }
       // Calligraphic ink line: pressure swells and the occasional dry-brush gap.
       const dense = densify(p.pts, sm(p), cl(p), 10);
