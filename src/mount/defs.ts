@@ -192,6 +192,34 @@ export const MOUNTS: MountDef[] = [
     blurb: 'A juicy strawberry with a leafy hat!',
     flapRate: 1.2,
   },
+  // 34: three more figurine friends (Walker's photo, Oct 29).
+  {
+    id: 'tamale',
+    name: 'Tamale',
+    treasure: 'corn_husk',
+    body: 'tamale_body', wing: 'tamale_wing', wingFar: 'tamale_wing_far', icon: 'i_tamale',
+    scale: 1.0,
+    blurb: 'A happy yellow tamale, all wrapped up and ready to fly!',
+    flapRate: 1.1,
+  },
+  {
+    id: 'he_buddy',
+    name: 'H-E-Buddy',
+    treasure: 'golden_bag',
+    body: 'buddy_body', wing: 'buddy_wing', wingFar: 'buddy_wing_far', icon: 'i_buddy',
+    scale: 1.0,
+    blurb: 'A shiny golden buddy in a tiny party hat. Wave hi!',
+    flapRate: 1.2,
+  },
+  {
+    id: 'concha',
+    name: 'Chef Concha',
+    treasure: 'chef_hat',
+    body: 'concha_body', wing: 'concha_wing', wingFar: 'concha_wing_far', icon: 'i_concha',
+    scale: 1.0,
+    blurb: 'A sweet pink concha in a chef\'s hat!',
+    flapRate: 1.0,
+  },
 ];
 
 export function mountById(id: string): MountDef {

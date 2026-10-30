@@ -34,12 +34,12 @@ test('new mounts: stable, picker, ride and steer', async ({ playwright: _pw }, i
   await page.waitForTimeout(1000);
   await page.evaluate(() => { try { (window as any).__cozy.dismiss?.(); } catch { /* */ } });
 
-  // Stable: 19 stalls (3 rows), every new friend awake.
+  // Stable: 22 stalls (3 rows), every new friend awake.
   await page.evaluate(() => (window as any).__menu.show('stable'));
   await expect.poll(() => page.evaluate(() => (window as any).__menu.open), { timeout: 30_000 }).toBe(true);
   await page.waitForTimeout(1200);
   const pets = await page.evaluate(() => (window as any).__menu.stablePets.map((p: any) => [p.id, p.on]));
-  expect(pets.length).toBe(19);
+  expect(pets.length).toBe(22);
   for (const [id] of NEW) expect(pets.find((p: any) => p[0] === id)?.[1], `${id} awake`).toBe(true);
   const vp = page.viewportSize()!;
   for (const [id] of NEW) {
@@ -48,7 +48,7 @@ test('new mounts: stable, picker, ride and steer', async ({ playwright: _pw }, i
     expect(r.w).toBeGreaterThanOrEqual(80); expect(r.h).toBeGreaterThanOrEqual(120);
     expect(r.y + r.h).toBeLessThanOrEqual(vp.height); expect(r.x + r.w).toBeLessThanOrEqual(vp.width);
   }
-  await page.screenshot({ path: `${SHOTS}/stable-19.png` });
+  await page.screenshot({ path: `${SHOTS}/stable-22.png` });
   const closeBtn = await page.evaluate(() => (window as any).__menu.rects.close);
   await page.touchscreen.tap(closeBtn.x + closeBtn.w / 2, closeBtn.y + closeBtn.h / 2);
   await expect.poll(() => page.evaluate(() => (window as any).__menu.open), { timeout: 30_000 }).toBe(false);
@@ -68,7 +68,7 @@ test('new mounts: stable, picker, ride and steer', async ({ playwright: _pw }, i
     expect(r.w).toBeGreaterThanOrEqual(100);
   }
   await page.waitForTimeout(900);
-  await page.screenshot({ path: `${SHOTS}/mount-picker-19.png` });
+  await page.screenshot({ path: `${SHOTS}/mount-picker-22.png` });
 
   // Ride each new friend: pick the tile for the first, Call Mount directly for the rest.
   for (const [i, [id]] of NEW.entries()) {

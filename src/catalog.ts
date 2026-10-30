@@ -29,12 +29,15 @@ export const TREASURES: Treasure[] = [
   { id: 'duck_squeak', name: 'Squeaky Duck', icon: 'ic_duck_squeak', blurb: 'Squeak! Call Mount to ride a big rubber duck!', hint: 'A lunchbox in the Wild Woods.' },
   { id: 'jelly_gem', name: 'Jelly Gem', icon: 'ic_jelly_gem', blurb: 'It wobbles! Call Mount to ride a sky jellyfish!', hint: 'A lunchbox in the Wild Woods.' },
   { id: 'berry_seed', name: 'Golden Berry Seed', icon: 'ic_berry_seed', blurb: 'Yum! Call Mount to ride a strawberry!', hint: 'A lunchbox in the Wild Woods.' },
+  { id: 'corn_husk', name: 'Golden Corn Husk', icon: 'ic_corn_husk', blurb: 'Crinkly! Call Mount to ride a flying tamale!', hint: 'A lunchbox in the Wild Woods.' },
+  { id: 'golden_bag', name: 'Tiny Golden Bag', icon: 'ic_golden_bag', blurb: 'So shiny! Call Mount to ride H-E-Buddy!', hint: 'A lunchbox in the Wild Woods.' },
+  { id: 'chef_hat', name: "Tiny Chef's Hat", icon: 'ic_chef_hat', blurb: 'Oui chef! Call Mount to ride a pink concha!', hint: 'A lunchbox in the Wild Woods.' },
 ];
 
 export type MinorId = 'petal' | 'shell' | 'apple' | 'acorn' | 'beetle' | 'glowmoss' | 'starshard';
 export const WILD_SET = ['acorn_cap', 'glow_scarf', 'ranger_coat'];
 /** Mounts found in Wild Woods chests after the cosmetic set. */
-export const WILD_MOUNTS = ['pterodactyl_egg', 'cloud_puppy_tuft', 'rainbow_horseshoe', 'golden_honeycomb', 'glow_pearl', 'sugar_cube', 'toy_propeller', 'pumpkin_seed', 'cowboy_hat', 'chili_poncho', 'magic_tassel', 'duck_squeak', 'jelly_gem', 'berry_seed'];
+export const WILD_MOUNTS = ['pterodactyl_egg', 'cloud_puppy_tuft', 'rainbow_horseshoe', 'golden_honeycomb', 'glow_pearl', 'sugar_cube', 'toy_propeller', 'pumpkin_seed', 'cowboy_hat', 'chili_poncho', 'magic_tassel', 'duck_squeak', 'jelly_gem', 'berry_seed', 'corn_husk', 'golden_bag', 'chef_hat'];
 export const MINORS: { id: MinorId; name: string; icon: string }[] = [
   { id: 'petal', name: 'Petals', icon: 'petal' }, { id: 'shell', name: 'Shells', icon: 'shell0' },
   { id: 'apple', name: 'Fruit', icon: 'apple' }, { id: 'acorn', name: 'Acorns', icon: 'acorn' }, { id: 'beetle', name: 'Beetles spotted', icon: 'beetle' },
