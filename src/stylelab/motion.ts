@@ -25,7 +25,7 @@ const Rz = (r: number): M => { const c = Math.cos(r), s = Math.sin(r); return [c
 const S = (x: number, y: number): M => [x, 0, 0, y, 0, 0];
 const chain = (...ms: M[]) => ms.reduce(mul);
 
-type Pose = { x: number; y: number; r: number; sx: number; sy: number };
+type Pose = { x: number; y: number; r: number; sx: number; sy: number; fy?: number };
 const P0 = (): Pose => ({ x: 0, y: 0, r: 0, sx: 1, sy: 1 });
 
 // ---------------------------------------------------------------- motion styles
@@ -204,7 +204,7 @@ class Mover {
     R.r += clamp((vx + vy) * ms.bank, -0.22, 0.22);
     const dip = this.e('dip'); R.y += 8 * dip * m; R.sy -= 0.03 * dip;
     const spin = this.bu('spin'); if (spin >= 0) { R.r += TAU * easeIO(spin); R.y -= Math.sin(Math.PI * spin) * 10; }
-    const roll = this.bu('roll'); if (roll >= 0) { R.sy *= Math.cos(TAU * easeIO(roll)); R.y -= Math.sin(Math.PI * roll) * 12; }
+    const roll = this.bu('roll'); if (roll >= 0) { R.fy = Math.cos(TAU * easeIO(roll)); R.y -= Math.sin(Math.PI * roll) * 12; }
     const pw = this.e('power'); R.y -= 7 * pw;
     const [bA, bHz] = ms.breathe, br = bA * Math.sin(TAU * bHz * t + ph) * (this.calm ? 0.7 : 1);
     const L: Record<string, Pose> = {};
@@ -350,7 +350,7 @@ export function startMotionLab() {
     const rig = RIGS[p.mover.i], { root: R, L, capePh } = p.mover.pose();
     const [cx, cy] = rig.center;
     const base: M = chain(T(p.ox, p.oy), S(p.scale, p.scale), T(-256, -256));
-    const rootM = chain(base, T(cx + R.x, cy + R.y), Rz(R.r), T(0, 100), S(R.sx, R.sy), T(0, -100), T(-cx, -cy));
+    const rootM = chain(base, T(cx + R.x, cy + R.y), Rz(R.r), S(1, R.fy ?? 1), T(0, 100), S(R.sx, R.sy), T(0, -100), T(-cx, -cy));
     const world: Record<string, M> = {};
     const local = (id: string, pv: [number, number]): M => { const l = L[id] ?? P0(); return chain(T(pv[0] + l.x, pv[1] + l.y), Rz(l.r), S(l.sx, l.sy), T(-pv[0], -pv[1])); };
     for (const d of rig.layers) if (!d.parent) world[d.id] = mul(rootM, local(d.id, d.pivot));
@@ -395,8 +395,10 @@ export function startMotionLab() {
     go, count: MOTIONS.length, ids: MOTIONS.map((m) => m.id), skins: LAB_STYLES.map((s) => s.id),
     skin: (id: string) => { skin = Math.max(0, LAB_STYLES.findIndex((s) => s.id === id)); build(); },
     seek: (t: number) => { reset(); paused = true; while (simT < t) advance(0.05); },
+    stepBy: (dt: number) => new Promise((res) => { advance(dt); requestAnimationFrame(() => requestAnimationFrame(res)); }),
     play: () => { paused = false; last = performance.now(); },
     ready: () => jobs.length === 0 && panels.every((p) => p.sprites.length > 0 && p.sprites.every((s) => s.frames.length && s.frames.every(Boolean))),
     fps: () => fps,
+    beats: () => panels.map((p) => p.mover.beat && { k: p.mover.beat.k, u: (p.mover.t - p.mover.beat.t0) / p.mover.beat.d }),
   };
 }
