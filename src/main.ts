@@ -39,6 +39,11 @@ for (const ev of ['touchend', 'pointerup', 'click', 'keydown']) {
 const params = new URLSearchParams(location.search);
 
 async function start() {
+  if (params.has('stylelab')) { // temporary Mount Style Lab (rapid art-direction loop)
+    const { startStyleLab } = await import('./stylelab/lab');
+    startStyleLab();
+    return;
+  }
   try {
     await Promise.race([
       document.fonts.load('700 20px Nunito'),
