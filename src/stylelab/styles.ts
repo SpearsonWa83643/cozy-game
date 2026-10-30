@@ -51,6 +51,13 @@ function vignette(c: C, w: number, h: number, inner: string, outer: string) {
   c.fillStyle = g; c.fillRect(0, 0, w, h);
 }
 function jitter(pts: Pt[], amp: number, r: () => number): Pt[] { return pts.map(([x, y]) => [x + (r() - 0.5) * amp, y + (r() - 0.5) * amp]); }
+/** A soft-edged elliptical stain (radial gradient), in-bounds so no browser culls it. */
+function softBlob(c: C, x: number, y: number, rx: number, ry: number, col: string) {
+  c.save(); c.translate(x, y); c.scale(1, ry / rx);
+  const g = c.createRadialGradient(0, 0, 0, 0, 0, rx);
+  g.addColorStop(0, col); g.addColorStop(0.55, col.replace(/[\d.]+\)$/, (m) => `${parseFloat(m) * 0.6})`)); g.addColorStop(1, col.replace(/[\d.]+\)$/, '0)'));
+  c.fillStyle = g; c.fillRect(-rx, -rx, rx * 2, rx * 2); c.restore();
+}
 const lightOffset = (k: number): [number, number] => [LIGHT[0] * k, LIGHT[1] * k];
 
 // ================================================================== 1. Bold cel-shaded
@@ -125,13 +132,8 @@ const wc: LabStyle = {
       if (p.role === 'blush') continue;
       c.save(); path(c, p); c.clip();
       // Wet-in-wet shadow pooling bottom-right + lifted highlight top-left.
-      const k = c.getTransform().a;
-      c.shadowColor = css(shade(p.color, 0.45), 0.55); c.shadowBlur = 26 * k; c.shadowOffsetX = 2000 * k;
-      c.fillStyle = '#000';
-      c.beginPath(); c.ellipse(b.cx + b.w * 0.32 - 2000, b.cy + b.h * 0.34, b.w * 0.5, b.h * 0.42, 0, 0, TAU); c.fill();
-      c.shadowColor = 'rgba(255,252,240,0.65)';
-      c.beginPath(); c.ellipse(b.cx - b.w * 0.24 - 2000, b.cy - b.h * 0.26, b.w * 0.22, b.h * 0.16, -0.5, 0, TAU); c.fill();
-      c.shadowColor = 'transparent'; c.shadowOffsetX = 0;
+      softBlob(c, b.cx + b.w * 0.32, b.cy + b.h * 0.34, b.w * 0.55, b.h * 0.46, css(shade(p.color, 0.45), 0.6));
+      softBlob(c, b.cx - b.w * 0.24, b.cy - b.h * 0.26, b.w * 0.26, b.h * 0.2, 'rgba(255,252,240,0.7)');
       // Granulation.
       for (let i = 0; i < (b.w * b.h) / 120; i++) {
         c.fillStyle = css(shade(p.color, 0.5), 0.12 + r() * 0.1);
@@ -275,11 +277,11 @@ const ink: LabStyle = {
         c.save(); path(c, p); c.clip();
         const b = bbox(p.pts);
         const k = c.getTransform().a;
-        c.shadowColor = css(wash, p.role === 'blush' ? 0.5 : 0.95); c.shadowBlur = 14 * k; c.shadowOffsetX = 3000 * k;
-        c.fillStyle = '#000';
-        path(c, p, shift(scaleAbout(p.pts, b.cx, b.cy, 0.9), -3000 + 4, 6)); c.fill();
-        c.shadowColor = css(mix(wash, '#2a2833', 0.35), 0.5); c.shadowBlur = 22 * k;
-        c.beginPath(); c.ellipse(b.cx + b.w * 0.28 - 3000, b.cy + b.h * 0.32, b.w * 0.42, b.h * 0.3, 0, 0, TAU); c.fill();
+        c.shadowColor = css(wash, p.role === 'blush' ? 0.5 : 0.95); c.shadowBlur = 14 * k;
+        c.fillStyle = css(wash, p.role === 'blush' ? 0.5 : 0.95);
+        path(c, p, shift(scaleAbout(p.pts, b.cx, b.cy, 0.9), 4, 6)); c.fill();
+        c.shadowColor = 'transparent';
+        softBlob(c, b.cx + b.w * 0.28, b.cy + b.h * 0.32, b.w * 0.46, b.h * 0.34, css(mix(wash, '#2a2833', 0.35), 0.5));
         c.restore();
         if (p.role === 'blush') continue;
       }
