@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-10-29 (CT). Live: main ae971fc, https://willowmere-glade.pages.dev (bundle index-C62BSV5A.js).
+Updated: 2026-10-29 8:55 PM (CT). Live: main ae971fc, https://willowmere-glade.pages.dev (bundle index-C62BSV5A.js).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -18,6 +18,17 @@ Task 34 is Walker's request (Oct 29, 7:46 PM CT). Self-added polish tasks (26-29
 | 32 | Windy-day kite: on Fall windy days your hero flies a little kite; tap it for a loop-de-loop | Done/Live 186e93d | 2026-10-29 | 0.5 |
 | 34 | Walker: three new flying figurine mounts (Tamale, H-E-Buddy, Chef Concha) with stable stalls, picker tiles, lunchbox treasures and ride effects | Done/Live ae971fc | 2026-10-29 | 0.5 |
 | 33 | Garden pinwheels: colorful pinwheels in the glade spin in the breeze, faster when you walk past or tap them (not in snowy themes) | Done/Live 080ebfa | 2026-10-29 | 0.25 |
+
+## Walker's Oct 29 mount requests (t75u, 8:35 PM CT)
+
+Walker: flying mounts, and finding them, score high on engagement; wardrobe-style treasures score low. Lean on the flying mounts for now.
+
+| Order | Task | Status | ETA live | Estimate (dev days) |
+|---|---|---|---|---|
+| 35 | Mount Style Lab (temporary): Cowboy Cookie + Eagle side by side in 6 art styles (Storybook Watercolor, Bold Cel-Shaded, Painterly Gouache, Soft 3D Clay, Ink and Wash, Hi-Res Pixel Art), big prev/next buttons, swipe, ?stylelab=1&s=<style>. Rapid feedback loop with Walker; never merged to main | In progress, live on branch preview https://stylelab.willowmere-glade.pages.dev/?stylelab=1 | 2026-10-29 (preview) | 0.5 + iterations |
+| 36 | Wings to capes: remove wings from creatures that aren't naturally winged and give them a flowing cape for the flying effect. Capes: Cowboy Cookie, Chili in a Poncho, Tamale, H-E-Buddy, Chef Concha, Strawberry, Pumpkin, Cloud Puppy, Reindeer, Lantern Snail, Flying Teacup. Keep wings: Bald Eagle, Pterodactyl, Bumblebee, Canada Goose, Snowy Owl, Flamingo, Unicorn (pegasus), Rubber Duck (a bird). No wings and no cape: Magic Carpet (rippling carpet flight), Sky Jellyfish (floating tentacles), Toy Airplane (propeller). Ref: Walker's stable screenshot (Oct 29) | Not started | 2026-10-31 | 1.5 |
+| 37 | Mounts page: all mounts on a single page (no paging or scrolling); seasonal mounts are shown like the others (no "???" hiding); riding a seasonal mount forces its theme to load (UX rule) | Not started | 2026-10-31 | 1 |
+| 38 | Per-mount view: each flying mount gets its own view with final, very stylized, high-res, high-detail art in the style Walker picks in the Style Lab (35) | Blocked on 35 (style choice) | ~2026-11-09 (after style pick) | 6 |
 
 ## Recently done
 
