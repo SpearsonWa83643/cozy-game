@@ -5,7 +5,7 @@ Rules: each open task has Status, ETA live and Estimate (dev days). Walker's rea
 
 ## Open tasks
 
-Self-added polish tasks (26-29 on 2026-10-28, 30-33 on 2026-10-29; backlog was empty; no Walker decision or spending needed).
+Task 34 is Walker's request (Oct 29, 7:46 PM CT). Self-added polish tasks (26-29 on 2026-10-28, 30-33 on 2026-10-29; backlog was empty; no Walker decision or spending needed).
 
 | Order | Task | Status | ETA live | Estimate (dev days) |
 |---|---|---|---|---|
@@ -16,6 +16,7 @@ Self-added polish tasks (26-29 on 2026-10-28, 30-33 on 2026-10-29; backlog was e
 | 30 | Snow angels: in Winter/Christmas, tapping your hero adds a snow angel to the joy moves (lie back, flap, a fading angel shape) | Done/Live cff0a3a | 2026-10-29 | 0.25 |
 | 31 | Rain puddles: on rainy days (Spring rain, Summer sun shower) little puddles appear in the glade; walk through for a splash; they dry up after | Done/Live ff6632a | 2026-10-29 | 0.5 |
 | 32 | Windy-day kite: on Fall windy days your hero flies a little kite; tap it for a loop-de-loop | Done/Live 186e93d | 2026-10-29 | 0.5 |
+| 34 | Walker: three new flying figurine mounts (Tamale, H-E-Buddy, Chef Concha) with stable stalls, picker tiles, lunchbox treasures and ride effects | In progress (wip/food-flyers) | 2026-10-29 | 0.5 |
 | 33 | Garden pinwheels: colorful pinwheels in the glade spin in the breeze, faster when you walk past or tap them (not in snowy themes) | Done/Live 080ebfa | 2026-10-29 | 0.25 |
 
 ## Recently done

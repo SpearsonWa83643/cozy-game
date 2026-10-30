@@ -390,4 +390,4 @@ export function paintFunMounts(scene: Phaser.Scene) {
     canvasTex(scene, e.treasure, 48, 48, (c) => treasure(c, 48), 2);
   }
 }
-export { paintWing };
+export { paintWing, face, outline, limb, sparkle };

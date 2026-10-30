@@ -49,6 +49,10 @@ const FX: Record<string, Fx> = {
   rubber_duck: { tint: [0xffffff, 0xcdeeff, 0x9fdcf5], add: false, life: 1100, vx: [-16, 6], vy: [-45, -20], gy: -20, sc: 0.5, every: 130, at: [-10, -14] },
   sky_jelly: { tint: [0xff8fd0, 0xc99bff, 0xffd0f0], add: true, life: 1000, vx: [-14, 14], vy: [10, 40], gy: 20, sc: 0.55, every: 100, at: [0, 16] },
   strawberry: { tint: [0x3fae49, 0xe8384f, 0xfff1a0], add: false, life: 800, vx: [-26, 0], vy: [-5, 20], gy: 300, sc: 0.36, every: 110, at: [-24, 8] },
+  // 34: tamale sheds corn-husk flakes, H-E-Buddy twinkles gold, the concha drops sugar crumbs.
+  tamale: { tint: [0xf2c14e, 0xffe08a, 0xd99a2b], add: false, life: 900, vx: [-34, -4], vy: [-12, 12], gy: 160, sc: 0.44, every: 100, at: [-26, 6] },
+  he_buddy: { tint: [0xffd34d, 0xfff3b0, 0xffb81c], add: true, life: 650, vx: [-50, -10], vy: [-30, 10], gy: -10, sc: 0.48, every: 70, at: [-30, 0] },
+  concha: { tint: [0xff9fc4, 0xffffff, 0xffd6e5], add: false, life: 750, vx: [-26, 2], vy: [-8, 16], gy: 320, sc: 0.34, every: 90, at: [-22, 10] },
 };
 const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
@@ -552,6 +556,9 @@ export class Mount {
       case 'chili_poncho': tilt += Math.sin(time / 90) * 0.015; break;
       case 'strawberry': bsy = 1 + Math.sin(time / 300) * 0.035; bsx = 1 - Math.sin(time / 300) * 0.03; break;
       case 'cowboy_cookie': tilt += Math.sin(time / 420) * 0.03 * d; break;
+      case 'tamale': tilt += Math.sin(time / 340) * 0.035 * d; break;
+      case 'he_buddy': tilt += Math.sin(time / 200) * 0.025 * d; bsy = 1 + Math.sin(time / 400) * 0.02; break;
+      case 'concha': bsy = 1 + Math.sin(time / 320) * 0.04; bsx = 1 - Math.sin(time / 320) * 0.03; break;
     }
     this.body.setPosition(x, y).setFlipX(d < 0).setRotation(tilt).setScale(bs * bsx, bs * bsy);
     const ws = this.SCALE / (frameScale[this.def.wing] ?? S);
