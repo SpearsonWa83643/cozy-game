@@ -36,33 +36,41 @@ test('food flyers: stable, picker, ride, fx', async ({ playwright: _pw }, info) 
   const { browser, page, errors } = await boot(info, [...OLD, ...NEW.map((n) => n[1])]);
   try {
     // Art preview: the three bodies + wings and their treasures, painted big from the real textures.
+    // The atlas source canvases are released after GPU upload, so paint the preview with a temporary
+    // top-most Phaser scene (own camera, zoom 1) using the real atlas frames.
     await page.evaluate((ids) => {
-      const tm = (window as any).__game.textures;
-      const find = (name: string) => { for (const k of Object.keys(tm.list)) { const f = tm.list[k].frames?.[name]; if (f && k !== '__MISSING') return f; } return null; };
-      const cv = document.createElement('canvas'); cv.width = 1180; cv.height = 820; cv.id = 'food-preview';
-      Object.assign(cv.style, { position: 'fixed', inset: '0', zIndex: '99', width: '1180px', height: '820px' });
-      const c = cv.getContext('2d')!;
-      const g = c.createLinearGradient(0, 0, 0, 820); g.addColorStop(0, '#bfe6ff'); g.addColorStop(1, '#e9f7d8'); c.fillStyle = g; c.fillRect(0, 0, 1180, 820);
-      const draw = (name: string, x: number, y: number, w: number, h: number) => {
-        const f = find(name); if (!f) return false;
-        c.drawImage(f.source.image, f.cutX, f.cutY, f.cutWidth, f.cutHeight, x, y, w, h); return true;
-      };
+      const game = (window as any).__game;
+      const tm = game.textures;
+      const keyOf = (name: string) => { for (const k of Object.keys(tm.list)) { if (k !== '__MISSING' && tm.list[k].frames?.[name]) return k; } return null; };
       const out: Record<string, boolean> = {};
-      ids.forEach(([body, wing, icon, tr]: string[], i: number) => {
-        const x = 40 + i * 380;
-        draw(`${wing}_far`, x + 120, 70, 96, 192);
-        out[body] = draw(body, x, 160, 372, 252);
-        draw(wing, x + 140, 80, 96, 192);
-        out[icon] = draw(icon, x + 60, 470, 120, 120);
-        out[tr] = draw(tr, x + 200, 470, 120, 120);
-      });
-      document.body.appendChild(cv);
+      game.scene.add('foodPreview', {
+        create(this: any) {
+          const W = this.cameras.main.width, H = this.cameras.main.height;
+          const bg = this.add.graphics(); bg.fillGradientStyle(0xbfe6ff, 0xbfe6ff, 0xe9f7d8, 0xe9f7d8, 1); bg.fillRect(0, 0, W, H);
+          const put = (name: string, x: number, y: number, w: number) => {
+            const k = keyOf(name); if (!k) return false;
+            const im = this.add.image(x, y, k, name); im.setScale(w / im.width); return true;
+          };
+          const col = W / 3;
+          ids.forEach(([body, wing, icon, tr]: string[], i: number) => {
+            const cx = col * i + col / 2, cy = H * 0.36, bw = col * 0.82;
+            put(`${wing}_far`, cx - bw * 0.05, cy - bw * 0.2, bw * 0.26);
+            out[body] = put(body, cx, cy, bw);
+            put(wing, cx + bw * 0.05, cy - bw * 0.2, bw * 0.26);
+            out[icon] = put(icon, cx - col * 0.2, H * 0.78, col * 0.3);
+            out[tr] = put(tr, cx + col * 0.2, H * 0.78, col * 0.3);
+          });
+          this.scene.bringToTop();
+        },
+      }, true);
       (window as any).__foodArt = out;
     }, [['tamale_body', 'tamale_wing', 'i_tamale', 'ic_corn_husk'], ['buddy_body', 'buddy_wing', 'i_buddy', 'ic_golden_bag'], ['concha_body', 'concha_wing', 'i_concha', 'ic_chef_hat']]);
+    await page.waitForTimeout(800);
     const art = await page.evaluate(() => (window as any).__foodArt);
     for (const v of Object.values(art)) expect(v).toBe(true);
     await page.screenshot({ path: `${SHOTS}/food-flyers-art.png` });
-    await page.evaluate(() => document.getElementById('food-preview')?.remove());
+    await page.evaluate(() => (window as any).__game.scene.remove('foodPreview'));
+    await page.waitForTimeout(300);
 
     // Stable: 22 stalls, every friend awake, new stalls big and on screen.
     await page.evaluate(() => (window as any).__menu.show('stable'));
