@@ -1,6 +1,7 @@
 // Data-driven mount definitions. Eagle is free; others unlock via treasures.
 import { hasTreasure, save } from '../save';
 import { theme } from '../theme';
+import { CAPE, NO_WINGS } from './cape';
 
 export type MountDef = {
   id: string;
@@ -17,7 +18,10 @@ export type MountDef = {
   /** Wing beat speed multiplier (bee buzzes fast). Default 1. */
   flapRate?: number;
   /** 'prop' = no flapping wings: `wing` is a propeller spun at the nose (propAt, body units from centre). */
-  style?: 'wings' | 'prop';
+  /** 36: 'cape' = a flowing cape (wingFar = cape frame behind, wing = collar bow); 'none' = no wings (carpet, jellyfish). */
+  style?: 'wings' | 'prop' | 'cape' | 'none';
+  /** Cape tint (style 'cape'). */
+  cape?: number;
   propAt?: [number, number];
 };
 
@@ -221,6 +225,12 @@ export const MOUNTS: MountDef[] = [
     flapRate: 1.0,
   },
 ];
+
+// 36 (Walker, Oct 29): capes for friends that aren't naturally winged; carpet and jellyfish fly wingless.
+for (const m of MOUNTS) {
+  if (CAPE[m.id] !== undefined) { m.style = 'cape'; m.cape = CAPE[m.id]; m.wing = 'cape_bow'; m.wingFar = 'cape0'; }
+  else if (NO_WINGS.has(m.id)) m.style = 'none';
+}
 
 export function mountById(id: string): MountDef {
   return MOUNTS.find((m) => m.id === id) ?? MOUNTS[0];

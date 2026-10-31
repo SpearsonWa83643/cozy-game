@@ -10,6 +10,7 @@ import { sfx } from '../audio';
 import { theme, themeEvents } from '../theme';
 import type { WorldScene } from '../scenes/World';
 import { MountDef, mountById } from './defs';
+import { CAPE_AT, CAPE_OX, CAPE_OY, capeFrame, mulTint } from './cape';
 import { stickInput } from '../controls';
 import type { TouchStick } from '../controls';
 
@@ -89,6 +90,9 @@ export class Mount {
   vx = 0; vy = 0;
   steers = 0; tours = 0;
   def: MountDef = mountById('eagle');
+  /** 36: current cape ripple frame ('' when not caped). */
+  capeKey = '';
+  capeLift = 0;
   get SCALE() { return this.def.scale; }
 
   constructor(private w: WorldScene) {
@@ -112,6 +116,7 @@ export class Mount {
   applyTheme() {
     const t = theme.id === 'halloween' ? 0xd8ccff : 0xffffff;
     for (const o of [this.body, this.wing, this.wingFar]) { if (t === 0xffffff) o.clearTint(); else o.setTint(t); }
+    if (this.def.style === 'cape' && this.def.cape !== undefined) { const ct = mulTint(this.def.cape, t); this.wing.setTint(ct); this.wingFar.setTint(ct); }
   }
 
   /** Swap body/wing textures to the chosen mount. */
@@ -121,9 +126,10 @@ export class Mount {
     this.body.setTexture(atlasOf(def.body), def.body).setScale(sc(def.body));
     this.wing.setTexture(atlasOf(def.wing), def.wing).setScale(sc(def.wing));
     this.wingFar.setTexture(atlasOf(def.wingFar), def.wingFar).setScale(sc(def.wingFar));
-    const prop = def.style === 'prop';
-    this.wing.setOrigin(0.5, prop ? 0.5 : 0.96).setDepth(prop ? DEPTH + 0.2 : DEPTH + 0.5);
-    this.wingFar.setOrigin(0.5, prop ? 0.5 : 0.96);
+    const prop = def.style === 'prop', cape = def.style === 'cape';
+    this.wing.setOrigin(0.5, prop || cape ? 0.5 : 0.96).setDepth(prop ? DEPTH + 0.2 : DEPTH + 0.5);
+    this.wingFar.setOrigin(cape ? CAPE_OX : 0.5, cape ? CAPE_OY : prop ? 0.5 : 0.96);
+    this.capeKey = cape ? def.wingFar : '';
     this.applyTheme();
     if (this.trail) this.buildFx();
   }
@@ -251,6 +257,7 @@ export class Mount {
 
   show(on: boolean) {
     for (const o of [this.body, this.wing, this.wingFar, this.shadow]) o.setVisible(on).setAlpha(1);
+    if (this.def.style === 'none') { this.wing.setVisible(false); this.wingFar.setVisible(false); }
   }
 
   pickUp() {
@@ -543,7 +550,8 @@ export class Mount {
     const lift = c * (1 - this.glideAmt) + 0.6 * this.glideAmt; // glide: wings held up in a soaring V // 1 up, -1 down; glide holds wings level-ish
     const bob = Math.sin(this.flap) * 3.2 * (1 - this.glideAmt) + Math.sin(time / 600) * 1.5;
     const d = this.dir;
-    const x = this.ex, y = this.ey + bob;
+    const x = this.ex;
+    let y = this.ey + bob;
     const vy = Math.sin(this.heading) * this.speed;
     let tilt = Phaser.Math.Clamp(vy / 900, -0.14, 0.14) * d + (this.phase === 'hop' ? -0.12 * d : 0);
     const bs = this.SCALE / (frameScale[this.def.body] ?? S);
@@ -560,6 +568,13 @@ export class Mount {
       case 'he_buddy': tilt += Math.sin(time / 200) * 0.025 * d; bsy = 1 + Math.sin(time / 400) * 0.02; break;
       case 'concha': bsy = 1 + Math.sin(time / 320) * 0.04; bsx = 1 - Math.sin(time / 320) * 0.03; break;
     }
+    // 36: wingless flyers get their own lift: the carpet ripples like a wave, the jellyfish pulses up and down.
+    let wob = 0;
+    if (this.def.style === 'none' && !reduceMotion()) {
+      if (this.def.id === 'magic_carpet') { bsy *= 1 + Math.sin(time / 170) * 0.05; wob = Math.sin(time / 340) * 2.2; }
+      else { wob = -Math.abs(Math.sin(time / 520)) * 5; bsy *= 1 + Math.sin(time / 260) * 0.03; }
+    }
+    y += wob;
     this.body.setPosition(x, y).setFlipX(d < 0).setRotation(tilt).setScale(bs * bsx, bs * bsy);
     const ws = this.SCALE / (frameScale[this.def.wing] ?? S);
     const sy = ws * (lift >= 0 ? 0.35 + 0.65 * lift : 0.35 + 0.95 * lift); // through 0 the wing flips to point down
@@ -578,6 +593,22 @@ export class Mount {
       this.wing.setPosition(px, py).setScale(ws * 0.6, ws * (0.15 + 0.85 * Math.abs(Math.cos(spin)))).setRotation(tilt).setFlipX(d < 0);
       this.wingFar.setPosition(px, py).setScale(ws * 0.9, ws).setRotation(tilt).setFlipX(d < 0);
     }
+    if (this.def.style === 'cape') {
+      // 36: the cape streams out behind (lifts with speed, droops when hovering, ripples always); a bow in front.
+      const [ca, cb] = CAPE_AT[this.def.id] ?? [2, -20];
+      const [cx, cy] = at(ca * this.SCALE, cb * this.SCALE);
+      const sp = Phaser.Math.Clamp(this.speed / 300, 0, 1);
+      const rm = reduceMotion();
+      const target = -0.28 + 0.42 * sp + (fast ? 0.12 : 0) + (rm ? 0 : Math.sin(time / 260) * 0.05);
+      this.capeLift += (target - this.capeLift) * (1 - Math.exp(-dt * 5));
+      const key = rm ? 'cape0' : capeFrame(time, fast);
+      if (key !== this.capeKey) { this.capeKey = key; this.wingFar.setTexture(atlasOf(key), key); }
+      const cs = this.SCALE / (frameScale[key] ?? S);
+      this.wingFar.setOrigin(d < 0 ? 1 - CAPE_OX : CAPE_OX, CAPE_OY).setPosition(cx, cy)
+        .setScale(cs * (1 + 0.14 * sp), cs * (1 - 0.08 * sp + (rm ? 0 : Math.sin(time / 300) * 0.03))).setRotation(tilt + d * this.capeLift).setFlipX(d < 0);
+      const [bx2, by2] = at((ca + 4) * this.SCALE, (cb + 2) * this.SCALE);
+      this.wing.setPosition(bx2, by2).setScale(this.SCALE / (frameScale.cape_bow ?? S)).setRotation(tilt).setFlipX(d < 0);
+    } else if (this.def.style === 'none') { this.wing.setVisible(false); this.wingFar.setVisible(false); }
     // Shadow shrinks and fades with height.
     const k = 1 / (1 + this.alt / 140);
     this.shadow.setPosition(this.gx, this.gy + 4).setScale((96 * k / 64) / (frameScale.shadow ?? 1)).setAlpha((0.35 + 0.5 * k) * this.body.alpha);
@@ -626,6 +657,7 @@ export class Mount {
       boosts: this.boosts, rides: this.rides, landings: this.landings, dropAt: this.dropAt ? this.dropAt.map(Math.round) : null,
       canCall: this.canCall(), reachable: this.reachList.length, seg: this.seg ? +this.seg.t.toFixed(2) : null,
       travels: this.travels, arrivals: this.arrivals, travelName: this.travelName, travelTarget: this.travelTarget ? this.travelTarget.map(Math.round) : null,
+      wingStyle: this.def.style ?? 'wings', cape: this.capeKey, capeVisible: this.wingFar.visible, wingVisible: this.wing.visible, capeLift: +this.capeLift.toFixed(2),
       fx: this.fxId, fxOn: !!this.fx?.emitting, fxAlive: this.fx?.getAliveParticleCount() ?? 0,
       reachableHere: this.reach ? this.isReachable(this.w.feet.x, this.w.feet.y) : null,
     };
