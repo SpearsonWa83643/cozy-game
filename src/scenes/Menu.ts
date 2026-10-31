@@ -14,6 +14,7 @@ import type { WorldScene } from './World';
 import { buildWardrobeItems, isNoneItem } from '../wardrobeArt';
 import { LANDMARKS, ensureLandmarkIcons } from '../landmarks';
 import { MOUNTS, isMountUnlocked, currentPick, seasonalThemeOf, type MountDef } from '../mount/defs';
+import { CAPE_AT, CAPE_OX, CAPE_OY, capeFrame } from '../mount/cape';
 
 const INK = '#3d2c20';
 const FONT = 'Nunito';
@@ -1213,6 +1214,12 @@ export class MenuScene extends Phaser.Scene {
     const body = this.add.image(0, 0, atlasOf(m.body), m.body).setOrigin(0.5, 0.52).setScale(sc(m.body));
     const wing = this.add.image(prop ? m.propAt![0] * SC : -4 * SC, prop ? m.propAt![1] * SC : -7 * SC, atlasOf(m.wing), m.wing).setOrigin(0.5, prop ? 0.5 : 0.96).setScale(sc(m.wing));
     const parts = prop ? [body, wingFar, wing] : [wingFar, body, wing];
+    if (m.style === 'cape') {
+      // 36: cape streams behind, bow in front.
+      const [ca, cb] = CAPE_AT[m.id] ?? [2, -20];
+      wingFar.setPosition(ca * SC, cb * SC).setOrigin(CAPE_OX, CAPE_OY).setScale(sc(m.wingFar)).setRotation(-0.1).setTint(m.cape ?? 0xffffff);
+      wing.setPosition((ca + 4) * SC, (cb + 2) * SC).setOrigin(0.5, 0.5).setScale(sc(m.wing)).setTint(m.cape ?? 0xffffff);
+    } else if (m.style === 'none') { wing.setVisible(false); wingFar.setVisible(false); }
     if (!on) for (const o of parts) o.setTint(0x2e2219);
     const c = this.add.container(x, y, parts);
     const k = targetW / Math.max(1, body.width * sc(m.body));
@@ -1361,6 +1368,12 @@ export class MenuScene extends Phaser.Scene {
       const ws = SC / (frameScale[m.wing] ?? S);
       if (m.style === 'prop') {
         p.wing.setScale(ws * 0.6, ws * (0.15 + 0.85 * Math.abs(Math.cos(time / 40))));
+      } else if (m.style === 'cape') {
+        const key = capeFrame(time + p.ph * 300);
+        if (p.wingFar.frame.name !== key) p.wingFar.setTexture(atlasOf(key), key);
+        p.wingFar.setRotation(-0.12 + Math.sin(time / 420 + p.ph) * 0.06);
+      } else if (m.style === 'none') {
+        // Carpet and jellyfish: no wings to flap.
       } else {
         const lift = Math.cos(p.flap);
         const sy = ws * (lift >= 0 ? 0.35 + 0.65 * lift : 0.35 + 0.95 * lift);
