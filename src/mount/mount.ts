@@ -7,9 +7,9 @@ import Phaser from 'phaser';
 import { atlasOf, frameScale, S } from '../art';
 import { WORLD_W, WORLD_H } from '../layout';
 import { sfx } from '../audio';
-import { theme, themeEvents } from '../theme';
+import { theme, themeEvents, setTheme } from '../theme';
 import type { WorldScene } from '../scenes/World';
-import { MountDef, mountById } from './defs';
+import { MountDef, mountById, seasonalThemeOf } from './defs';
 import { CAPE_AT, CAPE_OX, CAPE_OY, capeFrame, mulTint } from './cape';
 import { stickInput } from '../controls';
 import type { TouchStick } from '../controls';
@@ -92,6 +92,8 @@ export class Mount {
   def: MountDef = mountById('eagle');
   /** 36: current cape ripple frame ('' when not caped). */
   capeKey = '';
+  /** 37: how many times riding a seasonal friend switched the theme (tests). */
+  seasonSwaps = 0;
   capeLift = 0;
   get SCALE() { return this.def.scale; }
 
@@ -229,6 +231,9 @@ export class Mount {
   // ------------------------------------------------------------ calling + riding
   call(mountId?: string) {
     if (!this.canCall()) return false;
+    // 37 (Walker, Oct 29): riding a seasonal friend brings its season with it.
+    const st = mountId ? seasonalThemeOf(mountId) : null;
+    if (st && theme.id !== st) { setTheme(st as Parameters<typeof setTheme>[0]); sfx.themeChime(st); this.seasonSwaps++; }
     this.applyDef(mountById(mountId ?? 'eagle'));
     const w = this.w;
     this.computeReach();
@@ -657,7 +662,7 @@ export class Mount {
       boosts: this.boosts, rides: this.rides, landings: this.landings, dropAt: this.dropAt ? this.dropAt.map(Math.round) : null,
       canCall: this.canCall(), reachable: this.reachList.length, seg: this.seg ? +this.seg.t.toFixed(2) : null,
       travels: this.travels, arrivals: this.arrivals, travelName: this.travelName, travelTarget: this.travelTarget ? this.travelTarget.map(Math.round) : null,
-      wingStyle: this.def.style ?? 'wings', cape: this.capeKey, capeVisible: this.wingFar.visible, wingVisible: this.wing.visible, capeLift: +this.capeLift.toFixed(2),
+      seasonSwaps: this.seasonSwaps, wingStyle: this.def.style ?? 'wings', cape: this.capeKey, capeVisible: this.wingFar.visible, wingVisible: this.wing.visible, capeLift: +this.capeLift.toFixed(2),
       fx: this.fxId, fxOn: !!this.fx?.emitting, fxAlive: this.fx?.getAliveParticleCount() ?? 0,
       reachableHere: this.reach ? this.isReachable(this.w.feet.x, this.w.feet.y) : null,
     };
