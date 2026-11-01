@@ -77,10 +77,13 @@ class Chest {
     this.img.setTexture(ATLAS, 'chest_closed').setAlpha(0).setScale(1 / (frameScale.chest_closed ?? S));
     this.shadow.setAlpha(0);
   }
+  /** 40: which puzzle this chest belongs to (for Mount Thief rescues). */
+  pid = '';
   open() {
     if (this.opened) return;
     this.opened = true;
     const w = this.w;
+    if (this.pid) w.game.events.emit('puzzle-chest', this.pid);
     this.img.setTexture(ATLAS, 'chest_open');
     if (!this.treasure || hasTreasure(this.treasure)) { w.puzzleBonus(this.x, this.y - 40); this.onOpened?.(); return; }
     addTreasure(this.treasure);
@@ -145,6 +148,7 @@ export class Puzzles {
     this.stoneChest = new Chest(w, PSTONE_CHEST.x, PSTONE_CHEST.y, 'sky_pebble');
     const end = TRACKS[TRACKS.length - 1];
     this.trailChest = new Chest(w, end[0], end[1] + 8, 'fawn_bell');
+    this.potChest.pid = 'pots'; this.bellChest.pid = 'bells'; this.tileChest.pid = 'tiles'; this.digChest.pid = 'dig'; this.stoneChest.pid = 'stones'; this.trailChest.pid = 'trail';
     this.buildPots();
     this.buildTrail();
     this.buildStones();
@@ -157,6 +161,13 @@ export class Puzzles {
     resetStone(w, DIG_SIGN.x + 70, DIG_SIGN.y + 20, 'dig', () => this.resetDig());
     resetStone(w, PSTONE_SIGN.x, PSTONE_SIGN.y + 70, 'stones', () => this.resetStones());
     resetStone(w, TRACK_SIGN.x + 60, TRACK_SIGN.y + 40, 'trail', () => this.resetTrail());
+  }
+  chestById(id: string): Chest | null {
+    return ({ pots: this.potChest, bells: this.bellChest, tiles: this.tileChest, dig: this.digChest, stones: this.stoneChest, trail: this.trailChest } as Record<string, Chest>)[id] ?? null;
+  }
+  /** 40: mix a puzzle back up (the Mount Thief hid a friend behind it). */
+  resetById(id: string) {
+    ({ pots: () => this.resetPots(), bells: () => this.resetBells(), tiles: () => this.resetTiles(), dig: () => this.resetDig(), stones: () => this.resetStones(), trail: () => this.resetTrail() } as Record<string, () => void>)[id]?.();
   }
   resetTrail() {
     this.trailStep = 0;

@@ -208,6 +208,8 @@ export class UIScene extends Phaser.Scene {
     this.bagZone.setPosition(this.bagC.x, this.bagC.y);
     this.camC.setPosition(this.w - 236 - si.right, 58 + si.top);
     this.camZone.setPosition(this.camC.x, this.camC.y);
+    this.thiefC.setPosition(this.w - 300 - si.right, 58 + si.top);
+    this.thiefZone.setPosition(this.thiefC.x, this.thiefC.y);
     // Left column, stacked above Call Mount / Build (same spot in the Wild).
     this.zoomBtns?.layout(68 + si.left, this.h - 340 - si.bottom);
     // Under the lantern sigils, top-left; the choices fan out to the right.
@@ -368,6 +370,7 @@ export class UIScene extends Phaser.Scene {
     return [c, z] as const;
   }
   camC!: Phaser.GameObjects.Container; camZone!: Phaser.GameObjects.Zone;
+  thiefC!: Phaser.GameObjects.Container; thiefZone!: Phaser.GameObjects.Zone;
   photo = new PhotoMode(this as any);
   takePhoto() {
     if (this.registry.get('menuOpen') || this.registry.get('dialogOpen') || this.cardOpen) return;
@@ -393,6 +396,13 @@ export class UIScene extends Phaser.Scene {
       g.fillStyle(0xf3e6cc, 1); g.fillCircle(0, 1, 6); g.fillStyle(0x5b9bd5, 1); g.fillCircle(0, 1, 3.6);
       g.fillStyle(0xf2c14e, 1); g.fillCircle(8.5, -3, 1.6);
     }, () => this.takePhoto());
+    // 40: the Mount Thief button (a robber mask), left of the camera.
+    [this.thiefC, this.thiefZone] = this.roundButton((g) => {
+      g.fillStyle(0x1d1a22, 1); g.fillRoundedRect(-14, -7, 28, 13, 6);
+      g.fillStyle(0xfffaf0, 1); g.fillEllipse(-6, -0.5, 8, 6); g.fillEllipse(6, -0.5, 8, 6);
+      g.fillStyle(0x1d1a22, 1); g.fillCircle(-5, 0, 1.6); g.fillCircle(7, 0, 1.6);
+      g.fillStyle(0xe85d3a, 1); g.fillTriangle(12, 4, 16, 10, 9, 9);
+    }, () => { if (this.registry.get('dialogOpen') || this.cardOpen) return; this.world.thief?.start(); });
     this.badge = this.add.graphics().setVisible(false);
     this.badge.fillStyle(0xe85d3a, 1); this.badge.fillCircle(17, -17, 7); this.badge.lineStyle(2, 0xfffaf0, 1); this.badge.strokeCircle(17, -17, 7);
     this.bagC.add(this.badge);
@@ -537,7 +547,7 @@ export class UIScene extends Phaser.Scene {
       if (this.registry.get('menuOpen') || this.registry.get('vcard')) return;
       if (this.photo.open) return;
       if (this.themePick.open && !over.some((o) => this.themePick.zones.includes(o as Phaser.GameObjects.Zone))) { this.themePick.close(); return; }
-      if (over.some((o) => this.themePick.zones.includes(o as Phaser.GameObjects.Zone) || this.zoomBtns.zones.includes(o as Phaser.GameObjects.Zone) || o === this.volZone || o === this.mapZone || o === this.bagZone || o === this.camZone || this.photo.zones.includes(o as Phaser.GameObjects.Zone) || (o === this.actionZone && this.actionShown))) return;
+      if (over.some((o) => this.themePick.zones.includes(o as Phaser.GameObjects.Zone) || this.zoomBtns.zones.includes(o as Phaser.GameObjects.Zone) || o === this.volZone || o === this.mapZone || o === this.bagZone || o === this.camZone || o === this.thiefZone || this.photo.zones.includes(o as Phaser.GameObjects.Zone) || (o === this.actionZone && this.actionShown))) return;
       if (this.cardOpen) { this.closeCard(); return; }
       if (this.registry.get('dialogOpen')) { this.world.tryInteract(); return; }
       const fs = this.world.fishing?.state;

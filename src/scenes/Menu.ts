@@ -13,7 +13,8 @@ import { areaAt, waterAt } from '../geo';
 import type { WorldScene } from './World';
 import { buildWardrobeItems, isNoneItem } from '../wardrobeArt';
 import { LANDMARKS, ensureLandmarkIcons } from '../landmarks';
-import { MOUNTS, isMountUnlocked, currentPick, seasonalThemeOf, type MountDef } from '../mount/defs';
+import { MOUNTS, isMountUnlocked, isStolen, currentPick, seasonalThemeOf, type MountDef } from '../mount/defs';
+import { HIDES, THIEVES } from '../thief';
 import { CAPE_AT, CAPE_OX, CAPE_OY, capeFrame } from '../mount/cape';
 
 const INK = '#3d2c20';
@@ -1228,6 +1229,8 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private mountHint(m: MountDef) {
+    const st = save.stolen;
+    if (st && st.mount === m.id) return `The sneaky ${THIEVES.find((k) => k.id === st.kind)?.name ?? 'thief'} hid the ${m.name} behind ${HIDES[st.puzzle]}! Solve it and open the chest to rescue your friend.`;
     if (!m.treasure) return `${m.name} is always free!`;
     const t = TREASURES.find((x) => x.id === m.treasure);
     if (t) return `Find the ${t.name} to meet the ${m.name}. Hint: ${t.hint}`;
@@ -1260,7 +1263,7 @@ export class MenuScene extends Phaser.Scene {
     this.stablePets = []; this.rideBtn = null; this.badges = {};
     const list = MOUNTS;
     // 37 (Walker, Oct 29): seasonal friends are shown like the others (no ??? hiding); riding one brings its season.
-    const shown = (m: MountDef) => isMountUnlocked(m) || !!seasonalThemeOf(m.id);
+    const shown = (m: MountDef) => !isStolen(m.id) && (isMountUnlocked(m) || !!seasonalThemeOf(m.id));
     const got = list.filter(shown).length;
     // 12.3: with lots of friends the barn gets a third row so every stall stays a good size.
     const rows = list.length > 14 ? 3 : 2, cols = Math.ceil(list.length / rows);

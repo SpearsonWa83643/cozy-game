@@ -250,7 +250,11 @@ export function seasonalThemeOf(mountId: string): string | null {
   return Object.keys(THEME_MOUNT).find((k) => THEME_MOUNT[k] === mountId) ?? null;
 }
 
+/** 40: is this friend hidden away by the Mount Thief right now? */
+export function isStolen(id: string): boolean { return save.stolen?.mount === id; }
+
 export function isMountUnlocked(m: MountDef): boolean {
+  if (isStolen(m.id)) return false;
   return m.treasure === null || hasTreasure(m.treasure) || m.id === themeDefaultMount();
 }
 
