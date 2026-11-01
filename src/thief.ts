@@ -101,7 +101,7 @@ export function paintThieves(scene: Phaser.Scene) {
 
 const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 const TAPS = 3;
-const SCALE = 1.9;
+const SCALE = 2.3;
 
 export class Thief {
   state: 'off' | 'sneak' | 'caught' | 'flee' = 'off';
@@ -210,15 +210,13 @@ export class Thief {
     save.minor.thief_caught = (save.minor.thief_caught ?? 0) + 1;
     persist();
     sfx.solve();
-    const cage = w.add.image(s.x, s.y - 300, atlasOf('thief_cage'), 'thief_cage').setOrigin(0.5, 1).setScale(1.9 / (frameScale.thief_cage ?? 1)).setDepth(s.depth + 2);
+    const cage = w.add.image(s.x, s.y - 300, atlasOf('thief_cage'), 'thief_cage').setOrigin(0.5, 1).setScale(2.3 / (frameScale.thief_cage ?? 1)).setDepth(s.depth + 2);
     w.tweens.add({ targets: cage, y: s.y + 10, duration: reduceMotion() ? 1 : 420, ease: 'Bounce.easeOut', onComplete: () => { w.cameras.main.shake(140, 0.002); w.burst(s.x, s.y - 40, 0xffd27a, 26, 'spark'); } });
     this.sack?.setPosition(s.x + 50, s.y + 6);
     w.game.events.emit('toast', `You caught the sneaky ${this.kind.name}! It says sorry and gives back the sack.`);
     w.game.events.emit('thief', 'caught');
-    w.time.delayedCall(2600, () => {
-      w.tweens.add({ targets: [s, cage, this.sack!], alpha: 0, duration: 600, onComplete: () => { cage.destroy(); this.clear(); } });
-      w.burst(s.x, s.y - 40, 0xbfe3ff, 18, 'spark');
-    });
+    // Driven from update() (not a timer chain) so it always finishes, even on a slow frame rate.
+    this.cage = cage; this.caughtAt = performance.now(); this.fading = false;
   }
 
   /** Time ran out: the thief grabs a friend and hides it behind a puzzle. */
@@ -267,10 +265,23 @@ export class Thief {
     this.w.game.events.emit('thief', 'off');
   }
 
+  private cage: Phaser.GameObjects.Image | null = null;
+  private caughtAt = 0;
+  private fading = false;
+
   update(dt: number, paused: boolean) {
     if (this.state === 'off' || !this.spr) return;
     if (paused) { if (this.state === 'sneak') this.endAt += dt * 1000; return; }
     const s = this.spr;
+    if (this.state === 'caught') {
+      const ct = (performance.now() - this.caughtAt) / 1000, fadeAt = 2.6;
+      if (!this.fading && ct >= fadeAt) { this.fading = true; this.w.burst(s.x, s.y - 40, 0xbfe3ff, 18, 'spark'); }
+      if (this.fading) {
+        const a = Math.max(0, 1 - (ct - fadeAt) / 0.6);
+        s.setAlpha(a); this.sack?.setAlpha(a); this.cage?.setAlpha(a);
+        if (a <= 0) { this.cage?.destroy(); this.cage = null; this.clear(); return; }
+      }
+    }
     if (this.state === 'sneak' && this.w.time.now > this.endAt) { this.escape(); }
     if (this.state === 'sneak' || this.state === 'flee') {
       const dx = this.to.x - s.x, dy = this.to.y - s.y, d = Math.hypot(dx, dy);

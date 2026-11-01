@@ -45,8 +45,8 @@ test('mount thief: button, arrest with 3 taps, escape hides a friend, rescue fro
     expect(t1.stolen).toBeNull();
     await page.waitForTimeout(700);
     await page.screenshot({ path: `${SHOTS}/thief-caught.png`, scale: 'css' });
-    await expect.poll(async () => (await thief(page)).state, { timeout: 20_000 }).toBe('off');
-    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('cozy.save.v2')!).minor.thief_caught)).toBe(1);
+    await expect.poll(async () => (await thief(page)).state, { timeout: 30_000 }).toBe('off');
+    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('cozy.save.v2')!).minor.thief_caught), { timeout: 5_000 }).toBe(1);
 
     // 2) Next time nobody taps: it escapes with a friend and hides it behind a solved puzzle.
     expect(await page.evaluate(() => (window as any).__cozy.startThief('raccoon', 1500))).toBe(true);
@@ -57,6 +57,7 @@ test('mount thief: button, arrest with 3 taps, escape hides a friend, rescue fro
     expect(['pterodactyl', 'unicorn']).toContain(st.mount);
     expect(['trail', 'stones']).toContain(st.puzzle);
     expect(st.kind).toBe('raccoon');
+    await page.waitForTimeout(500);
     const sv = await page.evaluate(() => JSON.parse(localStorage.getItem('cozy.save.v2')!));
     expect(sv.stolen).toEqual(st);
     expect(sv.puzzles[st.puzzle]).toBeUndefined();
@@ -92,7 +93,7 @@ test('mount thief: button, arrest with 3 taps, escape hides a friend, rescue fro
     const t4 = await thief(page);
     expect(t4.rescued).toBe(1);
     expect(t4.marker).toBe(false);
-    expect(await page.evaluate(() => JSON.parse(localStorage.getItem('cozy.save.v2')!).stolen)).toBeUndefined();
+    await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('cozy.save.v2')!).stolen), { timeout: 5_000 }).toBeUndefined();
     expect(errors).toEqual([]);
   } finally { await browser.close(); }
 });
