@@ -47,6 +47,9 @@ test('mount thief: button, arrest with 3 taps, escape hides a friend, rescue fro
     await page.screenshot({ path: `${SHOTS}/thief-caught.png`, scale: 'css' });
     await expect.poll(async () => (await thief(page)).state, { timeout: 30_000 }).toBe('off');
     await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('cozy.save.v2')!).minor.thief_caught), { timeout: 5_000 }).toBe(1);
+    // 41: it leaves a thank-you snack of 2 berries.
+    expect((await thief(page)).thanks).toBe(2);
+    await expect.poll(() => page.evaluate(() => { const s = JSON.parse(localStorage.getItem('cozy.save.v2')!); return [s.snacks, s.berries]; }), { timeout: 5_000 }).toEqual([2, 2]);
 
     // 2) Next time nobody taps: it escapes with a friend and hides it behind a solved puzzle.
     expect(await page.evaluate(() => (window as any).__cozy.startThief('raccoon', 1500))).toBe(true);

@@ -5,7 +5,7 @@
 // slow target, and the friend is never lost for good.
 import Phaser from 'phaser';
 import { Ctx, canvasTex, atlasOf, frameScale } from './art';
-import { save, persist } from './save';
+import { save, persist, addFruit } from './save';
 import { MOUNTS, isMountUnlocked, themeDefaultMount, mountById } from './mount/defs';
 import { sfx } from './audio';
 import type { WorldScene } from './scenes/World';
@@ -116,6 +116,8 @@ export class Thief {
   last = '';
   marker: Phaser.GameObjects.Container | null = null;
   caughtN = 0; stolenN = 0; rescuedN = 0;
+  /** 41: berries the last caught thief left as a thank-you. */
+  thanks = 0;
   private hop: Phaser.Tweens.Tween | null = null;
 
   constructor(private w: WorldScene) {
@@ -213,7 +215,12 @@ export class Thief {
     const cage = w.add.image(s.x, s.y - 300, atlasOf('thief_cage'), 'thief_cage').setOrigin(0.5, 1).setScale(2.3 / (frameScale.thief_cage ?? 1)).setDepth(s.depth + 2);
     w.tweens.add({ targets: cage, y: s.y + 10, duration: reduceMotion() ? 1 : 420, ease: 'Bounce.easeOut', onComplete: () => { w.cameras.main.shake(140, 0.002); w.burst(s.x, s.y - 40, 0xffd27a, 26, 'spark'); } });
     this.sack?.setPosition(s.x + 50, s.y + 6);
-    w.game.events.emit('toast', `You caught the sneaky ${this.kind.name}! It says sorry and gives back the sack.`);
+    // 41: a thank-you snack: it says sorry and leaves you some berries (if your basket has room).
+    let got = 0;
+    for (let i = 0; i < 2; i++) if (addFruit('berry')) got++;
+    if (got) { w.game.events.emit('snacks', save.snacks); w.burst(s.x + 40, s.y - 20, 0xd94a6a, 10, 'spark'); }
+    this.thanks = got;
+    w.game.events.emit('toast', got ? `You caught the sneaky ${this.kind.name}! It says sorry and leaves you ${got === 1 ? 'a berry' : `${got} berries`}.` : `You caught the sneaky ${this.kind.name}! It says sorry and gives back the sack.`);
     w.game.events.emit('thief', 'caught');
     // Driven from update() (not a timer chain) so it always finishes, even on a slow frame rate.
     this.cage = cage; this.caughtAt = performance.now(); this.fading = false;
@@ -342,7 +349,7 @@ export class Thief {
     const c = this.w.cameras.main;
     return {
       state: this.state, kind: this.kind.id, taps: this.taps, stolen: save.stolen ? { ...save.stolen } : null,
-      caught: this.caughtN, stolenN: this.stolenN, rescued: this.rescuedN, marker: !!this.marker,
+      thanks: this.thanks, caught: this.caughtN, stolenN: this.stolenN, rescued: this.rescuedN, marker: !!this.marker,
       screen: s ? { x: (s.x - c.worldView.x) * c.zoom / DPR, y: (s.y - 24 * SCALE - c.worldView.y) * c.zoom / DPR } : null,
       blocked: this.blocked(),
     };
