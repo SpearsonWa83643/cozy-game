@@ -32,6 +32,8 @@ export type SaveData = {
   berries: number;
   /** Mount you last picked yourself in the mount picker (kept over the theme's default). */
   mountPick?: string;
+  /** 40: a friend the Mount Thief hid behind a puzzle (solve it and open the chest to rescue). */
+  stolen?: { mount: string; puzzle: string; kind: string };
   /** One-time tips already shown. */
   tips: string[];
   /** Wilderness: trips taken, monsters poofed, rare finds banked at home. */

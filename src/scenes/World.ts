@@ -32,6 +32,7 @@ import { Puddles } from '../puddles';
 import { Kite } from '../kite';
 import { Pinwheels } from '../pinwheels';
 import { Mount } from '../mount/mount';
+import { Thief } from '../thief';
 
 export type Interactable = {
   x: number; y: number; r: number; label: string;
@@ -198,6 +199,7 @@ export class WorldScene extends Phaser.Scene {
   /** Pinch / +/- zoom (shared rules in controls.ts). */
   zoom!: CamZoom;
   mount!: Mount;
+  thief!: Thief;
   windmill: { blades: Phaser.GameObjects.Image; speed: number; boost: number } | null = null;
 
   constructor() { super('world'); }
@@ -283,6 +285,7 @@ export class WorldScene extends Phaser.Scene {
     this.pinwheels = new Pinwheels(this);
     this.dresser = new ThemeDresser(this);
     this.mount = new Mount(this);
+    this.thief = new Thief(this);
     this.placeStart();
     this.tapMarker = this.fx(0, 0, 'ripple', 0.5).setBlendMode('ADD').setAlpha(0).setDepth(-300);
     this.boat = new Boats(this);
@@ -1043,6 +1046,7 @@ export class WorldScene extends Phaser.Scene {
 
   tapWorld(wx: number, wy: number) {
     if (this.locked || this.registry.get('dialogOpen') || this.registry.get('menuOpen')) return;
+    if (this.thief?.onTap(wx, wy)) return;
     if (this.mount.carrying) { if (this.mount.onTap(wx, wy)) return; }
     if (this.village.building) { this.village.buildTap(wx, wy); return; }
     if (this.fishing.active) { this.fishing.tap(); return; }
@@ -1196,6 +1200,7 @@ export class WorldScene extends Phaser.Scene {
     const paused = !!this.registry.get('dialogOpen') || !!this.registry.get('menuOpen');
     const frozen = this.buildView || this.locked || paused || ['cast', 'reel', 'land'].includes(this.fishing?.state) || this.mount.carrying || !!this.boat?.hopping;
     this.mount.update(time, dt, paused);
+    this.thief.update(dt, paused);
     const carried = this.mount.riderOn;
     let ix = 0, iy = 0;
     if (!frozen) {
@@ -1446,6 +1451,9 @@ export class WorldScene extends Phaser.Scene {
       wildToScreen(x: number, y: number) { const c = (self.scene.get('wild') as any).cameras.main; return { x: (x - c.worldView.x) * c.zoom / DPR, y: (y - c.worldView.y) * c.zoom / DPR }; },
       wildSave: () => JSON.parse(JSON.stringify(save.wild)),
       tapWorld: (x: number, y: number) => self.tapWorld(x, y),
+      thief: () => self.thief.snapshot(),
+      startThief: (kind?: string, ms?: number) => self.thief.start(kind, ms),
+      openPuzzleChest: (id: string) => { const c = self.puzzles.chestById(id); if (c) { c.revealed = true; c.open(); } return !!c; },
       critters() {
         const c = self.life.creatures;
         const xy = (o: { x: number; y: number }) => [Math.round(o.x), Math.round(o.y)];

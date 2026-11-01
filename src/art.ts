@@ -1305,6 +1305,7 @@ import { paintSeasonBirds } from './mount/seasonBirdsArt';
 import { paintFunMounts } from './mount/funArt';
 import { paintFoodMounts } from './mount/foodArt';
 import { paintCapes } from './mount/cape';
+import { paintThieves } from './thief';
 import { paintVillageArt } from './village/vart';
 
 export function paintAll(scene: Phaser.Scene) {
@@ -1448,6 +1449,7 @@ export function paintAll(scene: Phaser.Scene) {
   paintFunMounts(scene);
   paintFoodMounts(scene);
   paintCapes(scene);
+  paintThieves(scene);
   buildAtlas(scene);
   paintVillageArt(scene);
 }
