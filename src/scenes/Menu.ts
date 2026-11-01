@@ -1249,7 +1249,9 @@ export class MenuScene extends Phaser.Scene {
       this.tweens.add({ targets: p.c, x: p.c.x + 5, duration: 50, yoyo: true, repeat: 2 });
       return;
     }
-    this.hint(`${m.name}! ${m.blurb} Stroke me for more hearts!`);
+    const st = seasonalThemeOf(m.id) as keyof typeof THEMES | null;
+    if (st && THEMES[st] && theme.id !== st) this.hint(`${m.name}! Ride me and it turns ${THEMES[st].name}! Stroke me for more hearts!`);
+    else this.hint(`${m.name}! ${m.blurb} Stroke me for more hearts!`);
     this.pet(p, 'tap', p.c.x, p.c.y);
     this.showRide(m);
   }
@@ -1257,7 +1259,9 @@ export class MenuScene extends Phaser.Scene {
   renderStable(a: { x: number; y: number; w: number; h: number }) {
     this.stablePets = []; this.rideBtn = null; this.badges = {};
     const list = MOUNTS;
-    const got = list.filter(isMountUnlocked).length;
+    // 37 (Walker, Oct 29): seasonal friends are shown like the others (no ??? hiding); riding one brings its season.
+    const shown = (m: MountDef) => isMountUnlocked(m) || !!seasonalThemeOf(m.id);
+    const got = list.filter(shown).length;
     // 12.3: with lots of friends the barn gets a third row so every stall stays a good size.
     const rows = list.length > 14 ? 3 : 2, cols = Math.ceil(list.length / rows);
     const g = this.add.graphics();
@@ -1275,7 +1279,7 @@ export class MenuScene extends Phaser.Scene {
     const top = a.y + 56, gap = 10;
     const sw = (a.w - 24 - (cols - 1) * gap) / cols, sh = (a.h - (top - a.y) - 12 - (rows - 1) * gap) / rows;
     list.forEach((m, i) => {
-      const on = isMountUnlocked(m);
+      const on = shown(m);
       const col = i % cols, row = Math.floor(i / cols);
       const x = a.x + 12 + col * (sw + gap), y = top + row * (sh + gap);
       const sg = this.add.graphics();
