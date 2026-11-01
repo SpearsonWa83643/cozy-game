@@ -77,6 +77,7 @@ test('mount thief: button, arrest with 3 taps, escape hides a friend, rescue fro
     await expect.poll(() => page.evaluate(() => (window as any).__menu.open), { timeout: 30_000 }).toBe(true);
     await page.waitForTimeout(1000);
     const pets = await page.evaluate(() => (window as any).__menu.stablePets.map((p: any) => [p.id, p.on]));
+    expect(await page.evaluate(() => (window as any).__menu.stableTitle)).toContain('Thieves caught: 1'); // 42
     expect(pets.find((p: any) => p[0] === st.mount)[1]).toBe(false);
     const r = await page.evaluate((id) => (window as any).__menu.rects[`stall:${id}`], st.mount);
     await page.touchscreen.tap(r.x + r.w / 2, r.y + r.h / 2);

@@ -1259,6 +1259,8 @@ export class MenuScene extends Phaser.Scene {
     this.showRide(m);
   }
 
+  /** 42: the stable sign's text (tests). */
+  stableTitle = '';
   renderStable(a: { x: number; y: number; w: number; h: number }) {
     this.stablePets = []; this.rideBtn = null; this.badges = {};
     const list = MOUNTS;
@@ -1277,7 +1279,10 @@ export class MenuScene extends Phaser.Scene {
     g.fillStyle(0x8a5434, 1); g.fillRect(a.x, a.y + 34, a.w, 6);
     this.content.add(g);
     // Sign on the beam.
-    const sign = this.text(a.x + a.w / 2, a.y + 20, `Your stable: ${got} / ${list.length} friends`, 18, '#fff3d6', 900).setOrigin(0.5).setStroke('#4a2a16', 4);
+    // 42: once you've caught a sneaky thief, the sign shows your tally.
+    const caught = save.minor.thief_caught ?? 0;
+    this.stableTitle = `Your stable: ${got} / ${list.length} friends` + (caught ? `   ·   Thieves caught: ${caught}` : '');
+    const sign = this.text(a.x + a.w / 2, a.y + 20, this.stableTitle, 18, '#fff3d6', 900).setOrigin(0.5).setStroke('#4a2a16', 4);
     this.content.add(sign);
     const top = a.y + 56, gap = 10;
     const sw = (a.w - 24 - (cols - 1) * gap) / cols, sh = (a.h - (top - a.y) - 12 - (rows - 1) * gap) / rows;
