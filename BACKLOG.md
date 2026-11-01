@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-11-01 12:45 PM (CT). Live: main 40a522d, https://willowmere-glade.pages.dev (bundle index-BzrYZv9R.js).
+Updated: 2026-11-01 1:05 PM (CT). Live: main ef26685, https://willowmere-glade.pages.dev (bundle index-BG_RnyWu.js).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -30,7 +30,15 @@ Walker: flying mounts, and finding them, score high on engagement; wardrobe-styl
 | 37 | Mounts page: all mounts on a single page (no paging or scrolling); seasonal mounts are shown like the others (no "???" hiding); riding a seasonal mount forces its theme to load (UX rule) | Done/Live 40a522d (2026-11-01): all 22 stalls on one screen, seasonal friends shown with names + theme badges, riding one switches the glade to its season | 2026-11-01 | 1 |
 | 38 | Per-mount view: each flying mount gets its own view with final, very stylized, high-res, high-detail art in the style Walker picks in the Style Lab (35) | Blocked on 35 (style choice) and 39 (motion choice) | ~2026-11-09 (after style pick) | 6 |
 | 39 | Mount Motion Lab (temporary): Cowboy Cookie + Eagle side by side, 7 whole-body animation styles (Gentle Float, Springy Squash & Stretch, Floaty Dreamy Drift, Snappy Cartoon, Natural Physics, Playful Bounce, Storm Jitters), each with its own procedural soundscape (Meadow Lullaby, Boing Pulse, Starlit Pond, Toybox Tick-Tock, Open Sky, Hop Parade, Thunderstorm) that crossfades on flips, with bounces synced to the beat and the storm flinch synced to thunder, plus a Tap for sound/mute chip (Walker, 9:22 PM CT); exaggerated, distinct amplitudes and rhythms; with breathing, blinks/glances, head tilts, hat lag, cape follow-through, tail/talon sway, banking, personality beats, rider-weight dip; any Style Lab skin; Calm (prefers-reduced-motion) fallback; ?motionlab=1&m=<id>. Walker (Oct 29, 9:00 PM CT): keep the Style Lab around. The chosen motion applies to all mounts in 36 and 38. Never merged to main | Paused (live session ended Oct 30, 12:14 AM CT). Open: Walker's motion and soundscape pick, and re-recording motionlab video and contact sheet with the smooth cel outline. Preview https://stylelab.willowmere-glade.pages.dev/?motionlab=1 | 2026-10-29 (preview) | 0.5 + iterations |
-| 40 | Walker (Oct 29, 9:18 PM CT): Mount Thief event (replayability, re-hides mounts). A button triggers it: a thief animal (random species each time) in a cartoony thief mask enters the screen, big and easy to see. The player can arrest it just in time with a simple, kid-friendly tap/chase mechanic (no combat). If it escapes, it takes one owned mount and runs off to hide it as the prize behind one randomly chosen existing puzzle; even a completed puzzle is reset so the player can rescue the mount | In progress (wip/mount-thief; core built Oct 31, testing now) | 2026-11-01 | 2 (1 left) |
+| 40 | Walker (Oct 29, 9:18 PM CT): Mount Thief event (replayability, re-hides mounts). A button triggers it: a thief animal (random species each time) in a cartoony thief mask enters the screen, big and easy to see. The player can arrest it just in time with a simple, kid-friendly tap/chase mechanic (no combat). If it escapes, it takes one owned mount and runs off to hide it as the prize behind one randomly chosen existing puzzle; even a completed puzzle is reset so the player can rescue the mount | Done/Live ef26685 (2026-11-01): mask button by the camera; 6 masked thieves (Raccoon, Fox, Bunny, Mouse, Kitty, Piglet), never the same twice in a row; 3 taps in ~12 s to catch it (cage drops, it says sorry); if it escapes it takes one owned friend (never the theme's own ride) and hides it behind a random puzzle (solved ones first), which resets; star-sack marker by that chest; open the chest to rescue; stable stall says where it's hidden; survives reload | 2026-11-01 | 2 |
+
+## Self-added polish (2026-11-01; backlog had only Walker-blocked items left; no Walker decision or spending needed)
+
+| Order | Task | Status | ETA live | Estimate (dev days) |
+|---|---|---|---|---|
+| 41 | Thief thank-you: a caught thief leaves a little thank-you snack (berries) before it goes | Not started | 2026-11-01 | 0.25 |
+| 42 | Thieves caught tally: the stable header shows how many sneaky thieves you've caught | Not started | 2026-11-01 | 0.25 |
+| 43 | Paw-print trail: a thief that escapes leaves fading paw prints as it runs off | Not started | 2026-11-01 | 0.25 |
 
 ## Recently done
 
