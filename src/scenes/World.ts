@@ -1205,6 +1205,7 @@ export class WorldScene extends Phaser.Scene {
     looks.flying = this.mount.phase === 'ride' || this.mount.phase === 'travel';
     looks.setWeather(this.village && this.village.rain > 0 && this.village.weather?.kind ? this.village.weather.kind : 'clear');
     this.mount.update(time, dt, paused);
+    looks.frame(); // keeps the motion clock + soundscape ticking (and lets it fade out once nobody is flying)
     this.thief.update(dt, paused);
     const carried = this.mount.riderOn;
     let ix = 0, iy = 0;

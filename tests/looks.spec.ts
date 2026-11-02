@@ -129,7 +129,7 @@ test('looks & moves: arrow pickers, weather auto-match, override, flying', async
     await expect.poll(() => looks(page).then((l) => l.weather), { timeout: 20_000 }).toBe('clear');
     L = await looks(page);
     expect(L.effective).toBe('gentle'); expect(L.weatherSwitches).toBe(1);
-    await expect.poll(() => looks(page).then((l) => l.playing), { timeout: 15_000 }).toBe(null);
+    await expect.poll(() => looks(page).then((l) => l.playing), { timeout: 15_000 }).toBe('');
 
     // ---- The picks survive a reload, and the flying friend wears the style and moves in the motion. ----
     await page.evaluate(() => (window as any).__cozy.setLookMotion('springy'));
