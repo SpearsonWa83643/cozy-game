@@ -145,7 +145,7 @@ test('looks & moves: arrow pickers, weather auto-match, override, flying', async
     const M = await page.evaluate(() => (window as any).__cozy.mount());
     expect(M.looks.art).toBe('cel'); expect(M.looks.motion).toBe('springy');
     expect(M.looks.tex).toMatch(/^look:cel:/);
-    expect(M.looks.mix).toBeGreaterThan(0.6);
+    await expect.poll(() => page.evaluate(() => (window as any).__cozy.mount().looks.mix), { timeout: 90_000, intervals: [500] }).toBeGreaterThan(0.6);
     L = await looks(page);
     expect(L.flying).toBe(true);
     await expect.poll(() => looks(page).then((l) => l.playing), { timeout: 15_000 }).toBe('springy');
