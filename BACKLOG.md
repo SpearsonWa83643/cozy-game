@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-11-02 9:15 AM (CT). Live: main 3985950, https://willowmere-glade.pages.dev (bundle index-BeIuhYSg.js).
+Updated: 2026-11-02 1:05 PM (CT). Live: main 5175ad6, https://willowmere-glade.pages.dev (bundle index-Dvyv-eXw.js).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -38,7 +38,15 @@ Walker: flying mounts, and finding them, score high on engagement; wardrobe-styl
 |---|---|---|---|---|
 | 41 | Thief thank-you: a caught thief leaves a little thank-you snack (berries) before it goes | Done/Live 35ec13e (2026-11-01; verified in live bundle 2026-11-02) | 2026-11-01 | 0.25 |
 | 42 | Thieves caught tally: the stable header shows how many sneaky thieves you've caught | Done/Live 3985950 (2026-11-01; verified in live bundle 2026-11-02) | 2026-11-01 | 0.25 |
-| 43 | Paw-print trail: a thief that escapes leaves fading paw prints as it runs off | In progress: WIP rescued to wip/thief-polish 43bb0c2 (paw trail + thief dash-in/HUD-clear tweaks + spec); needs spec run, merge, deploy. Missed 2026-11-01 (daily runs failing) | 2026-11-02 | 0.25 |
+| 43 | Paw-print trail: a thief that escapes leaves fading paw prints as it runs off | Done/Live 275245d (2026-11-02, bundle index-DMUwkfFH.js) | 2026-11-02 | 0.25 |
+
+## Self-added polish (2026-11-02; only Walker-blocked items left; no Walker decision or spending needed)
+
+| Order | Task | Status | ETA live | Estimate (dev days) |
+|---|---|---|---|---|
+| 44 | Whoosh loop-de-loop: tapping your flying friend for a whoosh starts with a happy full loop (rider spins too; skipped under reduced motion) | Done/Live 5175ad6 | 2026-11-02 | 0.25 |
+| 45 | Goodbye hearts: when you hop off, your flying friend says "Bye bye!" with a puff of hearts | Done/Live 5175ad6 | 2026-11-02 | 0.25 |
+| 46 | Thief giggles: a not-yet-caught thief giggles a cheeky line ("Hee hee!", "Nope!", "Too slow!") as it scampers off | Done/Live 5175ad6 | 2026-11-02 | 0.25 |
 
 ## Recently done
 
