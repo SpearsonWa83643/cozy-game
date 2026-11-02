@@ -108,6 +108,7 @@ export function paintThieves(scene: Phaser.Scene) {
 const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 const TAPS = 3;
 const SCALE = 2.3;
+const GIGGLES = ['Hee hee!', 'Nope!', 'Too slow!', 'Catch me!', 'Whoopsie!'];
 
 export class Thief {
   state: 'off' | 'sneak' | 'caught' | 'flee' = 'off';
@@ -126,6 +127,8 @@ export class Thief {
   thanks = 0;
   /** 43: paw prints left on the escape trail (tests). */
   paws = 0;
+  /** 46: cheeky giggles when tapped but not caught yet (tests). */
+  giggles = 0;
   private pawAt: { x: number; y: number } | null = null;
   private pawSide = 1;
   private entering = false;
@@ -212,6 +215,9 @@ export class Thief {
     if (!reduceMotion()) w.tweens.add({ targets: s, y: s.y - 26, duration: 140, yoyo: true, ease: 'Sine.easeOut' });
     if (this.taps >= TAPS) { this.arrest(); return true; }
     this.speed = 170 + 40 * this.taps; this.entering = false;
+    // 46: a cheeky giggle bubble as it scampers away.
+    this.giggles++;
+    w.floatText(s.x, cy - 46, GIGGLES[(this.giggles - 1) % GIGGLES.length], '#ffe9a8');
     this.pickSpot();
     w.game.events.emit('toast', this.taps === 1 ? 'Got it once! Again!' : 'One more tap!');
     return true;
@@ -376,7 +382,7 @@ export class Thief {
     const c = this.w.cameras.main;
     return {
       state: this.state, kind: this.kind.id, taps: this.taps, stolen: save.stolen ? { ...save.stolen } : null,
-      thanks: this.thanks, paws: this.paws, caught: this.caughtN, stolenN: this.stolenN, rescued: this.rescuedN, marker: !!this.marker,
+      thanks: this.thanks, paws: this.paws, giggles: this.giggles, caught: this.caughtN, stolenN: this.stolenN, rescued: this.rescuedN, marker: !!this.marker,
       screen: s ? { x: (s.x - c.worldView.x) * c.zoom / DPR, y: (s.y - 24 * SCALE - c.worldView.y) * c.zoom / DPR } : null,
       blocked: this.blocked(),
     };

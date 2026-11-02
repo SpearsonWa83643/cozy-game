@@ -65,6 +65,8 @@ export class Mount {
   flap = 0; glide = 0; glideAmt = 0; nextGlide = 3;
   fastMs = 0; cooldownMs = 0;
   boosts = 0; rides = 0; landings = 0;
+  /** 44: loop-de-loop on a whoosh (0..1 while rolling, -1 idle) and how many so far; 45: goodbye hearts on landing. */
+  rollT = -1; rolls = 0; byes = 0;
   target: [number, number] | null = null;
   targetTime = 0;
   seg: Seg | null = null;
@@ -367,6 +369,8 @@ export class Mount {
     sfx.wind(1.4); sfx.sparkle();
     this.w.floatText(this.ex, this.ey - 50, 'Whoosh!', '#fff1c4');
     this.w.burst(this.ex, this.ey, 0xffffff, 14, 'spark');
+    // 44: a happy loop-de-loop to start the whoosh (skipped for reduced motion).
+    if (!reduceMotion()) { this.rollT = 0; this.rolls++; }
     this.w.game.events.emit('mount', 'fast');
     return true;
   }
@@ -395,6 +399,10 @@ export class Mount {
     w.path = []; w.pathTarget = null;
     w.playerShadow.setVisible(true);
     this.landings++;
+    // 45: your friend says goodbye with a little puff of hearts.
+    this.byes++;
+    w.burst(this.ex, this.ey - 20, 0xff9ab8, reduceMotion() ? 4 : 10, 'heart');
+    w.floatText(this.ex, this.ey - 60, 'Bye bye!', '#ffd9e6');
   }
 
   startLeave() {
@@ -559,6 +567,12 @@ export class Mount {
     let y = this.ey + bob;
     const vy = Math.sin(this.heading) * this.speed;
     let tilt = Phaser.Math.Clamp(vy / 900, -0.14, 0.14) * d + (this.phase === 'hop' ? -0.12 * d : 0);
+    // 44: loop-de-loop: one full eased spin over ~0.75 s (the rider holds on and spins too).
+    if (this.rollT >= 0) {
+      if (!paused) this.rollT += dt / 0.75;
+      if (this.rollT >= 1 || this.phase !== 'ride') this.rollT = -1;
+      else { const e = 0.5 - 0.5 * Math.cos(this.rollT * Math.PI); tilt -= d * e * Math.PI * 2; y -= Math.sin(this.rollT * Math.PI) * 26; }
+    }
     const bs = this.SCALE / (frameScale[this.def.body] ?? S);
     // Idle wobble per mount (skipped for reduced motion): carpet sways, jelly pulses, duck waddles, chili shivers, berry squishes.
     let bsx = 1, bsy = 1;
@@ -659,7 +673,7 @@ export class Mount {
       fast: this.fastMs > 0, cooldown: Math.max(0, Math.round(this.cooldownMs)), ground: [Math.round(this.gx), Math.round(this.gy)],
       eagle: [Math.round(this.ex), Math.round(this.ey)], alt: Math.round(this.alt), speed: Math.round(this.speed),
       steering: this.manual, idleMs: Math.round(this.idleMs), steers: this.steers, tours: this.tours, heading: +this.heading.toFixed(2),
-      boosts: this.boosts, rides: this.rides, landings: this.landings, dropAt: this.dropAt ? this.dropAt.map(Math.round) : null,
+      boosts: this.boosts, rolls: this.rolls, rolling: this.rollT >= 0, byes: this.byes, rides: this.rides, landings: this.landings, dropAt: this.dropAt ? this.dropAt.map(Math.round) : null,
       canCall: this.canCall(), reachable: this.reachList.length, seg: this.seg ? +this.seg.t.toFixed(2) : null,
       travels: this.travels, arrivals: this.arrivals, travelName: this.travelName, travelTarget: this.travelTarget ? this.travelTarget.map(Math.round) : null,
       seasonSwaps: this.seasonSwaps, wingStyle: this.def.style ?? 'wings', cape: this.capeKey, capeVisible: this.wingFar.visible, wingVisible: this.wing.visible, capeLift: +this.capeLift.toFixed(2),

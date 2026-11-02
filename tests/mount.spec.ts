@@ -58,6 +58,10 @@ test('mount: call eagle, ride, tap eagle for whoosh, tap ground to hop off', asy
   const tapEagle = async () => { const m = await mount(page); const p = await toScreen(page, m.eagle[0], m.eagle[1] - 6); await page.touchscreen.tap(p.x, p.y); };
   await tapEagle();
   await expect.poll(async () => (await mount(page)).fast, { timeout: 10_000, intervals: [100] }).toBe(true);
+  // 44: the whoosh starts with a loop-de-loop.
+  expect((await mount(page)).rolls).toBe(1);
+  await page.screenshot({ path: `${SHOTS}/mount-loop.png` });
+  await expect.poll(async () => (await mount(page)).rolling, { timeout: 60_000, intervals: [200] }).toBe(false);
   await expect.poll(async () => (await mount(page)).speed, { timeout: 30_000, intervals: [200] }).toBeGreaterThan(250);
   expect((await mount(page)).phase).toBe('ride');
   await page.screenshot({ path: 'test-results/mount-fast-classic.png' });
@@ -76,6 +80,9 @@ test('mount: call eagle, ride, tap eagle for whoosh, tap ground to hop off', asy
   await page.touchscreen.tap(gx, gy);
   await expect.poll(async () => (await mount(page)).phase, { timeout: 10_000, intervals: [100] }).toBe('land');
   await expect.poll(async () => (await mount(page)).landings, { timeout: 90_000, intervals: [200] }).toBe(1);
+  // 45: your friend says goodbye with hearts.
+  expect((await mount(page)).byes).toBe(1);
+  await page.screenshot({ path: `${SHOTS}/mount-bye.png` });
   const m3 = await mount(page);
   const s3 = await st(page);
   expect(m3.riderOn).toBe(false);

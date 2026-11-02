@@ -42,6 +42,7 @@ test('mount thief: button, arrest with 3 taps, escape hides a friend, rescue fro
     const t1 = await thief(page);
     expect(t1.state).toBe('caught');
     expect(t1.taps).toBe(3);
+    expect(t1.giggles).toBe(2); // 46: a cheeky giggle after each of the first two taps
     expect(t1.stolen).toBeNull();
     await page.waitForTimeout(700);
     await page.screenshot({ path: `${SHOTS}/thief-caught.png`, scale: 'css' });
