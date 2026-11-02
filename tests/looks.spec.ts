@@ -112,8 +112,9 @@ test('looks & moves: arrow pickers, weather auto-match, override, flying', async
 
     // "Match weather" goes back to Auto, and the rain picks Storm Jitters + Thunderstorm.
     await page.evaluate(() => { const m = (window as any).__menu; m.show('stable'); });
-    await page.waitForTimeout(500);
-    await tap(page, 'looks:open');
+    await expect.poll(() => rect(page, 'looks:open'), { timeout: 10_000 }).toBeTruthy();
+    await page.waitForTimeout(800); // let the menu settle (slow headless frames)
+    await expect.poll(async () => { if (!(await rect(page, 'motion:auto'))) await tap(page, 'looks:open'); return !!(await rect(page, 'motion:auto')); }, { timeout: 15_000 }).toBe(true);
     await tap(page, 'motion:auto');
     S = await shown(page);
     expect(S.motion).toBe('Auto (weather)'); expect(S.auto).toBe('Rain \u2192 Storm Jitters'); expect(S.sound).toBe('Thunderstorm');
