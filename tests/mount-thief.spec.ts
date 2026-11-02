@@ -34,7 +34,7 @@ test('mount thief: button, arrest with 3 taps, escape hides a friend, rescue fro
     await page.touchscreen.tap(btn.x, btn.y);
     await expect.poll(async () => (await thief(page)).state, { timeout: 20_000 }).toBe('sneak');
     await page.waitForTimeout(1400);
-    for (let i = 0; i < 12 && (await thief(page)).state === 'sneak'; i++) {
+    for (let i = 0; i < 30 && (await thief(page)).state === 'sneak'; i++) {
       const s = (await thief(page)).screen;
       if (s) await page.touchscreen.tap(s.x, s.y);
       await page.waitForTimeout(250);
@@ -64,7 +64,9 @@ test('mount thief: button, arrest with 3 taps, escape hides a friend, rescue fro
     const sv = await page.evaluate(() => JSON.parse(localStorage.getItem('cozy.save.v2')!));
     expect(sv.stolen).toEqual(st);
     expect(sv.puzzles[st.puzzle]).toBeUndefined();
+    await page.screenshot({ path: `${SHOTS}/thief-paws.png`, scale: 'css' });
     await expect.poll(async () => (await thief(page)).state, { timeout: 20_000 }).toBe('off');
+    expect((await thief(page)).paws, '43: paw prints on the escape trail').toBeGreaterThan(0);
     await expect.poll(() => dialogOpen(page), { timeout: 20_000 }).toBe(true);
     for (let i = 0; i < 8 && await dialogOpen(page); i++) { await page.touchscreen.tap(600, 500); await page.waitForTimeout(500); }
     expect(await dialogOpen(page)).toBe(false);

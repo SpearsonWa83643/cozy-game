@@ -97,6 +97,12 @@ export function paintThieves(scene: Phaser.Scene) {
   canvasTex(scene, 'thief_sack', 28, 32, paintSack);
   canvasTex(scene, 'thief_cage', 80, 74, paintCage);
   canvasTex(scene, 'thief_mask', 40, 26, paintMask);
+  // 43: a little paw print for the escape trail.
+  canvasTex(scene, 'thief_paw', 20, 20, (c) => {
+    c.fillStyle = 'rgba(74,50,31,0.75)';
+    c.beginPath(); c.ellipse(10, 13, 5, 4.2, 0, 0, Math.PI * 2); c.fill();
+    for (const [x, y] of [[4, 6], [8, 3.5], [12, 3.5], [16, 6]]) { c.beginPath(); c.arc(x, y, 2, 0, Math.PI * 2); c.fill(); }
+  });
 }
 
 const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
@@ -118,6 +124,11 @@ export class Thief {
   caughtN = 0; stolenN = 0; rescuedN = 0;
   /** 41: berries the last caught thief left as a thank-you. */
   thanks = 0;
+  /** 43: paw prints left on the escape trail (tests). */
+  paws = 0;
+  private pawAt: { x: number; y: number } | null = null;
+  private pawSide = 1;
+  private entering = false;
   private hop: Phaser.Tweens.Tween | null = null;
 
   constructor(private w: WorldScene) {
@@ -158,7 +169,8 @@ export class Thief {
     this.sack = w.add.image(x, y, atlasOf('thief_sack'), 'thief_sack').setOrigin(0.5, 0.9).setScale(1.4 / (frameScale.thief_sack ?? 1)).setDepth(y + 7999);
     this.pips = w.add.graphics().setDepth(9500);
     this.state = 'sneak';
-    this.speed = 170;
+    // It dashes in from the edge, then slows down to sneak (so it doesn't linger under the buttons).
+    this.speed = 380; this.entering = true;
     this.endAt = w.time.now + ms;
     this.pickSpot();
     this.startHop();
@@ -176,7 +188,8 @@ export class Thief {
 
   private pickSpot() {
     const v = this.w.cameras.main.worldView;
-    const mx = v.width * 0.14, my = v.height * 0.22;
+    // Keep clear of the HUD buttons on the sides and top so taps land on the thief.
+    const mx = v.width * 0.2, my = v.height * 0.24;
     let tx = 0, ty = 0;
     for (let i = 0; i < 6; i++) {
       tx = v.x + mx + Math.random() * (v.width - 2 * mx);
@@ -198,7 +211,7 @@ export class Thief {
     sfx.ting?.();
     if (!reduceMotion()) w.tweens.add({ targets: s, y: s.y - 26, duration: 140, yoyo: true, ease: 'Sine.easeOut' });
     if (this.taps >= TAPS) { this.arrest(); return true; }
-    this.speed += 40;
+    this.speed = 170 + 40 * this.taps; this.entering = false;
     this.pickSpot();
     w.game.events.emit('toast', this.taps === 1 ? 'Got it once! Again!' : 'One more tap!');
     return true;
@@ -260,6 +273,7 @@ export class Thief {
     const w = this.w, s = this.spr!;
     const v = w.cameras.main.worldView;
     this.to = { x: s.x < v.centerX ? v.x - 120 : v.right + 120, y: s.y };
+    this.pawAt = null;
     this.speed = 420;
     w.time.delayedCall(reduceMotion() ? 200 : 1600, done);
   }
@@ -293,9 +307,10 @@ export class Thief {
     if (this.state === 'sneak' || this.state === 'flee') {
       const dx = this.to.x - s.x, dy = this.to.y - s.y, d = Math.hypot(dx, dy);
       const step = this.speed * (reduceMotion() ? 0.7 : 1) * dt;
-      if (d <= step) { if (this.state === 'sneak') this.pickSpot(); }
+      if (d <= step) { if (this.state === 'sneak') { if (this.entering) { this.entering = false; this.speed = 170 + 40 * this.taps; } this.pickSpot(); } }
       else { s.x += dx / d * step; s.y += dy / d * step; s.setFlipX(dx < 0); }
       s.setDepth(s.y + 8000);
+      if (this.state === 'flee') this.dropPaw(s.x, s.y);
       if (this.sack) { this.sack.setPosition(s.x + (s.flipX ? 30 : -30), s.y - 4).setDepth(s.depth - 1); }
     }
     // Tap pips above its head: filled ones are your taps so far, and a ring shows the time left.
@@ -311,6 +326,18 @@ export class Thief {
       }
       g.lineStyle(4, 0xe85d3a, 0.9); g.beginPath(); g.arc(x, y + 22, 7, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, left)); g.strokePath();
     }
+  }
+
+  /** 43: fading paw prints behind an escaping thief (alternating left/right). */
+  private dropPaw(x: number, y: number) {
+    if (this.pawAt && Math.hypot(x - this.pawAt.x, y - this.pawAt.y) < 46) return;
+    this.pawAt = { x, y };
+    this.pawSide = -this.pawSide;
+    const w = this.w;
+    const p = w.add.image(x, y - 4 + this.pawSide * 9, atlasOf('thief_paw'), 'thief_paw').setScale(1.5 / (frameScale.thief_paw ?? 1)).setDepth(y - 30)
+      .setRotation(this.spr?.flipX ? -Math.PI / 2 : Math.PI / 2);
+    this.paws++;
+    w.tweens.add({ targets: p, alpha: 0, delay: reduceMotion() ? 1500 : 2200, duration: 1200, onComplete: () => p.destroy() });
   }
 
   /** A star sack bobs where the stolen friend is hiding. */
@@ -349,7 +376,7 @@ export class Thief {
     const c = this.w.cameras.main;
     return {
       state: this.state, kind: this.kind.id, taps: this.taps, stolen: save.stolen ? { ...save.stolen } : null,
-      thanks: this.thanks, caught: this.caughtN, stolenN: this.stolenN, rescued: this.rescuedN, marker: !!this.marker,
+      thanks: this.thanks, paws: this.paws, caught: this.caughtN, stolenN: this.stolenN, rescued: this.rescuedN, marker: !!this.marker,
       screen: s ? { x: (s.x - c.worldView.x) * c.zoom / DPR, y: (s.y - 24 * SCALE - c.worldView.y) * c.zoom / DPR } : null,
       blocked: this.blocked(),
     };
