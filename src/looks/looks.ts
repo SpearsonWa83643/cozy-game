@@ -7,7 +7,7 @@ import type { WeatherKind } from '../village/weather';
 import { MOTIONS, MotionSim, motionById, type MotionStyle } from './motion';
 import { MotionAudio, SCAPE_NAMES } from './motionAudio';
 import { LAB_STYLES } from './styles';
-import type { ArtStyleId } from './styleFx';
+import { fxStats, type ArtStyleId } from './styleFx';
 
 export type MotionId = 'gentle' | 'springy' | 'dreamy' | 'snappy' | 'physics' | 'playful' | 'storm';
 export type MotionChoice = 'auto' | MotionId;
@@ -148,7 +148,7 @@ class Looks {
     return {
       art: this.art, motion: this.motion, effective: this.effective, weather: this.weather,
       scape: scapeName(this.effective), playing: this.audio.playing, flying: this.flying, previewing: this.previewing,
-      simT: +this.sim.t.toFixed(2), ...this.stats, saved: localStorage.getItem(KEY),
+      simT: +this.sim.t.toFixed(2), ...this.stats, fx: { ...fxStats }, saved: localStorage.getItem(KEY),
     };
   }
 }
