@@ -38,8 +38,8 @@ export class MotionAudio {
       this.out.connect(comp).connect(dest);
       this.an = c.createAnalyser(); this.an.fftSize = 2048; comp.connect(this.an);
       this.master = c.createGain(); this.master.gain.value = this.muted ? 0 : 1; this.master.connect(this.out);
-      this.wet = c.createConvolver(); this.wet.buffer = this.impulse(2.6); const wg = c.createGain(); wg.gain.value = 0.45; this.wet.connect(wg).connect(this.master);
-      const n = c.sampleRate * 4;
+      this.wet = c.createConvolver(); this.wet.buffer = this.impulse(1.8); // shorter than the lab's 2.6 s: lighter on iPad const wg = c.createGain(); wg.gain.value = 0.45; this.wet.connect(wg).connect(this.master);
+      const n = c.sampleRate * 2; // looped noise beds (2 s is plenty, half the build cost)
       this.noiseBuf = c.createBuffer(1, n, c.sampleRate); const d = this.noiseBuf.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
       this.brownBuf = c.createBuffer(1, n, c.sampleRate); const b = this.brownBuf.getChannelData(0); let l = 0;
       for (let i = 0; i < n; i++) { l = (l + 0.02 * (Math.random() * 2 - 1)) / 1.02; b[i] = l * 3.5; }

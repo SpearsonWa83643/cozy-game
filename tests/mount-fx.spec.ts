@@ -35,6 +35,8 @@ test('new mounts: ride effect on while riding, off after, capped', async ({ play
       await expect.poll(async () => (await mount(page)).id, { timeout: 10_000, intervals: [100] }).toBe(id);
       await expect.poll(async () => (await mount(page)).phase, { timeout: 120_000, intervals: [200] }).toBe('ride');
       await page.waitForTimeout(1400);
+      // Slow headless frames: give the first sparkles a moment to appear.
+      await expect.poll(async () => (await mount(page)).fxAlive, { timeout: 15_000, intervals: [250] }).toBeGreaterThan(0);
       const m = await mount(page);
       expect(m.fx, `${id} fx`).toBe(id);
       expect(m.fxOn, `${id} emitting`).toBe(true);
