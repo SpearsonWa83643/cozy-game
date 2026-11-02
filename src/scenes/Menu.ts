@@ -1420,17 +1420,30 @@ export class MenuScene extends Phaser.Scene {
     return this.add.image(x, y, key).setOrigin(0, 0).setDisplaySize(w, h);
   }
 
-  /** A soft sky for the motion card that follows the weather (or the picked motion's mood). */
+  /** A soft sky for the motion card in the motion's mood (clouds, stars, or rain), cached per size. */
   private skyFor(id: string, x: number, y: number, w: number, h: number) {
-    const SK: Record<string, [number, number]> = {
-      gentle: [0xbfe3f2, 0xeaf6e4], springy: [0xc9e8ff, 0xfff1c9], dreamy: [0x2d3566, 0x7b6aa8], snappy: [0xffd9a8, 0xfff4d6],
-      physics: [0xa9c6d8, 0xe8e3cf], playful: [0xbfe9ff, 0xfff0b8], storm: [0x4c5a6e, 0x9aa7b4],
+    const SK: Record<string, [string, string]> = {
+      gentle: ['#bfe3f2', '#eaf6e4'], springy: ['#c9e8ff', '#fff1c9'], dreamy: ['#2d3566', '#7b6aa8'], snappy: ['#ffd9a8', '#fff4d6'],
+      physics: ['#a9c6d8', '#e8e3cf'], playful: ['#bfe9ff', '#fff0b8'], storm: ['#4c5a6e', '#9aa7b4'],
     };
-    const [t, b] = SK[id] ?? SK.gentle;
-    const g = this.add.graphics();
-    g.fillGradientStyle(t, t, b, b, 1); g.fillRoundedRect(x, y, w, h, 14);
-    g.fillGradientStyle(t, t, b, b, 1); g.fillRect(x, y + 14, w, h - 28);
-    return g;
+    const W = Math.round(w * DPR), H = Math.round(h * DPR), key = `looksky:${id}:${W}x${H}`;
+    if (!this.textures.exists(key)) {
+      const [t, b] = SK[id] ?? SK.gentle;
+      const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+      const c = cv.getContext('2d')!;
+      c.beginPath(); c.roundRect(0, 0, W, H, 14 * DPR); c.clip();
+      const gr = c.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, t); gr.addColorStop(1, b);
+      c.fillStyle = gr; c.fillRect(0, 0, W, H);
+      let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+      if (id === 'dreamy') { c.fillStyle = 'rgba(255,250,220,0.9)'; for (let i = 0; i < 40; i++) { c.beginPath(); c.arc(rnd() * W, rnd() * H * 0.8, (0.8 + rnd() * 1.6) * DPR, 0, Math.PI * 2); c.fill(); } }
+      else {
+        c.fillStyle = id === 'storm' ? 'rgba(70,80,96,0.85)' : 'rgba(255,255,255,0.8)';
+        for (const [cx, cy, r] of [[0.18, 0.2, 0.07], [0.27, 0.17, 0.09], [0.36, 0.21, 0.06], [0.7, 0.3, 0.07], [0.79, 0.27, 0.05]]) { c.beginPath(); c.arc(cx * W, cy * H, r * W, 0, Math.PI * 2); c.fill(); }
+      }
+      if (id === 'storm') { c.strokeStyle = 'rgba(220,235,255,0.5)'; c.lineWidth = 1.5 * DPR; for (let i = 0; i < 50; i++) { const rx = rnd() * W, ry = rnd() * H; c.beginPath(); c.moveTo(rx, ry); c.lineTo(rx - 6 * DPR, ry + 16 * DPR); c.stroke(); } }
+      this.textures.addCanvas(key, cv);
+    }
+    return this.add.image(x, y, key).setOrigin(0, 0).setDisplaySize(w, h);
   }
 
   /** 47-49: the Looks & Moves page: an art style picker and a motion + soundscape picker, one at a time with big arrows. */
