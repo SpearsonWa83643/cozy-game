@@ -10,7 +10,7 @@ import { sfx } from '../audio';
 import { theme, themeEvents, setTheme } from '../theme';
 import type { WorldScene } from '../scenes/World';
 import { MountDef, mountById, seasonalThemeOf } from './defs';
-import { CAPE_AT, CAPE_FRAMES, CAPE_OX, CAPE_OY, capeFrame, mulTint } from './cape';
+import { CAPE_AT, CAPE_OX, CAPE_OY, capeFrame, mulTint } from './cape';
 import { looks } from '../looks/looks';
 import { setOrg, setStyled } from '../looks/styleFx';
 import type { MotionSim } from '../looks/motion';
@@ -641,7 +641,8 @@ export class Mount {
       const rm = reduceMotion();
       const target = -0.28 + 0.42 * sp + (fast ? 0.12 : 0) + (rm ? 0 : Math.sin(time / 260) * 0.05);
       this.capeLift += (target - this.capeLift) * (1 - Math.exp(-dt * 5));
-      const key = rm ? 'cape0' : mix > 0.5 ? CAPE_FRAMES[((Math.floor(sim.capePh / (Math.PI * 2) * 4) % 4) + 4) % 4] : capeFrame(time, fast);
+      // Cape ripple stays on the wall clock (the motion sets the pose and bob), so it keeps rippling on slow frames.
+      const key = rm ? 'cape0' : capeFrame(time, fast);
       if (key !== this.capeKey) { this.capeKey = key; setStyled(this.wingFar, this.w, key, looks.art, CAPE_OX, CAPE_OY); }
       const cs = this.SCALE / (frameScale[key] ?? S);
       setOrg(this.wingFar, d < 0 ? 1 - CAPE_OX : CAPE_OX, CAPE_OY).setPosition(cx, cy)
