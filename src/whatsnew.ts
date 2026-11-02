@@ -8,7 +8,7 @@ export const VERSION = '2026-11-01-thief';
 export type WhatsNewItem = { icon: 'wood' | 'fruit' | 'berry' | 'star' | 'heart'; text: string };
 
 export const ITEMS: WhatsNewItem[] = [
-  { icon: 'star', text: 'Watch out for the Mount Thief! Tap the mask button and a sneaky masked critter runs in. Tap it 3 times to catch it and get thank-you berries, or it hides one of your flying friends behind a puzzle for you to rescue!' },
+  { icon: 'star', text: 'Watch out for the Mount Thief! Tap the mask button and a sneaky masked critter runs in. Tap it 3 times to catch it and get thank-you berries, or it dashes off leaving little paw prints and hides one of your flying friends behind a puzzle for you to rescue!' },
   { icon: 'star', text: 'Your stable shows every season friend now! Ride the Reindeer, Goose, Owl, Flamingo or Pumpkin and the whole glade turns to its season!' },
   { icon: 'heart', text: 'Super capes! Friends without real wings, like the Cowboy Cookie and the Tamale, now fly with a flowing cape. Birds keep their wings!' },
   { icon: 'heart', text: 'Three new flying friends! A Tamale, a shiny golden H-E-Buddy and a pink Chef Concha. Bop critters in the Wild Woods to find their lunchboxes!' },
