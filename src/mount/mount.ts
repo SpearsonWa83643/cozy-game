@@ -11,6 +11,9 @@ import { theme, themeEvents, setTheme } from '../theme';
 import type { WorldScene } from '../scenes/World';
 import { MountDef, mountById, seasonalThemeOf } from './defs';
 import { CAPE_AT, CAPE_OX, CAPE_OY, capeFrame, mulTint } from './cape';
+import { looks } from '../looks/looks';
+import { setOrg, setStyled } from '../looks/styleFx';
+import type { MotionSim } from '../looks/motion';
 import { stickInput } from '../controls';
 import type { TouchStick } from '../controls';
 
@@ -97,6 +100,10 @@ export class Mount {
   /** 37: how many times riding a seasonal friend switched the theme (tests). */
   seasonSwaps = 0;
   capeLift = 0;
+  /** 48: how much of the picked motion style is applied (eases in on take-off, out on landing). */
+  moveMix = 0; private lastWing = 0; private lastSim: MotionSim | null = null;
+  /** 48: lab units -> world px for the motion style's sway / bob. */
+  static MOVE_K = 0.42;
   get SCALE() { return this.def.scale; }
 
   constructor(private w: WorldScene) {
@@ -113,7 +120,10 @@ export class Mount {
     this.applyTheme();
     const onTheme = () => this.applyTheme();
     themeEvents.on('change', onTheme);
-    w.events.once('shutdown', () => themeEvents.off('change', onTheme));
+    // 47: a new art style repaints the friend you're riding.
+    let art = looks.art;
+    const offLooks = looks.on(() => { if (looks.art !== art) { art = looks.art; this.applyDef(this.def); } });
+    w.events.once('shutdown', () => { themeEvents.off('change', onTheme); offLooks(); });
   }
 
   /** Halloween: a subtle moonlit tint. Classic: natural colours. */
@@ -127,12 +137,11 @@ export class Mount {
   applyDef(def: MountDef) {
     this.def = def;
     const sc = (k: string) => this.SCALE / (frameScale[k] ?? S);
-    this.body.setTexture(atlasOf(def.body), def.body).setScale(sc(def.body));
-    this.wing.setTexture(atlasOf(def.wing), def.wing).setScale(sc(def.wing));
-    this.wingFar.setTexture(atlasOf(def.wingFar), def.wingFar).setScale(sc(def.wingFar));
-    const prop = def.style === 'prop', cape = def.style === 'cape';
-    this.wing.setOrigin(0.5, prop || cape ? 0.5 : 0.96).setDepth(prop ? DEPTH + 0.2 : DEPTH + 0.5);
-    this.wingFar.setOrigin(cape ? CAPE_OX : 0.5, cape ? CAPE_OY : prop ? 0.5 : 0.96);
+    const prop = def.style === 'prop', cape = def.style === 'cape', art = looks.art, sc0 = this.w;
+    // 47: each part is drawn in the picked art style (styleFx), keeping its anchor.
+    setStyled(this.body, sc0, def.body, art, 0.5, 0.52).setScale(sc(def.body));
+    setStyled(this.wing, sc0, def.wing, art, 0.5, prop || cape ? 0.5 : 0.96).setScale(sc(def.wing)).setDepth(prop ? DEPTH + 0.2 : DEPTH + 0.5);
+    setStyled(this.wingFar, sc0, def.wingFar, art, cape ? CAPE_OX : 0.5, cape ? CAPE_OY : prop ? 0.5 : 0.96).setScale(sc(def.wingFar));
     this.capeKey = cape ? def.wingFar : '';
     this.applyTheme();
     if (this.trail) this.buildFx();
@@ -551,22 +560,33 @@ export class Mount {
     const fast = this.fastMs > 0;
     // Wings: beat faster when climbing, landing or whooshing; glide now and then on a ride.
     const rate = this.phase === 'hop' ? 3.4 : fast ? 3.0 : this.phase === 'arrive' ? 1.2 : this.phase === 'leave' || this.phase === 'travel' ? 2.4 : 1.7;
-    if (this.phase === 'ride' && !fast && !paused) {
+    // 48: while flying, the picked motion style (or the weather's, under Auto) drives the bob, sway,
+    // squash, wing beat, glides and cape ripple. It eases in after take-off and out for landing/whoosh.
+    const sim = looks.frame();
+    if (sim !== this.lastSim) { this.lastSim = sim; this.lastWing = sim.wing; }
+    const moving = (this.phase === 'ride' || this.phase === 'travel') && !fast && !reduceMotion();
+    this.moveMix += ((moving ? 1 : 0) - this.moveMix) * (1 - Math.exp(-dt * 2.5));
+    const mix = this.moveMix < 0.005 ? 0 : this.moveMix;
+    const dWing = Phaser.Math.Clamp(sim.wing - this.lastWing, -1.5, 1.5); this.lastWing = sim.wing;
+    if (this.phase === 'ride' && !fast && !paused && mix < 0.5) {
       this.nextGlide -= dt;
       if (this.nextGlide <= 0 && this.glide <= 0) { this.glide = 1.4 + Math.random(); this.nextGlide = 4 + Math.random() * 4; }
     }
     if (this.glide > 0) this.glide -= dt;
-    const gTarget = this.glide > 0 || this.phase === 'arrive' && (this.seg?.t ?? 0) < 0.55 ? 1 : 0;
+    const gOwn = this.glide > 0 || this.phase === 'arrive' && (this.seg?.t ?? 0) < 0.55 ? 1 : 0;
+    const gTarget = gOwn * (1 - mix) + sim.glide * mix;
     this.glideAmt += (gTarget - this.glideAmt) * (1 - Math.exp(-dt * 4));
-    this.flap += dt * Math.PI * 2 * rate * (this.def.flapRate ?? 1) * (1 - this.glideAmt * 0.85);
+    this.flap += dt * Math.PI * 2 * rate * (this.def.flapRate ?? 1) * (1 - this.glideAmt * 0.85) * (1 - mix) + dWing * mix;
     const c = Math.cos(this.flap);
     const lift = c * (1 - this.glideAmt) + 0.6 * this.glideAmt; // glide: wings held up in a soaring V // 1 up, -1 down; glide holds wings level-ish
-    const bob = Math.sin(this.flap) * 3.2 * (1 - this.glideAmt) + Math.sin(time / 600) * 1.5;
+    const K = Mount.MOVE_K;
+    const bob = (Math.sin(this.flap) * 3.2 * (1 - this.glideAmt) + Math.sin(time / 600) * 1.5) * (1 - mix) + Math.cos(sim.wing) * 2.5 * K * (1 - sim.glide) * mix;
     const d = this.dir;
-    const x = this.ex;
-    let y = this.ey + bob;
+    const pose = mix ? sim.pose() : null;
+    const x = this.ex + (pose ? pose.x * K * d * mix : 0);
+    let y = this.ey + bob + (pose ? pose.y * K * mix : 0);
     const vy = Math.sin(this.heading) * this.speed;
-    let tilt = Phaser.Math.Clamp(vy / 900, -0.14, 0.14) * d + (this.phase === 'hop' ? -0.12 * d : 0);
+    let tilt = Phaser.Math.Clamp(vy / 900, -0.14, 0.14) * d + (this.phase === 'hop' ? -0.12 * d : 0) + (pose ? pose.r * d * mix : 0);
     // 44: loop-de-loop: one full eased spin over ~0.75 s (the rider holds on and spins too).
     if (this.rollT >= 0) {
       if (!paused) this.rollT += dt / 0.75;
@@ -594,6 +614,7 @@ export class Mount {
       else { wob = -Math.abs(Math.sin(time / 520)) * 5; bsy *= 1 + Math.sin(time / 260) * 0.03; }
     }
     y += wob;
+    if (pose) { bsx *= 1 + (pose.sx - 1) * mix; bsy *= 1 + (pose.sy - 1) * mix; }
     this.body.setPosition(x, y).setFlipX(d < 0).setRotation(tilt).setScale(bs * bsx, bs * bsy);
     const ws = this.SCALE / (frameScale[this.def.wing] ?? S);
     const sy = ws * (lift >= 0 ? 0.35 + 0.65 * lift : 0.35 + 0.95 * lift); // through 0 the wing flips to point down
@@ -620,10 +641,11 @@ export class Mount {
       const rm = reduceMotion();
       const target = -0.28 + 0.42 * sp + (fast ? 0.12 : 0) + (rm ? 0 : Math.sin(time / 260) * 0.05);
       this.capeLift += (target - this.capeLift) * (1 - Math.exp(-dt * 5));
+      // Cape ripple stays on the wall clock (the motion sets the pose and bob), so it keeps rippling on slow frames.
       const key = rm ? 'cape0' : capeFrame(time, fast);
-      if (key !== this.capeKey) { this.capeKey = key; this.wingFar.setTexture(atlasOf(key), key); }
+      if (key !== this.capeKey) { this.capeKey = key; setStyled(this.wingFar, this.w, key, looks.art, CAPE_OX, CAPE_OY); }
       const cs = this.SCALE / (frameScale[key] ?? S);
-      this.wingFar.setOrigin(d < 0 ? 1 - CAPE_OX : CAPE_OX, CAPE_OY).setPosition(cx, cy)
+      setOrg(this.wingFar, d < 0 ? 1 - CAPE_OX : CAPE_OX, CAPE_OY).setPosition(cx, cy)
         .setScale(cs * (1 + 0.14 * sp), cs * (1 - 0.08 * sp + (rm ? 0 : Math.sin(time / 300) * 0.03))).setRotation(tilt + d * this.capeLift).setFlipX(d < 0);
       const [bx2, by2] = at((ca + 4) * this.SCALE, (cb + 2) * this.SCALE);
       this.wing.setPosition(bx2, by2).setScale(this.SCALE / (frameScale.cape_bow ?? S)).setRotation(tilt).setFlipX(d < 0);
@@ -677,6 +699,7 @@ export class Mount {
       canCall: this.canCall(), reachable: this.reachList.length, seg: this.seg ? +this.seg.t.toFixed(2) : null,
       travels: this.travels, arrivals: this.arrivals, travelName: this.travelName, travelTarget: this.travelTarget ? this.travelTarget.map(Math.round) : null,
       seasonSwaps: this.seasonSwaps, wingStyle: this.def.style ?? 'wings', cape: this.capeKey, capeVisible: this.wingFar.visible, wingVisible: this.wing.visible, capeLift: +this.capeLift.toFixed(2),
+      looks: { art: looks.art, motion: looks.effective, mix: +this.moveMix.toFixed(2), tex: this.body.texture.key },
       fx: this.fxId, fxOn: !!this.fx?.emitting, fxAlive: this.fx?.getAliveParticleCount() ?? 0,
       reachableHere: this.reach ? this.isReachable(this.w.feet.x, this.w.feet.y) : null,
     };

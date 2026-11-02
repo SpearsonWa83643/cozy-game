@@ -32,6 +32,8 @@ import { Puddles } from '../puddles';
 import { Kite } from '../kite';
 import { Pinwheels } from '../pinwheels';
 import { Mount } from '../mount/mount';
+import { looks } from '../looks/looks';
+import type { ArtStyleId } from '../looks/styleFx';
 import { Thief } from '../thief';
 
 export type Interactable = {
@@ -1199,7 +1201,11 @@ export class WorldScene extends Phaser.Scene {
     const k = this.keys;
     const paused = !!this.registry.get('dialogOpen') || !!this.registry.get('menuOpen');
     const frozen = this.buildView || this.locked || paused || ['cast', 'reel', 'land'].includes(this.fishing?.state) || this.mount.carrying || !!this.boat?.hopping;
+    // 48/49: the motion + soundscape follow the flying mount and (under Auto) the village weather.
+    looks.flying = this.mount.phase === 'ride' || this.mount.phase === 'travel';
+    looks.setWeather(this.village && this.village.rain > 0 && this.village.weather?.kind ? this.village.weather.kind : 'clear');
     this.mount.update(time, dt, paused);
+    looks.frame(); // keeps the motion clock + soundscape ticking (and lets it fade out once nobody is flying)
     this.thief.update(dt, paused);
     const carried = this.mount.riderOn;
     let ix = 0, iy = 0;
@@ -1648,6 +1654,10 @@ export class WorldScene extends Phaser.Scene {
       villageAdmire: () => { self.village.admireT = 0; },
       weatherLeft: (n: number) => { if (self.village.rain > 0) self.village.rain = n; },
       mount: () => self.mount.snapshot(),
+      /** 47-49: art style / motion picks, the weather they follow, and soundscape state. */
+      looks: () => looks.snapshot(),
+      setLookArt: (id: ArtStyleId) => looks.setArt(id),
+      setLookMotion: (id: string) => looks.setMotion(id as never),
       callMount: (id?: string) => self.mount.call(id),
       /** Test hook: grant a treasure (e.g. a mount egg) without the trip. */
       giveTreasure: (id: string) => { addTreasure(id); self.game.events.emit('treasure', id); },

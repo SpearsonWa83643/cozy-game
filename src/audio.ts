@@ -82,6 +82,16 @@ class Synth {
   }
 
   get unlocked() { return !!this.ctx; }
+  /** 48: the shared context + master bus, so the motion soundscapes follow the volume button. */
+  get audioCtx() { return this.ctx; }
+  get masterBus(): AudioNode | null { return this.ctx ? this.master : null; }
+  /** 48: 1 = theme music at full, 0 = faded out (a motion soundscape is playing instead). */
+  musicDuck = 1;
+  duckMusic(k: number) {
+    if (Math.abs(k - this.musicDuck) < 1e-3) return;
+    this.musicDuck = k;
+    if (this.ctx && this.musicTimer !== null) { const t = this.ctx.currentTime; this.music.gain.cancelScheduledValues(t); this.music.gain.setTargetAtTime(0.5 * k, t, 0.8); }
+  }
 
   setLevel(level: VolumeLevel) {
     this.level = level;
@@ -254,7 +264,7 @@ class Synth {
   startMusic() {
     if (!this.ctx || this.musicTimer !== null) return;
     this.music.gain.setValueAtTime(0, this.ctx.currentTime);
-    this.music.gain.linearRampToValueAtTime(0.5, this.ctx.currentTime + 6);
+    this.music.gain.linearRampToValueAtTime(0.5 * this.musicDuck, this.ctx.currentTime + 6);
     this.nextChordAt = this.ctx.currentTime + 0.3;
     const tick = () => {
       if (!this.ctx || this.ctx.state !== 'running') return;

@@ -15,7 +15,11 @@ import { buildWardrobeItems, isNoneItem } from '../wardrobeArt';
 import { LANDMARKS, ensureLandmarkIcons } from '../landmarks';
 import { MOUNTS, isMountUnlocked, isStolen, currentPick, seasonalThemeOf, type MountDef } from '../mount/defs';
 import { HIDES, THIEVES } from '../thief';
-import { CAPE_AT, CAPE_OX, CAPE_OY, capeFrame } from '../mount/cape';
+import { CAPE_AT, CAPE_FRAMES, CAPE_OX, CAPE_OY, capeFrame } from '../mount/cape';
+import { looks, ART_STYLES, MOTION_CHOICES, WEATHER_NAMES, scapeName } from '../looks/looks';
+import { motionById } from '../looks/motion';
+import { LAB_STYLES } from '../looks/styles';
+import { padOf, setStyled, type ArtStyleId } from '../looks/styleFx';
 
 const INK = '#3d2c20';
 const FONT = 'Nunito';
@@ -76,6 +80,7 @@ export class MenuScene extends Phaser.Scene {
 
   show(tab: Tab) {
     this.tab = tab;
+    this.stableView = 'barn';
     this.open = true;
     this.registry.set('menuOpen', true);
     this.world.path = [];
@@ -90,6 +95,7 @@ export class MenuScene extends Phaser.Scene {
   close() {
     if (!this.open) return;
     this.open = false;
+    looks.previewing = false;
     this.newIds = null;
     sfx.blip();
     this.tweens.add({ targets: this.root, alpha: 0, duration: 160, onComplete: () => { this.root.setVisible(false); this.root.removeAll(true); } });
@@ -114,7 +120,7 @@ export class MenuScene extends Phaser.Scene {
     this.root.removeAll(true);
     this.cancelDrag();
     if (this.tab !== 'wardrobe') this.newIds = null;
-    this.heroImg = null; this.playerDot = null; this.hintText = null; this.hintBg = null; this.stageGlow = null; this.tankFx = null; this.tankFish = []; this.stablePets = [];
+    this.heroImg = null; this.playerDot = null; this.hintText = null; this.hintBg = null; this.stageGlow = null; this.tankFx = null; this.tankFish = []; this.stablePets = []; this.lookPets = [];
     this.w = this.scale.width / DPR; this.h = this.scale.height / DPR;
     const si = safeInsets();
     const m = 18;
@@ -1208,22 +1214,24 @@ export class MenuScene extends Phaser.Scene {
     this.lastPet = { id: p.m.id, kind, hearts: this.petHearts };
   }
 
-  private puppet(m: MountDef, x: number, y: number, targetW: number, on: boolean) {
-    const SC = m.scale, prop = m.style === 'prop';
+  private puppet(m: MountDef, x: number, y: number, targetW: number, on: boolean, art: ArtStyleId = 'classic') {
+    const SC = m.scale, prop = m.style === 'prop', cape = m.style === 'cape';
     const sc = (key: string) => SC / (frameScale[key] ?? S);
-    const wingFar = this.add.image(prop ? m.propAt![0] * SC : 3 * SC, prop ? m.propAt![1] * SC : -10 * SC, atlasOf(m.wingFar), m.wingFar).setOrigin(0.5, prop ? 0.5 : 0.96).setScale(sc(m.wingFar) * 0.9);
-    const body = this.add.image(0, 0, atlasOf(m.body), m.body).setOrigin(0.5, 0.52).setScale(sc(m.body));
-    const wing = this.add.image(prop ? m.propAt![0] * SC : -4 * SC, prop ? m.propAt![1] * SC : -7 * SC, atlasOf(m.wing), m.wing).setOrigin(0.5, prop ? 0.5 : 0.96).setScale(sc(m.wing));
+    // 47: parts can be drawn in a picked art style (styleFx); setStyled keeps each part's anchor.
+    const part = (key: string, px: number, py: number, ox: number, oy: number) => setStyled(this.add.image(px, py, atlasOf(key), key), this, key, art, ox, oy);
+    const wingFar = part(m.wingFar, prop ? m.propAt![0] * SC : 3 * SC, prop ? m.propAt![1] * SC : -10 * SC, cape ? CAPE_OX : 0.5, cape ? CAPE_OY : prop ? 0.5 : 0.96).setScale(sc(m.wingFar) * 0.9);
+    const body = part(m.body, 0, 0, 0.5, 0.52).setScale(sc(m.body));
+    const wing = part(m.wing, prop ? m.propAt![0] * SC : -4 * SC, prop ? m.propAt![1] * SC : -7 * SC, 0.5, prop || cape ? 0.5 : 0.96).setScale(sc(m.wing));
     const parts = prop ? [body, wingFar, wing] : [wingFar, body, wing];
-    if (m.style === 'cape') {
+    if (cape) {
       // 36: cape streams behind, bow in front.
       const [ca, cb] = CAPE_AT[m.id] ?? [2, -20];
-      wingFar.setPosition(ca * SC, cb * SC).setOrigin(CAPE_OX, CAPE_OY).setScale(sc(m.wingFar)).setRotation(-0.1).setTint(m.cape ?? 0xffffff);
-      wing.setPosition((ca + 4) * SC, (cb + 2) * SC).setOrigin(0.5, 0.5).setScale(sc(m.wing)).setTint(m.cape ?? 0xffffff);
+      wingFar.setPosition(ca * SC, cb * SC).setScale(sc(m.wingFar)).setRotation(-0.1).setTint(m.cape ?? 0xffffff);
+      wing.setPosition((ca + 4) * SC, (cb + 2) * SC).setScale(sc(m.wing)).setTint(m.cape ?? 0xffffff);
     } else if (m.style === 'none') { wing.setVisible(false); wingFar.setVisible(false); }
     if (!on) for (const o of parts) o.setTint(0x2e2219);
     const c = this.add.container(x, y, parts);
-    const k = targetW / Math.max(1, body.width * sc(m.body));
+    const k = targetW / Math.max(1, (body.width - 2 * (padOf[body.texture.key] ?? 0)) * sc(m.body));
     c.setScale(k).setAlpha(on ? 1 : 0.8);
     return { c, body, wing, wingFar, k };
   }
@@ -1263,6 +1271,7 @@ export class MenuScene extends Phaser.Scene {
   stableTitle = '';
   renderStable(a: { x: number; y: number; w: number; h: number }) {
     this.stablePets = []; this.rideBtn = null; this.badges = {};
+    if (this.stableView === 'looks') { this.renderLooks(a); return; }
     const list = MOUNTS;
     // 37 (Walker, Oct 29): seasonal friends are shown like the others (no ??? hiding); riding one brings its season.
     const shown = (m: MountDef) => !isStolen(m.id) && (isMountUnlocked(m) || !!seasonalThemeOf(m.id));
@@ -1282,8 +1291,18 @@ export class MenuScene extends Phaser.Scene {
     // 42: once you've caught a sneaky thief, the sign shows your tally.
     const caught = save.minor.thief_caught ?? 0;
     this.stableTitle = `Your stable: ${got} / ${list.length} friends` + (caught ? `   ·   Thieves caught: ${caught}` : '');
-    const sign = this.text(a.x + a.w / 2, a.y + 20, this.stableTitle, 18, '#fff3d6', 900).setOrigin(0.5).setStroke('#4a2a16', 4);
+    // 47-48: the "Looks & Moves" button sits at the right end of the beam; the sign centres in what's left.
+    const lw = 214, lh = 46, lx = a.x + a.w - lw - 8, ly = a.y + 2;
+    const sign = this.text((a.x + lx) / 2, a.y + 20, this.stableTitle, 18, '#fff3d6', 900).setOrigin(0.5).setStroke('#4a2a16', 4);
+    if (sign.width > lx - a.x - 20) sign.setScale((lx - a.x - 20) / sign.width);
     this.content.add(sign);
+    {
+      const [bg, z] = this.btn(lx, ly, lw, lh, () => { sfx.sparkle(); this.stableView = 'looks'; this.render(); }, theme.ui.tabOn, theme.ui.accentDark, 20);
+      this.rects['looks:open'] = this.lastRect;
+      const t = this.text(lx + lw / 2 + 14, ly + lh / 2, 'Looks & Moves', 19, '#fffaf0', 900).setOrigin(0.5);
+      const ic = this.text(lx + 24, ly + lh / 2, '\u2728', 22, '#fffaf0', 900).setOrigin(0.5);
+      this.content.add([bg, z, t, ic]);
+    }
     const top = a.y + 56, gap = 10;
     const sw = (a.w - 24 - (cols - 1) * gap) / cols, sh = (a.h - (top - a.y) - 12 - (rows - 1) * gap) / rows;
     list.forEach((m, i) => {
@@ -1350,6 +1369,209 @@ export class MenuScene extends Phaser.Scene {
       this.rects[`stall:${m.id}`] = { x, y, w: sw, h: sh };
     });
     for (let i = list.length; i < cols * rows; i++) this.barnCorner(a.x + 12 + (i % cols) * (sw + gap), top + Math.floor(i / cols) * (sh + gap), sw, sh);
+  }
+
+  /** 47-48: which page of the Stable tab is showing. */
+  stableView: 'barn' | 'looks' = 'barn';
+  /** The animated friends on the Looks & Moves page ('art' and 'motion' cards). */
+  lookPets: { kind: 'art' | 'motion'; m: MountDef; c: Phaser.GameObjects.Container; body: Phaser.GameObjects.Image; wing: Phaser.GameObjects.Image; wingFar: Phaser.GameObjects.Image; k: number; x0: number; y0: number; art: ArtStyleId; capeKey: string; flap: number; lastWing: number }[] = [];
+  /** What the Looks & Moves cards say (tests). */
+  looksShown = { art: '', motion: '', sound: '', auto: '' };
+
+  /** A big round arrow button (◀ / ▶) for the pickers. */
+  private arrowBtn(x: number, y: number, s: number, dir: -1 | 1, onTap: () => void, id: string) {
+    const [bg, z] = this.btn(x, y, s, s, onTap, theme.ui.tabOn, theme.ui.accentDark, s / 2);
+    this.rects[id] = this.lastRect;
+    const g = this.add.graphics();
+    const cx = x + s / 2 + dir * 3, cy = y + s / 2, r = s * 0.24;
+    g.fillStyle(0xfffaf0, 1);
+    g.fillTriangle(cx + dir * r, cy, cx - dir * r * 0.75, cy - r, cx - dir * r * 0.75, cy + r);
+    this.content.add([bg, z, g]);
+  }
+
+  /** Page dots under a picker. */
+  private dots(cx: number, y: number, n: number, on: number) {
+    const g = this.add.graphics(), gap = 18;
+    for (let i = 0; i < n; i++) {
+      const x = cx + (i - (n - 1) / 2) * gap;
+      if (i === on) { g.fillStyle(theme.ui.accentDark, 1); g.fillCircle(x, y, 6.5); } else { g.fillStyle(0xd9b98f, 1); g.fillCircle(x, y, 4.5); }
+    }
+    this.content.add(g);
+  }
+
+  /** The Style Lab's painted backdrop for a style (cached per size); Classic gets a meadow sky. */
+  private lookBackdrop(id: ArtStyleId, x: number, y: number, w: number, h: number) {
+    const W = Math.round(w * DPR), H = Math.round(h * DPR), key = `lookbg:${id}:${W}x${H}`;
+    const lab = LAB_STYLES.find((s) => s.id === id || (id === 'watercolor' && s.id === 'wc'));
+    if (!this.textures.exists(key)) {
+      const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+      const c = cv.getContext('2d')!;
+      // Rounded corners (no masks needed).
+      c.beginPath(); c.roundRect(0, 0, W, H, 14 * DPR); c.clip();
+      if (lab) lab.backdrop(c, W, H);
+      else {
+        const gr = c.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#bfe3f2'); gr.addColorStop(0.62, '#e9f4df'); gr.addColorStop(0.63, '#a9d27f'); gr.addColorStop(1, '#86bd62');
+        c.fillStyle = gr; c.fillRect(0, 0, W, H);
+        c.fillStyle = 'rgba(255,255,255,0.85)';
+        for (const [cx, cy, r] of [[0.22, 0.2, 0.06], [0.3, 0.18, 0.08], [0.72, 0.28, 0.07], [0.8, 0.26, 0.05]]) { c.beginPath(); c.arc(cx * W, cy * H, r * W, 0, Math.PI * 2); c.fill(); }
+      }
+      this.textures.addCanvas(key, cv);
+    }
+    return this.add.image(x, y, key).setOrigin(0, 0).setDisplaySize(w, h);
+  }
+
+  /** A soft sky for the motion card in the motion's mood (clouds, stars, or rain), cached per size. */
+  private skyFor(id: string, x: number, y: number, w: number, h: number) {
+    const SK: Record<string, [string, string]> = {
+      gentle: ['#bfe3f2', '#eaf6e4'], springy: ['#c9e8ff', '#fff1c9'], dreamy: ['#2d3566', '#7b6aa8'], snappy: ['#ffd9a8', '#fff4d6'],
+      physics: ['#a9c6d8', '#e8e3cf'], playful: ['#bfe9ff', '#fff0b8'], storm: ['#4c5a6e', '#9aa7b4'],
+    };
+    const W = Math.round(w * DPR), H = Math.round(h * DPR), key = `looksky:${id}:${W}x${H}`;
+    if (!this.textures.exists(key)) {
+      const [t, b] = SK[id] ?? SK.gentle;
+      const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+      const c = cv.getContext('2d')!;
+      c.beginPath(); c.roundRect(0, 0, W, H, 14 * DPR); c.clip();
+      const gr = c.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, t); gr.addColorStop(1, b);
+      c.fillStyle = gr; c.fillRect(0, 0, W, H);
+      let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+      if (id === 'dreamy') { c.fillStyle = 'rgba(255,250,220,0.9)'; for (let i = 0; i < 40; i++) { c.beginPath(); c.arc(rnd() * W, rnd() * H * 0.8, (0.8 + rnd() * 1.6) * DPR, 0, Math.PI * 2); c.fill(); } }
+      else {
+        c.fillStyle = id === 'storm' ? 'rgba(70,80,96,0.85)' : 'rgba(255,255,255,0.8)';
+        for (const [cx, cy, r] of [[0.18, 0.2, 0.07], [0.27, 0.17, 0.09], [0.36, 0.21, 0.06], [0.7, 0.3, 0.07], [0.79, 0.27, 0.05]]) { c.beginPath(); c.arc(cx * W, cy * H, r * W, 0, Math.PI * 2); c.fill(); }
+      }
+      if (id === 'storm') { c.strokeStyle = 'rgba(220,235,255,0.5)'; c.lineWidth = 1.5 * DPR; for (let i = 0; i < 50; i++) { const rx = rnd() * W, ry = rnd() * H; c.beginPath(); c.moveTo(rx, ry); c.lineTo(rx - 6 * DPR, ry + 16 * DPR); c.stroke(); } }
+      this.textures.addCanvas(key, cv);
+    }
+    return this.add.image(x, y, key).setOrigin(0, 0).setDisplaySize(w, h);
+  }
+
+  /** 47-49: the Looks & Moves page: an art style picker and a motion + soundscape picker, one at a time with big arrows. */
+  renderLooks(a: { x: number; y: number; w: number; h: number }) {
+    this.lookPets = [];
+    const g = this.add.graphics();
+    g.fillStyle(0x2a1a0e, 0.3); g.fillRoundedRect(a.x + 4, a.y + 8, a.w, a.h, 16);
+    g.fillStyle(0xa8432f, 1); g.fillRoundedRect(a.x, a.y, a.w, a.h, 16);
+    g.lineStyle(2, 0x7f2c1e, 0.7);
+    for (let x = a.x + 30; x < a.x + a.w - 10; x += 34) g.lineBetween(x, a.y + 40, x, a.y + a.h - 4);
+    g.fillStyle(0x6a3a22, 1); g.fillRoundedRect(a.x, a.y, a.w, 40, { tl: 16, tr: 16, bl: 0, br: 0 });
+    g.fillStyle(0x8a5434, 1); g.fillRect(a.x, a.y + 34, a.w, 6);
+    this.content.add(g);
+    // Back to the barn.
+    {
+      const bw = 150, bh = 46, x = a.x + 8, y = a.y + 2;
+      const [bg, z] = this.btn(x, y, bw, bh, () => { sfx.blip(); this.stableView = 'barn'; this.render(); }, 0xfbf1dc, 0xd9b98f, 20);
+      this.rects['looks:back'] = this.lastRect;
+      this.content.add([bg, z, this.text(x + bw / 2, y + bh / 2, '\u2039  Stable', 20, INK, 900).setOrigin(0.5)]);
+    }
+    this.content.add(this.text(a.x + a.w / 2, a.y + 20, 'Looks & Moves', 20, '#fff3d6', 900).setOrigin(0.5).setStroke('#4a2a16', 4));
+    const pick = MOUNTS.find((m) => m.id === currentPick()) ?? MOUNTS[0];
+    const top = a.y + 58, gap = 16, cw = (a.w - 24 - gap) / 2, ch = a.h - (top - a.y) - 12;
+    const AR = 76;
+    const card = (x: number, title: string) => {
+      const cg = this.add.graphics();
+      cg.fillStyle(0x2a1a0e, 0.28); cg.fillRoundedRect(x + 2, top + 5, cw, ch, 20);
+      cg.fillStyle(0xfbf1dc, 1); cg.fillRoundedRect(x, top, cw, ch, 20);
+      cg.lineStyle(3, 0xd9b98f, 1); cg.strokeRoundedRect(x + 6, top + 6, cw - 12, ch - 12, 15);
+      this.content.add([cg, this.text(x + cw / 2, top + 24, title, 18, '#8a5434', 900).setOrigin(0.5)]);
+    };
+    const below = Math.min(190, ch * 0.42);
+    const pv = (x: number) => ({ x: x + 16, y: top + 44, w: cw - 32, h: ch - 44 - below });
+    // ---- Art style card ----
+    {
+      const x = a.x + 12;
+      card(x, 'Art style');
+      const i = Math.max(0, ART_STYLES.findIndex((s) => s.id === looks.art)), st = ART_STYLES[i];
+      const p = pv(x);
+      const bd = this.lookBackdrop(st.id, p.x, p.y, p.w, p.h);
+      this.content.add(bd);
+      this.addLookPet('art', pick, p, st.id);
+      const ry = p.y + p.h + 14;
+      this.arrowBtn(x + 16, ry, AR, -1, () => { looks.cycleArt(-1); sfx.blip(); this.render(); }, 'art:prev');
+      this.arrowBtn(x + cw - 16 - AR, ry, AR, 1, () => { looks.cycleArt(1); sfx.blip(); this.render(); }, 'art:next');
+      const nm = this.text(x + cw / 2, ry + AR / 2, st.name, 23, INK, 900).setOrigin(0.5);
+      if (nm.width > cw - 2 * AR - 56) nm.setScale((cw - 2 * AR - 56) / nm.width);
+      const bl = this.text(x + cw / 2, ry + AR + 12, st.blurb, 15, '#6b4a33', 700).setOrigin(0.5, 0).setAlign('center').setWordWrapWidth(cw - 48);
+      this.content.add([nm, bl]);
+      this.dots(x + cw / 2, top + ch - 22, ART_STYLES.length, i);
+      this.looksShown.art = st.name;
+    }
+    // ---- Motion & sound card ----
+    {
+      const x = a.x + 12 + cw + gap;
+      card(x, 'Motion & sound');
+      const i = Math.max(0, MOTION_CHOICES.indexOf(looks.motion)), eff = looks.effective, ms = motionById(eff), auto = looks.motion === 'auto';
+      const p = pv(x);
+      this.content.add(this.skyFor(eff, p.x, p.y, p.w, p.h));
+      this.addLookPet('motion', pick, p, looks.art);
+      const sound = `Sound: ${scapeName(eff)}`;
+      const sb = this.text(p.x + 12, p.y + p.h - 12, `\u266A ${sound}`, 15, '#fffaf0', 900).setOrigin(0, 1).setStroke('#3d2c20', 4);
+      this.content.add(sb);
+      if (!auto) {
+        // A hand pick is on: one tap goes back to letting the weather choose.
+        const bw = 168, bh = 46, bx = p.x + p.w - bw - 10, by = p.y + 10;
+        const [bg, z] = this.btn(bx, by, bw, bh, () => { looks.setMotion('auto'); sfx.sparkle(); this.render(); }, 0xfbf1dc, theme.ui.accentDark, 22);
+        this.rects['motion:auto'] = this.lastRect;
+        this.content.add([bg, z, this.text(bx + bw / 2, by + bh / 2, '\u2601  Match weather', 17, INK, 900).setOrigin(0.5)]);
+      }
+      const ry = p.y + p.h + 14;
+      this.arrowBtn(x + 16, ry, AR, -1, () => { looks.cycleMotion(-1); sfx.blip(); this.render(); }, 'motion:prev');
+      this.arrowBtn(x + cw - 16 - AR, ry, AR, 1, () => { looks.cycleMotion(1); sfx.blip(); this.render(); }, 'motion:next');
+      const name = auto ? 'Auto (weather)' : ms.name;
+      const nm = this.text(x + cw / 2, ry + AR / 2 - (auto ? 12 : 0), name, 23, INK, 900).setOrigin(0.5);
+      if (nm.width > cw - 2 * AR - 56) nm.setScale((cw - 2 * AR - 56) / nm.width);
+      this.content.add(nm);
+      const autoLine = `${WEATHER_NAMES[looks.weather]} \u2192 ${ms.name}`;
+      if (auto) {
+        const sub = this.text(x + cw / 2, ry + AR / 2 + 16, autoLine, 15, '#8a5434', 800).setOrigin(0.5);
+        if (sub.width > cw - 2 * AR - 50) sub.setScale((cw - 2 * AR - 50) / sub.width);
+        this.content.add(sub);
+      }
+      const blurb = auto ? 'Your friend flies to match the weather. Tap the arrows to pick a motion yourself.' : ms.blurb;
+      this.content.add(this.text(x + cw / 2, ry + AR + 12, blurb, 15, '#6b4a33', 700).setOrigin(0.5, 0).setAlign('center').setWordWrapWidth(cw - 48));
+      this.dots(x + cw / 2, top + ch - 22, MOTION_CHOICES.length, i);
+      this.looksShown.motion = name; this.looksShown.sound = scapeName(eff); this.looksShown.auto = auto ? autoLine : '';
+    }
+  }
+
+  private addLookPet(kind: 'art' | 'motion', m: MountDef, p: { x: number; y: number; w: number; h: number }, art: ArtStyleId) {
+    const x0 = p.x + p.w / 2, y0 = p.y + p.h * 0.52;
+    const pp = this.puppet(m, x0, y0, Math.min(p.w * 0.5, p.h * 0.62, 230), true, art);
+    this.content.add(pp.c);
+    this.lookPets.push({ kind, m, ...pp, x0, y0, art, capeKey: m.wingFar, flap: 0, lastWing: looks.sim.wing });
+  }
+
+  /** Animate the Looks & Moves friends: the motion card's friend moves in the picked motion, in time with its soundscape. */
+  private tickLooks(time: number, delta: number) {
+    const dt = Math.min(delta, 100) / 1000;
+    const sim = looks.frame();
+    // 49: under Auto, a weather change while the page is open updates the card.
+    if (looks.motion === 'auto' && this.looksShown.auto && this.looksShown.auto !== `${WEATHER_NAMES[looks.weather]} \u2192 ${motionById(looks.effective).name}`) { this.render(); return; }
+    for (const p of this.lookPets) {
+      if (!p.c.active) continue;
+      const m = p.m, SC = m.scale, ws = SC / (frameScale[m.wing] ?? S);
+      let lift: number, capeIdx: number;
+      if (p.kind === 'motion') {
+        const q = sim.pose(), K = p.k * 0.55;
+        p.c.setPosition(p.x0 + q.x * K, p.y0 + q.y * K).setRotation(q.r).setScale(p.k * q.sx, p.k * q.sy);
+        lift = Math.cos(sim.wing) * (1 - sim.glide * 0.8);
+        capeIdx = ((Math.floor(sim.capePh / (Math.PI * 2) * 4) % 4) + 4) % 4;
+      } else {
+        p.flap += dt * Math.PI * 2 * 0.8 * (m.flapRate ?? 1);
+        p.c.setPosition(p.x0, p.y0 + Math.sin(time / 650) * 5);
+        lift = Math.cos(p.flap);
+        capeIdx = Math.floor(time / 125) % 4;
+      }
+      if (m.style === 'prop') p.wing.setScale(ws * 0.6, ws * (0.15 + 0.85 * Math.abs(Math.cos(time / 40))));
+      else if (m.style === 'cape') {
+        const key = CAPE_FRAMES[capeIdx];
+        if (key !== p.capeKey) { p.capeKey = key; setStyled(p.wingFar, this, key, p.art, CAPE_OX, CAPE_OY); }
+      } else if (m.style !== 'none') {
+        const sy = ws * (lift >= 0 ? 0.35 + 0.65 * lift : 0.35 + 0.95 * lift), sweep = 0.32 + 0.08 * lift;
+        p.wing.setScale(ws, sy).setRotation(-sweep);
+        p.wingFar.setScale(ws * 0.9, sy * 0.88).setRotation(-sweep * 1.15);
+      }
+    }
   }
 
   /** Hay bales and a water trough for the spare corner of the barn. */
@@ -1419,7 +1641,10 @@ export class MenuScene extends Phaser.Scene {
   }
 
   update(time: number, delta = 16) {
+    // 48: the soundscape plays while the Looks & Moves page is open (and while flying).
+    looks.previewing = this.open && this.tab === 'stable' && this.stableView === 'looks';
     if (!this.open) return;
+    if (this.lookPets.length) this.tickLooks(time, delta);
     if (this.tankFx) this.tickTank(time, delta);
     if (this.stablePets.length) this.tickStable(time, delta);
     const d = this.drag;

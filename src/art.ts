@@ -70,9 +70,27 @@ export function canvasTex(
   draw(ctx);
   ctx.restore();
   if (standalone) uploadCanvas(scene, key, canvas);
-  else { pending.push({ key, canvas, w: cw, h: ch, scale, atlas: target }); frameAtlas[key] = target; }
+  else {
+    texSource[key] = { w, h, scale, draw }; pending.push({ key, canvas, w: cw, h: ch, scale, atlas: target }); frameAtlas[key] = target; }
   frameScale[key] = scale;
 }
+
+/** 47: how each atlas frame was painted, so an art style can repaint it on demand (see looks/styleFx). */
+export const texSource: Record<string, { w: number; h: number; scale: number; draw: (ctx: Ctx) => void }> = {};
+/** 47: paint an atlas frame again into a fresh canvas (null if it was not made by canvasTex). */
+export function repaint(key: string): HTMLCanvasElement | null {
+  const src = texSource[key];
+  if (!src) return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.ceil(src.w * src.scale); canvas.height = Math.ceil(src.h * src.scale);
+  const ctx = canvas.getContext('2d')!;
+  ctx.save(); ctx.scale(src.scale, src.scale); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  src.draw(ctx);
+  ctx.restore();
+  return canvas;
+}
+/** 47: upload a canvas as its own texture (released afterwards, like canvasTex). */
+export function uploadTex(scene: Phaser.Scene, key: string, canvas: HTMLCanvasElement) { return uploadCanvas(scene, key, canvas); }
 
 /**
  * Uploads a painted canvas as a plain (non-Canvas) texture, then releases the canvas backing
