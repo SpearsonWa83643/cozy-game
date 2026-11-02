@@ -275,3 +275,11 @@ export function setStyled(img: Phaser.GameObjects.Image, scene: Phaser.Scene, ke
   } else img.setOrigin(ox, oy);
   return img;
 }
+
+/** Set an image's origin in original-frame terms (accounts for a styled texture's padding). */
+export function setOrg(img: Phaser.GameObjects.Image, ox: number, oy: number) {
+  const pad = padOf[img.texture.key] ?? 0;
+  if (!pad) return img.setOrigin(ox, oy);
+  const W = img.frame.realWidth, H = img.frame.realHeight, w0 = W - pad * 2, h0 = H - pad * 2;
+  return img.setOrigin((pad + ox * w0) / W, (pad + oy * h0) / H);
+}
