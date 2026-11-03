@@ -777,10 +777,15 @@ export class Thief {
     this.speed = 420;
     // 51: a bit slower (and a bit longer) when carrying friends, so you can see them go.
     if (this.carry.length) this.speed = 300;
-    w.time.delayedCall(reduceMotion() ? 600 : this.carry.length ? 2600 : 1600, done);
+    // Timed off the scene clock's `now` in update (not a Clock event), so it still ends on a slow, choppy frame rate.
+    this.fleeDone = done;
+    this.fleeAt = w.time.now + (reduceMotion() ? 600 : this.carry.length ? 2600 : 1600);
   }
+  private fleeDone: (() => void) | null = null;
+  private fleeAt = 0;
 
   private clear() {
+    this.fleeDone = null;
     this.hop?.stop(); this.hop = null;
     this.endLurk();
     this.spr?.destroy(); this.sack?.destroy(); this.pips?.destroy();
@@ -816,6 +821,7 @@ export class Thief {
         if (a <= 0) { this.cage?.destroy(); this.cage = null; this.clear(); return; }
       }
     }
+    if (this.fleeDone && now >= this.fleeAt) { const d = this.fleeDone; this.fleeDone = null; d(); return; }
     if (this.state === 'sneak' && now > this.endAt) { this.escape(); }
     if (this.state === 'sneak' || this.state === 'flee') {
       const p = this.pos;
