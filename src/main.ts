@@ -7,6 +7,7 @@ import { MenuScene } from './scenes/Menu';
 import { InteriorScene } from './scenes/Interior';
 import { WildScene } from './scenes/Wild';
 import { WildUIScene } from './scenes/WildUI';
+import { ChaseScene } from './scenes/Chase';
 import { VillageUIScene } from './scenes/VillageUI';
 
 import { DPR } from './dpr';
@@ -74,7 +75,7 @@ async function start() {
     audio: { noAudio: true }, // we use our own WebAudio synth
     banner: false,
     physics: { default: 'arcade', arcade: { debug: false } },
-    scene: [BootScene, WorldScene, UIScene, VillageUIScene, MenuScene, InteriorScene, WildScene, WildUIScene],
+    scene: [BootScene, WorldScene, UIScene, VillageUIScene, MenuScene, InteriorScene, WildScene, WildUIScene, ChaseScene],
   });
 
   let lastW = w, lastH = h;
