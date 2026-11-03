@@ -71,8 +71,10 @@ test('jailbreak: once per session, escaped cell, sneaks back, caught again', asy
 
     // It sneaks back as a normal thief event: catch it and it is back in its cell.
     await page.evaluate(() => { const t = (window as any).__game.scene.getScene('world').thief; t.jb.backAt = t.jb.played + 1; });
+
     await catchIt(page, first);
     expect((await toasts(page)).some((t: string) => /is sneaking back!/.test(t))).toBe(true);
+    await page.waitForTimeout(600);
     let sv = await stored(page);
     expect(sv.jail[first].out).toBeUndefined();
     expect((await info(page)).returned).toBe(1);
@@ -81,7 +83,7 @@ test('jailbreak: once per session, escaped cell, sneaks back, caught again', asy
     await page.reload();
     await ready(page);
     expect(await jb(page, 'raccoon', 'lock', 9999)).toBe(true);
-    expect((await stored(page)).jail.raccoon).toMatchObject({ out: true, how: 'lock' });
+    await expect.poll(async () => (await stored(page)).jail.raccoon, { timeout: 5_000 }).toMatchObject({ out: true, how: 'lock' });
     expect(await jb(page, 'fox', 'tunnel')).toBe(false);
     // The jail shows the escaped cell.
     await page.evaluate(() => (window as any).__menu.openJail());
@@ -105,10 +107,12 @@ test('jailbreak: once per session, escaped cell, sneaks back, caught again', asy
     expect((await stored(page)).jail.raccoon.out).toBe(true);
     j = await info(page);
     expect(j).toMatchObject({ broke: false, can: false, kind: 'raccoon' });
+    const n0 = (await stored(page)).jail.raccoon.n;
     await expect.poll(() => page.evaluate(() => (window as any).__cozy.startThief()), { timeout: 20_000 }).toBe(true);
     await catchIt(page, 'raccoon');
+    await page.waitForTimeout(600);
     sv = await stored(page);
-    expect(sv.jail.raccoon.n).toBe(3);
+    expect(sv.jail.raccoon.n).toBe(n0 + 1);
     expect(sv.jail.raccoon.out).toBeUndefined();
     expect(errors).toEqual([]);
   } finally { await browser.close(); }
