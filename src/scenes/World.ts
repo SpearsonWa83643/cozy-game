@@ -13,6 +13,7 @@ import { ThemeDresser } from '../themeDress';
 import { setTheme, theme } from '../theme';
 import { NumBadge, plate, SeqCard } from '../seq';
 import { Puzzles, resetStone } from '../puzzles';
+import { LearnSites } from '../learn/sites';
 import { Fishing } from '../fishing';
 import { Reacts } from '../react';
 import {
@@ -167,6 +168,8 @@ export class WorldScene extends Phaser.Scene {
   area: AreaId = 'glade';
   areaTimer = 0;
   puzzles!: Puzzles;
+  /** 66: letter-easel spelling sites. */
+  learn!: LearnSites;
   fishing!: Fishing;
   ambient: Phaser.GameObjects.Particles.ParticleEmitter[] = [];
   /** The active theme's drifting petal/leaf emitter (see makePetals). */
@@ -277,6 +280,7 @@ export class WorldScene extends Phaser.Scene {
     buildAreas(this);
     this.life = new Life(this);
     this.puzzles = new Puzzles(this);
+    this.learn = new LearnSites(this);
     this.fishing = new Fishing(this);
     this.restoreProgress();
     this.buildNav();
@@ -1513,7 +1517,10 @@ export class WorldScene extends Phaser.Scene {
       pots: () => self.puzzles.pots.map((p) => p.color),
       resetStones: () => self.resetStones,
       tiles: () => self.puzzles.tiles.map((t) => t.rot),
-      chests: () => ({ pots: self.puzzles.potChest.revealed, bells: self.puzzles.bellChest.revealed, tiles: self.puzzles.tileChest.revealed, dig: self.puzzles.digChest.revealed, stones: self.puzzles.stoneChest.revealed, trail: self.puzzles.trailChest.revealed }),
+      chests: () => ({ pots: self.puzzles.potChest.revealed, bells: self.puzzles.bellChest.revealed, tiles: self.puzzles.tileChest.revealed, dig: self.puzzles.digChest.revealed, stones: self.puzzles.stoneChest.revealed, trail: self.puzzles.trailChest.revealed, ...Object.fromEntries(Object.entries(self.learn.sites).map(([k, v]) => [k, v.chest.revealed])) }),
+      /** 66: learning sites (spelling easels): position, words spelled, solved, chest. */
+      learn: () => self.learn.state(),
+      learnOpen: (id: string) => { self.learn.open(id); return !!self.learn.def(id); },
       /** Order 18 footprint trail: prints found so far, the print positions, and the chest. */
       trail: () => ({ step: self.puzzles.trailStep, prints: self.puzzles.tracks.length, pts: TRACKS, glow: self.puzzles.trailGlow.alpha, opened: self.puzzles.trailChest.opened }),
       /** Order 18 pressure stones: [x, y, number, pressed] plus the next number to step on. */

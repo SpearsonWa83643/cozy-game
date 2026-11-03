@@ -16,7 +16,7 @@ const OUTFITS: Record<string, { a: [number, number, number]; b: [number, number,
 };
 const SCARVES: Record<string, [[number, number, number], [number, number, number]] | null> = {
   red: [[10, 78, 56], [18, 85, 66]], sunny: [[44, 90, 56], [50, 95, 72]], petal: [[340, 70, 72], [345, 85, 84]],
-  silver: [[210, 14, 76], [210, 25, 92]], moss: [[150, 60, 46], [120, 80, 70]], sky: [[202, 70, 58], [194, 85, 78]], none: null,
+  silver: [[210, 14, 76], [210, 25, 92]], moss: [[150, 60, 46], [120, 80, 70]], sky: [[202, 70, 58], [194, 85, 78]], abc: [[214, 72, 56], [48, 95, 62]], none: null,
 };
 
 /** Paints one frame. dir: 0 S, 1 SE, 2 E, 3 NE, 4 N; step: 0 idle, 1/2 stride. */

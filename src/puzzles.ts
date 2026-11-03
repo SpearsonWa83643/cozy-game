@@ -37,7 +37,7 @@ export function resetStone(w: WorldScene, x: number, y: number, id: string, rese
   w.interactables.push({ x, y, r: 50, label: 'Reset', promptY: 82, reach: 240, approach: [0, 30], enabled: () => true, action: go });
 }
 
-class Chest {
+export class Chest {
   img: Phaser.GameObjects.Image;
   shadow: Phaser.GameObjects.Image;
   revealed = false;
@@ -114,7 +114,7 @@ export class Puzzles {
     if (id === 'tiles') return this.tiles.some((t, q) => t.rot !== [1, 2, 3, 1][q]);
     if (id === 'stones') return this.stoneNext > 1;
     if (id === 'trail') return this.trailStep > 0;
-    return false;
+    return this.w.learn?.dirty(id) ?? false;
   }
   pots: { img: Phaser.GameObjects.Image; flower: Phaser.GameObjects.Image; color: number; pl: ReturnType<typeof plate>; badge: NumBadge }[] = [];
   potChest: Chest;
@@ -163,11 +163,12 @@ export class Puzzles {
     resetStone(w, TRACK_SIGN.x + 60, TRACK_SIGN.y + 40, 'trail', () => this.resetTrail());
   }
   chestById(id: string): Chest | null {
-    return ({ pots: this.potChest, bells: this.bellChest, tiles: this.tileChest, dig: this.digChest, stones: this.stoneChest, trail: this.trailChest } as Record<string, Chest>)[id] ?? null;
+    return ({ pots: this.potChest, bells: this.bellChest, tiles: this.tileChest, dig: this.digChest, stones: this.stoneChest, trail: this.trailChest } as Record<string, Chest>)[id] ?? this.w.learn?.chestById(id) ?? null;
   }
   /** 40: mix a puzzle back up (the Mount Thief hid a friend behind it). */
   resetById(id: string) {
     ({ pots: () => this.resetPots(), bells: () => this.resetBells(), tiles: () => this.resetTiles(), dig: () => this.resetDig(), stones: () => this.resetStones(), trail: () => this.resetTrail() } as Record<string, () => void>)[id]?.();
+    this.w.learn?.resetById(id);
   }
   resetTrail() {
     this.trailStep = 0;

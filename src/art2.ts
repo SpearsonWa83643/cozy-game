@@ -1,4 +1,5 @@
 // Painters for the wider world: new trees, landmarks, puzzle pieces, creatures, pickups, icons.
+import { paintLearnArt } from './learn/art';
 import Phaser from 'phaser';
 import { Ctx, canvasTex, hsl, rr, dab, mulberry32, paintTree, paintSoft, blob, softCircle } from './art';
 
@@ -606,6 +607,7 @@ export function paintAll2(scene: Phaser.Scene) {
   const pickups: [string, number, number][] = [['shell0', 12, 10], ['shell1', 12, 10], ['starfish', 14, 14], ['apple', 11, 12], ['pear', 11, 13], ['acorn', 9, 11], ['berry', 12, 12]];
   for (const [k, w, h] of pickups) { const f = paintPickup(k); canvasTex(scene, k, w, h, (c) => f(c, w, h)); }
   for (const k of ['ic_key', 'ic_crown', 'ic_shells', 'ic_hood', 'ic_star', 'ic_skypebble', 'ic_fawnbell']) { const f = paintIcon(k); canvasTex(scene, k, 48, 48, (c) => f(c, 48, 48), 2); }
+  paintLearnArt(scene);
   canvasTex(scene, 'mist', 128, 64, (c) => { c.save(); c.scale(1, 0.5); paintSoft(c, 128, 0.6, 1.4); c.restore(); }, 1);
   void softCircle;
 }

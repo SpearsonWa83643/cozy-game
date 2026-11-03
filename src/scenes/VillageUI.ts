@@ -10,6 +10,7 @@ import { theme, themeEvents, THEMES, THEME_ORDER, setTheme } from '../theme';
 import { BUILD, BUILD_ORDER, isUnlockedB, canAfford, Village, Villager, Building, ResId, Alert, HAS_INTERIOR } from '../village/village';
 import type { WorldScene } from './World';
 import { FlyMap } from '../flyMap';
+import { LearnPanel } from '../learn/panel';
 import { unlockedMounts, directMount, currentPick, mountById, type MountDef } from '../mount/defs';
 
 const INK = '#3d2c20';
@@ -117,6 +118,7 @@ export class VillageUIScene extends Phaser.Scene {
     this.mountC.setData('zone', zm);
     this.drawMountBtn();
     this.fly = new FlyMap(this);
+    this.learnPanel = new LearnPanel(this);
 
     this.layout();
     this.scale.on('resize', this.layout, this);
@@ -126,6 +128,8 @@ export class VillageUIScene extends Phaser.Scene {
     ev.on('built', () => this.openTray());
     ev.on('build-moving', () => this.openTray());
     ev.on('card', this.openCard, this);
+    ev.on('learn-open', this.onLearn, this);
+    this.events.once('shutdown', () => ev.off('learn-open', this.onLearn, this));
     ev.on('build-pick', (t: BuildingType) => { if (this.village.building) this.pick(t); });
     ev.on('alert', () => this.showAlert(this.hudAlert()));
     ev.on('needs', () => { this.showAlert(this.hudAlert()); this.refreshBoard(); });
@@ -137,6 +141,8 @@ export class VillageUIScene extends Phaser.Scene {
     (window as any).__vui = this;
   }
 
+  /** 66: open the spelling board for a letter easel. */
+  onLearn(id: string) { if (this.learnPanel.open || this.registry.get('menuOpen')) return; this.closeCard(true); this.learnPanel.show(id); }
   layout() {
     this.w = this.scale.width / DPR; this.h = this.scale.height / DPR;
     this.cameras.main.setZoom(DPR);
@@ -681,7 +687,7 @@ export class VillageUIScene extends Phaser.Scene {
     const c = this.card; this.card = null; this.cardData = null;
     for (const k of Object.keys(this.rects)) if (k.startsWith('card') || k.startsWith('board')) delete this.rects[k];
     if (instant) c.destroy(); else this.tweens.add({ targets: c, alpha: 0, duration: 140, onComplete: () => c.destroy() });
-    this.time.delayedCall(60, () => { if (!this.card) this.registry.set('vcard', false); });
+    this.time.delayedCall(60, () => { if (!this.card && !this.learnPanel?.open) this.registry.set('vcard', false); });
   }
 
   update() {
@@ -701,6 +707,7 @@ export class VillageUIScene extends Phaser.Scene {
 
   // ------------------------------------------------------------ fast travel (9.3) -> 65: the Fly! map
   fly!: FlyMap;
+  learnPanel!: LearnPanel;
   /** Kept for older hooks/tests: true while the Fly! button is up. */
   get travelShown() { return !!this.fly?.btnShown || !!this.fly?.open; }
 }

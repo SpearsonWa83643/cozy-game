@@ -1,6 +1,6 @@
 // Progress persistence (localStorage). Everything the player earns lives here.
 export type HatId = 'straw' | 'none' | 'crown' | 'foxhood' | 'acorn';
-export type ScarfId = 'red' | 'sunny' | 'petal' | 'silver' | 'moss' | 'sky' | 'none';
+export type ScarfId = 'red' | 'sunny' | 'petal' | 'silver' | 'moss' | 'sky' | 'abc' | 'none';
 export type OutfitId = 'teal' | 'moss' | 'sea' | 'koi' | 'ranger' | 'fawn';
 export type BackId = 'none' | 'backpack' | 'staff';
 export type Look = { hat: HatId; scarf: ScarfId; outfit: OutfitId; back: BackId; feather: boolean; shells: boolean };

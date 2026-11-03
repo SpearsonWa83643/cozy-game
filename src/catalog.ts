@@ -11,6 +11,9 @@ export const TREASURES: Treasure[] = [
   // Order 18 puzzle chests in Mistbirch Wood (19.7): each gives a cosmetic of its own.
   { id: 'sky_pebble', name: 'Sky Pebble', icon: 'ic_skypebble', blurb: 'Smooth and sky-blue. Now you have a Sky scarf!', hint: 'The stepping stones in Mistbirch Wood.' },
   { id: 'fawn_bell', name: 'Fawn Bell', icon: 'ic_fawnbell', blurb: 'A tiny bell from the deer. Now you have a Fawn cloak!', hint: 'The deer tracks in Mistbirch Wood.' },
+  // 66: the letter easels (spelling puzzles for little ones).
+  { id: 'letter_block', name: 'ABC Block', icon: 'ic_letterblock', blurb: 'A happy letter block. Now you have an ABC scarf!', hint: 'The letter easel in the meadow.' },
+  { id: 'story_book', name: 'Story Book', icon: 'ic_storybook', blurb: 'A picture book full of words. Spelling star!', hint: 'The letter easel by the bay.' },
   // The Wild Woods set: one in each wild treasure chest, in this order.
   { id: 'acorn_cap', name: 'Acorn Cap', icon: 'ic_acorncap', blurb: 'A snug cap from the Wild Woods.', hint: 'A chest in the Wild Woods.' },
   { id: 'glow_scarf', name: 'Glow Scarf', icon: 'ic_glowscarf', blurb: 'Soft moss that glows a little.', hint: 'A chest in the Wild Woods.' },
@@ -60,6 +63,7 @@ export const COSMETICS: Cosmetic[] = [
   { id: 'scarf:silver', slot: 'scarf', value: 'silver', name: 'Silver scarf', unlock: { fish: 'silver_eel' }, hint: 'Catch a rare river fish.' },
   { id: 'scarf:moss', slot: 'scarf', value: 'moss', name: 'Glow scarf', unlock: { treasure: 'glow_scarf' }, hint: 'A chest in the Wild Woods.' },
   { id: 'scarf:sky', slot: 'scarf', value: 'sky', name: 'Sky scarf', unlock: { treasure: 'sky_pebble' }, hint: 'Step on the stones in Mistbirch Wood.' },
+  { id: 'scarf:abc', slot: 'scarf', value: 'abc', name: 'ABC scarf', unlock: { treasure: 'letter_block' }, hint: 'Spell the words at the meadow letter easel.' },
   { id: 'scarf:none', slot: 'scarf', value: 'none', name: 'No scarf', unlock: null, hint: '' },
   { id: 'outfit:teal', slot: 'outfit', value: 'teal', name: 'Teal tunic', unlock: null, hint: '' },
   { id: 'outfit:moss', slot: 'outfit', value: 'moss', name: 'Moss tunic', unlock: null, hint: '' },

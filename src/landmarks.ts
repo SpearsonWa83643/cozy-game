@@ -1,6 +1,7 @@
 // Mount fast travel (9.3): the landmarks you can fly to while riding, and their big bold icons
 // (drawn once to canvas textures, crisp at iPad DPR).
 import Phaser from 'phaser';
+import { PUZZLE_SITES } from './layout';
 import { COTTAGE, VILLAGE_SIGN, POND, TRAILHEAD, HUBS, STABLE_SPOT, JAIL_SPOT, LIGHTHOUSE, SHRINE, POT_CHEST, BELL_SIGN, TILE_SIGN, DIG_SIGN, PSTONE_SIGN, TRACK_SIGN } from './layout';
 
 export type LandmarkId = 'home' | 'village' | 'brookside' | 'mistbirch' | 'pond' | 'wild'
@@ -36,6 +37,8 @@ export const FLY_SITES: FlySite[] = [
   { id: 'p:dig', name: 'Dig Spot', x: DIG_SIGN.x, y: DIG_SIGN.y + 70, icon: 'pz_dig', puzzle: 'dig' },
   { id: 'p:stones', name: 'Stones', x: PSTONE_SIGN.x, y: PSTONE_SIGN.y + 60, icon: 'pz_stones', puzzle: 'stones' },
   { id: 'p:trail', name: 'Tracks', x: TRACK_SIGN.x, y: TRACK_SIGN.y + 60, icon: 'pz_trail', puzzle: 'trail' },
+  // 66: letter easels (spelling). Land just below the easel.
+  ...PUZZLE_SITES.filter((p) => p.kind === 'spelling').map((p, i) => ({ id: `p:${p.id}`, name: i ? 'Seaside ABC' : 'Meadow ABC', x: p.x, y: p.y + 120, icon: 'pz_spell', puzzle: p.id })),
 ];
 
 const SZ = 128;
@@ -212,6 +215,14 @@ const DRAW: Record<string, (g: CanvasRenderingContext2D) => void> = {
       g.beginPath(); g.ellipse(x - r * 0.42, y - r * 0.6, r * 0.2, r * 0.32, 0, 0, 7); g.ellipse(x + r * 0.42, y - r * 0.6, r * 0.2, r * 0.32, 0, 0, 7); g.fill();
     };
     paw(34, 98, 20); paw(62, 70, 20); paw(94, 46, 20);
+  },
+  pz_spell(g) {
+    // A little easel with bright A B C.
+    g.lineWidth = 6; g.strokeStyle = INK; g.lineJoin = 'round'; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(40, 116); g.lineTo(58, 22); g.moveTo(88, 116); g.lineTo(70, 22); g.stroke();
+    g.fillStyle = '#3f6b4a'; g.beginPath(); g.rect(14, 30, 100, 62); g.fill(); g.stroke();
+    g.font = '900 34px Nunito, "Arial Rounded MT Bold", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    ([['A', 36, '#ff8a9a'], ['B', 64, '#ffd84d'], ['C', 92, '#8fd0ff']] as const).forEach(([l, x, c]) => { g.fillStyle = c; g.fillText(l, x, 62); });
   },
   lm_fly(g) {
     // A folded paper map with a little flying wing: "Fly!".
