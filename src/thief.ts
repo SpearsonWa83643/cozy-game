@@ -15,6 +15,18 @@ import type { WorldScene } from './scenes/World';
 import { DPR } from './dpr';
 import { showClue, clueLine, PLACE } from './clueCard';
 import { nickOf } from './jail';
+import { showChaseOffer } from './chase/chaseOffer';
+import type { ChaseStats } from './scenes/Chase';
+
+/** 69: offer the Thief Chase when a thief runs off with friends (tests can switch it off). */
+export const CHASE_OFFER = { on: true };
+/** Friends you can fly in the chase: every friend you have (not stolen), the one you ride first. */
+export function chaseMounts(first?: string): MountDef[] {
+  const list = MOUNTS.filter((m) => isMountUnlocked(m));
+  const i = list.findIndex((m) => m.id === first);
+  if (i > 0) list.unshift(...list.splice(i, 1));
+  return list;
+}
 
 export type Kind = {
   id: string; name: string; fur: string; dark: string; belly: string;
@@ -473,11 +485,14 @@ export class Thief {
     const spots = [...solved, ...rest, ...(save.puzzles.dig ? [] : ['dig'])].slice(0, n);
     const taken: Stolen[] = pick.slice(0, spots.length).map((m, i) => ({ mount: m.id, puzzle: spots[i], kind: this.kind.id }));
     save.stolen = [...(save.stolen ?? []), ...taken];
-    for (const t of taken) { delete save.puzzles[t.puzzle]; w.puzzles.resetById(t.puzzle); }
+    // 69: with a friend to fly, you are offered a chase first; the puzzles only get mixed up (and the
+    // cells appear) once you say "Not now" or the chase ends without a catch. save.stolen is written
+    // right away, so a reload mid-chase still knows who was taken.
+    const chase = CHASE_OFFER.on && chaseMounts().length > 0;
+    if (!chase) this.hideTaken(taken);
     persist();
     this.stolenN += taken.length;
     this.state = 'flee';
-    this.placeMarker();
     sfx.softFail?.();
     w.burst(s.x, s.y - 40, 0xd8c8ff, 14, 'spark');
     // 51: the friends ride off on its back, held up high (cute, waving along with the hop).
@@ -487,20 +502,112 @@ export class Thief {
     const kn = this.kind.name;
     const names = taken.map((t) => `${nameOf(t.mount)}`);
     const one = taken.length === 1;
+    const kind = this.kind;
     this.runOff(() => {
       this.clear();
-      w.game.events.emit('dialog', one ? [
-        `Oh no! The sneaky ${kn} ran off with your ${names[0]}!`,
-        `It hid your friend in a little cell behind ${HIDES[taken[0].puzzle]}, and that puzzle got all mixed up again.`,
-        `Solve it, then tap the cell to let the ${names[0]} out! Look for the cell with the gold padlock.`,
-      ] : [
-        `Oh no! The sneaky ${kn} ran off with ${taken.length} friends: the ${andList(names)}!`,
-        `It hid each one in a little cell: ${andList(taken.map((t) => `the ${nameOf(t.mount)} behind ${HIDES[t.puzzle]}`))}. Those puzzles got all mixed up again.`,
-        `Solve each puzzle, then tap its cell to let your friend out! Look for the cells with the gold padlocks.`,
-      ]);
+      if (chase) this.offerChase(kind, taken);
+      else this.hiddenDialog(kind, taken);
     });
     w.game.events.emit('toast', one ? `The ${kn} is carrying off your ${names[0]}!` : `The ${kn} is carrying off your ${andList(names)}!`);
     w.game.events.emit('thief', 'stolen');
+  }
+
+  /** The friends go into their cells: each one's puzzle gets mixed up again (52). */
+  private hideTaken(taken: Stolen[]) {
+    for (const t of taken) { delete save.puzzles[t.puzzle]; this.w.puzzles.resetById(t.puzzle); }
+    persist();
+    this.placeMarker();
+  }
+  private hiddenDialog(kind: Kind, taken: Stolen[], soClose = false) {
+    const kn = kind.name, names = taken.map((t) => `${nameOf(t.mount)}`);
+    const lead = soClose ? 'So close! ' : 'Oh no! ';
+    this.w.game.events.emit('dialog', taken.length === 1 ? [
+      soClose ? `So close! The sneaky ${kn} got away with your ${names[0]}!` : `Oh no! The sneaky ${kn} ran off with your ${names[0]}!`,
+      `It hid your friend in a little cell behind ${HIDES[taken[0].puzzle]}, and that puzzle got all mixed up again.`,
+      `Solve it, then tap the cell to let the ${names[0]} out! Look for the cell with the gold padlock.`,
+    ] : [
+      `${lead}The sneaky ${kn} ${soClose ? 'got away' : 'ran off'} with ${taken.length} friends: the ${andList(names)}!`,
+      `It hid each one in a little cell: ${andList(taken.map((t) => `the ${nameOf(t.mount)} behind ${HIDES[t.puzzle]}`))}. Those puzzles got all mixed up again.`,
+      `Solve each puzzle, then tap its cell to let your friend out! Look for the cells with the gold padlocks.`,
+    ]);
+  }
+
+  /** 69: "Chase it!" or "Not now" (see chase/chaseOffer.ts and scenes/Chase.ts). */
+  private offerChase(kind: Kind, taken: Stolen[]) {
+    const mounts = chaseMounts(this.w.mount?.def?.id);
+    if (!mounts.length) { this.hideTaken(taken); this.hiddenDialog(kind, taken); return; }
+    this.chasePending = taken;
+    showChaseOffer({
+      kindName: kind.name, thiefKey: `thief_${kind.id}`, taken: taken.map((t) => t.mount), mounts,
+      onChase: (id) => this.runChase(kind, taken, id),
+      onSkip: () => { this.chasePending = null; this.hideTaken(taken); this.hiddenDialog(kind, taken); },
+    });
+  }
+  chasePending: Stolen[] | null = null;
+  chaseN = 0; chaseCaught = 0;
+
+  private runChase(kind: Kind, taken: Stolen[], mountId: string) {
+    const w = this.w as any;
+    this.chasePending = taken;
+    this.chaseN++;
+    if (w.mount?.carrying) w.mount.dropNow();
+    w.boat?.forceOut?.();
+    w.locked = true; w.path = []; w.body?.setVelocity?.(0, 0);
+    const go = () => {
+      w.scene.sleep('ui'); w.scene.sleep('vui'); w.scene.sleep();
+      w.scene.launch('chase', { kind: kind.id, kindName: kind.name, voice: kind.voice ?? 700, taken: taken.map((t) => t.mount), mountId, onEnd: (st: ChaseStats) => this.chaseDone(kind, taken, st) });
+    };
+    if (reduceMotion()) go();
+    else { w.cameras.main.fadeOut(400, 255, 255, 255); w.cameras.main.once('camerafadeoutcomplete', go); }
+  }
+
+  private chaseDone(kind: Kind, taken: Stolen[], st: ChaseStats) {
+    const w = this.w as any;
+    w.scene.wake(); w.scene.wake('ui'); w.scene.wake('vui');
+    w.cameras.main.fadeIn(reduceMotion() ? 1 : 600, 255, 255, 255);
+    w.locked = false;
+    this.chasePending = null;
+    if (st.result === 'caught') {
+      // Your friends are home (no cells), the puzzles stay solved, and the thief goes to the Thief Jail.
+      const left = (save.stolen ?? []).filter((s) => !taken.some((t) => t.mount === s.mount && t.puzzle === s.puzzle));
+      if (left.length) save.stolen = left; else delete save.stolen;
+      this.chaseCaught++; this.caughtN++; this.rescuedN += taken.length;
+      save.minor.thief_caught = (save.minor.thief_caught ?? 0) + 1;
+      jailAdd(kind.id);
+      persist();
+      this.placeMarker();
+      const names = taken.map((t) => nameOf(t.mount));
+      w.time.delayedCall(450, () => {
+        const f = w.feet;
+        if (f) { w.burst(f.x, f.y - 60, 0xff8fb1, 16, 'heart'); w.burst(f.x, f.y - 60, 0xffe08a, 14, 'spark'); }
+        sfx.sparkle?.();
+        w.game.events.emit('toast', `Hooray! Your ${andList(names)} ${names.length === 1 ? 'is' : 'are'} home, and the ${kind.name} is in the Thief Jail!`);
+        w.game.events.emit('thief', 'chase-caught');
+      });
+    } else {
+      this.hideTaken(taken);
+      w.time.delayedCall(450, () => { this.hiddenDialog(kind, taken, st.result === 'escaped'); w.game.events.emit('thief', 'chase-escaped'); });
+    }
+  }
+
+  /** 69: __cozy.startChase: a thief grabs one friend and you go straight into the chase (tests / trying it out). */
+  startChase(kindId?: string, mountId?: string) {
+    if (this.state !== 'off' || this.chasePending || save.stolen?.length) return false;
+    const list = this.stealable().filter((m) => m.id !== mountId);
+    if (!list.length) return false;
+    const kind = THIEVES.find((k) => k.id === kindId) ?? THIEVES[Math.floor(Math.random() * THIEVES.length)];
+    const pickM = list[Math.floor(Math.random() * list.length)];
+    const ids = Object.keys(HIDES);
+    const solved = ids.filter((id) => save.puzzles[id]);
+    const spot = (solved.length ? solved : ids)[Math.floor(Math.random() * (solved.length || ids.length))];
+    const taken: Stolen[] = [{ mount: pickM.id, puzzle: spot, kind: kind.id }];
+    save.stolen = [...(save.stolen ?? []), ...taken];
+    persist();
+    this.stolenN++;
+    const mounts = chaseMounts(this.w.mount?.def?.id);
+    const mid = mounts.find((m) => m.id === mountId)?.id ?? mounts[0]?.id ?? themeDefaultMount();
+    this.runChase(kind, taken, mid);
+    return { kind: kind.id, taken: pickM.id, puzzle: spot, mount: mid };
   }
 
   private runOff(done: () => void) {
@@ -511,10 +618,19 @@ export class Thief {
     this.speed = 420;
     // 51: a bit slower (and a bit longer) when carrying friends, so you can see them go.
     if (this.carry.length) this.speed = 300;
-    w.time.delayedCall(reduceMotion() ? 600 : this.carry.length ? 2600 : 1600, done);
+    // Counted down in update with the game's frame time (dt, capped at 50 ms like the rest of the game) instead of a
+    // Clock event, so it always ends, even on a very slow, choppy frame rate.
+    this.fleeDone = done;
+    this.fleeLeft = (reduceMotion() ? 600 : this.carry.length ? 2600 : 1600);
+    // Backstop on the wall clock, in case frames come so rarely (or so short) that the game time barely moves.
+    this.fleeBy = performance.now() + this.fleeLeft + 8000;
   }
+  private fleeDone: (() => void) | null = null;
+  private fleeLeft = 0;
+  private fleeBy = 0;
 
   private clear() {
+    this.fleeDone = null;
     this.hop?.stop(); this.hop = null;
     this.spr?.destroy(); this.sack?.destroy(); this.pips?.destroy();
     for (const c of this.carry) c.destroy();
@@ -531,6 +647,8 @@ export class Thief {
   update(dt: number, paused: boolean) {
     if (!paused) this.jailTick(dt); else this.jbAt = 0;
     if (this.state === 'off' || !this.spr) return;
+    // The run-off ends even while a message is up (like the old Clock event did).
+    if (this.fleeDone && ((this.fleeLeft -= dt * 1000) <= 0 || performance.now() >= this.fleeBy)) { const d = this.fleeDone; this.fleeDone = null; d(); return; }
     if (paused) { if (this.state === 'sneak') this.endAt += dt * 1000; return; }
     const s = this.spr;
     if (this.state === 'caught') {
@@ -705,6 +823,7 @@ export class Thief {
       thanks: this.thanks, paws: this.paws, giggles: this.giggles, lastGiggle: this.lastGiggle, kinds: THIEVES.map((k) => k.id), caught: this.caughtN, stolenN: this.stolenN, rescued: this.rescuedN, marker: this.cells.size > 0,
       screen: s ? { x: (s.x - c.worldView.x) * c.zoom / DPR, y: (s.y - 24 * SCALE - c.worldView.y) * c.zoom / DPR } : null,
       blocked: this.blocked(),
+      chase: { pending: this.chasePending?.map((x) => x.mount) ?? null, n: this.chaseN, caught: this.chaseCaught, offer: CHASE_OFFER.on },
     };
   }
 }
