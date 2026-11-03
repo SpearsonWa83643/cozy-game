@@ -59,8 +59,8 @@ test('thief jail: seeded from old saves, arrests land in jail, tap to talk, shar
 
     // Catch a squirrel and a second raccoon: both go to the jail.
     for (const kind of ['squirrel', 'raccoon']) {
-      await expect.poll(() => page.evaluate((k) => (window as any).__cozy.startThief(k, 60000), kind), { timeout: 20_000 }).toBe(true);
-      await expect.poll(async () => (await thief(page)).state, { timeout: 20_000 }).toBe('sneak');
+      await expect.poll(() => page.evaluate((k) => (window as any).__cozy.startThief(k, 60000, 0, 0), kind), { timeout: 20_000 }).toBe(true);
+      await expect.poll(async () => (await thief(page)).state, { timeout: 90_000 }).toBe('sneak');
       await page.waitForTimeout(1400);
       for (let i = 0; i < 40 && (await thief(page)).state === 'sneak'; i++) {
         const s = (await thief(page)).screen;

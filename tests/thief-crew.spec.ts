@@ -43,10 +43,14 @@ test('thief crew: 13 masked thieves, a lineup, new thieves giggle their own line
     await page.screenshot({ path: `${SHOTS}/thief-bunny.png`, scale: 'css', clip: { x: Math.max(0, at.x - 110), y: Math.max(0, at.y - 170), width: 220, height: 220 } });
 
     // A new thief (the Duckling) giggles its own line when tapped.
-    expect(await page.evaluate(() => (window as any).__cozy.startThief('duckling', 60000))).toBe(true);
-    await expect.poll(async () => (await thief(page)).state, { timeout: 20_000 }).toBe('sneak');
+    expect(await page.evaluate(() => (window as any).__cozy.startThief('duckling', 60000, 1, 0))).toBe(true);
+    await expect.poll(async () => (await thief(page)).state, { timeout: 90_000 }).toBe('sneak');
     expect((await thief(page)).kind).toBe('duckling');
-    await page.waitForTimeout(2500);
+    // 61: a tiptoe run cycle from its own pose sheet (and over-the-shoulder peeks now and then).
+    const frames = new Set<string>();
+    for (let i = 0; i < 12; i++) { frames.add((await thief(page)).frame); await page.waitForTimeout(200); }
+    expect(frames.has('run1') && frames.has('run2'), [...frames].join(',')).toBe(true);
+    expect(await page.evaluate(() => (window as any).__game.textures.exists('thief_duckling_poses'))).toBe(true);
     for (let i = 0; i < 30 && (await thief(page)).giggles < 1; i++) {
       const s = (await thief(page)).screen;
       if (s) await page.touchscreen.tap(s.x, s.y);
@@ -57,6 +61,18 @@ test('thief crew: 13 masked thieves, a lineup, new thieves giggle their own line
     expect(['Quack quack!', 'Waddle waddle!', 'Peep peep!', 'Splash dash!']).toContain(t1.lastGiggle);
     await page.waitForTimeout(300);
     await page.screenshot({ path: `${SHOTS}/thief-duckling.png`, scale: 'css' });
+    // 61: each tap makes it hop, startled; the third tap catches it and it shows its sorry pose.
+    expect(t1.hops).toBeGreaterThanOrEqual(1);
+    for (let i = 0; i < 30 && (await thief(page)).state === 'sneak'; i++) {
+      const s = (await thief(page)).screen;
+      if (s) await page.touchscreen.tap(s.x, s.y);
+      await page.waitForTimeout(300);
+    }
+    const t2 = await thief(page);
+    expect(t2.state).toBe('caught');
+    expect(t2.frame).toBe('sorry');
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: `${SHOTS}/thief-sorry.png`, scale: 'css' });
     expect(errors).toEqual([]);
   } finally { await browser.close(); }
 });

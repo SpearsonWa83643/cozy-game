@@ -706,6 +706,16 @@ class Synth {
     [1, 1.12, 1.26, 1.19].forEach((m, i) => { this.voice(base * m, i * 0.085, 0.045, 0.09, 'triangle', 0.01); this.voice(base * m * 2, i * 0.085, 0.012, 0.07, 'sine', 0.01); });
   }
 
+  /** 62: soft sneaky lead-in sounds before a thief pops out (quiet, cozy, never scary). */
+  leafRustle(soft = 1) { if (!this.ready) return; this.noiseBurst(0.45, 2300 + Math.random() * 600, 0.9, 0.035 * soft, 'bandpass', 0, 0.6); this.noiseBurst(0.3, 4400, 1.4, 0.018 * soft, 'bandpass', 0.14, 0.4); this.noiseBurst(0.2, 3200, 1.2, 0.015 * soft, 'bandpass', 0.32); }
+  twig() { if (!this.ready) return; this.noiseBurst(0.035, 3600, 2.5, 0.07, 'highpass'); this.noiseBurst(0.03, 2200, 3, 0.05, 'bandpass', 0.045); this.voice(210, 0, 0.03, 0.06, 'triangle'); }
+  tiptoe() { if (!this.ready) return; for (let i = 0; i < 4; i++) { this.voice(330 + (i % 2) * 40, i * 0.13, 0.025, 0.05, 'triangle'); this.noiseBurst(0.03, 1300, 2, 0.02, 'bandpass', i * 0.13); } }
+  giggleSoft(pitch?: number) {
+    if (!this.ready) return;
+    const base = (pitch ?? 760) * 1.04;
+    [1, 1.12, 1.26].forEach((m, i) => this.voice(base * m, i * 0.1, 0.018, 0.08, 'triangle', 0.01));
+  }
+
   /** 9.38: a happy little sound for each mount when you pet it in the stable. */
   mountHappy(id: string) {
     if (!this.ready) return;
