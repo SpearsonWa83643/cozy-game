@@ -511,12 +511,13 @@ export class Thief {
     this.speed = 420;
     // 51: a bit slower (and a bit longer) when carrying friends, so you can see them go.
     if (this.carry.length) this.speed = 300;
-    // Timed off the scene clock's `now` in update (not a Clock event), so it still ends on a slow, choppy frame rate.
+    // Counted down in update with the game's frame time (dt, capped at 50 ms like the rest of the game) instead of a
+    // Clock event, so it always ends, even on a very slow, choppy frame rate.
     this.fleeDone = done;
-    this.fleeAt = w.time.now + (reduceMotion() ? 600 : this.carry.length ? 2600 : 1600);
+    this.fleeLeft = (reduceMotion() ? 600 : this.carry.length ? 2600 : 1600);
   }
   private fleeDone: (() => void) | null = null;
-  private fleeAt = 0;
+  private fleeLeft = 0;
 
   private clear() {
     this.fleeDone = null;
@@ -547,7 +548,7 @@ export class Thief {
         if (a <= 0) { this.cage?.destroy(); this.cage = null; this.clear(); return; }
       }
     }
-    if (this.fleeDone && this.w.time.now >= this.fleeAt) { const d = this.fleeDone; this.fleeDone = null; d(); return; }
+    if (this.fleeDone && (this.fleeLeft -= dt * 1000) <= 0) { const d = this.fleeDone; this.fleeDone = null; d(); return; }
     if (this.state === 'sneak' && this.w.time.now > this.endAt) { this.escape(); }
     if (this.state === 'sneak' || this.state === 'flee') {
       const dx = this.to.x - s.x, dy = this.to.y - s.y, d = Math.hypot(dx, dy);
