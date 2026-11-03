@@ -3,7 +3,7 @@
 import Phaser from 'phaser';
 import { mulberry32, pondValue, pathDist, ATLAS , TREE_SCALE } from './art';
 import {
-  WORLD_W, WORLD_H, OLD_W, OLD_H, PUZZLE_SITES, PUZZLE_SITE_R, HUBS, GLADE_W, GLADE_H, LAKE, BRIDGES, BRIDGE_GATE, PIER, WINDMILL, FOREST_EDGE_Y, RIDGE_X,
+  WORLD_W, WORLD_H, OLD_W, OLD_H, PUZZLE_SITES, PUZZLE_SITE_R, HUBS, STABLE_SPOT, JAIL_SPOT, GLADE_W, GLADE_H, LAKE, BRIDGES, BRIDGE_GATE, PIER, WINDMILL, FOREST_EDGE_Y, RIDGE_X,
   TILES, OWL, BELLS, DIG, DIG_STONES, DIG_SIGN, BELL_SIGN, TILE_SIGN, POTS, POT_SIGN, SONGBIRD, VILLAGE, VILLAGE_SIGN, MERCHANT_SPOT, PSTONES, PSTONE_SIGN, PSTONE_CHEST, TRACKS, TRACK_SIGN,
 } from './layout';
 import { riverXAt, riverDist, riverHalfAt, lakeValue, waterAt, RIVER } from './geo';
@@ -40,6 +40,7 @@ export function buildAreas(w: WorldScene) {
     if (x > OLD_W - 200 || y > OLD_H - 200) {
       for (const p of PUZZLE_SITES) if (Math.hypot(p.x - x, p.y - y) < PUZZLE_SITE_R + pad) return false;
       for (const h of Object.values(HUBS)) if (Math.hypot(h.x - x, h.y - y) < 130 + pad) return false;
+      for (const b of [STABLE_SPOT, JAIL_SPOT]) if (Math.hypot(b.x - x, b.y - 60 - y) < 190 + pad) return false;
     }
     return true;
   };

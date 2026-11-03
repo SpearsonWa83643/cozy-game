@@ -162,6 +162,78 @@ function gull(c: Ctx) {
   c.strokeStyle = 'rgba(60,70,80,0.5)'; c.lineWidth = 0.8; c.stroke();
 }
 
+/** 65: the Stable barn in Sunflower Meadow (tap it to visit your friends). */
+function barn(c: Ctx, w: number, h: number) {
+  const cx = w / 2, base = h - 8;
+  const rng = mulberry32(2101);
+  dab(c, cx, base + 2, w * 0.46, 7, 0, 'rgba(40,30,10,0.28)');
+  const L = cx - 56, R = cx + 56, eave = base - 64;
+  // Walls: red planks.
+  c.fillStyle = hsl(6, 62, 46); c.fillRect(L, eave, R - L, base - eave);
+  c.strokeStyle = hsl(6, 55, 34); c.lineWidth = 1.2;
+  for (let x = L + 9; x < R; x += 9) { c.beginPath(); c.moveTo(x, eave + 2); c.lineTo(x, base); c.stroke(); }
+  // Gambrel roof.
+  c.fillStyle = hsl(10, 30, 30);
+  c.beginPath(); c.moveTo(L - 8, eave + 2); c.lineTo(L + 6, eave - 34); c.lineTo(cx, eave - 58); c.lineTo(R - 6, eave - 34); c.lineTo(R + 8, eave + 2); c.closePath(); c.fill();
+  c.fillStyle = hsl(6, 62, 50);
+  c.beginPath(); c.moveTo(L + 4, eave); c.lineTo(L + 14, eave - 30); c.lineTo(cx, eave - 50); c.lineTo(R - 14, eave - 30); c.lineTo(R - 4, eave); c.closePath(); c.fill();
+  c.strokeStyle = hsl(40, 40, 96); c.lineWidth = 3;
+  c.beginPath(); c.moveTo(L + 4, eave); c.lineTo(L + 14, eave - 30); c.lineTo(cx, eave - 50); c.lineTo(R - 14, eave - 30); c.lineTo(R - 4, eave); c.stroke();
+  // Hayloft with hay poking out.
+  c.fillStyle = hsl(25, 40, 20); c.fillRect(cx - 12, eave - 34, 24, 22);
+  for (let i = 0; i < 14; i++) dab(c, cx + rr(rng, -11, 11), eave - 14 + rr(rng, -4, 2), rr(rng, 2, 4), 1.4, rr(rng, -1, 1), hsl(46, 75, rr(rng, 55, 70)));
+  c.strokeStyle = hsl(40, 40, 96); c.lineWidth = 2.4; c.strokeRect(cx - 12, eave - 34, 24, 22);
+  // Big doors with white X trim.
+  const dw = 44, dh = 46, dx = cx - dw / 2, dy = base - dh;
+  c.fillStyle = hsl(6, 58, 40); c.fillRect(dx, dy, dw, dh);
+  c.strokeStyle = hsl(40, 40, 96); c.lineWidth = 3;
+  c.strokeRect(dx, dy, dw / 2, dh); c.strokeRect(dx + dw / 2, dy, dw / 2, dh);
+  for (const ox of [0, dw / 2]) { c.beginPath(); c.moveTo(dx + ox, dy); c.lineTo(dx + ox + dw / 2, dy + dh); c.moveTo(dx + ox + dw / 2, dy); c.lineTo(dx + ox, dy + dh); c.stroke(); }
+  // A friendly pony peeking out of the side window.
+  c.fillStyle = hsl(25, 40, 20); c.fillRect(R - 30, eave + 12, 20, 16);
+  dab(c, R - 20, eave + 22, 7, 6, 0, hsl(30, 50, 55));
+  dab(c, R - 20, eave + 26, 4.5, 3, 0, hsl(30, 40, 70));
+  dab(c, R - 23, eave + 19, 1.2, 1.2, 0, hsl(20, 30, 10)); dab(c, R - 17, eave + 19, 1.2, 1.2, 0, hsl(20, 30, 10));
+  c.strokeStyle = hsl(40, 40, 96); c.lineWidth = 2; c.strokeRect(R - 30, eave + 12, 20, 16);
+  // Hay at the door.
+  for (let i = 0; i < 10; i++) dab(c, cx + rr(rng, -40, 40), base - 2, rr(rng, 3, 6), 2, rr(rng, -0.5, 0.5), hsl(46, 70, rr(rng, 55, 68)));
+}
+
+/** 65: the little Thief Jail in Pinecone Hills (stone hut, barred window, mask sign). */
+function jailHut(c: Ctx, w: number, h: number) {
+  const cx = w / 2, base = h - 8;
+  const rng = mulberry32(2202);
+  dab(c, cx, base + 2, w * 0.44, 6, 0, 'rgba(30,30,40,0.3)');
+  const L = cx - 46, R = cx + 46, eave = base - 58;
+  c.fillStyle = hsl(215, 10, 62); c.fillRect(L, eave, R - L, base - eave);
+  // Stones.
+  for (let y = eave + 4, row = 0; y < base; y += 11, row++) for (let x = L + (row % 2 ? 6 : 0); x < R; x += 16) {
+    dab(c, Math.min(x + 7, R - 6), y + 4, 7, 4.6, 0, hsl(215, rr(rng, 6, 14), rr(rng, 58, 72)));
+  }
+  // Striped roof (blue and white), like a candy-striped awning.
+  for (let i = 0; i < 8; i++) {
+    const x0 = L - 8 + i * ((R - L + 16) / 8), x1 = x0 + (R - L + 16) / 8;
+    c.fillStyle = i % 2 ? hsl(40, 40, 96) : hsl(215, 60, 52);
+    c.beginPath(); c.moveTo(cx, eave - 38); c.lineTo(x0, eave + 2); c.lineTo(x1, eave + 2); c.closePath(); c.fill();
+  }
+  dab(c, cx, eave - 40, 5, 5, 0, hsl(46, 90, 60));
+  // Barred window.
+  c.fillStyle = hsl(215, 30, 20); c.fillRect(cx + 10, eave + 12, 26, 20);
+  c.strokeStyle = hsl(215, 10, 85); c.lineWidth = 2.4;
+  for (let x = cx + 14; x < cx + 36; x += 6) { c.beginPath(); c.moveTo(x, eave + 12); c.lineTo(x, eave + 32); c.stroke(); }
+  // Two little eyes peeking behind the bars.
+  dab(c, cx + 19, eave + 22, 1.6, 1.6, 0, hsl(50, 90, 85)); dab(c, cx + 27, eave + 22, 1.6, 1.6, 0, hsl(50, 90, 85));
+  // Wooden door.
+  c.fillStyle = hsl(28, 45, 38); c.beginPath(); c.moveTo(cx - 34, base); c.lineTo(cx - 34, base - 30); c.arc(cx - 22, base - 30, 12, Math.PI, 0); c.lineTo(cx - 10, base); c.closePath(); c.fill();
+  c.strokeStyle = hsl(28, 40, 24); c.lineWidth = 1.5; c.stroke();
+  dab(c, cx - 14, base - 18, 1.8, 1.8, 0, hsl(46, 80, 60));
+  // A sign with a thief's mask.
+  c.fillStyle = hsl(32, 50, 60); c.fillRect(cx - 18, eave - 6, 36, 14);
+  c.strokeStyle = hsl(28, 40, 30); c.lineWidth = 1.5; c.strokeRect(cx - 18, eave - 6, 36, 14);
+  dab(c, cx, eave + 1, 13, 4, 0, hsl(220, 20, 14));
+  dab(c, cx - 5, eave + 1, 2.6, 2, 0, hsl(40, 40, 96)); dab(c, cx + 5, eave + 1, 2.6, 2, 0, hsl(40, 40, 96));
+}
+
 export function paintRegionArt(scene: Phaser.Scene) {
   for (let i = 0; i < 2; i++) canvasTex(scene, `sunflower${i}`, 34, 80 + i * 14, (c) => sunflower(c, 34, 80 + i * 14, 1200 + i), 2.5);
   canvasTex(scene, 'beehive', 50, 64, (c) => beehive(c, 50, 64), 2.5);
@@ -174,4 +246,6 @@ export function paintRegionArt(scene: Phaser.Scene) {
   for (let i = 0; i < 2; i++) canvasTex(scene, `cairn${i}`, 46, 58, (c) => cairn(c, 46, 58, 1400 + i), 2.5);
   canvasTex(scene, 'sailboat', 70, 78, (c) => sailboat(c, 70, 78), 2.5);
   canvasTex(scene, 'gull', 18, 8, (c) => gull(c), 3);
+  canvasTex(scene, 'barn', 150, 140, (c) => barn(c, 150, 140), 2);
+  canvasTex(scene, 'jailhut', 120, 112, (c) => jailHut(c, 120, 112), 2);
 }

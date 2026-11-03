@@ -132,6 +132,9 @@ export const GROVE_RING = { x: 1500, y: 4300, r: 230 };
 export const HUBS = {
   meadow: { x: 6200, y: 760 }, hills: { x: 6300, y: 2330 }, grove: { x: 2200, y: 4150 }, bay: { x: 6050, y: 3950 },
 };
+/** 65: the Stable barn (meadow) and the Thief Jail (hills): real places to fly to. Bottom-centre of the art. */
+export const STABLE_SPOT = { x: 6800, y: 600 };
+export const JAIL_SPOT = { x: 6800, y: 2240 };
 /** 66-67: clearings kept open (no trees) for the spelling and number puzzle sites. */
 export const PUZZLE_SITES = [
   { id: 'spell1', kind: 'spelling', x: 5550, y: 1060 },
@@ -142,6 +145,8 @@ export const PUZZLE_SITES = [
 export const PUZZLE_SITE_R = 220;
 
 export const PATH_MEADOW: [number, number][] = [[3950, 900], [4300, 960], [4700, 900], [5200, 820], [5700, 880], [6200, 760], [6800, 700], [7400, 760], [8100, 700]];
+export const PATH_STABLE: [number, number][] = [[6800, 700], [6800, 610]];
+export const PATH_JAIL: [number, number][] = [[6800, 2380], [6800, 2250]];
 export const PATH_SPELL1: [number, number][] = [[5200, 820], [5400, 960], [5550, 1060]];
 export const PATH_HILLS: [number, number][] = [[3760, 2010], [4100, 2080], [4600, 2150], [5200, 2200], [5800, 2320], [6300, 2330], [6800, 2380], [7200, 2420]];
 export const PATH_MEADOW_HILLS: [number, number][] = [[6200, 760], [6280, 1200], [6250, 1700], [6300, 2330]];

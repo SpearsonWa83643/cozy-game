@@ -308,7 +308,7 @@ export class Mount {
     const spot = this.travelSpot(x, y);
     if (!spot) return false;
     const d = Math.hypot(spot[0] - this.gx, spot[1] - this.gy);
-    const T = Phaser.Math.Clamp(1.3 + d / 650, 1.6, 6.5);
+    const T = Phaser.Math.Clamp(1.3 + d / 650, 1.6, 8); // 64: longer cap for the 4x world
     const ang = Math.atan2(spot[1] - this.gy, spot[0] - this.gx);
     // Leave along the current heading (no snap), arrive gliding gently in the travel direction.
     const sp0 = Math.min(this.speed, 260) * T * 0.5;
@@ -332,6 +332,7 @@ export class Mount {
     this.manual = true; this.vx = Math.cos(this.heading) * 40; this.vy = Math.sin(this.heading) * 40;
     this.idleMs = -3000; this.steerIn = null;
     this.arrivals++;
+    if (this.w.zoom) this.w.cameras.main.zoomTo(this.w.zoom.zoomFor(), 450, 'Sine.easeOut', true);
     sfx.sparkle();
     this.w.burst(this.ex, this.ey, 0xfff1c4, 14, 'spark');
     this.w.game.events.emit('mount', this.phase);
@@ -476,6 +477,19 @@ export class Mount {
     this.steer(dt);
   }
 
+  /** 65: on a long flight the camera eases out (you see the land rolling by below), then settles back in. */
+  flightZoom(dt: number) {
+    const s = this.seg; const z = this.w.zoom;
+    if (!s || !z) return;
+    const d = Math.hypot(s.x1 - s.x0, s.y1 - s.y0);
+    const out = d < 900 ? 0 : Phaser.Math.Clamp(d / 9000, 0.12, 0.32);
+    const e = Math.sin(Math.PI * s.t);
+    const want = z.zoomFor() * (1 - out * e * e * (3 - 2 * e));
+    const cam = this.w.cameras.main;
+    // Eased toward the target, so a re-aimed flight mid-air never jumps.
+    cam.setZoom(cam.zoom + (want - cam.zoom) * (1 - Math.exp(-dt * 5)));
+  }
+
   // ------------------------------------------------------------ per-frame
   stepSeg(dt: number) {
     const s = this.seg!;
@@ -522,9 +536,12 @@ export class Mount {
         case 'ride':
           this.ride(dt);
           break;
-        case 'travel':
-          if (this.stepSeg(dt)) this.arrive();
+        case 'travel': {
+          const done = this.stepSeg(dt);
+          this.flightZoom(dt);
+          if (done) this.arrive();
           break;
+        }
         case 'land':
           if (this.stepSeg(dt)) { this.phase = 'hop'; this.hopT = 0; this.hopFrom = [w.playerImg.x, w.playerImg.y]; sfx.blip(); }
           break;

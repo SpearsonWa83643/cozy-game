@@ -3,7 +3,7 @@ import { paintRegionArt } from './regionArt';
 import { IS_TOUCH } from './device';
 import {
   WORLD_W, WORLD_H, POND, PATH_MAIN, PATH_NORTH, PATH_EAST, PATH_SOUTH, SHRINE, GARDEN, COTTAGE, PATH_RIVER_W, PATH_RIVERSIDE, PATH_FOREST, PATH_ORCHARD, PATH_ORCHARD_S, PATH_LAKE,
-  PATH_MEADOW, PATH_SPELL1, PATH_HILLS, PATH_MEADOW_HILLS, PATH_GROVE, PATH_SHORE_S, PATH_NUM1, PATH_BAY, PATH_HILLS_BAY } from './layout';
+  PATH_MEADOW, PATH_STABLE, PATH_JAIL, PATH_SPELL1, PATH_HILLS, PATH_MEADOW_HILLS, PATH_GROVE, PATH_SHORE_S, PATH_NUM1, PATH_BAY, PATH_HILLS_BAY } from './layout';
 
 /** Supersampling for object textures (texture px per world unit). */
 export const S = 3;
@@ -222,7 +222,7 @@ export function distToPaths(x: number, y: number, paths: [number, number][][]) {
 }
 
 export const ALL_PATHS = [PATH_MAIN, PATH_NORTH, PATH_EAST, PATH_SOUTH, PATH_RIVER_W, PATH_RIVERSIDE, PATH_FOREST, PATH_ORCHARD, PATH_ORCHARD_S, PATH_LAKE,
-  PATH_MEADOW, PATH_SPELL1, PATH_HILLS, PATH_MEADOW_HILLS, PATH_GROVE, PATH_SHORE_S, PATH_NUM1, PATH_BAY, PATH_HILLS_BAY].map((p) => sampleSpline(p, 10));
+  PATH_MEADOW, PATH_STABLE, PATH_JAIL, PATH_SPELL1, PATH_HILLS, PATH_MEADOW_HILLS, PATH_GROVE, PATH_SHORE_S, PATH_NUM1, PATH_BAY, PATH_HILLS_BAY].map((p) => sampleSpline(p, 10));
 
 // Spatial buckets so path-distance queries stay cheap on the big map.
 const PB = 64;

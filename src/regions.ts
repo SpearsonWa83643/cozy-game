@@ -5,6 +5,7 @@
 // the gate still matters. All placement is deterministic.
 import { mulberry32, pathDist } from './art';
 import {
+  STABLE_SPOT, JAIL_SPOT,
   WORLD_W, WORLD_H, OLD_W, OLD_H, FOREST_EDGE_Y, BAY, HIVES, LIGHTHOUSE, CAIRNS, GROVE_RING, PUZZLE_SITES,
 } from './layout';
 import { lakeValue, lakeValueOf, waterAt } from './geo';
@@ -203,6 +204,27 @@ export function buildRegions(w: WorldScene, H: RegionHelpers) {
       const x = L.x + Math.cos(a) * L.rx * k, y = L.y + Math.sin(a) * L.ry * k;
       if (!free(x, y, 4) || lakeValue(x, y) < 1.04) continue;
       w.reacts.place(x, y, `shell${i % 2}`, 'shell');
+    }
+    // 65: the Stable barn (meadow) and the Thief Jail (hills). Tap one to peek inside.
+    {
+      const place = (x: number, y: number, key: string, sc: number, hw: number, open: () => void, col: number) => {
+        const o = w.img(x, y, key, 0.5, 1, sc).setDepth(y);
+        w.shadow(x + 10, y - 4, hw * 2.2, 0.8);
+        w.solidRect(x - hw, y - 56, hw * 2, 50);
+        w.tappables.push({
+          x: () => x, y: () => y - o.displayHeight * 0.45, r: Math.max(90, hw),
+          tap: () => {
+            w.life.reactions++;
+            w.tweens.killTweensOf(o); o.setScale(o.scaleX, o.scaleY);
+            const sx = o.scaleX, sy = o.scaleY;
+            w.tweens.add({ targets: o, scaleX: sx * 1.05, scaleY: sy * 0.95, duration: 110, yoyo: true });
+            w.burst(x, y - o.displayHeight * 0.7, col, 10, 'spark');
+            open();
+          },
+        });
+      };
+      place(STABLE_SPOT.x, STABLE_SPOT.y, 'barn', 1.5, 100, () => { sfx.giggle(); w.game.events.emit('menu', 'stable'); }, 0xfff1c4);
+      place(JAIL_SPOT.x, JAIL_SPOT.y, 'jailhut', 1.4, 76, () => { sfx.tock(); (w.scene.get('menu') as unknown as { openJail(): void }).openJail(); }, 0xbcd4ff);
     }
     // The lighthouse on its rocks, with a slow sweeping glow; a tap makes it flash.
     {
