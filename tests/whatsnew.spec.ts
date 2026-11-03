@@ -26,10 +26,10 @@ test("what's new: after entry, shows once, closes, stays closed; none when empty
   await expect(page.locator('#whatsnew h2')).toContainText("What's new");
   await expect(page.locator('#whatsnew li')).toHaveCount(5);
   await expect(page.locator('#whatsnew li').first()).toContainText('More sneaky thieves!');
-  await expect(page.locator('#whatsnew li').nth(1)).toContainText('carry your flying friends');
-  await expect(page.locator('#whatsnew li').nth(2)).toContainText('Sushi Roll Buddy!');
-  await expect(page.locator('#whatsnew li').nth(3)).toContainText('Looks & Moves!');
-  await expect(page.locator('#whatsnew li').nth(4)).toContainText('Loop-de-loops!');
+  await expect(page.locator('#whatsnew li').nth(1)).toContainText('Big, easy clues!');
+  await expect(page.locator('#whatsnew li').nth(2)).toContainText('carry your flying friends');
+  await expect(page.locator('#whatsnew li').nth(3)).toContainText('Sushi Roll Buddy!');
+  await expect(page.locator('#whatsnew li').nth(4)).toContainText('Looks & Moves!');
   const ok = await page.locator('#whatsnew .w-ok').boundingBox();
   expect(ok!.height).toBeGreaterThanOrEqual(70);
   await page.waitForTimeout(700);

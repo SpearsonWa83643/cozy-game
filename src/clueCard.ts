@@ -4,7 +4,7 @@
 import type Phaser from 'phaser';
 import { theme } from './theme';
 import { sfx } from './audio';
-import { atlasOf } from './art';
+import { repaint } from './art';
 import { save, type Stolen } from './save';
 import { mountById } from './mount/defs';
 
@@ -38,12 +38,12 @@ const CSS = `
 #clue .c-card{width:min(760px,94vw);max-height:94%;overflow:auto;background:#fffaf0;border:5px solid var(--edge);border-radius:34px;
   box-shadow:0 12px 0 rgba(0,0,0,.16),0 24px 60px rgba(0,0,0,.35);padding:clamp(18px,3vh,30px) clamp(20px,3vw,36px);display:flex;flex-direction:column;gap:clamp(12px,2vh,20px);
   animation:c-in .4s cubic-bezier(.2,1.4,.4,1)}
-@keyframes c-in{from{transform:scale(.85);opacity:0}to{transform:none;opacity:1}}
+@keyframes c-in{from{transform:scale(.92)}to{transform:none}}
 #clue h2{margin:0;text-align:center;font-weight:900;font-size:clamp(38px,6vw,56px);line-height:1.1;color:#2a1d14}
 #clue ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px}
 #clue li{display:flex;align-items:center;gap:16px;background:#fff3d6;border:4px solid var(--edge);border-radius:24px;padding:12px 16px;font-size:clamp(28px,4vw,38px);font-weight:900;line-height:1.25}
 #clue li .c-pics{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;gap:6px}
-#clue li img{width:84px;height:84px;object-fit:contain}
+#clue li img{width:96px;height:96px;object-fit:contain}
 #clue li svg{width:52px;height:52px}
 #clue .c-ok{min-height:96px;border:0;border-radius:28px;background:var(--accent);color:#fffaf0;font-family:inherit;font-size:48px;font-weight:900;box-shadow:0 7px 0 var(--accentDark);cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
 #clue .c-ok:active{transform:translateY(3px) scale(.97)}
@@ -53,10 +53,11 @@ const CSS = `
 const api = { open: false, shown: 0, title: '', lines: [] as string[] };
 (window as any).__clue = api;
 
-function friendPic(game: Phaser.Game | undefined, id: string) {
+function friendPic(id: string) {
   const m = mountById(id);
-  if (!game || !m) return '';
-  try { return game.textures.getBase64(atlasOf(m.body), m.body); } catch { return ''; }
+  if (!m) return '';
+  // Atlas canvases are released after upload (iPad memory), so paint the friend again.
+  try { return repaint(m.body)?.toDataURL() ?? ''; } catch { return ''; }
 }
 
 /** Open the big clue card for these hidden friends (default: all of them). */
@@ -80,7 +81,7 @@ export function showClue(list: Stolen[] = save.stolen ?? [], opts: { here?: bool
   for (const st of list) {
     const li = document.createElement('li');
     const pics = document.createElement('div'); pics.className = 'c-pics';
-    const src = friendPic(game, st.mount);
+    const src = friendPic(st.mount);
     if (src) { const im = document.createElement('img'); im.src = src; im.alt = mountById(st.mount)?.name ?? ''; pics.appendChild(im); }
     pics.insertAdjacentHTML('beforeend', ICON[st.puzzle] ?? '');
     li.appendChild(pics);
