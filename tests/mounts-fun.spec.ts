@@ -34,12 +34,12 @@ test('new mounts: stable, picker, ride and steer', async ({ playwright: _pw }, i
   await page.waitForTimeout(1000);
   await page.evaluate(() => { try { (window as any).__cozy.dismiss?.(); } catch { /* */ } });
 
-  // Stable: 22 stalls (3 rows), every new friend awake.
+  // Stable: 23 stalls (3 rows), every new friend awake.
   await page.evaluate(() => (window as any).__menu.show('stable'));
   await expect.poll(() => page.evaluate(() => (window as any).__menu.open), { timeout: 30_000 }).toBe(true);
   await page.waitForTimeout(1200);
   const pets = await page.evaluate(() => (window as any).__menu.stablePets.map((p: any) => [p.id, p.on]));
-  expect(pets.length).toBe(22);
+  expect(pets.length).toBe(23);
   for (const [id] of NEW) expect(pets.find((p: any) => p[0] === id)?.[1], `${id} awake`).toBe(true);
   const vp = page.viewportSize()!;
   for (const [id] of NEW) {

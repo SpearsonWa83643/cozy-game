@@ -6,8 +6,8 @@ import { resolve } from 'node:path';
 // birds (and the pegasus unicorn) keep their wings. Stable stalls show the capes too.
 const FILE = pathToFileURL(resolve('dist-single/index.html')).href;
 const SHOTS = process.env.CAPE_SHOTS ?? '/workspace/cozy-game/screenshots';
-const ALL = ['pterodactyl_egg', 'cloud_puppy_tuft', 'rainbow_horseshoe', 'golden_honeycomb', 'glow_pearl', 'sugar_cube', 'toy_propeller', 'pumpkin_seed', 'cowboy_hat', 'chili_poncho', 'magic_tassel', 'duck_squeak', 'jelly_gem', 'berry_seed', 'corn_husk', 'golden_bag', 'chef_hat'];
-const CAPED = ['cowboy_cookie', 'chili_poncho', 'tamale', 'he_buddy', 'concha', 'strawberry', 'pumpkin', 'cloud_puppy', 'reindeer', 'snail', 'teacup'];
+const ALL = ['pterodactyl_egg', 'cloud_puppy_tuft', 'rainbow_horseshoe', 'golden_honeycomb', 'glow_pearl', 'sugar_cube', 'toy_propeller', 'pumpkin_seed', 'cowboy_hat', 'chili_poncho', 'magic_tassel', 'duck_squeak', 'jelly_gem', 'berry_seed', 'corn_husk', 'golden_bag', 'chef_hat', 'chopsticks'];
+const CAPED = ['cowboy_cookie', 'chili_poncho', 'tamale', 'he_buddy', 'concha', 'sushi', 'strawberry', 'pumpkin', 'cloud_puppy', 'reindeer', 'snail', 'teacup'];
 const WINGED = ['eagle', 'pterodactyl', 'bumblebee', 'goose', 'snowy_owl', 'flamingo', 'unicorn', 'rubber_duck'];
 const mount = (page: Page) => page.evaluate(() => (window as any).__cozy.mount());
 /** Call a friend, retrying while Call Mount is still cooling down / settling. */

@@ -57,6 +57,8 @@ const FX: Record<string, Fx> = {
   tamale: { tint: [0xf2c14e, 0xffe08a, 0xd99a2b], add: false, life: 900, vx: [-34, -4], vy: [-12, 12], gy: 160, sc: 0.44, every: 100, at: [-26, 6] },
   he_buddy: { tint: [0xffd34d, 0xfff3b0, 0xffb81c], add: true, life: 650, vx: [-50, -10], vy: [-30, 10], gy: -10, sc: 0.48, every: 70, at: [-30, 0] },
   concha: { tint: [0xff9fc4, 0xffffff, 0xffd6e5], add: false, life: 750, vx: [-26, 2], vy: [-8, 16], gy: 320, sc: 0.34, every: 90, at: [-22, 10] },
+  // 50: the sushi roll sprinkles rice grains and little orange roe.
+  sushi: { tint: [0xffffff, 0xfff6e0, 0xff8a2a], add: false, life: 800, vx: [-30, 0], vy: [-8, 14], gy: 300, sc: 0.32, every: 95, at: [-22, 4] },
 };
 const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
@@ -606,6 +608,7 @@ export class Mount {
       case 'tamale': tilt += Math.sin(time / 340) * 0.035 * d; break;
       case 'he_buddy': tilt += Math.sin(time / 200) * 0.025 * d; bsy = 1 + Math.sin(time / 400) * 0.02; break;
       case 'concha': bsy = 1 + Math.sin(time / 320) * 0.04; bsx = 1 - Math.sin(time / 320) * 0.03; break;
+      case 'sushi': tilt += Math.sin(time / 300) * 0.03 * d; bsy = 1 + Math.sin(time / 260) * 0.03; break;
     }
     // 36: wingless flyers get their own lift: the carpet ripples like a wave, the jellyfish pulses up and down.
     let wob = 0;

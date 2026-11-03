@@ -11,6 +11,7 @@ export const CAPE: Record<string, number> = {
   tamale: 0xe0533a,
   he_buddy: 0xe8302a,
   concha: 0x7cc8ff,
+  sushi: 0xff8a2a, // orange like its roe topping
   strawberry: 0x46b34f,
   pumpkin: 0x8a4fd0,
   cloud_puppy: 0x6fb6ff,
@@ -28,7 +29,7 @@ export const CAPE_OX = 88 / CAPE_W, CAPE_OY = 9 / CAPE_H;
 
 /** Where the cape hangs on each body (body units from the body origin, facing right). */
 export const CAPE_AT: Record<string, [number, number]> = {
-  cowboy_cookie: [2, -24], chili_poncho: [2, -22], tamale: [2, -22], he_buddy: [2, -22], concha: [2, -22],
+  cowboy_cookie: [2, -24], chili_poncho: [2, -22], tamale: [2, -22], he_buddy: [2, -22], concha: [2, -22], sushi: [2, -18],
   strawberry: [0, -22], pumpkin: [0, -18], cloud_puppy: [4, -14], reindeer: [10, -12], snail: [4, -20], teacup: [-6, -12],
 };
 

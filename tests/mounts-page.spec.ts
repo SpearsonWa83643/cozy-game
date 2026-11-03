@@ -33,7 +33,7 @@ test('mounts page: one page, seasonal shown, riding brings the season', async ({
     await expect.poll(() => page.evaluate(() => (window as any).__menu.open), { timeout: 30_000 }).toBe(true);
     await page.waitForTimeout(1200);
     const pets = await page.evaluate(() => (window as any).__menu.stablePets.map((p: any) => [p.id, p.on]));
-    expect(pets.length).toBe(22);
+    expect(pets.length).toBe(23);
     // Every stall fits on screen at once: no paging, no scrolling.
     const vp = page.viewportSize()!;
     for (const [id] of pets) {

@@ -2,7 +2,7 @@
 // filling on top), the golden H-E-Buddy (a shiny gold grocery-bag buddy with a leafy topper, a tiny
 // party hat, white gloves and a friendly label stripe; generic art, no real logo) and a Chef Concha
 // (pink shell-pattern sweet bread in a white chef's hat). Same layout as funArt.ts: 124x84 body facing
-// right (rider sits around (60, 22)), fluffy up wings, a Call Mount icon (i_*) and a treasure icon (ic_*).
+// right (rider sits around (60, 22)). 50 (Nov 2) adds the Sushi Roll Buddy (maki roll)., fluffy up wings, a Call Mount icon (i_*) and a treasure icon (ic_*).
 import Phaser from 'phaser';
 import { Ctx, canvasTex, dab } from '../art';
 import { paintWing, face, outline, limb, sparkle } from './funArt';
@@ -275,6 +275,85 @@ function chefHatTreasure(c: Ctx, w: number) {
   sparkle(c, w - 9, 11, 2.4); sparkle(c, 9, w - 13, 1.8);
 }
 
+// ------------------------------------------------------------------ Sushi Roll Buddy (Walker's photo, Nov 2)
+// A maki roll: dark teal-green nori cylinder, bumpy white rice rim on top, a big orange salmon-roe ball
+// and green avocado/cucumber discs, glossy happy face with orange blush, little orange stubby arms and feet.
+const NORI = hsl(172, 62, 24), NORI_D = hsl(175, 70, 12), NORI_L = hsl(168, 48, 36);
+const SU_OR = hsl(24, 96, 56), SU_OR_D = hsl(18, 80, 36);
+
+function riceRim(c: Ctx, cx: number, y: number, rx: number, ry: number) {
+  // Bumpy rice: a white ellipse ring with little grain bumps around the edge.
+  c.fillStyle = '#fbfbf6'; c.beginPath(); c.ellipse(cx, y, rx, ry, 0, 0, Math.PI * 2); c.fill(); outline(c, hsl(40, 15, 66), 1.4);
+  for (let i = 0; i < 22; i++) {
+    const a = (i / 22) * Math.PI * 2, bx = cx + Math.cos(a) * rx * 0.92, by = y + Math.sin(a) * ry * 0.86;
+    dab(c, bx, by, 2.4, 1.7, a, '#ffffff'); c.beginPath(); c.ellipse(bx, by, 2.4, 1.7, a, 0, Math.PI); outline(c, hsl(40, 12, 78), 0.7);
+  }
+  // Inner rice field with grain specks.
+  dab(c, cx, y, rx * 0.72, ry * 0.6, 0, hsl(45, 30, 95));
+  for (const [gx, gy] of [[-0.5, -0.2], [-0.2, 0.3], [0.1, -0.3], [0.4, 0.2], [-0.4, 0.4], [0.55, -0.15]]) dab(c, cx + gx * rx * 0.7, y + gy * ry * 0.6, 1.6, 0.9, gx, hsl(40, 15, 84));
+}
+
+function roeBall(c: Ctx, x: number, y: number, r: number) {
+  const g = c.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r);
+  g.addColorStop(0, hsl(32, 100, 72)); g.addColorStop(0.65, SU_OR); g.addColorStop(1, hsl(16, 90, 44));
+  c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); outline(c, SU_OR_D, 1.4);
+  // Fuzzy little roe bumps.
+  for (let i = 0; i < 10; i++) { const a = i * 2.4, d = r * (0.25 + (i % 3) * 0.22); dab(c, x + Math.cos(a) * d, y + Math.sin(a) * d, r * 0.16, r * 0.16, 0, hsl(26, 100, 64, 0.8)); }
+  dab(c, x - r * 0.35, y - r * 0.42, r * 0.22, r * 0.14, -0.5, 'rgba(255,255,255,0.6)');
+}
+
+function cukeDisc(c: Ctx, x: number, y: number, r: number, rot: number, light: number) {
+  c.save(); c.translate(x, y); c.rotate(rot);
+  c.fillStyle = hsl(95, 70, light); c.beginPath(); c.ellipse(0, 0, r, r * 0.72, 0, 0, Math.PI * 2); c.fill(); outline(c, hsl(110, 60, 26), 1.2);
+  dab(c, 0, 0, r * 0.62, r * 0.42, 0, hsl(80, 75, light + 14));
+  dab(c, -r * 0.3, -r * 0.25, r * 0.22, r * 0.12, 0, 'rgba(255,255,255,0.5)');
+  c.restore();
+}
+
+function sushi(c: Ctx, cx: number, top: number, bot: number, wid: number, withFace: boolean) {
+  const ry = wid * 0.3;
+  // Nori cylinder: straight sides with a rounded bottom.
+  c.beginPath(); c.moveTo(cx - wid, top); c.lineTo(cx - wid, bot - ry); c.ellipse(cx, bot - ry, wid, ry, 0, Math.PI, 0, true); c.lineTo(cx + wid, top); c.closePath();
+  const g = c.createLinearGradient(cx - wid, 0, cx + wid, 0);
+  g.addColorStop(0, NORI_D); g.addColorStop(0.25, NORI); g.addColorStop(0.55, NORI_L); g.addColorStop(0.85, NORI); g.addColorStop(1, NORI_D);
+  c.fillStyle = g; c.fill(); outline(c, NORI_D, 1.8);
+  // Soft glossy highlight down the front.
+  dab(c, cx - wid * 0.5, (top + bot) / 2, wid * 0.1, (bot - top) * 0.32, 0, 'rgba(255,255,255,0.16)');
+  // Toppings sit on the rice toward the front (the rider sits just behind them).
+  riceRim(c, cx, top, wid + 1.5, ry + 1);
+  roeBall(c, cx + wid * 0.12, top - 6, wid * 0.42);
+  cukeDisc(c, cx + wid * 0.62, top - 3, wid * 0.3, -0.5, 52);
+  cukeDisc(c, cx + wid * 0.78, top - 1, wid * 0.26, 0.3, 46);
+  if (withFace) {
+    const fy = top + (bot - top) * 0.46;
+    face(c, cx + wid * 0.12, fy, wid * 0.72, wid * 0.12, hsl(20, 95, 60, 0.95));
+  }
+}
+
+function paintSushiBody(c: Ctx, w: number, h: number) {
+  const cx = 62, top = 30, bot = 72, wid = 24;
+  // Stubby orange feet and arms (no clear base).
+  for (const lx of [52, 72]) foot(c, lx + 2, 76, SU_OR, SU_OR_D, 7.5, 5);
+  limb(c, cx - wid - 1, 46, cx - wid - 7, 56, 7, SU_OR, SU_OR_D); dab(c, cx - wid - 7.5, 57, 4.2, 4.2, 0, SU_OR);
+  limb(c, cx + wid + 1, 46, cx + wid + 7, 56, 7, SU_OR, SU_OR_D); dab(c, cx + wid + 7.5, 57, 4.2, 4.2, 0, SU_OR);
+  sushi(c, cx, top, bot, wid, true);
+  for (const [x, y, r2] of [[16, 26, 1.8], [110, 34, 1.6], [104, 74, 1.4]] as [number, number, number][]) sparkle(c, x, y, r2, hsl(170, 80, 86));
+}
+
+/** Treasure: a tiny pair of chopsticks with a roe ball. */
+function chopsticksTreasure(c: Ctx, w: number) {
+  const halo = c.createRadialGradient(w / 2, w / 2, 2, w / 2, w / 2, 22); halo.addColorStop(0, 'rgba(255,170,90,0.45)'); halo.addColorStop(1, 'rgba(255,170,90,0)');
+  c.fillStyle = halo; c.fillRect(0, 0, w, w);
+  c.lineCap = 'round';
+  for (const [x0, y0, x1, y1] of [[10, 38, 36, 10], [14, 40, 40, 14]]) {
+    c.strokeStyle = hsl(28, 50, 30); c.lineWidth = 4.4; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke();
+    c.strokeStyle = hsl(32, 60, 58); c.lineWidth = 2.6; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke();
+    c.strokeStyle = hsl(0, 70, 48); c.lineWidth = 2.6; c.beginPath(); c.moveTo(x0 + (x1 - x0) * 0.72, y0 + (y1 - y0) * 0.72); c.lineTo(x1, y1); c.stroke();
+  }
+  roeBall(c, 15, 30, 7);
+  sparkle(c, w - 9, w - 11, 2.2); sparkle(c, 9, 10, 1.8);
+}
+
 /** Call Mount icon: the whole body painted small and centred (no wings). */
 const iconOf = (body: (c: Ctx, w: number, h: number) => void, k = 0.56, dy = 0) => (c: Ctx, w: number) => {
   c.save(); c.translate(w / 2 - 62 * k, w / 2 - 46 * k + dy); c.scale(k, k); body(c, 124, 84); c.restore();
@@ -284,16 +363,19 @@ export const FOOD_PAINTERS = {
   tamale: [paintTamaleBody, iconOf(paintTamaleBody), huskTreasure],
   buddy: [paintBuddyBody, iconOf(paintBuddyBody, 0.54, -1), bagTreasure],
   concha: [paintConchaBody, iconOf(paintConchaBody), chefHatTreasure],
+  sushi: [paintSushiBody, iconOf(paintSushiBody, 0.56, -2), chopsticksTreasure],
 } as const;
 const WINGS: Record<string, [number, number, number, string]> = {
   tamale: [46, 90, 72, hsl(38, 75, 38)],
   buddy: [46, 98, 64, GOLD_D],
   concha: [340, 85, 88, hsl(340, 50, 56)],
+  sushi: [172, 45, 60, NORI_D],
 };
 const ENTS: Record<string, { key: string; wing: string; icon: string; treasure: string }> = {
   tamale: { key: 'tamale_body', wing: 'tamale_wing', icon: 'i_tamale', treasure: 'ic_corn_husk' },
   buddy: { key: 'buddy_body', wing: 'buddy_wing', icon: 'i_buddy', treasure: 'ic_golden_bag' },
   concha: { key: 'concha_body', wing: 'concha_wing', icon: 'i_concha', treasure: 'ic_chef_hat' },
+  sushi: { key: 'sushi_body', wing: 'sushi_wing', icon: 'i_sushi', treasure: 'ic_chopsticks' },
 };
 
 export function paintFoodMounts(scene: Phaser.Scene) {
