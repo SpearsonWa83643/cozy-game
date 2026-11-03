@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-11-03 9:55 AM (CT). Live: main 37a9c27, https://willowmere-glade.pages.dev (bundle index-BBBk82BQ.js).
+Updated: 2026-11-03 10:55 AM (CT). Live: main c9c1542, https://willowmere-glade.pages.dev (bundle index-B7TFVzgY.js).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -68,7 +68,7 @@ Walker: "For the backlog: make a jail for the thieves like the stable where the 
 | 71 | HUD cleanup + village notice board (Walker, Nov 3 12:17 AM CT): top-left first-puzzle icons only when relevant; resources, 'needs a home' list and golden leaf move off the HUD onto a painted notice board in the village that opens a big kid-friendly panel. Lantern sigils now show only near the lanterns/sign/shrine while the puzzle is unsolved (or once a lantern is lit), flash on the win, then hide; resource bar, snack counter, HUD 'needs a home'/wood alerts and the leaf season picker moved to a painted Village Board east of the village path (red ! when someone needs something; tap opens big panel: Our stuff, Friends need + one-tap fix, Season). Urgent hungry/sleepy/bored alerts stay on the HUD. Merge eab9a8d | Done/Live | 2026-11-03 | 1 |
 | 72 | HUD shortcuts (Walker, Nov 3 8:57 AM CT): big HUD buttons that take you straight to the Stable and the Thief Jail | Done/Live 7c57761 (bundle index-BJflq6OX.js) | 2026-11-03 | 0.25 |
 | 73 | Looks & Moves behind a settings gear (Walker, Nov 3 8:57 AM CT): a gear in the bottom-left of the Menu's Map tab opens a small panel with the Looks & Moves button (the Fly map is unchanged); shipped together with the 63 merge | Done/Live 37a9c27 (bundle index-BBBk82BQ.js) | 2026-11-03 | 0.25 |
-| 74 | Thief Chase top-down art + high-speed flight (Walker, Nov 3 8:57 AM CT): each of the 23 mounts drawn from above with you riding it (wings flap, capes flutter, propeller spins, carpet ripples, jelly pulses), speed lines, cloud parallax, wind particles, motion-blur trail, wing-tip and thief contrails, banking, boosts with camera shake and a zoom pulse (HUD stays still); controls unchanged. Branch wip/chase-art | In progress | 2026-11-03 | 1 |
+| 74 | Thief Chase top-down art + high-speed flight (Walker, Nov 3 8:57 AM CT): each of the 23 mounts drawn from above with you riding it (wings flap, capes flutter, propeller spins, carpet ripples, jelly pulses), speed lines, cloud parallax, wind particles, motion-blur trail, wing-tip and thief contrails, banking, boosts with camera shake and a zoom pulse (HUD stays still); controls unchanged; the chosen whole-game style also paints the chase world. Merge c9c1542 (bundle index-B7TFVzgY.js) | Done/Live | 2026-11-03 | 1 |
 
 ## Walker's Nov 2 request: Sushi figurine mount (6:15 PM CT)
 
