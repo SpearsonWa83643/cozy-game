@@ -809,6 +809,8 @@ export class Thief {
       return;
     }
     if (this.state === 'off' || !this.spr) return;
+    // The run-off ends even while a message is up (like the old Clock event did).
+    if (this.fleeDone && (this.fleeLeft -= dt * 1000) <= 0) { const d = this.fleeDone; this.fleeDone = null; d(); return; }
     if (paused) { if (this.state === 'sneak') this.endAt += dt * 1000; return; }
     const s = this.spr, w = this.w, now = w.time.now, rm = reduceMotion(), base = SCALE / PS;
     if (this.state === 'caught') {
@@ -822,7 +824,6 @@ export class Thief {
         if (a <= 0) { this.cage?.destroy(); this.cage = null; this.clear(); return; }
       }
     }
-    if (this.fleeDone && (this.fleeLeft -= dt * 1000) <= 0) { const d = this.fleeDone; this.fleeDone = null; d(); return; }
     if (this.state === 'sneak' && now > this.endAt) { this.escape(); }
     if (this.state === 'sneak' || this.state === 'flee') {
       const p = this.pos;
