@@ -416,7 +416,7 @@ export class MenuScene extends Phaser.Scene {
     // Drag something off the character to take it off: head = hat, neck = scarf, body = back / extras.
     turn.on('pointerdown', (p: Phaser.Input.Pointer) => {
       const h = this.heroImg; if (!h) return;
-      const top = h.y - h.displayHeight, f = (p.y - top) / h.displayHeight;
+      const top = h.y - h.displayHeight, f = (this.cameras.main.getWorldPoint(p.x, p.y).y - top) / h.displayHeight; // canvas px -> layout space
       const look = save.look as any;
       let c: Cosmetic | undefined;
       if (f < 0.38) c = COSMETICS.find((k) => k.slot === 'hat' && k.value === look.hat && !isNoneItem(k));
@@ -572,27 +572,33 @@ export class MenuScene extends Phaser.Scene {
     if (this.drag) return;
     const tex = this.textures.get('wardrobe-items');
     if (!tex || !tex.has(c.id)) return;
-    let home = { x: p.x, y: p.y, s: 1.2 };
+    // Pointer x/y are in canvas pixels; the menu camera is zoomed by DPR, so work in world (layout) space.
+    const at = (q: Phaser.Input.Pointer) => this.cameras.main.getWorldPoint(q.x, q.y);
+    const p0 = at(p);
+    let home = { x: p0.x, y: p0.y, s: 1.2 };
     if (src) { const b = src.getBounds(); home = { x: b.centerX, y: b.centerY, s: src.scaleX }; }
     else if (this.heroImg) home.s = Math.max(0.8, this.heroImg.scaleX / 2.2);
     const ghost = this.add.image(home.x, home.y, 'wardrobe-items', c.id).setScale(home.s).setVisible(false).setDepth(50);
     this.drag = { c, ghost, src, home, tx: home.x, ty: home.y, vx: 0, fromHero, live: false, done: false };
-    const sx = p.x, sy = p.y;
+    const sx = p0.x, sy = p0.y;
     const move = (q: Phaser.Input.Pointer) => {
       const d = this.drag; if (!d || d.done) return;
-      if (!d.live && Math.hypot(q.x - sx, q.y - sy) >= 14) {
+      const w = at(q);
+      if (!d.live && Math.hypot(w.x - sx, w.y - sy) >= 14) {
         d.live = true; d.ghost.setVisible(true);
         this.tweens.add({ targets: d.ghost, scale: d.home.s * 1.5, duration: 160, ease: 'Back.easeOut' });
         if (d.src) d.src.setAlpha(0.25);
         sfx.blip();
       }
-      if (d.live) { d.tx = q.x; d.ty = q.y - 10; this.stageGlow?.setAlpha(this.overStage(q.x, q.y) && !d.fromHero ? 1 : 0); }
+      if (d.live) { d.tx = w.x; d.ty = w.y - 10; this.stageGlow?.setAlpha(this.overStage(w.x, w.y) && !d.fromHero ? 1 : 0); }
     };
     const up = (q: Phaser.Input.Pointer) => {
       this.input.off('pointermove', move); this.input.off('pointerup', up); this.input.off('gameout', up);
       const d = this.drag; if (!d) return;
       if (!d.live) { d.ghost.destroy(); this.drag = null; return; }
-      this.drop(d, q?.x ?? d.tx, q?.y ?? d.ty);
+      // gameout passes no pointer, and a touchend can land on a slow frame: fall back to the last move.
+      const w = q && typeof q === 'object' && 'x' in q ? at(q) : { x: d.tx, y: d.ty + 10 };
+      this.drop(d, w.x, w.y);
     };
     this.input.on('pointermove', move); this.input.on('pointerup', up); this.input.on('gameout', up);
     this.dragOff = () => { this.input.off('pointermove', move); this.input.off('pointerup', up); this.input.off('gameout', up); };
