@@ -111,6 +111,8 @@ export class VillageUIScene extends Phaser.Scene {
       if (!m.canCall()) { this.tweens.add({ targets: this.mountC, angle: { from: -8, to: 8 }, duration: 90, yoyo: true, repeat: 1, onComplete: () => this.mountC.setAngle(0) }); return; }
       sfx.blip();
       this.tweens.add({ targets: this.mountC, scale: { from: 0.85, to: 1 }, duration: 220, ease: 'Back.easeOut' });
+      // 53: friends hidden by the Mount Thief: Call Mount says where every one of them is.
+      this.world.thief?.callMountHint();
       const direct = directMount();
       if (direct) m.call(direct);
       else this.openMountPicker(unlockedMounts());

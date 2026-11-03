@@ -1,12 +1,13 @@
 // 40 (Walker, Oct 29): the Mount Thief. A button calls a masked thief (a random animal each time).
 // Tap it 3 times before it gets away to arrest it. If it escapes, it grabs one of your flying
 // friends and hides it behind a random puzzle, which gets mixed up again (even if you'd solved it).
-// Solve that puzzle and open its chest to rescue your friend. Kid-friendly: no scary bits, big
+// Solve that puzzle and open its cell to rescue your friend. 51-53 (Walker, Nov 2): you see it carry
+// your friend away, the friend waits in a friendly little cell at the puzzle, and sometimes it takes 2-3. Kid-friendly: no scary bits, big
 // slow target, and the friend is never lost for good.
 import Phaser from 'phaser';
 import { Ctx, canvasTex, atlasOf, frameScale } from './art';
-import { save, persist, addFruit } from './save';
-import { MOUNTS, isMountUnlocked, themeDefaultMount, mountById } from './mount/defs';
+import { save, persist, addFruit, type Stolen } from './save';
+import { MOUNTS, isMountUnlocked, themeDefaultMount, mountById, type MountDef } from './mount/defs';
 import { sfx } from './audio';
 import type { WorldScene } from './scenes/World';
 import { DPR } from './dpr';
@@ -88,6 +89,31 @@ function paintCage(c: Ctx) {
   for (let x = 10; x <= 70; x += 12) { c.beginPath(); c.moveTo(x, 12); c.lineTo(x, 64); c.stroke(); }
   c.fillStyle = '#f2c14e'; c.beginPath(); c.arc(40, 2.5, 4, 0, Math.PI * 2); c.fill();
 }
+/** 52: a friendly little cell (rounded wooden roof, bars, a gold padlock) that a stolen friend waits in. */
+const CW = 96, CH = 92;
+function paintCellBack(c: Ctx) {
+  c.fillStyle = 'rgba(255,236,190,0.55)'; c.beginPath(); c.roundRect(8, 16, CW - 16, CH - 26, 10); c.fill();
+  c.fillStyle = '#c99a4e'; c.beginPath(); c.ellipse(CW / 2, CH - 10, CW / 2 - 4, 8, 0, 0, Math.PI * 2); c.fill();
+}
+function paintCell(c: Ctx) {
+  c.strokeStyle = '#6b4a33'; c.lineWidth = 2.4;
+  // Floor rim and arched roof.
+  c.fillStyle = '#d8aa5e'; c.beginPath(); c.roundRect(3, CH - 14, CW - 6, 10, 4); c.fill(); c.stroke();
+  c.fillStyle = '#e86a5a'; c.beginPath(); c.moveTo(4, 20); c.quadraticCurveTo(CW / 2, -6, CW - 4, 20); c.lineTo(CW - 4, 24); c.lineTo(4, 24); c.closePath(); c.fill(); c.stroke();
+  c.fillStyle = '#fff3e0'; for (let x = 16; x < CW - 10; x += 16) { c.beginPath(); c.arc(x, 21, 2.4, 0, Math.PI * 2); c.fill(); }
+  // Bars (rounded, warm wood, not scary metal).
+  for (let x = 12; x <= CW - 12; x += 12) {
+    c.strokeStyle = '#6b4a33'; c.lineWidth = 5; c.beginPath(); c.moveTo(x, 24); c.lineTo(x, CH - 13); c.stroke();
+    c.strokeStyle = '#c99a4e'; c.lineWidth = 3; c.beginPath(); c.moveTo(x, 24); c.lineTo(x, CH - 13); c.stroke();
+  }
+  // A big gold padlock with a heart keyhole.
+  const px = CW / 2, py = CH * 0.6;
+  c.strokeStyle = '#a5741d'; c.lineWidth = 3; c.beginPath(); c.arc(px, py - 6, 6, Math.PI, 0); c.stroke();
+  c.fillStyle = '#ffd34d'; c.beginPath(); c.roundRect(px - 10, py - 6, 20, 16, 4); c.fill(); c.lineWidth = 1.6; c.stroke();
+  c.fillStyle = '#e0587a'; c.beginPath(); c.moveTo(px, py + 6); c.bezierCurveTo(px - 6, py + 1, px - 3, py - 3, px, py); c.bezierCurveTo(px + 3, py - 3, px + 6, py + 1, px, py + 6); c.fill();
+  // A twinkle on the roof.
+  c.fillStyle = '#ffe9a8'; c.beginPath(); for (let i = 0; i < 10; i++) { const r = i % 2 ? 2 : 5, a = -Math.PI / 2 + i * Math.PI / 5; c.lineTo(CW / 2 + Math.cos(a) * r, 8 + Math.sin(a) * r); } c.closePath(); c.fill();
+}
 function paintMask(c: Ctx) {
   c.fillStyle = '#1d1a22'; c.beginPath(); c.roundRect(2, 6, 36, 14, 7); c.fill();
   c.fillStyle = '#fffaf0'; for (const x of [12, 28]) { c.beginPath(); c.ellipse(x, 13, 4.6, 3.6, 0, 0, Math.PI * 2); c.fill(); }
@@ -97,6 +123,8 @@ export function paintThieves(scene: Phaser.Scene) {
   canvasTex(scene, 'thief_sack', 28, 32, paintSack);
   canvasTex(scene, 'thief_cage', 80, 74, paintCage);
   canvasTex(scene, 'thief_mask', 40, 26, paintMask);
+  canvasTex(scene, 'thief_cell_back', CW, CH, paintCellBack);
+  canvasTex(scene, 'thief_cell', CW, CH, paintCell);
   // 43: a little paw print for the escape trail.
   canvasTex(scene, 'thief_paw', 20, 20, (c) => {
     c.fillStyle = 'rgba(74,50,31,0.75)';
@@ -109,6 +137,22 @@ const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)
 const TAPS = 3;
 const SCALE = 2.3;
 const GIGGLES = ['Hee hee!', 'Nope!', 'Too slow!', 'Catch me!', 'Whoopsie!'];
+/** 53: odds the thief takes more than one friend (only when that many can be taken). */
+export const MULTI_ODDS = { three: 0.05, two: 0.2 };
+
+const nameOf = (id: string) => mountById(id)?.name ?? 'friend';
+const andList = (xs: string[]) => xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`;
+/** 51-53: one kid-readable line naming every hidden friend and where it is. */
+export function stolenHint(list: Stolen[] = save.stolen ?? []): string {
+  if (!list.length) return '';
+  if (list.length === 1) return `Rescue the ${nameOf(list[0].mount)} first! It's hidden behind ${HIDES[list[0].puzzle]}.`;
+  return `Rescue your friends first! ${andList(list.map((s) => `the ${nameOf(s.mount)} is behind ${HIDES[s.puzzle]}`)).replace(/^t/, 'T')}.`;
+}
+/** A body image of a friend (classic look), sized to `w` world px wide. */
+function friendImg(scene: Phaser.Scene, m: MountDef, x: number, y: number, w: number) {
+  const im = scene.add.image(x, y, atlasOf(m.body), m.body);
+  return im.setScale(w / Math.max(1, im.width));
+}
 
 export class Thief {
   state: 'off' | 'sneak' | 'caught' | 'flee' = 'off';
@@ -116,12 +160,19 @@ export class Thief {
   taps = 0;
   spr: Phaser.GameObjects.Image | null = null;
   sack: Phaser.GameObjects.Image | null = null;
+  /** 51: friends being carried off on the thief's back (as it runs away). */
+  carry: Phaser.GameObjects.Image[] = [];
+  carryIds: string[] = [];
+  /** 52: one cell per hidden friend, keyed by puzzle id. */
+  cells = new Map<string, { c: Phaser.GameObjects.Container; it: { enabled: () => boolean } }>();
+  /** 53: forced count for the next escape (tests); 0 = roll the odds. */
+  forceCount = 0;
+  lastCallHint = '';
   pips: Phaser.GameObjects.Graphics | null = null;
   to = { x: 0, y: 0 };
   speed = 170;
   endAt = 0;
   last = '';
-  marker: Phaser.GameObjects.Container | null = null;
   caughtN = 0; stolenN = 0; rescuedN = 0;
   /** 41: berries the last caught thief left as a thank-you. */
   thanks = 0;
@@ -149,13 +200,14 @@ export class Thief {
   blocked(): string | null {
     const w = this.w;
     if (this.state !== 'off') return 'busy';
-    if (save.stolen) return `Rescue the ${mountById(save.stolen.mount)?.name ?? 'friend'} first! It's hidden behind ${HIDES[save.stolen.puzzle]}.`;
+    if (save.stolen?.length) return stolenHint();
     if (w.mount?.carrying || w.fishing?.active || w.boat?.active || w.village?.building || w.locked || w.registry.get('dialogOpen') || w.registry.get('menuOpen')) return 'Hop off and get comfy first, then try again!';
     if (!this.stealable().length) return 'No sneaky thieves yet. Find a flying friend first!';
     return null;
   }
 
-  start(kindId?: string, ms = 12000) {
+  start(kindId?: string, ms = 12000, count = 0) {
+    this.forceCount = count;
     const why = this.blocked();
     if (why) { if (why !== 'busy') this.w.game.events.emit('toast', why); return false; }
     const w = this.w;
@@ -245,33 +297,56 @@ export class Thief {
     this.cage = cage; this.caughtAt = performance.now(); this.fading = false;
   }
 
-  /** Time ran out: the thief grabs a friend and hides it behind a puzzle. */
+  /** How many friends this thief takes: usually 1, about 20% 2, about 5% 3 (never more than can be taken). */
+  rollCount(avail: number) {
+    if (this.forceCount) return Math.max(1, Math.min(this.forceCount, avail, Object.keys(HIDES).length));
+    const r = Math.random();
+    const n = r < MULTI_ODDS.three ? 3 : r < MULTI_ODDS.three + MULTI_ODDS.two ? 2 : 1;
+    return Math.max(1, Math.min(n, avail));
+  }
+
+  /** Time ran out: the thief grabs one (sometimes 2 or 3) friends and hides each behind its own puzzle. */
   private escape() {
     const w = this.w, s = this.spr!;
     const list = this.stealable();
     if (!list.length) { this.state = 'flee'; this.runOff(() => this.clear()); return; }
-    const m = list[Math.floor(Math.random() * list.length)];
-    const solved = Object.keys(HIDES).filter((id) => save.puzzles[id]);
-    const pool = solved.length ? solved : Object.keys(HIDES).filter((id) => id !== 'dig');
-    const pid = pool[Math.floor(Math.random() * pool.length)];
-    save.stolen = { mount: m.id, puzzle: pid, kind: this.kind.id };
-    delete save.puzzles[pid];
+    const n = this.rollCount(list.length);
+    const pick = [...list].sort(() => Math.random() - 0.5).slice(0, n);
+    // Solved puzzles first (so it mixes one up), then other puzzles (the digging spot last).
+    const shuf = <T,>(xs: T[]) => [...xs].sort(() => Math.random() - 0.5);
+    const ids = Object.keys(HIDES);
+    const solved = shuf(ids.filter((id) => save.puzzles[id]));
+    const rest = shuf(ids.filter((id) => !save.puzzles[id] && id !== 'dig'));
+    const spots = [...solved, ...rest, ...(save.puzzles.dig ? [] : ['dig'])].slice(0, n);
+    const taken: Stolen[] = pick.slice(0, spots.length).map((m, i) => ({ mount: m.id, puzzle: spots[i], kind: this.kind.id }));
+    save.stolen = [...(save.stolen ?? []), ...taken];
+    for (const t of taken) { delete save.puzzles[t.puzzle]; w.puzzles.resetById(t.puzzle); }
     persist();
-    w.puzzles.resetById(pid);
-    this.stolenN++;
+    this.stolenN += taken.length;
     this.state = 'flee';
     this.placeMarker();
     sfx.softFail?.();
     w.burst(s.x, s.y - 40, 0xd8c8ff, 14, 'spark');
-    const n = this.kind.name;
+    // 51: the friends ride off on its back, held up high (cute, waving along with the hop).
+    this.sack?.setVisible(false);
+    this.carryIds = taken.map((t) => t.mount);
+    this.carry = taken.map((t, i) => friendImg(w, mountById(t.mount)!, s.x, s.y, (taken.length === 1 ? 100 : 82) - i * 4).setOrigin(0.5, 0.85));
+    const kn = this.kind.name;
+    const names = taken.map((t) => `${nameOf(t.mount)}`);
+    const one = taken.length === 1;
     this.runOff(() => {
       this.clear();
-      w.game.events.emit('dialog', [
-        `Oh no! The sneaky ${n} ran off with your ${m.name}!`,
-        `It hid your friend behind ${HIDES[pid]}, and that puzzle got all mixed up again.`,
-        `Solve it and open the chest to rescue the ${m.name}! Look for the sack with the star.`,
+      w.game.events.emit('dialog', one ? [
+        `Oh no! The sneaky ${kn} ran off with your ${names[0]}!`,
+        `It hid your friend in a little cell behind ${HIDES[taken[0].puzzle]}, and that puzzle got all mixed up again.`,
+        `Solve it, then tap the cell to let the ${names[0]} out! Look for the cell with the gold padlock.`,
+      ] : [
+        `Oh no! The sneaky ${kn} ran off with ${taken.length} friends: the ${andList(names)}!`,
+        `It hid each one in a little cell: ${andList(taken.map((t) => `the ${nameOf(t.mount)} behind ${HIDES[t.puzzle]}`))}. Those puzzles got all mixed up again.`,
+        `Solve each puzzle, then tap its cell to let your friend out! Look for the cells with the gold padlocks.`,
       ]);
     });
+    w.game.events.emit('toast', one ? `The ${kn} is carrying off your ${names[0]}!` : `The ${kn} is carrying off your ${andList(names)}!`);
     w.game.events.emit('thief', 'stolen');
   }
 
@@ -281,12 +356,16 @@ export class Thief {
     this.to = { x: s.x < v.centerX ? v.x - 120 : v.right + 120, y: s.y };
     this.pawAt = null;
     this.speed = 420;
-    w.time.delayedCall(reduceMotion() ? 200 : 1600, done);
+    // 51: a bit slower (and a bit longer) when carrying friends, so you can see them go.
+    if (this.carry.length) this.speed = 300;
+    w.time.delayedCall(reduceMotion() ? 600 : this.carry.length ? 2600 : 1600, done);
   }
 
   private clear() {
     this.hop?.stop(); this.hop = null;
     this.spr?.destroy(); this.sack?.destroy(); this.pips?.destroy();
+    for (const c of this.carry) c.destroy();
+    this.carry = []; this.carryIds = [];
     this.spr = this.sack = null; this.pips = null;
     this.state = 'off';
     this.w.game.events.emit('thief', 'off');
@@ -318,6 +397,12 @@ export class Thief {
       s.setDepth(s.y + 8000);
       if (this.state === 'flee') this.dropPaw(s.x, s.y);
       if (this.sack) { this.sack.setPosition(s.x + (s.flipX ? 30 : -30), s.y - 4).setDepth(s.depth - 1); }
+      // 51: carried friends sit up on its back, stacked a little (they bob along with each hop).
+      const dir = s.flipX ? -1 : 1, bob = (s.scaleY / (SCALE / (frameScale[s.frame.name] ?? 1)) - 1) * 60;
+      this.carry.forEach((c, i) => {
+        c.setFlipX(s.flipX).setPosition(s.x - dir * (14 + i * 26), s.y - 66 - i * 22 + bob + (reduceMotion() ? 0 : Math.sin(this.w.time.now / 140 + i) * 2))
+          .setRotation(dir * (-0.12 + i * 0.1)).setDepth(s.depth + 1 + i);
+      });
     }
     // Tap pips above its head: filled ones are your taps so far, and a ring shows the time left.
     const g = this.pips!;
@@ -346,43 +431,104 @@ export class Thief {
     w.tweens.add({ targets: p, alpha: 0, delay: reduceMotion() ? 1500 : 2200, duration: 1200, onComplete: () => p.destroy() });
   }
 
-  /** A star sack bobs where the stolen friend is hiding. */
+  /** 52: each hidden friend waits in a little cell next to its puzzle's chest. */
   placeMarker() {
-    this.marker?.destroy(); this.marker = null;
-    const st = save.stolen;
-    if (!st) return;
-    const ch = this.w.puzzles.chestById(st.puzzle);
-    if (!ch) return;
-    const w = this.w;
-    const sack = w.add.image(0, 0, atlasOf('thief_sack'), 'thief_sack').setOrigin(0.5, 1).setScale(1.5 / (frameScale.thief_sack ?? 1));
-    const mask = w.add.image(0, -50, atlasOf('thief_mask'), 'thief_mask').setScale(0.9 / (frameScale.thief_mask ?? 1));
-    this.marker = w.add.container(ch.x + 46, ch.y - 4, [sack, mask]).setDepth(ch.y + 5);
-    if (!reduceMotion()) w.tweens.add({ targets: this.marker, y: ch.y - 12, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    for (const pid of [...this.cells.keys()]) this.dropCell(pid);
+    for (const st of save.stolen ?? []) this.makeCell(st);
   }
-
-  private onChest(pid: string) {
-    const st = save.stolen;
-    if (!st || st.puzzle !== pid) return;
+  private makeCell(st: Stolen) {
+    const w = this.w;
+    const ch = w.puzzles.chestById(st.puzzle);
     const m = mountById(st.mount);
-    delete save.stolen;
+    if (!ch || !m || this.cells.has(st.puzzle)) return;
+    const k = 1.25;
+    const back = w.add.image(0, 0, atlasOf('thief_cell_back'), 'thief_cell_back').setOrigin(0.5, 1).setScale(k / (frameScale.thief_cell_back ?? 1));
+    const pet = friendImg(w, m, 0, -14, CW * k * 0.78).setOrigin(0.5, 1);
+    const bars = w.add.image(0, 0, atlasOf('thief_cell'), 'thief_cell').setOrigin(0.5, 1).setScale(k / (frameScale.thief_cell ?? 1));
+    const mask = w.add.image(0, -CH * k - 12, atlasOf('thief_mask'), 'thief_mask').setScale(0.8 / (frameScale.thief_mask ?? 1));
+    const x = ch.x + 78, y = ch.y + 6;
+    const c = w.add.container(x, y, [back, pet, bars, mask]).setDepth(y + 5);
+    c.setData('pet', pet);
+    if (!reduceMotion()) w.tweens.add({ targets: pet, y: -20, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    const pid = st.puzzle;
+    const it = {
+      x, y: y - 10, r: 64, label: 'Open', promptY: CH * k + 20,
+      enabled: () => this.cells.has(pid),
+      action: () => this.tapCell(pid),
+    };
+    w.interactables.push(it);
+    this.cells.set(pid, { c, it });
+  }
+  private dropCell(pid: string) {
+    const e = this.cells.get(pid); if (!e) return;
+    const i = this.w.interactables.indexOf(e.it as never);
+    if (i >= 0) this.w.interactables.splice(i, 1);
+    this.w.tweens.killTweensOf(e.c.getData('pet'));
+    e.c.destroy();
+    this.cells.delete(pid);
+  }
+  /** Tap a cell: once its puzzle is solved it pops open and your friend hops out. */
+  tapCell(pid: string) {
+    if (!this.cells.has(pid)) return false;
+    const ch = this.w.puzzles.chestById(pid);
+    if (!save.puzzles[pid] && !ch?.revealed) {
+      const st = save.stolen?.find((s) => s.puzzle === pid);
+      this.w.game.events.emit('toast', `It's locked! Solve ${HIDES[pid]} to open the cell for the ${nameOf(st?.mount ?? '')}.`);
+      sfx.blip?.();
+      return false;
+    }
+    this.rescue(pid);
+    return true;
+  }
+  /** Opening the puzzle's chest also lets the friend out (the chest keeps its normal reward). */
+  private onChest(pid: string) { this.rescue(pid); }
+
+  private rescue(pid: string) {
+    const st = save.stolen?.find((s) => s.puzzle === pid);
+    if (!st) return;
+    const m = mountById(st.mount);
+    save.stolen = save.stolen!.filter((s) => s !== st);
+    if (!save.stolen.length) delete save.stolen;
     persist();
     this.rescuedN++;
     const w = this.w;
-    const at = this.marker ? { x: this.marker.x, y: this.marker.y } : { x: w.feet.x, y: w.feet.y };
-    this.marker?.destroy(); this.marker = null;
-    w.burst(at.x, at.y - 40, 0xff9ab8, 24, 'heart');
-    w.burst(at.x, at.y - 40, 0xffe08a, 24, 'spark');
+    const e = this.cells.get(pid);
+    const at = e ? { x: e.c.x, y: e.c.y } : { x: w.feet.x, y: w.feet.y };
+    // The friend hops out of the cell with a happy burst, then flies off home to the stable.
+    if (e && m) {
+      const pet = friendImg(w, m, at.x, at.y - 14, CW * 1.25 * 0.78).setOrigin(0.5, 1).setDepth(at.y + 20);
+      if (reduceMotion()) w.time.delayedCall(700, () => pet.destroy());
+      else {
+        w.tweens.add({ targets: pet, y: at.y - 70, duration: 260, yoyo: true, ease: 'Sine.easeOut' });
+        w.tweens.add({ targets: pet, y: at.y - 420, x: at.x + 160, alpha: 0, delay: 620, duration: 1100, ease: 'Sine.easeIn', onComplete: () => pet.destroy() });
+      }
+    }
+    this.dropCell(pid);
+    w.burst(at.x, at.y - 60, 0xff9ab8, 24, 'heart');
+    w.burst(at.x, at.y - 60, 0xffe08a, 28, 'spark');
     sfx.sparkle();
-    w.time.delayedCall(400, () => w.game.events.emit('toast', `You rescued the ${m?.name ?? 'friend'}! It's back in your stable.`));
+    const left = save.stolen?.length ?? 0;
+    w.time.delayedCall(400, () => w.game.events.emit('toast', `You rescued the ${m?.name ?? 'friend'}! It's back in your stable.${left ? ` ${left === 1 ? 'One more friend' : `${left} more friends`} to find!` : ''}`));
     w.game.events.emit('thief', 'rescued');
+  }
+
+  /** 53: Call Mount reminds you where every hidden friend is. */
+  callMountHint() {
+    const list = save.stolen ?? [];
+    if (!list.length) return '';
+    const msg = list.length === 1 ? `Your ${nameOf(list[0].mount)} is hiding behind ${HIDES[list[0].puzzle]}!`
+      : `Your friends are hiding: ${andList(list.map((s) => `the ${nameOf(s.mount)} behind ${HIDES[s.puzzle]}`))}!`;
+    this.lastCallHint = msg;
+    this.w.game.events.emit('toast', msg);
+    return msg;
   }
 
   snapshot() {
     const s = this.spr;
     const c = this.w.cameras.main;
     return {
-      state: this.state, kind: this.kind.id, taps: this.taps, stolen: save.stolen ? { ...save.stolen } : null,
-      thanks: this.thanks, paws: this.paws, giggles: this.giggles, caught: this.caughtN, stolenN: this.stolenN, rescued: this.rescuedN, marker: !!this.marker,
+      state: this.state, kind: this.kind.id, taps: this.taps, stolen: save.stolen?.length ? save.stolen.map((x) => ({ ...x })) : null, carrying: [...this.carryIds], cells: [...this.cells.keys()], callHint: this.lastCallHint,
+      thanks: this.thanks, paws: this.paws, giggles: this.giggles, caught: this.caughtN, stolenN: this.stolenN, rescued: this.rescuedN, marker: this.cells.size > 0,
       screen: s ? { x: (s.x - c.worldView.x) * c.zoom / DPR, y: (s.y - 24 * SCALE - c.worldView.y) * c.zoom / DPR } : null,
       blocked: this.blocked(),
     };

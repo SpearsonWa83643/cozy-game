@@ -261,7 +261,7 @@ export function seasonalThemeOf(mountId: string): string | null {
 }
 
 /** 40: is this friend hidden away by the Mount Thief right now? */
-export function isStolen(id: string): boolean { return save.stolen?.mount === id; }
+export function isStolen(id: string): boolean { return !!save.stolen?.some((s) => s.mount === id); }
 
 export function isMountUnlocked(m: MountDef): boolean {
   if (isStolen(m.id)) return false;

@@ -1237,8 +1237,8 @@ export class MenuScene extends Phaser.Scene {
   }
 
   private mountHint(m: MountDef) {
-    const st = save.stolen;
-    if (st && st.mount === m.id) return `The sneaky ${THIEVES.find((k) => k.id === st.kind)?.name ?? 'thief'} hid the ${m.name} behind ${HIDES[st.puzzle]}! Solve it and open the chest to rescue your friend.`;
+    const st = save.stolen?.find((s) => s.mount === m.id);
+    if (st) return `The sneaky ${THIEVES.find((k) => k.id === st.kind)?.name ?? 'thief'} hid the ${m.name} in a little cell behind ${HIDES[st.puzzle]}! Solve it and tap the cell to rescue your friend.`;
     if (!m.treasure) return `${m.name} is always free!`;
     const t = TREASURES.find((x) => x.id === m.treasure);
     if (t) return `Find the ${t.name} to meet the ${m.name}. Hint: ${t.hint}`;

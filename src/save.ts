@@ -32,8 +32,9 @@ export type SaveData = {
   berries: number;
   /** Mount you last picked yourself in the mount picker (kept over the theme's default). */
   mountPick?: string;
-  /** 40: a friend the Mount Thief hid behind a puzzle (solve it and open the chest to rescue). */
-  stolen?: { mount: string; puzzle: string; kind: string };
+  /** 40: friends the Mount Thief hid behind puzzles (solve it and open the cell to rescue).
+   *  51-53: a list (the thief can take 2 or 3); old single-friend saves are migrated on load. */
+  stolen?: Stolen[];
   /** One-time tips already shown. */
   tips: string[];
   /** Wilderness: trips taken, monsters poofed, rare finds banked at home. */
@@ -60,6 +61,15 @@ function fresh(): SaveData {
 /** True when this session began with no save at all (a brand-new player). */
 export let freshSave = false;
 
+export type Stolen = { mount: string; puzzle: string; kind: string };
+/** 53: old saves stored one stolen friend as an object; newer ones a list. Empty lists are dropped. */
+export function normStolen(v: unknown): Stolen[] | undefined {
+  const arr = Array.isArray(v) ? v : v && typeof v === 'object' ? [v] : [];
+  const ok = arr.filter((x): x is Stolen => !!x && typeof (x as Stolen).mount === 'string' && typeof (x as Stolen).puzzle === 'string')
+    .map((x) => ({ mount: x.mount, puzzle: x.puzzle, kind: typeof x.kind === 'string' ? x.kind : 'raccoon' }));
+  return ok.length ? ok : undefined;
+}
+
 export const save: SaveData = (() => {
   try {
     let raw = localStorage.getItem(KEY);
@@ -72,7 +82,7 @@ export const save: SaveData = (() => {
         const v = { ...f.village, ...(d.village ?? {}) };
         v.res = { ...f.village.res, ...(v.res ?? {}) };
         const snacks = Math.max(0, Math.min(9, Number(d.snacks) || 0));
-        return { ...f, ...d, v: 2, snacks, berries: Math.max(0, Math.min(snacks, Number(d.berries) || 0)), tips: Array.isArray(d.tips) ? d.tips : [], wild: { ...f.wild, ...(d.wild ?? {}), loot: { ...(d.wild?.loot ?? {}) } }, theme: normTheme(d.theme), village: v, look: { ...DEFAULT_LOOK, ...(d.look ?? {}) } };
+        return { ...f, ...d, v: 2, snacks, berries: Math.max(0, Math.min(snacks, Number(d.berries) || 0)), tips: Array.isArray(d.tips) ? d.tips : [], wild: { ...f.wild, ...(d.wild ?? {}), loot: { ...(d.wild?.loot ?? {}) } }, theme: normTheme(d.theme), village: v, look: { ...DEFAULT_LOOK, ...(d.look ?? {}) }, stolen: normStolen(d.stolen) };
       }
     }
   } catch { /* storage unavailable or corrupt */ }
