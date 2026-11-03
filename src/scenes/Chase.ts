@@ -493,7 +493,7 @@ export class ChaseScene extends Phaser.Scene {
 
     // Nets: on a gentle beat by themselves (taps add more); paused for a moment after a bump.
     this.netPause = Math.max(0, this.netPause - dt);
-    this.autoT -= dt;
+    this.autoT = Math.min(this.autoT, CHASE.autoMs / 1000) - dt;
     if (this.autoT <= 0) this.throwNet(false);
     for (const n of this.netsL) {
       if (n.dead) continue;

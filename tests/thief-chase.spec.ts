@@ -123,6 +123,7 @@ test('thief chase: offer, pick a friend, steer, nets hit, catch frees friends', 
     expect(t.stolen).toBeNull();
     expect(t.cells).toEqual([]);
     expect(t.chase.caught).toBe(1);
+    await expect.poll(async () => (await saved(page)).stolen, { timeout: 30_000 }).toBeUndefined();
     sv = await saved(page);
     expect(sv.stolen).toBeUndefined();
     expect(sv.puzzles[st.puzzle]).toBe(true);
@@ -149,6 +150,7 @@ test('thief chase: "Not now" hides the friend in a cell like before', async ({ p
     await expect.poll(() => dialogOpen(page), { timeout: 90_000 }).toBe(true);
     const t = await thief(page);
     expect(t.cells).toEqual([st.puzzle]);
+    await expect.poll(async () => (await saved(page)).puzzles[st.puzzle], { timeout: 30_000 }).toBeUndefined();
     const sv = await saved(page);
     expect(sv.stolen).toEqual([st]);
     expect(sv.puzzles[st.puzzle]).toBeUndefined();
@@ -177,10 +179,11 @@ test('thief chase: time runs out, it hides your friend, a berry gift for trying'
     await expect.poll(() => dialogOpen(page), { timeout: 120_000 }).toBe(true);
     const t = await thief(page);
     expect(t.cells).toEqual([r.puzzle]);
+    await expect.poll(async () => (await saved(page)).puzzles[r.puzzle], { timeout: 30_000 }).toBeUndefined();
     const sv = await saved(page);
     expect(sv.stolen).toEqual([{ mount: r.taken, puzzle: r.puzzle, kind: 'skunk' }]);
     expect(sv.puzzles[r.puzzle]).toBeUndefined();
-    expect(sv.berries).toBe(2);
+    expect(sv.berries).toBeGreaterThanOrEqual(2); // 2 for trying (+ any picked up on the way)
     expect(errors).toEqual([]);
   } finally { await browser.close(); }
 });
