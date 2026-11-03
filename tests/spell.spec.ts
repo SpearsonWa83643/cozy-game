@@ -29,7 +29,7 @@ test('letter easel: spell 3 words with big tiles, gentle hints, chest + ABC Bloc
   await page.waitForFunction(() => (window as any).__cozy?.ready, null, { timeout: 180_000 });
   await page.waitForTimeout(1200);
   const L = await cozy(page, 'learn()');
-  expect(Object.keys(L).sort()).toEqual(['spell1', 'spell2']);
+  expect(Object.keys(L).sort()).toEqual(['num1', 'num2', 'spell1', 'spell2']);
   const { x, y } = L.spell1;
 
   // 1. Walk up to the meadow easel and tap it (real touch).
