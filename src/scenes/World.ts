@@ -1456,7 +1456,7 @@ export class WorldScene extends Phaser.Scene {
       /** 71: what the top-left HUD shows right now. */
       hudInfo() {
         const ui = self.scene.get('ui') as any, v = self.scene.get('vui') as any;
-        return { sigils: ui.hudC.visible && ui.hudC.alpha > 0.5, sigilAlpha: ui.hudC.alpha, resBar: v.bar.visible, snacks: !!v.snackC, alert: v.alertData?.id ?? null };
+        return { sigils: ui.hudC.visible && ui.hudC.alpha > 0.5, sigilAlpha: ui.hudC.alpha, lit: self.litOrder.length, solved: self.solved, feet: [Math.round(self.feet.x), Math.round(self.feet.y)], resBar: v.bar.visible, snacks: !!v.snackC, alert: v.alertData?.id ?? null };
       },
       zoomInfo() {
         const inW = self.scene.isActive('wild');

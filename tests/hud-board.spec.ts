@@ -32,7 +32,8 @@ test('HUD board: sigils only near the puzzle, needs and seasons on the village b
   // 2. Down at the village (far from the lanterns): the sigils tuck away.
   await cozy(page, 'villageCalm()');
   await cozy(page, 'teleport(960, 1790)');
-  await expect.poll(async () => (await cozy(page, 'hudInfo()')).sigils, { timeout: 15_000 }).toBe(false);
+  await expect.poll(async () => (await cozy(page, 'hudInfo()')).feet[1], { timeout: 15_000 }).toBeGreaterThan(1700);
+  await expect.poll(async () => (await cozy(page, 'hudInfo()')).sigils, { timeout: 15_000 }).toBe(false).catch(async (e) => { console.log('hudInfo', JSON.stringify(await cozy(page, 'hudInfo()'))); throw e; });
 
   // 3. A visitor with no bed: "needs a home" goes on the board (with a "!"), not on the HUD.
   await page.evaluate(() => { const v = (window as any).__game.scene.getScene('world').village; v.beds = () => 0; v.wanderTimer = 0.01; });
