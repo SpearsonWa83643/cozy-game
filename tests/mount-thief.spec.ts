@@ -80,7 +80,7 @@ test('mount thief: button, arrest with 3 taps, escape hides a friend, rescue fro
     await expect.poll(() => page.evaluate(() => { const s = JSON.parse(localStorage.getItem('cozy.save.v2')!); return [s.snacks, s.berries]; }), { timeout: 5_000 }).toEqual([2, 2]);
 
     // 2) Next time nobody taps: it escapes with a friend and hides it behind a solved puzzle.
-    expect(await page.evaluate(() => (window as any).__cozy.startThief('raccoon', 1500, 1, 0))).toBe(true);
+    expect(await page.evaluate(() => (window as any).__cozy.startThief('raccoon', 6000, 1, 0))).toBe(true);
     await page.waitForTimeout(600);
     await page.screenshot({ path: `${SHOTS}/thief-sneak.png`, scale: 'css' });
     // The snapshot taken the moment it grabs a friend (asserted below), so a slow, loaded test machine can't miss the run-off.
