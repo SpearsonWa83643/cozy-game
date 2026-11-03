@@ -38,7 +38,7 @@ Walker: "For immediate implementation : Add this sushi figurine to the mounts" (
 
 | Order | Task | Status | ETA live | Estimate (dev days) |
 |---|---|---|---|---|
-| 50 | Sushi Roll Buddy mount from Walker's figurine photo: teal nori roll, bumpy rice rim, orange roe ball + cucumber discs, happy face with blush, orange stubby arms/feet; own treasure (Tiny Chopsticks, Wild Woods lunchbox), stable stall, orange cape, rice/roe ride sprinkles, wobble; works with every Looks & Moves art style and motion | In progress | 2026-11-02 | 0.5 |
+| 50 | Sushi Roll Buddy mount from Walker's figurine photo: teal nori roll, bumpy rice rim, orange roe ball + cucumber discs, happy face with blush, orange stubby arms/feet; own treasure (Tiny Chopsticks, Wild Woods lunchbox), stable stall, orange cape, rice/roe ride sprinkles, wobble; works with every Looks & Moves art style and motion | Done/Live (merge ecca2fa, bundle index-Bx7AMpvE.js) | 2026-11-02 | 0.5 |
 
 ## Walker's Nov 2 request: Looks & Moves in the game (2:45 PM CT)
 
