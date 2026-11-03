@@ -82,6 +82,57 @@ export const PICS: Record<string, (g: G) => void> = {
     blob(g, '#4a4a55', () => g.arc(48, 118, 14, 0, Math.PI * 2)); blob(g, '#4a4a55', () => g.arc(116, 118, 14, 0, Math.PI * 2));
     dot(g, 48, 118, 5, '#ddd'); dot(g, 116, 118, 5, '#ddd');
   },
+  // 75: six more picture words for free play.
+  fox(g) {
+    blob(g, '#f08a3c', () => { g.moveTo(80, 128); g.lineTo(26, 70); g.lineTo(34, 22); g.lineTo(64, 52); g.lineTo(96, 52); g.lineTo(126, 22); g.lineTo(134, 70); g.closePath(); });
+    blob(g, '#3d2c20', () => { g.moveTo(38, 34); g.lineTo(40, 52); g.lineTo(54, 50); g.closePath(); }, 2);
+    blob(g, '#3d2c20', () => { g.moveTo(122, 34); g.lineTo(120, 52); g.lineTo(106, 50); g.closePath(); }, 2);
+    blob(g, '#fff4e4', () => { g.moveTo(80, 128); g.lineTo(44, 86); g.quadraticCurveTo(62, 78, 80, 96); g.quadraticCurveTo(98, 78, 116, 86); g.closePath(); }, 3);
+    dot(g, 62, 76, 6); dot(g, 98, 76, 6); dot(g, 64, 74, 2, '#fff'); dot(g, 100, 74, 2, '#fff');
+    dot(g, 80, 118, 7); smile(g, 80, 106, 7); cheeks(g, 50, 110, 92);
+  },
+  egg(g) {
+    blob(g, '#fffaf0', () => { g.moveTo(80, 22); g.bezierCurveTo(124, 22, 132, 96, 124, 112); g.bezierCurveTo(112, 142, 48, 142, 36, 112); g.bezierCurveTo(28, 96, 36, 22, 80, 22); g.closePath(); });
+    g.fillStyle = '#ffd1dc'; for (const [x, y, r] of [[56, 56, 6], [104, 64, 5], [96, 118, 6], [52, 116, 4]] as const) { g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill(); }
+    dot(g, 66, 86, 5.5); dot(g, 94, 86, 5.5); dot(g, 68, 84, 2, '#fff'); dot(g, 96, 84, 2, '#fff');
+    smile(g, 80, 96, 10); cheeks(g, 56, 104, 102);
+  },
+  bug(g) {
+    g.lineWidth = 4; g.strokeStyle = INK;
+    for (const s of [-1, 1]) for (const dy of [0, 22, 44]) { g.beginPath(); g.moveTo(80 + s * 30, 74 + dy); g.lineTo(80 + s * 54, 66 + dy); g.stroke(); }
+    blob(g, '#e8384c', () => g.ellipse(80, 96, 44, 40, 0, 0, Math.PI * 2));
+    g.beginPath(); g.moveTo(80, 58); g.lineTo(80, 136); g.lineWidth = 4; g.strokeStyle = INK; g.stroke();
+    for (const [x, y, r] of [[60, 84, 8], [100, 84, 8], [62, 112, 7], [98, 112, 7]] as const) dot(g, x, y, r);
+    blob(g, '#3d2c20', () => g.arc(80, 52, 22, 0, Math.PI * 2), 3);
+    dot(g, 72, 48, 5, '#fff'); dot(g, 88, 48, 5, '#fff'); dot(g, 73, 49, 2.5); dot(g, 89, 49, 2.5);
+    g.lineWidth = 3.5; g.beginPath(); g.moveTo(72, 32); g.quadraticCurveTo(64, 16, 54, 18); g.moveTo(88, 32); g.quadraticCurveTo(96, 16, 106, 18); g.stroke();
+    dot(g, 54, 18, 5); dot(g, 106, 18, 5);
+  },
+  car(g) {
+    blob(g, '#5f8fd8', () => { g.moveTo(14, 112); g.lineTo(14, 82); g.quadraticCurveTo(16, 72, 32, 70); g.lineTo(48, 70); g.lineTo(62, 44); g.lineTo(108, 44); g.lineTo(124, 70); g.quadraticCurveTo(146, 72, 148, 88); g.lineTo(148, 112); g.closePath(); });
+    blob(g, '#bfe3ff', () => { g.moveTo(58, 70); g.lineTo(68, 52); g.lineTo(82, 52); g.lineTo(82, 70); g.closePath(); }, 3);
+    blob(g, '#bfe3ff', () => { g.moveTo(90, 70); g.lineTo(90, 52); g.lineTo(104, 52); g.lineTo(114, 70); g.closePath(); }, 3);
+    blob(g, '#ffd84d', () => g.arc(140, 92, 6, 0, Math.PI * 2), 2);
+    blob(g, '#4a4a55', () => g.arc(46, 116, 16, 0, Math.PI * 2)); blob(g, '#4a4a55', () => g.arc(116, 116, 16, 0, Math.PI * 2));
+    dot(g, 46, 116, 6, '#ddd'); dot(g, 116, 116, 6, '#ddd');
+  },
+  owl(g) {
+    blob(g, '#a8703f', () => { g.moveTo(40, 40); g.lineTo(58, 50); g.lineTo(102, 50); g.lineTo(120, 40); g.quadraticCurveTo(136, 96, 118, 128); g.quadraticCurveTo(80, 146, 42, 128); g.quadraticCurveTo(24, 96, 40, 40); g.closePath(); });
+    blob(g, '#f5dcb4', () => g.ellipse(80, 108, 26, 24, 0, 0, Math.PI * 2), 3);
+    for (const x of [62, 98]) { blob(g, '#fff8ea', () => g.arc(x, 74, 17, 0, Math.PI * 2), 4); dot(g, x, 76, 8); dot(g, x + 2, 73, 3, '#fff'); }
+    blob(g, '#f5a623', () => { g.moveTo(74, 88); g.lineTo(86, 88); g.lineTo(80, 100); g.closePath(); }, 3);
+    g.lineWidth = 3; g.strokeStyle = 'rgba(61,44,32,0.5)'; for (const [x, y] of [[72, 104], [88, 104], [80, 116]] as const) { g.beginPath(); g.arc(x, y, 5, 0.1 * Math.PI, 0.9 * Math.PI); g.stroke(); }
+  },
+  pie(g) {
+    blob(g, '#d9a35a', () => { g.moveTo(16, 92); g.lineTo(144, 92); g.lineTo(130, 126); g.lineTo(30, 126); g.closePath(); });
+    blob(g, '#f2c27a', () => { g.moveTo(16, 92); g.quadraticCurveTo(80, 30, 144, 92); g.closePath(); });
+    g.lineWidth = 4; g.strokeStyle = '#b07a3a';
+    for (const x of [56, 80, 104]) { g.beginPath(); g.moveTo(x - 6, 70); g.lineTo(x + 6, 78); g.stroke(); }
+    g.fillStyle = '#c8475a'; for (const x of [40, 64, 96, 120]) { g.beginPath(); g.arc(x, 92, 5, 0, Math.PI * 2); g.fill(); }
+    dot(g, 66, 108, 5); dot(g, 94, 108, 5); smile(g, 80, 112, 8); cheeks(g, 52, 108, 116);
+    g.lineWidth = 4; g.strokeStyle = 'rgba(120,100,90,0.6)';
+    for (const x of [64, 82, 98]) { g.beginPath(); g.moveTo(x, 44); g.quadraticCurveTo(x - 8, 34, x, 24); g.stroke(); }
+  },
 };
 export const WORD_PICS = Object.keys(PICS);
 

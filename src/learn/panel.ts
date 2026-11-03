@@ -43,6 +43,9 @@ export class LearnPanel {
 
   constructor(private ui: VillageUI) {
     (window as any).__cozyLearn = () => this.state();
+    // 75 (tests/photos): put chosen words on the open board.
+    (window as any).__cozyLearnHasPic = (w: string) => this.ui.textures.exists(`lw_${w}`);
+    (window as any).__cozyLearnWords = (ws: string[]) => { if (!this.open) return false; this.words = ws; this.wi = 0; this.build(); return true; };
   }
 
   state() {

@@ -22,7 +22,7 @@ export const LEARN_DEFS: LearnDef[] = [
 /** What each counting board counts. */
 export const COUNT_THING: Record<string, 'apple' | 'stone'> = { num1: 'apple', num2: 'stone' };
 /** Extra words for free play once a site is solved. */
-export const BONUS_WORDS = ['pig', 'bus', 'cat', 'sun', 'dog', 'hat', 'bee', 'cup'];
+export const BONUS_WORDS = ['pig', 'bus', 'cat', 'sun', 'dog', 'hat', 'bee', 'cup', 'fox', 'egg', 'bug', 'car', 'owl', 'pie']; // 75: +6
 
 type Site = { def: LearnDef; x: number; y: number; chest: Chest; done: number; glow: Phaser.GameObjects.Image };
 
