@@ -177,6 +177,10 @@ export class ChaseScene extends Phaser.Scene {
   SC = 1;
   thief!: Phaser.GameObjects.Image; thShadow!: Phaser.GameObjects.Image; carry: Phaser.GameObjects.Image[] = [];
   meter: { ring: Phaser.GameObjects.Image; fill: Phaser.GameObjects.Image }[] = [];
+  meterLabel: Phaser.GameObjects.Text | null = null;
+  meterBox = { x: 0, w: 0 };
+  /** 70: the last empty ring glows and bobs ("one more!"). */
+  lastPulse: Phaser.Tweens.Tween | null = null;
   timeBar!: Phaser.GameObjects.Graphics;
   starTxt!: Phaser.GameObjects.Text; berryTxt!: Phaser.GameObjects.Text;
   hint: Phaser.GameObjects.GameObject[] = [];
@@ -189,7 +193,7 @@ export class ChaseScene extends Phaser.Scene {
     this.d = d;
     this.phase = 'intro'; this.paused = false;
     this.t = 0; this.hits = 0; this.stars = 0; this.berries = 0; this.bumps = 0; this.nets = 0;
-    this.items = []; this.netsL = []; this.far = []; this.streaks = []; this.carry = []; this.meter = []; this.sparks = []; this.hint = []; this.panel = null;
+    this.items = []; this.netsL = []; this.far = []; this.streaks = []; this.carry = []; this.meter = []; this.sparks = []; this.hint = []; this.panel = null; this.floats = []; this.lastPulse = null; this.meterLabel = null;
     this.wobble = 0; this.netPause = 0; this.lastThrow = -9; this.autoT = 0.6; this.spawnT = 1.2; this.invul = 0; this.thSpin = 0; this.autopilot = false;
   }
 
@@ -285,17 +289,21 @@ export class ChaseScene extends Phaser.Scene {
     pb.setSize(110 * U, 110 * U).setInteractive({ useHandCursor: true });
     pb.on('pointerdown', () => { if (this.phase === 'play' || this.phase === 'intro') this.setPaused(true); });
     this.pauseBtn = pb;
-    // Catch meter: one ring per net needed (fills with a bubble net).
-    const n = CHASE.hits, gap = 92 * U, x0 = W / 2 - ((n - 1) * gap) / 2;
+    // Catch meter: one ring per net needed (fills with a bubble net), with a big "Catch!" word and
+    // the thief's little net-count, so it's clear what the rings are for (70).
+    const n = CHASE.hits, gap = 92 * U, x0 = W / 2 - ((n - 1) * gap) / 2 + 50 * U;
     const back = this.add.graphics().setDepth(D);
-    back.fillStyle(0xfffaf0, 0.92).fillRoundedRect(x0 - 70 * U, 18 * U, (n - 1) * gap + 140 * U, 96 * U, 40 * U);
-    back.lineStyle(4 * U, 0x2a4a7a, 0.9).strokeRoundedRect(x0 - 70 * U, 18 * U, (n - 1) * gap + 140 * U, 96 * U, 40 * U);
+    const bx = x0 - 170 * U, bw = (n - 1) * gap + 240 * U;
+    back.fillStyle(0xfffaf0, 0.92).fillRoundedRect(bx, 18 * U, bw, 96 * U, 40 * U);
+    back.lineStyle(4 * U, 0x2a4a7a, 0.9).strokeRoundedRect(bx, 18 * U, bw, 96 * U, 40 * U);
+    this.meterLabel = this.txt(x0 - 110 * U, 60 * U, 'Catch!', 32, '#2a4a7a', 900).setOrigin(0.5).setDepth(D + 1);
     for (let i = 0; i < n; i++) {
       const x = x0 + i * gap, y = 58 * U;
       const ring = this.add.image(x, y, 'ch_net').setDepth(D + 1).setScale((U / R) * 0.78).setAlpha(0.28).setTint(0x8899bb);
       const fill = this.add.image(x, y, 'ch_net').setDepth(D + 2).setScale(0).setAlpha(1);
       this.meter.push({ ring, fill });
     }
+    this.meterBox = { x: bx, w: bw };
     this.timeBar = this.add.graphics().setDepth(D + 1);
     // Stars and berries collected (top right).
     const sx = W - 190 * U;
@@ -319,9 +327,20 @@ export class ChaseScene extends Phaser.Scene {
   setMeter(i: number) {
     const m = this.meter[i]; if (!m) return;
     m.ring.setAlpha(0);
-    const s = (this.U / R) * 0.85;
-    if (reduceMotion()) m.fill.setScale(s);
+    const s = (this.U / R) * 0.85, rm = reduceMotion();
+    if (rm) m.fill.setScale(s);
     else this.tweens.add({ targets: m.fill, scale: { from: s * 1.8, to: s }, duration: 420, ease: 'Back.easeOut' });
+    // 70: a little sparkle pop on the ring, the word "Catch!" gives a happy bounce.
+    this.spark(m.fill.x, m.fill.y, rm ? 3 : 8, 0xffe27a, 'ch_spark', 50, 110);
+    if (this.meterLabel && !rm) this.tweens.add({ targets: this.meterLabel, scale: { from: 1.25, to: 1 }, duration: 360, ease: 'Back.easeOut' });
+    // The last empty ring glows and bobs so you can see you need just one more.
+    this.lastPulse?.stop(); this.lastPulse = null;
+    const empty = this.meter.filter((q) => q.ring.alpha > 0);
+    if (empty.length === 1) {
+      const r = empty[0].ring;
+      r.setAlpha(0.7).setTint(0xffe27a);
+      if (!rm) this.lastPulse = this.tweens.add({ targets: r, scale: r.scale * 1.18, duration: 420, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    }
   }
 
   // ---------- cards (pause / end) ----------
@@ -420,12 +439,12 @@ export class ChaseScene extends Phaser.Scene {
     this.items.push({ img, kind, r: rr, vy: CHASE.scrollPx * U * (kind === 'balloon' ? 0.8 : 1), ph: Math.random() * 6, dead: false });
   }
 
-  spark(x: number, y: number, n: number, tint: number, key = 'ch_spark', spread = 90) {
+  spark(x: number, y: number, n: number, tint: number, key = 'ch_spark', spread = 90, depth = 60) {
     if (reduceMotion()) n = Math.ceil(n / 3);
     const U = this.U;
     for (let i = 0; i < n; i++) {
       if (this.sparks.length > 70) break;
-      const im = this.add.image(x, y, key).setDepth(60).setTint(tint).setScale((U / R) * (0.5 + Math.random() * 0.6));
+      const im = this.add.image(x, y, key).setDepth(depth).setTint(tint).setScale((U / R) * (0.5 + Math.random() * 0.6));
       this.sparks.push(im);
       const a = Math.random() * Math.PI * 2, d = (spread * 0.4 + Math.random() * spread) * U;
       this.tweens.add({ targets: im, x: x + Math.cos(a) * d, y: y + Math.sin(a) * d, alpha: 0, scale: im.scale * 0.4, angle: Math.random() * 180, duration: 500 + Math.random() * 400, ease: 'Cubic.easeOut',
@@ -434,8 +453,15 @@ export class ChaseScene extends Phaser.Scene {
   }
   float(x: number, y: number, s: string, color = '#ffffff') {
     const t = this.txt(x, y, s, 40, color).setOrigin(0.5).setDepth(80).setStroke('#2a4a7a', 7 * this.U);
-    this.tweens.add({ targets: t, y: y - 80 * this.U, alpha: 0, duration: 1100, ease: 'Cubic.easeOut', onComplete: () => t.destroy() });
+    // 70: keep it clear of the pause button and the meter / stars boxes (it floats up 80 px).
+    const U = this.U, hw = t.width / 2 + 16 * U;
+    const cx = Phaser.Math.Clamp(x, hw + 12 * U, this.W - hw - 12 * U);
+    const cy = Math.max(y, 170 * U + 80 * U + t.height / 2);
+    t.setPosition(cx, cy);
+    this.floats.push(t);
+    this.tweens.add({ targets: t, y: cy - 80 * this.U, alpha: 0, duration: 1100, ease: 'Cubic.easeOut', onComplete: () => { this.floats = this.floats.filter((q) => q !== t); t.destroy(); } });
   }
+  floats: Phaser.GameObjects.Text[] = [];
 
   update(_time: number, delta: number) {
     if (this.paused || this.phase === 'done') return;
@@ -587,7 +613,13 @@ export class ChaseScene extends Phaser.Scene {
     this.spark(this.thx, this.thy, 6, 0xffe27a);
     chaseAudio.hit(this.hits);
     sfx.giggle?.(this.d.voice * 1.1);
-    this.setMeter(this.hits - 1);
+    const ring = this.meter[this.hits - 1], hi = this.hits - 1;
+    if (ring && !reduceMotion()) {
+      // 70: a star zooms from the thief up into its ring on the Catch meter, then the ring fills.
+      const st = this.add.image(this.thx, this.thy, 'ch_star').setDepth(104).setScale((U / R) * 0.9);
+      this.tweens.add({ targets: st, x: ring.ring.x, y: ring.ring.y, scale: (U / R) * 0.5, angle: 200, duration: 420, ease: 'Cubic.easeIn',
+        onComplete: () => { st.destroy(); this.setMeter(hi); } });
+    } else this.setMeter(hi);
     const left = CHASE.hits - this.hits;
     if (left > 0) this.float(this.thx, this.thy - 90 * U, left === 1 ? 'One more!' : `Got it! ${left} more!`, '#fff3a8');
     if (this.hits >= CHASE.hits) this.caught();
@@ -684,6 +716,8 @@ export class ChaseScene extends Phaser.Scene {
       on: this.phase !== 'done', phase: this.phase, paused: this.paused, t: Math.round(this.t * 10) / 10, hits: this.hits, need: CHASE.hits,
       stars: this.stars, berries: this.berries, bumps: this.bumps, nets: this.nets, mount: this.d?.mountId, kind: this.d?.kind, taken: this.d?.taken,
       px: Math.round(this.px / DPR), thx: Math.round(this.thx / DPR), thy: Math.round(this.thy / DPR), card: this.cardInfo, consolation: this.consolation,
+      floats: this.floats.map((t) => ({ x: Math.round(t.x / DPR), y: Math.round(t.y / DPR), w: Math.round(t.width / DPR), h: Math.round(t.height / DPR), s: t.text })),
+      meter: { x: Math.round(this.meterBox.x / DPR), w: Math.round(this.meterBox.w / DPR), bottom: Math.round(114 * this.U / DPR), filled: this.meter.filter((m) => m.ring.alpha === 0).length, label: this.meterLabel?.text ?? null },
       art: looks.art, pause: { x: Math.round(64 * this.U / DPR), y: Math.round(64 * this.U / DPR) },
     };
   }

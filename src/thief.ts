@@ -415,6 +415,9 @@ type Lurk = {
 };
 type LeadLog = { how: 'bush' | 'shadow'; leadS: number; rustles: number; eyes: number; blinks: number; darts: number; sounds: string[]; emerged: { x: number; y: number } | null; windowStartedAt: number; startedAt: number };
 
+/** 70: how many chase-taken friends were settled into cells after a reload (this page load). */
+const SETTLED = { n: 0 };
+
 export class Thief {
   /** 55: jailbreak state for this play session (tests read it via __cozy.jailbreakInfo). */
   jb = { played: 0, nextCheck: JAILBREAK.firstS, broke: false, kind: '', how: '' as '' | 'tunnel' | 'lock', backAt: -1, checks: 0, returned: 0 };
@@ -467,7 +470,24 @@ export class Thief {
   constructor(private w: WorldScene) {
     w.game.events.on('puzzle-chest', this.onChest, this);
     w.events.once('shutdown', () => w.game.events.off('puzzle-chest', this.onChest, this));
+    this.settleChase();
     this.placeMarker();
+  }
+
+  /**
+   * 70: the page was reloaded in the middle of a Thief Chase. It counts as a normal escape: each
+   * friend goes into its cell behind a mixed-up puzzle (no chase, no berries).
+   */
+  private settleChase() {
+    const left = (save.stolen ?? []).filter((s) => s.chase);
+    if (!left.length) return;
+    for (const st of left) { delete st.chase; delete save.puzzles[st.puzzle]; this.w.puzzles.resetById(st.puzzle); }
+    persist();
+    SETTLED.n += left.length;
+    const names = left.map((t) => nameOf(t.mount));
+    this.w.time.delayedCall(1500, () => this.w.game.events.emit('toast', left.length === 1
+      ? `The thief hid your ${names[0]} behind ${HIDES[left[0].puzzle]}. Solve it to let your friend out!`
+      : `The thief hid your ${andList(names)} behind their puzzles. Solve them to let your friends out!`));
   }
 
   /** Friends the thief could take: unlocked, not the theme's own default (you always keep a ride). */
@@ -760,6 +780,7 @@ export class Thief {
     // cells appear) once you say "Not now" or the chase ends without a catch. save.stolen is written
     // right away, so a reload mid-chase still knows who was taken.
     const chase = CHASE_OFFER.on && chaseMounts().length > 0;
+    if (chase) for (const t of taken) t.chase = true;
     if (!chase) this.hideTaken(taken);
     persist();
     this.stolenN += taken.length;
@@ -786,7 +807,12 @@ export class Thief {
 
   /** The friends go into their cells: each one's puzzle gets mixed up again (52). */
   private hideTaken(taken: Stolen[]) {
-    for (const t of taken) { delete save.puzzles[t.puzzle]; this.w.puzzles.resetById(t.puzzle); }
+    for (const t of taken) {
+      delete t.chase;
+      const st = save.stolen?.find((s) => s.mount === t.mount && s.puzzle === t.puzzle);
+      if (st) delete st.chase;
+      delete save.puzzles[t.puzzle]; this.w.puzzles.resetById(t.puzzle);
+    }
     persist();
     this.placeMarker();
   }
@@ -872,7 +898,7 @@ export class Thief {
     const ids = Object.keys(HIDES);
     const solved = ids.filter((id) => save.puzzles[id]);
     const spot = (solved.length ? solved : ids)[Math.floor(Math.random() * (solved.length || ids.length))];
-    const taken: Stolen[] = [{ mount: pickM.id, puzzle: spot, kind: kind.id }];
+    const taken: Stolen[] = [{ mount: pickM.id, puzzle: spot, kind: kind.id, chase: true }];
     save.stolen = [...(save.stolen ?? []), ...taken];
     persist();
     this.stolenN++;
@@ -1013,7 +1039,7 @@ export class Thief {
   /** 52: each hidden friend waits in a little cell next to its puzzle's chest. */
   placeMarker() {
     for (const pid of [...this.cells.keys()]) this.dropCell(pid);
-    for (const st of save.stolen ?? []) this.makeCell(st);
+    for (const st of save.stolen ?? []) if (!st.chase) this.makeCell(st);
   }
   private makeCell(st: Stolen) {
     const w = this.w;
@@ -1135,7 +1161,7 @@ export class Thief {
       lead: this.lastLead ? { ...this.lastLead, sounds: [...this.lastLead.sounds] } : null,
       windowMs: this.ms, windowLeft: this.state === 'sneak' ? Math.max(0, this.endAt - this.w.time.now) : null, appearedAt: this.appearedAt, now: this.w.time.now,
       frame: s?.frame.name ?? null, peeks: this.peeks, hops: this.hops,
-      chase: { pending: this.chasePending?.map((x) => x.mount) ?? null, n: this.chaseN, caught: this.chaseCaught, offer: CHASE_OFFER.on },
+      chase: { pending: this.chasePending?.map((x) => x.mount) ?? null, settled: SETTLED.n, n: this.chaseN, caught: this.chaseCaught, offer: CHASE_OFFER.on },
     };
   }
 }

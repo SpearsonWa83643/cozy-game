@@ -66,7 +66,7 @@ test('thief chase: offer, pick a friend, steer, nets hit, catch frees friends', 
     const st = (await thief(page)).stolen[0];
     expect(st.kind).toBe('fox');
     let sv = await saved(page);
-    expect(sv.stolen).toEqual([st]);
+    expect(sv.stolen).toEqual([{ ...st, chase: true }]); // 70: marked as "taken during a chase"
     expect(sv.puzzles[st.puzzle]).toBe(true);
     expect((await thief(page)).chase.pending).toEqual([st.mount]);
     await page.waitForTimeout(600);
@@ -104,6 +104,15 @@ test('thief chase: offer, pick a friend, steer, nets hit, catch frees friends', 
     expect((await chase(page)).t).toBe(t0);
     await tapCard(page, 'resume');
     await expect.poll(async () => (await chase(page)).paused, { timeout: 60_000 }).toBe(false);
+    // 70: the "Got it! N more!" label stays clear of the pause button and the Catch meter, even when
+    // the thief is up in the top-left corner.
+    await page.evaluate(() => (window as any).__chaseScene.float(0, 0, 'Got it! 3 more!', '#fff3a8'));
+    c = await chase(page);
+    const f = c.floats.find((q: any) => q.s === 'Got it! 3 more!');
+    expect(f).toBeTruthy();
+    expect(f.x - f.w / 2).toBeGreaterThan(c.pause.x + 30);
+    expect(f.y - f.h / 2).toBeGreaterThan(c.meter.bottom);
+    expect(c.meter.label).toBe('Catch!');
 
     // Nets: back on the gentle beat; follow the thief (autopilot stands in for a child's finger).
     await page.evaluate(() => { (window as any).__cozy.chaseTune({ autoMs: 850 }); (window as any).__cozy.chaseAuto(true); });
@@ -112,6 +121,7 @@ test('thief chase: offer, pick a friend, steer, nets hit, catch frees friends', 
     await expect.poll(async () => (await chase(page)).phase, { timeout: 480_000 }).toBe('caught');
     c = await chase(page);
     expect(c.hits).toBe(4);
+    await expect.poll(async () => (await chase(page)).meter.filled, { timeout: 60_000 }).toBe(4);
     expect(c.t).toBeLessThan(50);
     await page.waitForTimeout(1300);
     await page.screenshot({ path: `${SHOTS}/chase-catch.png`, scale: 'css' });
@@ -152,7 +162,8 @@ test('thief chase: "Not now" hides the friend in a cell like before', async ({ p
     expect(t.cells).toEqual([st.puzzle]);
     await expect.poll(async () => (await saved(page)).puzzles[st.puzzle], { timeout: 30_000 }).toBeUndefined();
     const sv = await saved(page);
-    expect(sv.stolen).toEqual([st]);
+    expect(sv.stolen).toEqual([{ ...st, chase: undefined }]);
+    expect(sv.stolen[0].chase).toBeUndefined();
     expect(sv.puzzles[st.puzzle]).toBeUndefined();
     expect(await page.evaluate(() => (window as any).__game.scene.isActive('chase'))).toBe(false);
     expect(errors).toEqual([]);
@@ -184,6 +195,39 @@ test('thief chase: time runs out, it hides your friend, a berry gift for trying'
     expect(sv.stolen).toEqual([{ mount: r.taken, puzzle: r.puzzle, kind: 'skunk' }]);
     expect(sv.puzzles[r.puzzle]).toBeUndefined();
     expect(sv.berries).toBeGreaterThanOrEqual(2); // 2 for trying (+ any picked up on the way)
+    expect(errors).toEqual([]);
+  } finally { await browser.close(); }
+});
+
+test('thief chase: a page reload mid-chase hides the friend behind a reset puzzle', async ({ playwright: _pw }, info) => {
+  test.setTimeout(1_200_000);
+  const use = info.project.use as any;
+  const browser = await chromium.launch(use.launchOptions);
+  try {
+    const ctx = await browser.newContext({ viewport: use.viewport, deviceScaleFactor: use.deviceScaleFactor, hasTouch: true, userAgent: use.userAgent });
+    const { page, errors } = await boot(ctx);
+    await page.evaluate(() => (window as any).__cozy.chaseTune({ autoMs: 1e9 }));
+    const r = await page.evaluate(() => (window as any).__cozy.startChase('fox', 'eagle'));
+    await expect.poll(async () => (await chase(page))?.phase, { timeout: 180_000 }).toBe('play');
+    let sv = await saved(page);
+    expect(sv.stolen).toEqual([{ mount: r.taken, puzzle: r.puzzle, kind: 'fox', chase: true }]);
+    expect(sv.puzzles[r.puzzle]).toBe(true); // still solved while the chase is on
+    // Reload in the middle of the chase.
+    await page.reload();
+    await page.waitForFunction(() => (window as any).__cozy?.ready, null, { timeout: 180_000 });
+    await page.evaluate(() => document.getElementById('whatsnew')?.remove());
+    await expect.poll(async () => (await thief(page)).cells, { timeout: 60_000 }).toEqual([r.puzzle]);
+    const t = await thief(page);
+    expect(t.chase.settled).toBe(1);
+    expect(await page.evaluate(() => (window as any).__game.scene.isActive('chase'))).toBe(false);
+    sv = await saved(page);
+    expect(sv.stolen).toEqual([{ mount: r.taken, puzzle: r.puzzle, kind: 'fox' }]);
+    expect(sv.puzzles[r.puzzle]).toBeUndefined();
+    // Another reload doesn't settle it twice (the friend stays in its cell).
+    await page.reload();
+    await page.waitForFunction(() => (window as any).__cozy?.ready, null, { timeout: 180_000 });
+    await expect.poll(async () => (await thief(page)).cells, { timeout: 60_000 }).toEqual([r.puzzle]);
+    expect((await thief(page)).chase.settled).toBe(0);
     expect(errors).toEqual([]);
   } finally { await browser.close(); }
 });

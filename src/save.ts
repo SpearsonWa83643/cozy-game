@@ -101,7 +101,8 @@ export function jailOut(id: string, how: 'tunnel' | 'lock') {
   return c;
 }
 
-export type Stolen = { mount: string; puzzle: string; kind: string };
+/** chase: 70, taken during a Thief Chase that hasn't ended yet (its puzzle isn't mixed up yet). */
+export type Stolen = { mount: string; puzzle: string; kind: string; chase?: boolean };
 /** 53: old saves stored one stolen friend as an object; newer ones a list. Empty lists are dropped. */
 export function normStolen(v: unknown): Stolen[] | undefined {
   const arr = Array.isArray(v) ? v : v && typeof v === 'object' ? [v] : [];
