@@ -497,7 +497,7 @@ export class Thief {
     const L = lead ?? THIEF_LEAD.force ?? THIEF_LEAD.min + Math.random() * (THIEF_LEAD.max - THIEF_LEAD.min);
     this.state = 'lurk';
     this.lk = this.pickLurk(L);
-    this.lastLead = { how: this.lk.how, leadS: L, rustles: 0, eyes: 0, blinks: 0, darts: 0, sounds: [], emerged: null, windowStartedAt: -1, startedAt: w.time.now };
+    this.lastLead = { how: this.lk.how, leadS: L, rustles: 0, eyes: 0, blinks: 0, darts: 0, sounds: [], emerged: null, windowStartedAt: -1, startedAt: this.gt };
     const where = this.lk.how === 'bush' ? 'in the bushes' : 'in the shadows';
     if (L > 0) w.game.events.emit('toast', back ? `${nickOf(this.kind.id)} the ${this.kind.name} is sneaking back! Shh... what is that ${where}?` : `Shh... something is rustling ${where}!`);
     if (back && this.jb.kind === this.kind.id) { this.jb.backAt = -1; this.jb.returned++; }
@@ -515,7 +515,7 @@ export class Thief {
       && (!feet || Math.hypot(b.x - feet.x, b.y - feet.y) > 220));
     const edge = (x: number) => Math.min(x - v.x, v.right - x);
     fol.sort((p, q) => edge(p.x) - edge(q.x));
-    const base = { t0: w.time.now, L, step: 0, eyes: null, shade: null, temp: null, lastBlink: 0, back: false, side: 1 } as const;
+    const base = { t0: this.gt, L, step: 0, eyes: null, shade: null, temp: null, lastBlink: 0, back: false, side: 1 } as const;
     if (fol.length && Math.random() < 0.8) {
       const b = fol[Math.floor(Math.random() * Math.min(3, fol.length))];
       return { ...base, how: 'bush', x: b.x, y: b.y, h: b.displayHeight, bush: b };
@@ -563,7 +563,7 @@ export class Thief {
   /** 62: the lead-in timeline, as fractions of the lead time. */
   private lurkTick() {
     const w = this.w, lk = this.lk!;
-    const f = (w.time.now - lk.t0) / 1000 / Math.max(0.001, lk.L);
+    const f = (this.gt - lk.t0) / 1000 / Math.max(0.001, lk.L);
     const beats: [number, () => void][] = [
       [0, () => { if (lk.how === 'shadow') { lk.shade = w.add.image(lk.x, lk.y, atlasOf('thief_shade'), 'thief_shade').setOrigin(0.5, 0.7).setScale(1.8 / (frameScale.thief_shade ?? 1)).setAlpha(0).setDepth(lk.y - 30); w.tweens.add({ targets: lk.shade, alpha: 1, duration: 700 }); } this.rustle(6, 0.7); }],
       [0.18, () => { this.showEyes(lk.side * -1); }],
@@ -575,7 +575,7 @@ export class Thief {
       [0.9, () => this.rustle(10, 1.1)],
     ];
     while (lk.step < beats.length && f >= beats[lk.step][0]) beats[lk.step++][1]();
-    if (lk.eyes && w.time.now - lk.lastBlink > 1300 && f > 0.25) { lk.lastBlink = w.time.now; this.blink(); }
+    if (lk.eyes && this.gt - lk.lastBlink > 1300 && f > 0.25) { lk.lastBlink = this.gt; this.blink(); }
     if (f >= 1) this.emerge(lk.back);
   }
   private endLurk() {
@@ -605,7 +605,7 @@ export class Thief {
     this.appearedAt = w.time.now;
     this.endAt = w.time.now + this.ms;
     this.phase = 0; this.hopAt = 0; this.peekUntil = 0; this.nextPeek = w.time.now + 2600;
-    if (this.lastLead) { this.lastLead.emerged = { x, y }; this.lastLead.windowStartedAt = w.time.now; }
+    if (this.lastLead) { this.lastLead.emerged = { x, y }; this.lastLead.windowStartedAt = this.gt; }
     this.pickSpot();
     sfx.whistle?.();
     w.game.events.emit('toast', back ? `${nickOf(this.kind.id)} the ${this.kind.name} is sneaking back! Tap it ${TAPS} times to catch it!` : `A sneaky ${this.kind.name}! Tap it ${TAPS} times to catch it!`);
@@ -804,11 +804,15 @@ export class Thief {
     this.w.game.events.emit('thief', 'off');
   }
 
+  /** 62: the lead-in's own clock: frame time (dt, capped like the rest of the game), so the hints always play for
+   *  their full few seconds, even on a slow, choppy frame rate. */
+  private gt = 0;
   private cage: Phaser.GameObjects.Image | null = null;
   private caughtAt = 0;
   private fading = false;
 
   update(dt: number, paused: boolean) {
+    this.gt += dt * 1000;
     if (!paused) this.jailTick(dt); else this.jbAt = 0;
     if (this.state === 'lurk') {
       if (paused) { if (this.lk) this.lk.t0 += dt * 1000; return; }
@@ -1018,7 +1022,7 @@ export class Thief {
       screen: s ? { x: (s.x - c.worldView.x) * c.zoom / DPR, y: (s.y - 24 * SCALE - c.worldView.y) * c.zoom / DPR } : null,
       blocked: this.blocked(),
       // 62: the lead-in (while lurking) and the last one's log; the catch window and when it began.
-      lurk: this.lk ? { how: this.lk.how, screen: { x: (this.lk.x - c.worldView.x) * c.zoom / DPR, y: (this.lk.y - c.worldView.y) * c.zoom / DPR }, eyes: !!this.lk.eyes, f: (this.w.time.now - this.lk.t0) / 1000 / Math.max(0.001, this.lk.L) } : null,
+      lurk: this.lk ? { how: this.lk.how, screen: { x: (this.lk.x - c.worldView.x) * c.zoom / DPR, y: (this.lk.y - c.worldView.y) * c.zoom / DPR }, eyes: !!this.lk.eyes, f: (this.gt - this.lk.t0) / 1000 / Math.max(0.001, this.lk.L) } : null,
       lead: this.lastLead ? { ...this.lastLead, sounds: [...this.lastLead.sounds] } : null,
       windowMs: this.ms, windowLeft: this.state === 'sneak' ? Math.max(0, this.endAt - this.w.time.now) : null, appearedAt: this.appearedAt, now: this.w.time.now,
       frame: s?.frame.name ?? null, peeks: this.peeks, hops: this.hops,
