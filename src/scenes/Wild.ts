@@ -1,6 +1,7 @@
 // The Wilderness: a fresh, seeded patch of woods every trip. Reached from the trailhead at the
 // south-east edge of the map; the big Home button (WildUI) or the exit portal brings you back.
 import Phaser from 'phaser';
+import { attachScreenStyle } from '../looks/screenStyle';
 import { ATLAS, S, atlasOf, frameScale, TREE_SCALE, PICKUP_BUBBLE, PICKUP_ICON } from '../art';
 import { save, addTreasure, hasTreasure, addMinor } from '../save';
 import { TREASURES, WILD_SET, WILD_MOUNTS } from '../catalog';
@@ -89,6 +90,7 @@ export class WildScene extends Phaser.Scene {
   }
 
   create() {
+    attachScreenStyle(this); // 63: whole-game art style (dev preview)
     paintWildArt(this);
     this.leaving = false; this.trees = []; this.path = []; this.stick = null; this.monsters = []; this.hearts = this.maxHearts; this.invulnT = 0; this.chase = null; this.runPoofs = 0; this.swings = 0; this.bag = { glowmoss: 0, starshard: 0 }; this.found = []; this.pickups = []; this.chests = []; this.carrier = null; this.carrierFx = null;
     this.map = generateWild(this.seed);
