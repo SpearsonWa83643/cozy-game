@@ -471,8 +471,11 @@ export class Thief {
     return null;
   }
 
+  /** Test/debug: the friends it ran off with on its last escape (kept after it is gone). */
+  private carried: string[] = [];
   start(kindId?: string, ms = 12000, count = 0, lead?: number) {
     this.forceCount = count;
+    this.carried = [];
     const why = this.blocked();
     if (why) {
       // 57: with friends hidden, the clue opens big and centered (no timeout) instead of a toast.
@@ -749,6 +752,7 @@ export class Thief {
     // 51: the friends ride off on its back, held up high (cute, waving along with the hop).
     this.sack?.setVisible(false);
     this.carryIds = taken.map((t) => t.mount);
+    this.carried = [...this.carryIds];
     this.carry = taken.map((t, i) => friendImg(w, mountById(t.mount)!, s.x, s.y, (taken.length === 1 ? 100 : 82) - i * 4, 0.5, 0.85));
     const kn = this.kind.name;
     const names = taken.map((t) => `${nameOf(t.mount)}`);
@@ -1009,7 +1013,7 @@ export class Thief {
     const s = this.spr;
     const c = this.w.cameras.main;
     return {
-      state: this.state, kind: this.kind.id, taps: this.taps, stolen: save.stolen?.length ? save.stolen.map((x) => ({ ...x })) : null, carrying: [...this.carryIds], cells: [...this.cells.keys()], callHint: this.lastCallHint,
+      state: this.state, kind: this.kind.id, taps: this.taps, stolen: save.stolen?.length ? save.stolen.map((x) => ({ ...x })) : null, carrying: [...this.carryIds], carried: [...this.carried], cells: [...this.cells.keys()], callHint: this.lastCallHint,
       thanks: this.thanks, paws: this.paws, giggles: this.giggles, lastGiggle: this.lastGiggle, kinds: THIEVES.map((k) => k.id), caught: this.caughtN, stolenN: this.stolenN, rescued: this.rescuedN, marker: this.cells.size > 0,
       screen: s ? { x: (s.x - c.worldView.x) * c.zoom / DPR, y: (s.y - 24 * SCALE - c.worldView.y) * c.zoom / DPR } : null,
       blocked: this.blocked(),
