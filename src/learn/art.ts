@@ -170,6 +170,27 @@ export function paintLearnArt(scene: Phaser.Scene) {
   // 67: things to count (UI only, so standalone textures).
   tex(scene, 'lc_apple', 96, 96, (g) => apple(g, 48, 52, 1), 1.5, true);
   tex(scene, 'lc_stone', 96, 96, (g) => stone(g, 48, 54, 1), 1.5, true);
+  // 76: surprise things for free play.
+  tex(scene, 'lc_shell', 96, 96, (g) => {
+    blob(g, '#ffc9a8', () => { g.moveTo(48, 86); g.lineTo(14, 44); g.quadraticCurveTo(48, -2, 82, 44); g.closePath(); }, 4);
+    g.lineWidth = 3; g.strokeStyle = '#d98a6a'; for (const a of [-0.55, -0.27, 0, 0.27, 0.55]) { g.beginPath(); g.moveTo(48, 84); g.lineTo(48 + Math.sin(a) * 40, 84 - Math.cos(a) * 62); g.stroke(); }
+    blob(g, '#ffb08a', () => { g.moveTo(36, 90); g.lineTo(48, 78); g.lineTo(60, 90); g.closePath(); }, 3);
+  }, 1.5, true);
+  tex(scene, 'lc_star', 96, 96, (g) => {
+    blob(g, '#ffd84d', () => { for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 5, r = i % 2 ? 18 : 40; const x = 48 + Math.cos(a) * r, y = 52 + Math.sin(a) * r; if (i) g.lineTo(x, y); else g.moveTo(x, y); } g.closePath(); }, 4);
+    dot(g, 40, 50, 4); dot(g, 56, 50, 4); smile(g, 48, 56, 6);
+  }, 1.5, true);
+  tex(scene, 'lc_berry', 96, 96, (g) => {
+    blob(g, '#e8384c', () => { g.moveTo(48, 90); g.bezierCurveTo(14, 64, 14, 30, 30, 26); g.quadraticCurveTo(48, 20, 66, 26); g.bezierCurveTo(82, 30, 82, 64, 48, 90); g.closePath(); });
+    g.fillStyle = '#ffe9a0'; for (const [x, y] of [[34, 42], [48, 38], [62, 42], [40, 56], [56, 56], [48, 70]] as const) { g.beginPath(); g.ellipse(x, y, 2.2, 3.2, 0, 0, Math.PI * 2); g.fill(); }
+    blob(g, '#7cc463', () => { g.moveTo(26, 26); g.lineTo(38, 12); g.lineTo(48, 22); g.lineTo(58, 12); g.lineTo(70, 26); g.quadraticCurveTo(48, 34, 26, 26); g.closePath(); }, 3);
+  }, 1.5, true);
+  tex(scene, 'lc_fish', 96, 96, (g) => {
+    blob(g, '#ffa94d', () => { g.moveTo(70, 50); g.lineTo(90, 32); g.lineTo(90, 70); g.closePath(); }, 4);
+    blob(g, '#ffa94d', () => g.ellipse(44, 50, 32, 22, 0, 0, Math.PI * 2));
+    g.lineWidth = 3; g.strokeStyle = '#e07a2a'; for (const x of [48, 58]) { g.beginPath(); g.arc(x, 50, 12, -0.9, 0.9); g.stroke(); }
+    dot(g, 26, 44, 5); dot(g, 27, 43, 1.8, '#fff'); smile(g, 22, 54, 5);
+  }, 1.5, true);
   // Treasure icons (48x48 like the others).
   tex(scene, 'ic_letterblock', 48, 48, (g) => { g.save(); g.translate(6, 6); g.scale(0.58, 0.58); block(g, 'A', '#e8604c'); g.restore(); g.save(); g.translate(18, 14); g.scale(0.5, 0.5); block(g, 'B', '#5f8fd8'); g.restore(); });
   tex(scene, 'ic_storybook', 48, 48, (g) => {

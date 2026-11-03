@@ -20,7 +20,11 @@ export const LEARN_DEFS: LearnDef[] = [
   { id: 'num2', kind: 'numbers', name: 'Pebble Board', words: ['3+1', '5-2', '2+4'], treasure: 'number_star' },
 ];
 /** What each counting board counts. */
-export const COUNT_THING: Record<string, 'apple' | 'stone'> = { num1: 'apple', num2: 'stone' };
+export type CountThing = 'apple' | 'stone' | 'shell' | 'star' | 'berry' | 'fish';
+export const COUNT_THING: Record<string, CountThing> = { num1: 'apple', num2: 'stone' };
+/** 76: free play counts a surprise thing each round. */
+export const FREE_THINGS: CountThing[] = ['apple', 'stone', 'shell', 'star', 'berry', 'fish'];
+export const THING_NAMES: Record<CountThing, string> = { apple: 'apples', stone: 'stones', shell: 'shells', star: 'stars', berry: 'strawberries', fish: 'fish' };
 /** Extra words for free play once a site is solved. */
 export const BONUS_WORDS = ['pig', 'bus', 'cat', 'sun', 'dog', 'hat', 'bee', 'cup', 'fox', 'egg', 'bug', 'car', 'owl', 'pie']; // 75: +6
 

@@ -8,7 +8,7 @@ import Phaser from 'phaser';
 import { atlasOf } from '../art';
 import { sfx } from '../audio';
 import { save } from '../save';
-import { COUNT_THING } from './sites';
+import { COUNT_THING, FREE_THINGS, THING_NAMES, type CountThing } from './sites';
 import type { VillageUIScene as VillageUI } from '../scenes/VillageUI';
 
 const INK = '#3d2c20';
@@ -36,6 +36,8 @@ export class NumberPanel {
   id = '';
   free = false;
   probs: string[] = [];
+  /** 76: what each round counts (free play picks a surprise thing per round). */
+  things: CountThing[] = [];
   pi = 0;
   wrong = 0;
   busy = false;
@@ -55,6 +57,8 @@ export class NumberPanel {
 
   constructor(private ui: VillageUI) {
     (window as any).__cozyNum = () => this.state();
+    // 76 (tests/photos): count a chosen thing on the open board.
+    (window as any).__cozyNumThing = (t: CountThing, p?: string) => { if (!this.open) return false; this.things = [t]; this.probs = [p ?? this.probs[this.pi]]; this.pi = 0; this.build(); return true; };
   }
 
   get prob() { return parseProb(this.probs[this.pi] ?? '1+1'); }
@@ -62,7 +66,7 @@ export class NumberPanel {
   state() {
     return {
       open: this.open, ready: this.open && !this.busy, shows: this.shows, closes: this.closes, id: this.id, free: this.free,
-      probs: this.probs, prob: this.probs[this.pi] ?? '', index: this.pi, wrong: this.wrong, answer: this.prob.ans, hints: this.hints, lastCount: this.lastCount,
+      probs: this.probs, things: [...this.things], thing: this.things[this.pi] ?? '', prob: this.probs[this.pi] ?? '', index: this.pi, wrong: this.wrong, answer: this.prob.ans, hints: this.hints, lastCount: this.lastCount,
       choices: this.choices.map((c) => ({ n: c.n, hint: c.glow.alpha > 0.05, dim: c.dim })),
       items: this.items.length, leaving: this.items.filter((i) => i.leaving).length,
       rects: JSON.parse(JSON.stringify(Object.fromEntries(Object.entries(this.ui.rects).filter(([k]) => k.startsWith('learn:'))))),
@@ -76,6 +80,8 @@ export class NumberPanel {
     this.id = id;
     this.free = !!save.puzzles[id];
     this.probs = this.free ? randomProbs() : def.words;
+    const home = COUNT_THING[id] ?? 'apple';
+    this.things = this.free ? shuffle(FREE_THINGS).slice(0, this.probs.length) : this.probs.map(() => home);
     this.pi = this.free ? 0 : Math.min(learn.progress(id), def.words.length - 1);
     this.open = true; this.gen++; this.shows++;
     this.ui.registry.set('vcard', true);
@@ -147,7 +153,7 @@ export class NumberPanel {
     else for (let i = 0; i < tokens.length; i += perRow) rows.push(tokens.slice(i, i + perRow));
     const maxRow = Math.max(...rows.map((r) => r.length));
     const I = Math.min(s(96), (CW - s(40)) / (maxRow * 1.08), (CH - s(30)) / (rows.length * 1.08));
-    const thing = COUNT_THING[this.id] ?? 'apple';
+    const thing = this.things[this.pi] ?? COUNT_THING[this.id] ?? 'apple';
     let n = 0;
     rows.forEach((row, ri) => {
       const rw = row.length * I * 1.08;
@@ -179,7 +185,7 @@ export class NumberPanel {
     this.ansText = ans;
     c.add([eq, ans]);
     const hy = ey + s(46);
-    this.hintText = ui.text(x0 + W / 2, hy, this.free ? 'Just for fun: how many?' : (P.op === '+' ? 'How many in all?' : 'How many are left?'), Math.max(16, s(24)), '#8a6a50', 900).setOrigin(0.5);
+    this.hintText = ui.text(x0 + W / 2, hy, this.free ? `Just for fun: how many ${THING_NAMES[this.things[this.pi] ?? 'apple']}?` : (P.op === '+' ? 'How many in all?' : 'How many are left?'), Math.max(16, s(24)), '#8a6a50', 900).setOrigin(0.5);
     c.add(this.hintText);
 
     // Four huge number buttons: the answer and three near misses.
