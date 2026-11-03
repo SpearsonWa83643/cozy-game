@@ -338,7 +338,7 @@ export class ChaseScene extends Phaser.Scene {
     const empty = this.meter.filter((q) => q.ring.alpha > 0);
     if (empty.length === 1) {
       const r = empty[0].ring;
-      r.setAlpha(0.7).setTint(0xffe27a);
+      r.setAlpha(0.95).setTint(0xffd23a);
       if (!rm) this.lastPulse = this.tweens.add({ targets: r, scale: r.scale * 1.18, duration: 420, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     }
   }
