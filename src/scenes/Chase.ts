@@ -247,7 +247,7 @@ export class ChaseScene extends Phaser.Scene {
     kb?.on('keydown-ESC', () => { if (this.phase === 'play') this.setPaused(!this.paused); });
     this.keys = kb?.addKeys('LEFT,RIGHT,A,D') as Record<string, Phaser.Input.Keyboard.Key> | undefined;
     document.addEventListener('visibilitychange', this.offVis);
-    this.events.once('shutdown', () => { document.removeEventListener('visibilitychange', this.offVis); chaseAudio.stop(); (window as any).__chase = { ...this.snapshot(), on: false }; });
+    this.events.once('shutdown', () => { document.removeEventListener('visibilitychange', this.offVis); chaseAudio.stop(); const last = { ...this.snapshot(), on: false }; Object.defineProperty(window, '__chase', { configurable: true, writable: true, value: last }); });
 
     this.cameras.main.fadeIn(reduceMotion() ? 1 : 450, 255, 255, 255);
     chaseAudio.start();
@@ -260,7 +260,8 @@ export class ChaseScene extends Phaser.Scene {
     if (!reduceMotion()) this.tweens.add({ targets: [la, ra], scale: 1.15, duration: 380, yoyo: true, repeat: -1 });
     this.time.delayedCall(1400, () => { if (this.phase === 'intro') this.phase = 'play'; });
     this.time.delayedCall(3600, () => this.tweens.add({ targets: this.hint, alpha: 0, duration: 500, onComplete: () => { for (const h of this.hint) h.destroy(); this.hint = []; } }));
-    (window as any).__chase = this.snapshot();
+    // Live read for tests / the console (a getter, so it never goes stale).
+    Object.defineProperty(window, '__chase', { configurable: true, get: () => this.snapshot() });
     (window as any).__chaseScene = this;
   }
   keys?: Record<string, Phaser.Input.Keyboard.Key>;
@@ -359,7 +360,6 @@ export class ChaseScene extends Phaser.Scene {
     if (!reduceMotion()) { c.setScale(0.94); c.setPosition(W * 0.03, H * 0.03); this.tweens.add({ targets: c, scale: 1, x: 0, y: 0, duration: 260, ease: 'Back.easeOut' }); }
     this.panel = c;
     this.cardInfo = { title, lines, buttons: buttons.map((b) => b.id) };
-    (window as any).__chase = this.snapshot();
     return c;
   }
   cardInfo: { title: string; lines: string[]; buttons: string[] } | null = null;
@@ -536,7 +536,6 @@ export class ChaseScene extends Phaser.Scene {
     this.items = this.items.filter((i) => !i.dead);
     this.drawTime();
     if (this.t >= CHASE.timeS) this.escape(false);
-    if (Math.floor(this.t * 4) !== Math.floor((this.t - dt) * 4)) (window as any).__chase = this.snapshot();
   }
 
   drawMount(dt: number) {
@@ -591,7 +590,6 @@ export class ChaseScene extends Phaser.Scene {
     this.setMeter(this.hits - 1);
     const left = CHASE.hits - this.hits;
     if (left > 0) this.float(this.thx, this.thy - 90 * U, left === 1 ? 'One more!' : `Got it! ${left} more!`, '#fff3a8');
-    (window as any).__chase = this.snapshot();
     if (this.hits >= CHASE.hits) this.caught();
   }
 
@@ -633,7 +631,6 @@ export class ChaseScene extends Phaser.Scene {
       for (let i = 0; i < (rm ? 8 : 36); i++) this.time.delayedCall(i * 40, () => this.spark(Math.random() * W, Math.random() * H * 0.6, 1, [0xffe27a, 0xff9ab8, 0x8fd0ff, 0x9be07a][i % 4], i % 3 ? 'ch_spark' : 'ch_star', 60));
       sfx.sparkle?.();
     });
-    (window as any).__chase = this.snapshot();
     this.time.delayedCall(rm ? 400 : 2000, () => {
       const names = this.d.taken.map((id) => mountById(id)?.name ?? 'friend');
       this.card(`You caught the ${this.d.kindName}!`, [
@@ -658,7 +655,6 @@ export class ChaseScene extends Phaser.Scene {
     if (!quit) for (let i = 0; i < CHASE.consolation; i++) if (addFruit('berry')) got++;
     if (got) this.game.events.emit('snacks', save.snacks);
     this.consolation = got;
-    (window as any).__chase = this.snapshot();
     this.time.delayedCall(rm ? 200 : 1000, () => {
       const lines = quit ? [`The ${this.d.kindName} hid your friends.`, `You can find them by the puzzles!`]
         : [`The ${this.d.kindName} hid your friends.`, `You can find them by the puzzles!`, got ? `Here ${got === 1 ? 'is a berry' : `are ${got} berries`} for trying so hard!` : `You tried so hard!`];
@@ -687,7 +683,7 @@ export class ChaseScene extends Phaser.Scene {
       on: this.phase !== 'done', phase: this.phase, paused: this.paused, t: Math.round(this.t * 10) / 10, hits: this.hits, need: CHASE.hits,
       stars: this.stars, berries: this.berries, bumps: this.bumps, nets: this.nets, mount: this.d?.mountId, kind: this.d?.kind, taken: this.d?.taken,
       px: Math.round(this.px / DPR), thx: Math.round(this.thx / DPR), thy: Math.round(this.thy / DPR), card: this.cardInfo, consolation: this.consolation,
-      art: looks.art,
+      art: looks.art, pause: { x: Math.round(64 * this.U / DPR), y: Math.round(64 * this.U / DPR) },
     };
   }
 }

@@ -25,6 +25,7 @@ test('mount thief: button, arrest with 3 taps, escape hides a friend, rescue fro
     });
     await page.reload();
     await page.waitForFunction(() => (window as any).__cozy?.ready, null, { timeout: 180_000 });
+    await page.evaluate(() => (window as any).__cozy.chaseOffer(false)); // 69: the chase offer has its own spec (thief-chase)
     await page.waitForTimeout(1500);
     expect((await thief(page)).blocked).toBeNull();
 
@@ -118,6 +119,7 @@ test('mount thief: button, arrest with 3 taps, escape hides a friend, rescue fro
     // 3) It survives a reload; opening that puzzle's chest rescues the friend.
     await page.reload();
     await page.waitForFunction(() => (window as any).__cozy?.ready, null, { timeout: 180_000 });
+    await page.evaluate(() => (window as any).__cozy.chaseOffer(false)); // 69: the chase offer has its own spec (thief-chase)
     await page.waitForTimeout(1500);
     const t3 = await thief(page);
     expect(t3.stolen).toEqual([st]);
@@ -153,6 +155,7 @@ test('mount thief: carries two friends, cells, call-mount hint, cell rescue, old
     });
     await page.reload();
     await page.waitForFunction(() => (window as any).__cozy?.ready, null, { timeout: 180_000 });
+    await page.evaluate(() => (window as any).__cozy.chaseOffer(false)); // 69: the chase offer has its own spec (thief-chase)
     await page.waitForTimeout(1500);
     const t0 = await thief(page);
     expect(t0.stolen).toEqual([{ mount: 'unicorn', puzzle: 'stones', kind: 'fox' }]);
