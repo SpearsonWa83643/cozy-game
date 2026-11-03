@@ -4,7 +4,7 @@ import Phaser from 'phaser';
 import { mulberry32, pondValue, pathDist, ATLAS , TREE_SCALE } from './art';
 import {
   WORLD_W, WORLD_H, OLD_W, OLD_H, PUZZLE_SITES, PUZZLE_SITE_R, HUBS, GLADE_W, GLADE_H, LAKE, BRIDGES, BRIDGE_GATE, PIER, WINDMILL, FOREST_EDGE_Y, RIDGE_X,
-  TILES, OWL, BELLS, DIG, DIG_STONES, DIG_SIGN, BELL_SIGN, TILE_SIGN, POTS, POT_SIGN, SONGBIRD, VILLAGE, VILLAGE_SIGN, MERCHANT_SPOT, PSTONES, PSTONE_SIGN, PSTONE_CHEST, TRACKS, TRACK_SIGN,
+  TILES, OWL, BELLS, DIG, DIG_STONES, DIG_SIGN, BELL_SIGN, TILE_SIGN, POTS, POT_SIGN, SONGBIRD, VILLAGE, VILLAGE_SIGN, VILLAGE_BOARD, MERCHANT_SPOT, PSTONES, PSTONE_SIGN, PSTONE_CHEST, TRACKS, TRACK_SIGN,
 } from './layout';
 import { riverXAt, riverDist, riverHalfAt, lakeValue, waterAt, RIVER } from './geo';
 import { sfx } from './audio';
@@ -30,7 +30,7 @@ export function buildAreas(w: WorldScene) {
     if (x < GLADE_W && y < GLADE_H + 20) return false; // the glade builds itself
     // The village meadow stays open for building.
     if (x > VILLAGE.x - 60 && x < VILLAGE.x + VILLAGE.cols * VILLAGE.cell + 60 && y > VILLAGE.y - 70 && y < VILLAGE.y + VILLAGE.rows * VILLAGE.cell + 50) return false;
-    if (Math.hypot(x - VILLAGE_SIGN.x, y - VILLAGE_SIGN.y) < 60 || Math.hypot(x - MERCHANT_SPOT.x, y - MERCHANT_SPOT.y) < 90) return false;
+    if (Math.hypot(x - VILLAGE_SIGN.x, y - VILLAGE_SIGN.y) < 60 || Math.hypot(x - VILLAGE_BOARD.x, y - VILLAGE_BOARD.y + 30) < 95 || Math.hypot(x - MERCHANT_SPOT.x, y - MERCHANT_SPOT.y) < 90) return false;
     if (pathDist(x, y) < pad + 22) return false;
     if (riverDist(x, y) < riverHalfAt(y) + pad + 10) return false;
     if (lakeValue(x, y, pad) < 1.02) return false;

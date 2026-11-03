@@ -1,12 +1,11 @@
 import Phaser from 'phaser';
 import { TouchStick, ZoomButtons, ZOOM } from '../controls';
 import { save, tipOnce } from '../save';
-import { ThemePicker } from '../themePicker';
 import { PhotoMode } from '../photo';
 import { S, ATLAS, frameScale, atlasOf } from '../art';
 import { NumBadge, SeqCard } from '../seq';
 import { DPR } from '../dpr';
-import { LANTERN_ORDER, LanternId } from '../layout';
+import { LANTERN_ORDER, LanternId, LANTERNS, SHRINE, SIGN } from '../layout';
 import { sfx, VolumeLevel } from '../audio';
 import { IS_TOUCH, safeInsets } from '../device';
 import type { WorldScene } from './World';
@@ -59,7 +58,6 @@ export class UIScene extends Phaser.Scene {
   typing = false;
   // HUD.
   hudC!: Phaser.GameObjects.Container;
-  themePick!: ThemePicker;
   hudIcons: { id: LanternId; ring: Phaser.GameObjects.Graphics; sym: Phaser.GameObjects.Image; glow: Phaser.GameObjects.Image; badge: NumBadge }[] = [];
   feather!: Phaser.GameObjects.Image;
   // Toast.
@@ -98,8 +96,8 @@ export class UIScene extends Phaser.Scene {
     // Warm late-afternoon light leaking in from the top-left.
     this.sunGlow = this.add.image(0, 0, ATLAS, 'glow').setBlendMode('ADD').setTint(0xffc879).setAlpha(0.32);
 
-    // HUD: three lantern sigils + feather slot.
-    this.hudC = this.add.container(22, 22);
+    // HUD: three lantern sigils + feather slot (71: only while the lantern puzzle is in play).
+    this.hudC = this.add.container(22, 22).setAlpha(0).setVisible(false);
     LANTERN_ORDER.forEach((id, i) => {
       const x = i * 46;
       const glow = this.add.image(x + 18, 18, ATLAS, 'glow').setScale(0.22).setBlendMode('ADD').setTint(0xffc560).setAlpha(0);
@@ -165,6 +163,7 @@ export class UIScene extends Phaser.Scene {
     ev.on('lanterns', this.updateLanterns, this);
     ev.on('wild-home', this.wildHome, this);
     ev.on('feather', () => {
+      if (this.sigilFlash > 0) this.sigilFlash = this.time.now + 4500; // just earned: show it off, then tuck away
       this.tweens.add({ targets: this.feather, alpha: 1, scale: { from: 1.6 / S, to: 0.75 / S }, duration: 700, ease: 'Back.easeOut' });
     });
     this.events.once('shutdown', () => {
@@ -213,7 +212,6 @@ export class UIScene extends Phaser.Scene {
     // Left column, stacked above Call Mount / Build (same spot in the Wild).
     this.zoomBtns?.layout(68 + si.left, this.h - 340 - si.bottom);
     // Under the lantern sigils, top-left; the choices fan out to the right.
-    this.themePick?.layout(22 + si.left + 34, 106 + si.top);
     this.layoutFishUI();
     const abx = this.w - 74 - si.right;
     const aby = this.h - 78 - si.bottom;
@@ -338,7 +336,28 @@ export class UIScene extends Phaser.Scene {
     });
   }
 
+  /** 71: hold the sigils on screen until this time (just solved the puzzle). */
+  sigilFlash = 0;
+  /** 71: the lantern-order sigils are only for the first puzzle: show them near the lanterns
+   *  (or the puzzle sign / shrine) while it's unsolved, or once a lantern is lit; never after. */
+  updateSigils(delta: number) {
+    const w = this.world;
+    let want = false;
+    if (w?.feet && !this.scene.isActive('wild')) {
+      const fx = w.feet.x, fy = w.feet.y;
+      const near = LANTERNS.some((l) => Math.hypot(l.x - fx, l.y - fy) < 420) || Math.hypot(SHRINE.x - fx, SHRINE.y - fy) < 420 || Math.hypot(SIGN.x - fx, SIGN.y - fy) < 320;
+      want = !w.solved ? (near || w.litOrder.length > 0) : this.time.now < this.sigilFlash;
+      if (this.registry.get('menuOpen')) want = false;
+    }
+    const a = this.hudC.alpha, t = want ? 1 : 0;
+    if (Math.abs(a - t) < 0.01) { if (a !== t) this.hudC.setAlpha(t); }
+    else this.hudC.setAlpha(a + (t - a) * Math.min(1, delta / 180));
+    this.hudC.setVisible(this.hudC.alpha > 0.01);
+  }
+
   updateLanterns(lit: LanternId[]) {
+    // A live solve (not a reload): keep the full row up for a moment so the win shows.
+    if (lit.length === LANTERN_ORDER.length && !this.world?.solved) this.sigilFlash = this.time.now + 8000;
     this.hudIcons.forEach((ic, i) => {
       const on = lit.includes(ic.id);
       this.drawRing(ic.ring, i * 46 + 18, 18, on);
@@ -523,7 +542,6 @@ export class UIScene extends Phaser.Scene {
     this.zoomBtns = new ZoomButtons(this, (dir) => { if (this.registry.get('menuOpen')) return; this.zoomBtns.pulse(false); sfx.unlock(); if (this.world.zoom?.step(dir)) sfx.blip(); else sfx.tock(); });
 
     // Theme picker: one button showing the current look; tap to fan out the others.
-    this.themePick = new ThemePicker(this, () => !this.registry.get('menuOpen') && !this.world.locked);
 
     // Big contextual action button (96 px), bottom-right inside the safe area.
     this.actionBg = this.add.graphics();
@@ -546,8 +564,7 @@ export class UIScene extends Phaser.Scene {
       if (p.wasTouch && !this.touchMode) { this.touchMode = true; this.applyTouchMode(); }
       if (this.registry.get('menuOpen') || this.registry.get('vcard')) return;
       if (this.photo.open) return;
-      if (this.themePick.open && !over.some((o) => this.themePick.zones.includes(o as Phaser.GameObjects.Zone))) { this.themePick.close(); return; }
-      if (over.some((o) => this.themePick.zones.includes(o as Phaser.GameObjects.Zone) || this.zoomBtns.zones.includes(o as Phaser.GameObjects.Zone) || o === this.volZone || o === this.mapZone || o === this.bagZone || o === this.camZone || o === this.thiefZone || this.photo.zones.includes(o as Phaser.GameObjects.Zone) || (o === this.actionZone && this.actionShown))) return;
+      if (over.some((o) => this.zoomBtns.zones.includes(o as Phaser.GameObjects.Zone) || o === this.volZone || o === this.mapZone || o === this.bagZone || o === this.camZone || o === this.thiefZone || this.photo.zones.includes(o as Phaser.GameObjects.Zone) || (o === this.actionZone && this.actionShown))) return;
       if (this.cardOpen) { this.closeCard(); return; }
       if (this.registry.get('dialogOpen')) { this.world.tryInteract(); return; }
       const fs = this.world.fishing?.state;
@@ -727,6 +744,7 @@ export class UIScene extends Phaser.Scene {
     this.updateFishUI(time);
     this.updateTouchUI(time);
     this.updateDayTint(time);
+    this.updateSigils(delta);
     // Typewriter.
     if (this.registry.get('dialogOpen') && this.typing) {
       const full = this.pages[this.page];

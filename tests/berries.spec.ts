@@ -67,7 +67,7 @@ test('berry bushes: pick, regrow, and feed berries like fruit', async ({ page })
   let s = await state(page);
   expect(s.berries).toBe(3);
   expect(s.snacks).toBe(3);
-  expect(await vuiRect(page, 'snacks')).toBeTruthy();
+  expect(await vuiRect(page, 'snacks')).toBeFalsy(); // 71: counted on the village board, not the HUD
 
   // 3. An empty bush just rustles.
   await tapAt(page, bx, ty);

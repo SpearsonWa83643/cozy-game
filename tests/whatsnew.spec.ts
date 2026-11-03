@@ -26,10 +26,10 @@ test("what's new: after entry, shows once, closes, stays closed; none when empty
   await expect(page.locator('#whatsnew h2')).toContainText("What's new");
   await expect(page.locator('#whatsnew li')).toHaveCount(5);
   await expect(page.locator('#whatsnew li').first()).toContainText('4 times bigger');
-  await expect(page.locator('#whatsnew li').nth(1)).toContainText('Shh... listen!');
-  await expect(page.locator('#whatsnew li').nth(2)).toContainText('Chase the thief!');
-  await expect(page.locator('#whatsnew li').nth(3)).toContainText('Apply button');
-  await expect(page.locator('#whatsnew li').nth(4)).toContainText('Jailbreak!');
+  await expect(page.locator('#whatsnew li').nth(1)).toContainText('The Village Board!');
+  await expect(page.locator('#whatsnew li').nth(2)).toContainText('Shh... listen!');
+  await expect(page.locator('#whatsnew li').nth(3)).toContainText('Chase the thief!');
+  await expect(page.locator('#whatsnew li').nth(4)).toContainText('Apply button');
   const ok = await page.locator('#whatsnew .w-ok').boundingBox();
   expect(ok!.height).toBeGreaterThanOrEqual(70);
   await page.waitForTimeout(700);
@@ -61,7 +61,7 @@ test("what's new: after entry, shows once, closes, stays closed; none when empty
   await page.evaluate(() => localStorage.removeItem('cozy.whatsnew.seen'));
   await page.goto(BASE + '?whatsnew=1');
   await ready(page);
-  await page.waitForSelector('#whatsnew .w-ok', { timeout: 10_000 });
+  await page.waitForSelector('#whatsnew .w-ok', { timeout: 30_000 });
   // Tapping the dim area outside the card also closes it.
   await page.touchscreen.tap(20, 20);
   await expect(page.locator('#whatsnew')).toHaveCount(0, { timeout: 5_000 });

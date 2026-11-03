@@ -18,7 +18,7 @@ import { Reacts } from '../react';
 import {
   WORLD_W, WORLD_H, OLD_W, GLADE_W, GLADE_H, AREA_NAMES, AreaId, VILLAGE, TRACKS, PLAYER_START, POND, COTTAGE, GARDEN, WALL_Y, GATE, SHRINE, SHRINE_CLEARING, SIGN,
   LANTERNS, LANTERN_ORDER, LanternId,
-  TRAILHEAD,
+  TRAILHEAD, VILLAGE_BOARD,
 } from '../layout';
 import { sfx } from '../audio';
 import { DPR } from '../dpr';
@@ -1437,9 +1437,28 @@ export class WorldScene extends Phaser.Scene {
         }
         return { candidates: cands.length, spots: out };
       },
+      /** 71: the season picker lives on the village notice board panel now. */
       themeHud() {
-        const tp = (self.scene.get('ui') as any).themePick;
-        return tp ? { open: tp.open, current: theme.id, rects: JSON.parse(JSON.stringify(tp.rects)) } : null;
+        const v = self.scene.get('vui') as any;
+        const rects: Record<string, any> = {};
+        for (const [k, r] of Object.entries(v?.rects ?? {})) if (k.startsWith('board:season:')) rects[k.slice(13)] = r;
+        return { open: v?.cardData?.kind === 'board', current: theme.id, rects: JSON.parse(JSON.stringify(rects)) };
+      },
+      /** 71: the notice board: where it is, its "!" marker, what it lists, and the open panel's rects. */
+      board() {
+        const v = self.village, ui = self.scene.get('vui') as any;
+        const cam = self.cameras.main;
+        const sx = (VILLAGE_BOARD.x - cam.worldView.x) * cam.zoom / DPR, sy = (VILLAGE_BOARD.y - 80 - cam.worldView.y) * cam.zoom / DPR;
+        const rects: Record<string, any> = {};
+        for (const [k, r] of Object.entries(ui?.rects ?? {})) if (k.startsWith('board')) rects[k] = r;
+        return { x: VILLAGE_BOARD.x, y: VILLAGE_BOARD.y, screen: [Math.round(sx), Math.round(sy)], mark: v.boardMark.visible,
+          needs: v.needs.map((n) => ({ id: n.id, text: n.text, fix: n.fix, urgent: n.urgent })), open: ui?.cardData?.kind === 'board', rects: JSON.parse(JSON.stringify(rects)) };
+      },
+      openBoard: () => self.village.openBoard(),
+      /** 71: what the top-left HUD shows right now. */
+      hudInfo() {
+        const ui = self.scene.get('ui') as any, v = self.scene.get('vui') as any;
+        return { sigils: ui.hudC.visible && ui.hudC.alpha > 0.5, sigilAlpha: ui.hudC.alpha, lit: self.litOrder.length, solved: self.solved, feet: [Math.round(self.feet.x), Math.round(self.feet.y)], resBar: v.bar.visible, snacks: !!v.snackC, alert: v.alertData?.id ?? null };
       },
       zoomInfo() {
         const inW = self.scene.isActive('wild');

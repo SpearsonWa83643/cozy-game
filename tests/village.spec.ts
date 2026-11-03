@@ -143,8 +143,12 @@ test('village: invite, build, assign a job, resources, theme toggle', async ({ p
   // Out of wood and stone with no workshop: friends bring some, so building never gets stuck.
   await page.evaluate(() => (window as any).__cozy.setRes({ wood: 0, stone: 0 }));
   await expect.poll(async () => (await village(page)).alert?.id ?? null, { timeout: 60_000, intervals: [400] }).toBe('wood');
+  // 71: a non-urgent need goes on the village board (with a "!"), not the HUD: open it and tap the fix.
+  expect((await cozy(page, 'hudInfo()')).alert).toBe(null);
+  expect((await cozy(page, 'board()')).mark).toBe(true);
+  await cozy(page, 'openBoard()');
   await page.waitForTimeout(500);
-  await tapRect(page, await waitRect(page, 'alert:fix'));
+  await tapRect(page, await waitRect(page, 'board:fix:wood'));
   await expect.poll(async () => (await village(page)).res.wood, { timeout: 30_000 }).toBeGreaterThanOrEqual(4);
 
   // 5c. Tap a fruit tree, pick up the fruit, then feed the cat: hearts, and it follows you.
@@ -162,7 +166,7 @@ test('village: invite, build, assign a job, resources, theme toggle', async ({ p
     await page.waitForTimeout(1200);
   }
   expect((await cozy(page, 'state')).snacks).toBeGreaterThan(0);
-  await waitRect(page, 'snacks');
+  expect((await cozy(page, 'hudInfo()')).snacks).toBe(false); // 71: snacks are counted on the village board now
   await page.evaluate(([x, y]) => (window as any).__cozy.teleport(x - 110, y + 60), cat0);
   await page.waitForTimeout(1800);
   const fed0 = (await cozy(page, 'state')).fed;
