@@ -64,7 +64,7 @@ function fresh(): SaveData {
 export let freshSave = false;
 
 /** 54: one thief's cozy cell in the jail. */
-export type JailCell = { n: number; fed?: number; out?: boolean };
+export type JailCell = { n: number; fed?: number; out?: boolean; how?: 'tunnel' | 'lock' };
 /** 54: the first six thieves (seed for old saves that only kept a caught count). */
 const JAIL_SEED = ['raccoon', 'fox', 'bunny', 'mouse', 'cat', 'pig'];
 /** 54: clean a stored jail; old saves without one are seeded from minor.thief_caught (spread over the classic six). */
@@ -74,7 +74,7 @@ export function normJail(v: unknown, caught: unknown): Record<string, JailCell> 
     for (const [id, c] of Object.entries(v as Record<string, any>)) {
       const n = Math.max(0, Math.floor(Number(c?.n) || 0));
       if (!n) continue;
-      out[id] = { n, ...(Number(c?.fed) > 0 ? { fed: Math.floor(Number(c.fed)) } : {}), ...(c?.out ? { out: true } : {}) };
+      out[id] = { n, ...(Number(c?.fed) > 0 ? { fed: Math.floor(Number(c.fed)) } : {}), ...(c?.out ? { out: true, how: c.how === 'lock' ? 'lock' : 'tunnel' } : {}) };
     }
     return Object.keys(out).length ? out : undefined;
   }
@@ -88,7 +88,15 @@ export function normJail(v: unknown, caught: unknown): Record<string, JailCell> 
 export function jailAdd(id: string) {
   save.jail ??= {};
   const c = (save.jail[id] ??= { n: 0 });
-  c.n++; delete c.out;
+  c.n++; delete c.out; delete c.how;
+  persist();
+  return c;
+}
+/** 55: a jailed thief sneaks out (its cell shows the tunnel or the open padlock until it is caught again). */
+export function jailOut(id: string, how: 'tunnel' | 'lock') {
+  const c = save.jail?.[id];
+  if (!c || c.out) return null;
+  c.out = true; c.how = how;
   persist();
   return c;
 }

@@ -6,12 +6,13 @@
 // slow target, and the friend is never lost for good.
 import Phaser from 'phaser';
 import { Ctx, canvasTex, atlasOf, frameScale } from './art';
-import { save, persist, addFruit, jailAdd, type Stolen } from './save';
+import { save, persist, addFruit, jailAdd, jailOut, type Stolen } from './save';
 import { MOUNTS, isMountUnlocked, themeDefaultMount, mountById, type MountDef } from './mount/defs';
 import { sfx } from './audio';
 import type { WorldScene } from './scenes/World';
 import { DPR } from './dpr';
 import { showClue, clueLine, PLACE } from './clueCard';
+import { nickOf } from './jail';
 
 export type Kind = {
   id: string; name: string; fur: string; dark: string; belly: string;
@@ -216,7 +217,15 @@ function friendImg(scene: Phaser.Scene, m: MountDef, x: number, y: number, w: nu
   return im.setScale(w / Math.max(1, im.width));
 }
 
+/** 55: jailbreaks. After JAILBREAK.firstS seconds of play, and then every JAILBREAK.everyS, roll JAILBREAK.odds;
+ *  at most one jailbreak per play session, and only when no thief is about (and none of your friends are hidden).
+ *  The escaped thief sneaks back as a normal thief event JAILBREAK.backS seconds later. */
+export const JAILBREAK = { firstS: 240, everyS: 240, odds: 0.3, backS: [60, 120] as [number, number] };
+
 export class Thief {
+  /** 55: jailbreak state for this play session (tests read it via __cozy.jailbreakInfo). */
+  jb = { played: 0, nextCheck: JAILBREAK.firstS, broke: false, kind: '', how: '' as '' | 'tunnel' | 'lock', backAt: -1, checks: 0, returned: 0 };
+
   state: 'off' | 'sneak' | 'caught' | 'flee' = 'off';
   kind: Kind = THIEVES[0];
   taps = 0;
@@ -280,7 +289,10 @@ export class Thief {
     }
     const w = this.w;
     const pool = THIEVES.filter((k) => k.id !== this.last);
-    this.kind = THIEVES.find((k) => k.id === kindId) ?? pool[Math.floor(Math.random() * pool.length)];
+    // 55: an escaped jailbird is the next one to come sneaking back.
+    const loose = THIEVES.find((k) => save.jail?.[k.id]?.out);
+    this.kind = THIEVES.find((k) => k.id === kindId) ?? loose ?? pool[Math.floor(Math.random() * pool.length)];
+    const back = !!save.jail?.[this.kind.id]?.out;
     this.last = this.kind.id;
     this.taps = 0;
     const v = w.cameras.main.worldView;
@@ -298,7 +310,8 @@ export class Thief {
     this.pickSpot();
     this.startHop();
     sfx.whistle?.();
-    w.game.events.emit('toast', `A sneaky ${this.kind.name}! Tap it ${TAPS} times to catch it!`);
+    w.game.events.emit('toast', back ? `${nickOf(this.kind.id)} the ${this.kind.name} is sneaking back! Tap it ${TAPS} times to catch it!` : `A sneaky ${this.kind.name}! Tap it ${TAPS} times to catch it!`);
+    if (back && this.jb.kind === this.kind.id) { this.jb.backAt = -1; this.jb.returned++; }
     w.game.events.emit('thief', 'start');
     return true;
   }
@@ -366,6 +379,51 @@ export class Thief {
     w.game.events.emit('thief', 'caught');
     // Driven from update() (not a timer chain) so it always finishes, even on a slow frame rate.
     this.cage = cage; this.caughtAt = performance.now(); this.fading = false;
+  }
+
+  /** 55: count play time; maybe a jailbreak; bring an escaped thief back later. */
+  private jbAt = 0;
+  private jailTick(_dt: number) {
+    const j = this.jb;
+    // Real play time (not the capped frame step), skipping long gaps like a hidden tab.
+    const now = performance.now(), gap = this.jbAt ? (now - this.jbAt) / 1000 : 0;
+    this.jbAt = now;
+    if (gap < 1) j.played += gap;
+    // An escaped thief from an earlier session sneaks back a minute or so into this one.
+    if (j.backAt < 0 && !j.kind) { const loose = THIEVES.find((k) => save.jail?.[k.id]?.out); if (loose) { j.kind = loose.id; j.backAt = j.played + JAILBREAK.backS[0]; } }
+    if (!j.broke && j.played >= j.nextCheck) {
+      j.nextCheck = j.played + JAILBREAK.everyS;
+      if (this.canBreak()) { j.checks++; if (Math.random() < JAILBREAK.odds) this.jailbreak(); }
+    }
+    if (j.backAt >= 0 && j.played >= j.backAt && this.state === 'off') {
+      if (!save.jail?.[j.kind]?.out) { j.backAt = -1; return; }
+      if (this.blocked()) { j.backAt = j.played + 10; return; }
+      this.start(j.kind);
+    }
+  }
+
+  private jailedIn() { return THIEVES.filter((k) => (save.jail?.[k.id]?.n ?? 0) > 0 && !save.jail?.[k.id]?.out).map((k) => k.id); }
+  canBreak() { return this.state === 'off' && !this.blocked() && this.jailedIn().length > 0 && !THIEVES.some((k) => save.jail?.[k.id]?.out); }
+
+  /** 55: a jailed thief sneaks out (a dug tunnel or a picked padlock). Once per session; never with a thief about. */
+  jailbreak(kindId?: string, how?: 'tunnel' | 'lock', backS?: number) {
+    const j = this.jb;
+    if (j.broke || !this.canBreak()) return false;
+    const ins = this.jailedIn();
+    const id = kindId && ins.includes(kindId) ? kindId : ins[Math.floor(Math.random() * ins.length)];
+    const h = how ?? (Math.random() < 0.5 ? 'tunnel' : 'lock');
+    if (!jailOut(id, h)) return false;
+    const k = thiefById(id)!;
+    j.broke = true; j.kind = id; j.how = h;
+    const [a, b] = JAILBREAK.backS;
+    j.backAt = j.played + (backS ?? a + Math.random() * (b - a));
+    sfx.giggle(k.voice ?? 700);
+    const nick = nickOf(id);
+    this.w.game.events.emit('toast', h === 'tunnel'
+      ? `Oh no! ${nick} the ${k.name} dug a tiny tunnel out of the Thief Jail! Hee hee! Watch out, it will sneak back!`
+      : `Oh no! ${nick} the ${k.name} picked the padlock with a hairpin! Hee hee! Watch out, it will sneak back!`);
+    this.w.game.events.emit('thief', 'jailbreak');
+    return true;
   }
 
   /** How many friends this thief takes: usually 1, about 20% 2, about 5% 3 (never more than can be taken). */
@@ -447,6 +505,7 @@ export class Thief {
   private fading = false;
 
   update(dt: number, paused: boolean) {
+    if (!paused) this.jailTick(dt); else this.jbAt = 0;
     if (this.state === 'off' || !this.spr) return;
     if (paused) { if (this.state === 'sneak') this.endAt += dt * 1000; return; }
     const s = this.spr;

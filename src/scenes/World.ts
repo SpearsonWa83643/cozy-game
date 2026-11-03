@@ -1460,6 +1460,9 @@ export class WorldScene extends Phaser.Scene {
       thief: () => self.thief.snapshot(),
       startThief: (kind?: string, ms?: number, count?: number) => self.thief.start(kind, ms, count),
       thiefLineup: (ms?: number) => self.thief.lineup(ms),
+      /** 55: force a jailbreak now (kind / 'tunnel' | 'lock' / seconds until it sneaks back). False when one already happened this session or a thief is about. */
+      jailbreak: (kind?: string, how?: 'tunnel' | 'lock', backS?: number) => self.thief.jailbreak(kind, how, backS),
+      jailbreakInfo: () => ({ ...self.thief.jb, can: self.thief.canBreak(), jail: JSON.parse(JSON.stringify(save.jail ?? {})) }),
       /** 52: tap a hidden friend's cell (solve=true first marks its puzzle's chest as revealed, like solving it). */
       thiefCell: (pid: string, solve = false) => { if (solve) { const c = self.puzzles.chestById(pid); if (c) c.revealed = true; } return self.thief.tapCell(pid); },
       thiefCellAt: (pid: string) => { const e = self.thief.cells.get(pid); if (!e) return null; const cam = self.cameras.main; return { x: (e.c.x - cam.worldView.x) * cam.zoom / DPR, y: (e.c.y - 60 - cam.worldView.y) * cam.zoom / DPR, wx: e.c.x, wy: e.c.y }; },
