@@ -39,16 +39,15 @@ test('summer: sunny look, own soundscape, picker', async ({ page }) => {
     await page.waitForTimeout(5000);
     await page.screenshot({ path: `${SHOTS}/summer.png` });
 
-    // HUD picker: tap the theme button, the other five fan out; Winter switches live and back.
-    let h = await cozy(page, 'themeHud()');
-    expect(h.current).toBe('summer');
-    await tapRect(page, h.rects.btn);
+    // 71: the season picker lives on the village board panel: all six seasons, current one first-class.
+    await cozy(page, 'openBoard()');
     await expect.poll(async () => (await cozy(page, 'themeHud()')).open, { timeout: 10_000 }).toBe(true);
     await page.waitForTimeout(600);
-    h = await cozy(page, 'themeHud()');
-    expect(Object.keys(h.rects).filter((k) => k !== 'btn').sort()).toEqual(['christmas', 'fall', 'halloween', 'spring', 'winter']);
+    let h = await cozy(page, 'themeHud()');
+    expect(h.current).toBe('summer');
+    expect(Object.keys(h.rects).sort()).toEqual(['christmas', 'fall', 'halloween', 'spring', 'summer', 'winter']);
     await page.screenshot({ path: `${SHOTS}/summer-picker.png` });
-    await tapRect(page, h.rects.btn);
+    await tapRect(page, (await cozy(page, 'board()')).rects['board:close']);
     await expect.poll(async () => (await cozy(page, 'themeHud()')).open, { timeout: 10_000 }).toBe(false);
     await cozy(page, "setTheme('winter')");
     await page.waitForTimeout(1200);

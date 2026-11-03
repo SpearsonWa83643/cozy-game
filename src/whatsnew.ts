@@ -3,11 +3,12 @@
 // Keep each bullet short and simple: kids read these.
 // icon: 'wood' | 'fruit' | 'berry' | 'star' | 'heart' (a little picture beside the line).
 
-export const VERSION = '2026-11-02-chase';
+export const VERSION = '2026-11-03-board';
 
 export type WhatsNewItem = { icon: 'wood' | 'fruit' | 'berry' | 'star' | 'heart'; text: string };
 
 export const ITEMS: WhatsNewItem[] = [
+  { icon: 'wood', text: 'The Village Board! Your food, wood, stone, fruit and berries, who needs a home, and the seasons are on a painted board by the village. Look for the red ! and tap the board to see it. The lantern signs only show near the lanterns now.' },
   { icon: 'star', text: 'Chase the thief! When a sneaky thief runs off with a friend, tap Chase it!, pick a friend to fly, and slide your finger to steer. Bubble nets fly all by themselves. Catch the thief to bring your friend home!' },
   { icon: 'heart', text: 'Looks & Moves has a big Apply button! Try styles and moves with the arrows, then tap Apply to use them all over the game. And the Bunny thief has its long ears back!' },
   { icon: 'star', text: 'Jailbreak! Sometimes a sneaky thief digs a tunnel or picks the lock and runs out of the Thief Jail. Watch for it sneaking back, and catch it again!' },

@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 
-// 22: each theme has its own little chime when picked from the HUD theme picker.
+// 22: each theme has its own little chime when picked (71: from the village board's Season row).
 const FILE = pathToFileURL(resolve('dist-single/index.html')).href;
 const tapRect = async (page: Page, k: string) => {
   const r = await page.evaluate((k) => (window as any).__cozy.themeHud().rects[k], k);
@@ -23,8 +23,7 @@ test('theme chimes: picking a theme plays its own motif', async ({ page }) => {
   await page.waitForTimeout(1200);
   for (let i = 0; i < 8 && (await page.evaluate(() => (window as any).__cozy.state.dialogOpen)); i++) { await page.touchscreen.tap(590, 700); await page.waitForTimeout(500); }
   for (const id of ['summer', 'fall', 'halloween', 'christmas', 'winter', 'spring']) {
-    await tapRect(page, 'btn');
-    await page.waitForTimeout(500);
+    if (!(await page.evaluate(() => (window as any).__cozy.themeHud().open))) { await page.evaluate(() => (window as any).__cozy.openBoard()); await page.waitForTimeout(500); }
     await tapRect(page, id);
     await page.waitForTimeout(700);
     expect(await page.evaluate(() => (window as any).__cozy.village().theme)).toBe(id);
