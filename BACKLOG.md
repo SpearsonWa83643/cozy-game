@@ -38,9 +38,9 @@ Walker: "For immediate implementation: When the thief steals a mount you should 
 
 | Order | Task | Status | ETA live | Estimate (dev days) |
 |---|---|---|---|---|
-| 51 | Thief visibly carries the stolen friend(s) on its back as it runs off (bobbing, wobbling, cute) | In progress | 2026-11-02 | 0.25 |
-| 52 | Stolen friend waits in a friendly cell (red roof, wooden bars, gold heart padlock) beside its hiding puzzle instead of the star sack; locked until the puzzle is solved, then tap the cell (or open the chest, reward kept) for a happy burst and the friend hops home | In progress | 2026-11-02 | 0.25 |
-| 53 | Multi-steal: 20% two friends, 5% three (when that many are stealable), each behind a different puzzle with its own cell; dialog, toasts, stable hint, Call Mount and the "Rescue ... first!" hint list them all; save.stolen becomes a list (old single saves migrate) | In progress | 2026-11-02 | 0.25 |
+| 51 | Thief visibly carries the stolen friend(s) on its back as it runs off (bobbing, wobbling, cute) | Done/Live (merge 987f14e, bundle index-87rzwmXe.js) | 2026-11-02 | 0.25 |
+| 52 | Stolen friend waits in a friendly cell (red roof, wooden bars, gold heart padlock) beside its hiding puzzle instead of the star sack; locked until the puzzle is solved, then tap the cell (or open the chest, reward kept) for a happy burst and the friend hops home | Done/Live (merge 987f14e, bundle index-87rzwmXe.js) | 2026-11-02 | 0.25 |
+| 53 | Multi-steal: 20% two friends, 5% three (when that many are stealable), each behind a different puzzle with its own cell; dialog, toasts, stable hint, Call Mount and the "Rescue ... first!" hint list them all; save.stolen becomes a list (old single saves migrate) | Done/Live (merge 987f14e, bundle index-87rzwmXe.js) | 2026-11-02 | 0.25 |
 
 ## Walker's Nov 2 request: Sushi figurine mount (6:15 PM CT)
 
