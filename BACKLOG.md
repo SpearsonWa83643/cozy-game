@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-11-03 10:55 AM (CT). Live: main c9c1542, https://willowmere-glade.pages.dev (bundle index-B7TFVzgY.js).
+Updated: 2026-11-03 10:20 AM (CT). Live: main c9c1542, https://willowmere-glade.pages.dev (bundle index-B7TFVzgY.js).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
