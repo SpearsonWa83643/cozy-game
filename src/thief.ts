@@ -515,9 +515,12 @@ export class Thief {
     // Clock event, so it always ends, even on a very slow, choppy frame rate.
     this.fleeDone = done;
     this.fleeLeft = (reduceMotion() ? 600 : this.carry.length ? 2600 : 1600);
+    // Backstop on the wall clock, in case frames come so rarely (or so short) that the game time barely moves.
+    this.fleeBy = performance.now() + this.fleeLeft + 8000;
   }
   private fleeDone: (() => void) | null = null;
   private fleeLeft = 0;
+  private fleeBy = 0;
 
   private clear() {
     this.fleeDone = null;
@@ -538,7 +541,7 @@ export class Thief {
     if (!paused) this.jailTick(dt); else this.jbAt = 0;
     if (this.state === 'off' || !this.spr) return;
     // The run-off ends even while a message is up (like the old Clock event did).
-    if (this.fleeDone && (this.fleeLeft -= dt * 1000) <= 0) { const d = this.fleeDone; this.fleeDone = null; d(); return; }
+    if (this.fleeDone && ((this.fleeLeft -= dt * 1000) <= 0 || performance.now() >= this.fleeBy)) { const d = this.fleeDone; this.fleeDone = null; d(); return; }
     if (paused) { if (this.state === 'sneak') this.endAt += dt * 1000; return; }
     const s = this.spr;
     if (this.state === 'caught') {
