@@ -7,6 +7,8 @@
 import Phaser from 'phaser';
 import { Ctx, canvasTex, atlasOf, frameScale } from './art';
 import { save, persist, addFruit, jailAdd, jailOut, type Stolen } from './save';
+import { looks } from './looks/looks';
+import { padOf, setStyled } from './looks/styleFx';
 import { MOUNTS, isMountUnlocked, themeDefaultMount, mountById, type MountDef } from './mount/defs';
 import { sfx } from './audio';
 import type { WorldScene } from './scenes/World';
@@ -213,10 +215,11 @@ export function stolenHint(list: Stolen[] = save.stolen ?? []): string {
   if (list.length === 1) return `Help your ${nameOf(list[0].mount)} first! It is at ${PLACE[list[0].puzzle]}.`;
   return `Help your friends first! ${list.map((s) => `The ${nameOf(s.mount)} is at ${PLACE[s.puzzle]}.`).join(' ')}`;
 }
-/** A body image of a friend (classic look), sized to `w` world px wide. */
-function friendImg(scene: Phaser.Scene, m: MountDef, x: number, y: number, w: number) {
-  const im = scene.add.image(x, y, atlasOf(m.body), m.body);
-  return im.setScale(w / Math.max(1, im.width));
+/** A body image of a friend in the applied art style (59), sized to `w` world px wide. Origin via setOrg. */
+function friendImg(scene: Phaser.Scene, m: MountDef, x: number, y: number, w: number, ox = 0.5, oy = 0.5) {
+  const im = setStyled(scene.add.image(x, y, atlasOf(m.body), m.body), scene, m.body, looks.art, ox, oy);
+  const pad = padOf[im.texture.key] ?? 0;
+  return im.setScale(w / Math.max(1, im.width - pad * 2));
 }
 
 /** 55: jailbreaks. After JAILBREAK.firstS seconds of play, and then every JAILBREAK.everyS, roll JAILBREAK.odds;
@@ -461,7 +464,7 @@ export class Thief {
     // 51: the friends ride off on its back, held up high (cute, waving along with the hop).
     this.sack?.setVisible(false);
     this.carryIds = taken.map((t) => t.mount);
-    this.carry = taken.map((t, i) => friendImg(w, mountById(t.mount)!, s.x, s.y, (taken.length === 1 ? 100 : 82) - i * 4).setOrigin(0.5, 0.85));
+    this.carry = taken.map((t, i) => friendImg(w, mountById(t.mount)!, s.x, s.y, (taken.length === 1 ? 100 : 82) - i * 4, 0.5, 0.85));
     const kn = this.kind.name;
     const names = taken.map((t) => `${nameOf(t.mount)}`);
     const one = taken.length === 1;
@@ -540,7 +543,7 @@ export class Thief {
     const g = this.pips!;
     g.clear();
     if (this.state === 'sneak') {
-      const x = s.x, y = s.y - 58 * SCALE - 10;
+      const x = s.x, y = s.y - 66 * SCALE - 10; // 60: above the tallest ears
       const left = Math.max(0, (this.endAt - this.w.time.now) / 12000);
       g.fillStyle(0xfffaf0, 0.9); g.fillRoundedRect(x - 40, y - 13, 80, 26, 13);
       for (let i = 0; i < TAPS; i++) {
@@ -575,7 +578,7 @@ export class Thief {
     if (!ch || !m || this.cells.has(st.puzzle)) return;
     const k = 1.25;
     const back = w.add.image(0, 0, atlasOf('thief_cell_back'), 'thief_cell_back').setOrigin(0.5, 1).setScale(k / (frameScale.thief_cell_back ?? 1));
-    const pet = friendImg(w, m, 0, -14, CW * k * 0.78).setOrigin(0.5, 1);
+    const pet = friendImg(w, m, 0, -14, CW * k * 0.78, 0.5, 1);
     const bars = w.add.image(0, 0, atlasOf('thief_cell'), 'thief_cell').setOrigin(0.5, 1).setScale(k / (frameScale.thief_cell ?? 1));
     const mask = w.add.image(0, -CH * k - 12, atlasOf('thief_mask'), 'thief_mask').setScale(0.8 / (frameScale.thief_mask ?? 1));
     const x = ch.x + 78, y = ch.y + 6;
@@ -629,7 +632,7 @@ export class Thief {
     const at = e ? { x: e.c.x, y: e.c.y } : { x: w.feet.x, y: w.feet.y };
     // The friend hops out of the cell with a happy burst, then flies off home to the stable.
     if (e && m) {
-      const pet = friendImg(w, m, at.x, at.y - 14, CW * 1.25 * 0.78).setOrigin(0.5, 1).setDepth(at.y + 20);
+      const pet = friendImg(w, m, at.x, at.y - 14, CW * 1.25 * 0.78, 0.5, 1).setDepth(at.y + 20);
       if (reduceMotion()) w.time.delayedCall(700, () => pet.destroy());
       else {
         w.tweens.add({ targets: pet, y: at.y - 70, duration: 260, yoyo: true, ease: 'Sine.easeOut' });

@@ -7,6 +7,8 @@ import { sfx } from './audio';
 import { repaint } from './art';
 import { save, type Stolen } from './save';
 import { mountById } from './mount/defs';
+import { looks } from './looks/looks';
+import { stylize } from './looks/styleFx';
 
 /** Short, simple names for the puzzle spots. */
 export const PLACE: Record<string, string> = {
@@ -57,7 +59,12 @@ function friendPic(id: string) {
   const m = mountById(id);
   if (!m) return '';
   // Atlas canvases are released after upload (iPad memory), so paint the friend again.
-  try { return repaint(m.body)?.toDataURL() ?? ''; } catch { return ''; }
+  try {
+    const src = repaint(m.body);
+    if (!src) return '';
+    // 59: in the applied art style, like everywhere else.
+    return (looks.art === 'classic' ? src : stylize(src, looks.art).cv).toDataURL();
+  } catch { return ''; }
 }
 
 /** Open the big clue card for these hidden friends (default: all of them). */

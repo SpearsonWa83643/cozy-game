@@ -1345,7 +1345,7 @@ export class MenuScene extends Phaser.Scene {
       if (nm.width > sw - 22) nm.setScale((sw - 22) / nm.width);
       this.content.add(nm);
       const py = y + sh * 0.46;
-      const pp = this.puppet(m, x + sw / 2, py, Math.min(sw * 0.82, 130), on);
+      const pp = this.puppet(m, x + sw / 2, py, Math.min(sw * 0.82, 130), on, looks.art); // 59: the applied art style
       pp.c.setData('y0', py); pp.c.setData('k0', pp.k);
       this.content.add(pp.c);
       if (!on) this.content.add(this.text(x + sw / 2, py - 4, '?', 30, '#f3dfae', 900).setOrigin(0.5).setStroke('#2e2219', 5));
@@ -1619,7 +1619,7 @@ export class MenuScene extends Phaser.Scene {
   /** The animated friends on the Looks & Moves page ('art' and 'motion' cards). */
   lookPets: { kind: 'art' | 'motion'; m: MountDef; c: Phaser.GameObjects.Container; body: Phaser.GameObjects.Image; wing: Phaser.GameObjects.Image; wingFar: Phaser.GameObjects.Image; k: number; x0: number; y0: number; art: ArtStyleId; capeKey: string; flap: number; lastWing: number }[] = [];
   /** What the Looks & Moves cards say (tests). */
-  looksShown = { art: '', motion: '', sound: '', auto: '' };
+  looksShown: { art: string; motion: string; sound: string; auto: string; apply?: string; applied?: number } = { art: '', motion: '', sound: '', auto: '' };
 
   /** A big round arrow button (◀ / ▶) for the pickers. */
   private arrowBtn(x: number, y: number, s: number, dir: -1 | 1, onTap: () => void, id: string) {
@@ -1709,7 +1709,8 @@ export class MenuScene extends Phaser.Scene {
     }
     this.content.add(this.text(a.x + a.w / 2, a.y + 20, 'Looks & Moves', 20, '#fff3d6', 900).setOrigin(0.5).setStroke('#4a2a16', 4));
     const pick = MOUNTS.find((m) => m.id === currentPick()) ?? MOUNTS[0];
-    const top = a.y + 58, gap = 16, cw = (a.w - 24 - gap) / 2, ch = a.h - (top - a.y) - 12;
+    // 59: a big Apply bar under the two cards (the arrows only preview until you tap it).
+    const APH = 64, top = a.y + 58, gap = 16, cw = (a.w - 24 - gap) / 2, ch = a.h - (top - a.y) - 12 - APH - 12;
     const AR = 76;
     const card = (x: number, title: string) => {
       const cg = this.add.graphics();
@@ -1724,7 +1725,7 @@ export class MenuScene extends Phaser.Scene {
     {
       const x = a.x + 12;
       card(x, 'Art style');
-      const i = Math.max(0, ART_STYLES.findIndex((s) => s.id === looks.art)), st = ART_STYLES[i];
+      const i = Math.max(0, ART_STYLES.findIndex((s) => s.id === looks.shownArt)), st = ART_STYLES[i];
       const p = pv(x);
       const bd = this.lookBackdrop(st.id, p.x, p.y, p.w, p.h);
       this.content.add(bd);
@@ -1743,17 +1744,17 @@ export class MenuScene extends Phaser.Scene {
     {
       const x = a.x + 12 + cw + gap;
       card(x, 'Motion & sound');
-      const i = Math.max(0, MOTION_CHOICES.indexOf(looks.motion)), eff = looks.effective, ms = motionById(eff), auto = looks.motion === 'auto';
+      const i = Math.max(0, MOTION_CHOICES.indexOf(looks.shownMotion)), eff = looks.effective, ms = motionById(eff), auto = looks.shownMotion === 'auto';
       const p = pv(x);
       this.content.add(this.skyFor(eff, p.x, p.y, p.w, p.h));
-      this.addLookPet('motion', pick, p, looks.art);
+      this.addLookPet('motion', pick, p, looks.shownArt);
       const sound = `Sound: ${scapeName(eff)}`;
       const sb = this.text(p.x + 12, p.y + p.h - 12, `\u266A ${sound}`, 15, '#fffaf0', 900).setOrigin(0, 1).setStroke('#3d2c20', 4);
       this.content.add(sb);
       if (!auto) {
         // A hand pick is on: one tap goes back to letting the weather choose.
         const bw = 168, bh = 46, bx = p.x + p.w - bw - 10, by = p.y + 10;
-        const [bg, z] = this.btn(bx, by, bw, bh, () => { looks.setMotion('auto'); sfx.sparkle(); this.render(); }, 0xfbf1dc, theme.ui.accentDark, 22);
+        const [bg, z] = this.btn(bx, by, bw, bh, () => { looks.previewMotion('auto'); sfx.sparkle(); this.render(); }, 0xfbf1dc, theme.ui.accentDark, 22);
         this.rects['motion:auto'] = this.lastRect;
         this.content.add([bg, z, this.text(bx + bw / 2, by + bh / 2, '\u2601  Match weather', 17, INK, 900).setOrigin(0.5)]);
       }
@@ -1775,6 +1776,33 @@ export class MenuScene extends Phaser.Scene {
       this.dots(x + cw / 2, top + ch - 22, MOTION_CHOICES.length, i);
       this.looksShown.motion = name; this.looksShown.sound = scapeName(eff); this.looksShown.auto = auto ? autoLine : '';
     }
+    // ---- 59: Apply ----
+    {
+      const dirty = looks.dirty, bw = Math.min(420, a.w - 40), x = a.x + (a.w - bw) / 2, y = top + ch + 12;
+      const fill = dirty ? 0x6fbf5a : 0xe9dcc4, stroke = dirty ? 0x3f7f33 : 0xc9b48f;
+      const [bg, z] = this.btn(x, y, bw, APH, () => this.applyLooks(), fill, stroke, 26);
+      this.rects['looks:apply'] = this.lastRect;
+      const label = dirty ? '\u2714  Apply' : 'Applied \u2713';
+      const t = this.text(x + bw / 2, y + APH / 2, label, 28, dirty ? '#ffffff' : '#8a7560', 900).setOrigin(0.5);
+      if (dirty) t.setStroke('#3f7f33', 5);
+      this.content.add([bg, z, t]);
+      if (dirty) this.tweens.add({ targets: [bg, t], scaleX: 1.03, scaleY: 1.03, duration: 650, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      this.looksShown.apply = label.replace(/^\u2714  /, '');
+    }
+  }
+
+  /** 59: commit the previewed look + motion to the whole game (rides, stable stalls, the thief's sack, clue card). */
+  private applyLooks() {
+    if (!looks.apply()) { sfx.blip(); this.hint('Already applied!'); return; }
+    sfx.sparkle();
+    this.render();
+    const r = this.rects['looks:apply'];
+    if (r) {
+      this.hearts(r.x + r.w / 2, r.y, 8);
+      const t = this.text(r.x + r.w / 2, r.y - 10, 'Applied!', 34, '#ffffff', 900).setOrigin(0.5, 1).setStroke('#3f7f33', 7).setDepth(50);
+      this.tweens.add({ targets: t, y: t.y - 40, alpha: 0, delay: 700, duration: 700, onComplete: () => t.destroy() });
+    }
+    this.looksShown.applied = (this.looksShown.applied ?? 0) + 1;
   }
 
   private addLookPet(kind: 'art' | 'motion', m: MountDef, p: { x: number; y: number; w: number; h: number }, art: ArtStyleId) {
@@ -1789,7 +1817,7 @@ export class MenuScene extends Phaser.Scene {
     const dt = Math.min(delta, 100) / 1000;
     const sim = looks.frame();
     // 49: under Auto, a weather change while the page is open updates the card.
-    if (looks.motion === 'auto' && this.looksShown.auto && this.looksShown.auto !== `${WEATHER_NAMES[looks.weather]} \u2192 ${motionById(looks.effective).name}`) { this.render(); return; }
+    if (looks.shownMotion === 'auto' && this.looksShown.auto && this.looksShown.auto !== `${WEATHER_NAMES[looks.weather]} \u2192 ${motionById(looks.effective).name}`) { this.render(); return; }
     for (const p of this.lookPets) {
       if (!p.c.active) continue;
       const m = p.m, SC = m.scale, ws = SC / (frameScale[m.wing] ?? S);
