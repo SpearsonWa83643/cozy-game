@@ -108,6 +108,8 @@ export const PATH_LAKE: [number, number][] = [[2140, 1720], [2000, 1850], [1750,
 /** The village meadow south of the glade: an 11x5 snap grid of 64-unit cells. */
 export const VILLAGE = { x: 130, y: 1600, cols: 11, rows: 5, cell: 64 };
 export const VILLAGE_SIGN = { x: 870, y: 1640 };
+/** 71: the painted notice board east of the village path: stuff, needs and the season. */
+export const VILLAGE_BOARD = { x: 1010, y: 1660 };
 export const VILLAGE_ENTRY = { x: 880, y: 1760 };
 export const MERCHANT_SPOT = { x: 860, y: 1880 };
 export const START_AREAS: AreaId[] = ['glade'];
