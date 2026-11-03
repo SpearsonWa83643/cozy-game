@@ -382,9 +382,15 @@ export class Thief {
   }
 
   /** 55: count play time; maybe a jailbreak; bring an escaped thief back later. */
-  private jailTick(dt: number) {
+  private jbAt = 0;
+  private jailTick(_dt: number) {
     const j = this.jb;
-    j.played += dt;
+    // Real play time (not the capped frame step), skipping long gaps like a hidden tab.
+    const now = performance.now(), gap = this.jbAt ? (now - this.jbAt) / 1000 : 0;
+    this.jbAt = now;
+    if (gap < 1) j.played += gap;
+    // An escaped thief from an earlier session sneaks back a minute or so into this one.
+    if (j.backAt < 0 && !j.kind) { const loose = THIEVES.find((k) => save.jail?.[k.id]?.out); if (loose) { j.kind = loose.id; j.backAt = j.played + JAILBREAK.backS[0]; } }
     if (!j.broke && j.played >= j.nextCheck) {
       j.nextCheck = j.played + JAILBREAK.everyS;
       if (this.canBreak()) { j.checks++; if (Math.random() < JAILBREAK.odds) this.jailbreak(); }
@@ -499,7 +505,7 @@ export class Thief {
   private fading = false;
 
   update(dt: number, paused: boolean) {
-    if (!paused) this.jailTick(dt);
+    if (!paused) this.jailTick(dt); else this.jbAt = 0;
     if (this.state === 'off' || !this.spr) return;
     if (paused) { if (this.state === 'sneak') this.endAt += dt * 1000; return; }
     const s = this.spr;

@@ -1393,9 +1393,9 @@ export class MenuScene extends Phaser.Scene {
 
   // ------------------------------------------------------------ 54: Thief Jail
   /** Cells on the Thief Jail page (tests): every thief, caught or not. */
-  jailCells: { id: string; n: number; fed: number; out: boolean; nick: string; species: string; img: Phaser.GameObjects.Image | null; x: number; y: number; w: number; h: number; taps: number }[] = [];
+  jailCells: { id: string; n: number; fed: number; out: boolean; how: string; nick: string; species: string; img: Phaser.GameObjects.Image | null; x: number; y: number; w: number; h: number; taps: number }[] = [];
   /** Last thing a jailed thief did when tapped (tests). */
-  lastJail: { id: string; act: JailAct | 'berry' | 'nofruit'; line: string } | null = null;
+  lastJail: { id: string; act: JailAct | 'berry' | 'nofruit' | 'escaped'; line: string } | null = null;
   jailTitle = '';
   private jailBubble: Phaser.GameObjects.Container | null = null;
   private jailBerry: Phaser.GameObjects.Container | null = null;
@@ -1465,11 +1465,31 @@ export class MenuScene extends Phaser.Scene {
         this.tweens.add({ targets: img, scaleY: img.scaleY * 1.035, duration: 900 + i * 37, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
       } else if (!on) {
         this.content.add(this.text(x + sw / 2, y + sh * 0.45, '?', 34, '#c9c2db', 900).setOrigin(0.5).setStroke('#2e2a3a', 5));
+      } else {
+        // 55: escaped! An empty bed and a dug tunnel (or the door open and the padlock popped).
+        const eg = this.add.graphics();
+        if (cell?.how === 'lock') {
+          eg.fillStyle(0xe8b84a, 1); eg.fillRoundedRect(x + sw / 2 - 13, fy - sh * 0.3, 26, 22, 5);
+          eg.lineStyle(5, 0xb08a2e, 1); eg.beginPath(); eg.arc(x + sw / 2 + 10, fy - sh * 0.3, 10, Math.PI, Math.PI * 1.9); eg.strokePath();
+          eg.fillStyle(0x6a4a1a, 1); eg.fillCircle(x + sw / 2, fy - sh * 0.3 + 10, 3);
+        } else {
+          eg.fillStyle(0xa77a4a, 1); eg.fillEllipse(x + sw / 2 + 4, fy - 4, sw * 0.62, 26);
+          eg.fillStyle(0x2a1a10, 1); eg.fillEllipse(x + sw / 2, fy - 2, sw * 0.46, 18);
+          eg.fillStyle(0x8a6036, 1); eg.fillCircle(x + sw / 2 + sw * 0.3, fy - 10, 6); eg.fillCircle(x + sw / 2 + sw * 0.24, fy - 14, 4);
+        }
+        // Little paw prints heading out.
+        eg.fillStyle(0x6b4a33, 0.5);
+        for (let p2 = 0; p2 < 3; p2++) eg.fillEllipse(x + sw * (0.25 + p2 * 0.2), fy - sh * 0.12 - (p2 % 2) * 8, 9, 7);
+        this.content.add(eg);
+        const tag = this.text(x + sw / 2, y + sh * 0.36, 'Escaped!', 17, '#c0392b', 900).setOrigin(0.5).setStroke('#fff6e6', 5).setRotation(-0.12);
+        if (tag.width > sw - 10) tag.setScale((sw - 10) / tag.width);
+        this.content.add(tag);
       }
       // Rounded golden bars (in front, thin enough to see through).
       const bars = this.add.graphics();
       const by0 = y + Math.min(sh * 0.16, 30), by1 = y + sh - 44, nb = 4;
       for (let b = 1; b <= nb; b++) {
+        if (out && cell?.how === 'lock' && (b === 2 || b === 3)) continue; // the door swung open
         const bx = x + (b / (nb + 1)) * sw;
         bars.fillStyle(0x8a6a2a, 0.9); bars.fillRoundedRect(bx - 2.5, by0, 5, by1 - by0, 2.5);
         bars.fillStyle(0xf3d27a, 0.9); bars.fillRoundedRect(bx - 1.5, by0, 2, by1 - by0, 1);
@@ -1482,10 +1502,10 @@ export class MenuScene extends Phaser.Scene {
       nb2.lineStyle(2, 0x5c5470, 1); nb2.strokeRoundedRect(x + 5, y + sh - 40, sw - 10, 36, 7);
       this.content.add(nb2);
       const t1 = this.text(x + sw / 2, y + sh - 30, on ? nickOf(k.id) : '???', 15, on ? '#3a2a16' : '#ece6f5', 900).setOrigin(0.5);
-      const t2 = this.text(x + sw / 2, y + sh - 13, on ? `${speciesOf(k.id)} · caught ${n}x` : 'Not caught yet', 11, on ? '#6a4a2a' : '#ece6f5', 800).setOrigin(0.5);
+      const t2 = this.text(x + sw / 2, y + sh - 13, on ? (out ? `${speciesOf(k.id)} · escaped!` : `${speciesOf(k.id)} · caught ${n}x`) : 'Not caught yet', 11, on ? '#6a4a2a' : '#ece6f5', 800).setOrigin(0.5);
       for (const t of [t1, t2]) if (t.width > sw - 16) t.setScale((sw - 16) / t.width);
       this.content.add([t1, t2]);
-      const entry = { id: k.id, n, fed: cell?.fed ?? 0, out, nick: nickOf(k.id), species: speciesOf(k.id), img, x, y, w: sw, h: sh, taps: 0 };
+      const entry = { id: k.id, n, fed: cell?.fed ?? 0, out, how: cell?.how ?? '', nick: nickOf(k.id), species: speciesOf(k.id), img, x, y, w: sw, h: sh, taps: 0 };
       this.jailCells.push(entry);
       const z = this.add.zone(x, y, sw, sh).setOrigin(0, 0).setInteractive();
       z.on('pointerup', (p: Phaser.Input.Pointer) => { if (p.getDistance() < 24) this.tapJail(k.id); });
@@ -1520,7 +1540,13 @@ export class MenuScene extends Phaser.Scene {
     const c = this.jailCells.find((q) => q.id === id), k = thiefById(id);
     if (!c || !k) return null;
     if (!c.n) { sfx.tock(); this.hint('No thief here yet. Catch one with the mask button!'); this.lastJail = null; return null; }
-    if (c.out || !c.img) { sfx.tock(); return null; }
+    if (c.out || !c.img) {
+      sfx.giggle(k.voice ?? 700);
+      const line = c.how === 'lock' ? `${c.nick} picked the lock and ran off! It will sneak back. Catch it again!` : `${c.nick} dug a tunnel and ran off! It will sneak back. Catch it again!`;
+      this.hint(line);
+      this.lastJail = { id, act: 'escaped', line };
+      return this.lastJail;
+    }
     const act = JAIL_ACTS[c.taps % JAIL_ACTS.length];
     const line = jailLine(k, act, Math.floor(c.taps / JAIL_ACTS.length));
     c.taps++;
