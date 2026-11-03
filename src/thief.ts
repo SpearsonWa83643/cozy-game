@@ -69,6 +69,7 @@ export const HIDES: Record<string, string> = {
   pots: 'the flower pots', bells: 'the singing bells', tiles: 'the turning tiles',
   dig: 'the digging spot', stones: 'the stepping stones', trail: 'the deer tracks',
   spell1: 'the meadow letter easel', spell2: 'the seaside letter easel',
+  num1: 'the grove counting board', num2: 'the hills pebble board',
 };
 
 // 60: headroom on top (the Bunny's long ears, the Squirrel's tufts) and a little room on each side (the Skunk's

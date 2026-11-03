@@ -14,6 +14,8 @@ export const TREASURES: Treasure[] = [
   // 66: the letter easels (spelling puzzles for little ones).
   { id: 'letter_block', name: 'ABC Block', icon: 'ic_letterblock', blurb: 'A happy letter block. Now you have an ABC scarf!', hint: 'The letter easel in the meadow.' },
   { id: 'story_book', name: 'Story Book', icon: 'ic_storybook', blurb: 'A picture book full of words. Spelling star!', hint: 'The letter easel by the bay.' },
+  { id: 'abacus', name: 'Little Abacus', icon: 'ic_abacus', blurb: 'Slide the beads: 1, 2, 3! Counting champ!', hint: 'The counting board in Glowcap Grove.' },
+  { id: 'number_star', name: 'Counting Star', icon: 'ic_numstar', blurb: 'A shiny star with a number on it. You can count!', hint: 'The pebble board in Pinecone Hills.' },
   // The Wild Woods set: one in each wild treasure chest, in this order.
   { id: 'acorn_cap', name: 'Acorn Cap', icon: 'ic_acorncap', blurb: 'A snug cap from the Wild Woods.', hint: 'A chest in the Wild Woods.' },
   { id: 'glow_scarf', name: 'Glow Scarf', icon: 'ic_glowscarf', blurb: 'Soft moss that glows a little.', hint: 'A chest in the Wild Woods.' },

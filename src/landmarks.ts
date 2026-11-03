@@ -39,6 +39,7 @@ export const FLY_SITES: FlySite[] = [
   { id: 'p:trail', name: 'Tracks', x: TRACK_SIGN.x, y: TRACK_SIGN.y + 60, icon: 'pz_trail', puzzle: 'trail' },
   // 66: letter easels (spelling). Land just below the easel.
   ...PUZZLE_SITES.filter((p) => p.kind === 'spelling').map((p, i) => ({ id: `p:${p.id}`, name: i ? 'Seaside ABC' : 'Meadow ABC', x: p.x, y: p.y + 120, icon: 'pz_spell', puzzle: p.id })),
+  ...PUZZLE_SITES.filter((p) => p.kind === 'numbers').map((p, i) => ({ id: `p:${p.id}`, name: i ? 'Hills 123' : 'Grove 123', x: p.x, y: p.y + 120, icon: 'pz_num', puzzle: p.id })),
 ];
 
 const SZ = 128;
@@ -223,6 +224,15 @@ const DRAW: Record<string, (g: CanvasRenderingContext2D) => void> = {
     g.fillStyle = '#3f6b4a'; g.beginPath(); g.rect(14, 30, 100, 62); g.fill(); g.stroke();
     g.font = '900 34px Nunito, "Arial Rounded MT Bold", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
     ([['A', 36, '#ff8a9a'], ['B', 64, '#ffd84d'], ['C', 92, '#8fd0ff']] as const).forEach(([l, x, c]) => { g.fillStyle = c; g.fillText(l, x, 62); });
+  },
+  pz_num(g) {
+    // A little board with 1 + 2 and three red apples.
+    g.lineWidth = 6; g.strokeStyle = INK; g.lineJoin = 'round'; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(40, 116); g.lineTo(58, 22); g.moveTo(88, 116); g.lineTo(70, 22); g.stroke();
+    g.fillStyle = '#3f6b4a'; g.beginPath(); g.rect(14, 24, 100, 62); g.fill(); g.stroke();
+    g.font = '900 32px Nunito, "Arial Rounded MT Bold", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    ([['1', 36, '#ff8a9a'], ['+', 64, '#ffffff'], ['2', 92, '#ffd84d']] as const).forEach(([l, x, c]) => { g.fillStyle = c; g.fillText(l, x, 56); });
+    [44, 64, 84].forEach((x) => { g.fillStyle = '#e8473f'; g.lineWidth = 3; g.beginPath(); g.arc(x, 104, 9, 0, 7); g.fill(); g.stroke(); });
   },
   lm_fly(g) {
     // A folded paper map with a little flying wing: "Fly!".

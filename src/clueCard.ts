@@ -15,6 +15,7 @@ export const PLACE: Record<string, string> = {
   pots: 'the flower pots', bells: 'the bells', tiles: 'the tiles',
   dig: 'the dig spot', stones: 'the stones', trail: 'the deer tracks',
   spell1: 'the meadow easel', spell2: 'the seaside easel',
+  num1: 'the grove counting board', num2: 'the hills pebble board',
 };
 const ICON: Record<string, string> = {
   pots: '<svg viewBox="0 0 40 40"><path d="M10 22h20l-3 14H13z" fill="#d9774a" stroke="#7a3a18" stroke-width="2.5" stroke-linejoin="round"/><circle cx="20" cy="12" r="5" fill="#ffd34d"/><g fill="#ff6f91"><circle cx="20" cy="5" r="4"/><circle cx="27" cy="12" r="4"/><circle cx="13" cy="12" r="4"/><circle cx="20" cy="19" r="4"/></g><circle cx="20" cy="12" r="3.4" fill="#ffd34d"/></svg>',
@@ -25,6 +26,8 @@ const ICON: Record<string, string> = {
   trail: '<svg viewBox="0 0 40 40"><g fill="#7a4f2c"><ellipse cx="10" cy="30" rx="3" ry="5"/><ellipse cx="16" cy="30" rx="3" ry="5"/><ellipse cx="22" cy="14" rx="3" ry="5"/><ellipse cx="28" cy="14" rx="3" ry="5"/></g></svg>',
   spell1: '<svg viewBox="0 0 40 40"><path d="M14 36 L19 6 M26 36 L21 6" stroke="#7a4f2c" stroke-width="3" stroke-linecap="round"/><rect x="5" y="9" width="30" height="20" rx="2" fill="#3f6b4a" stroke="#7a4f2c" stroke-width="2.5"/><text x="20" y="24" font-size="12" font-weight="900" text-anchor="middle" fill="#ffd84d" font-family="sans-serif">ABC</text></svg>',
   spell2: '<svg viewBox="0 0 40 40"><path d="M14 36 L19 6 M26 36 L21 6" stroke="#7a4f2c" stroke-width="3" stroke-linecap="round"/><rect x="5" y="9" width="30" height="20" rx="2" fill="#3f6b4a" stroke="#7a4f2c" stroke-width="2.5"/><text x="20" y="24" font-size="12" font-weight="900" text-anchor="middle" fill="#ffd84d" font-family="sans-serif">ABC</text></svg>',
+  num1: '<svg viewBox="0 0 40 40"><path d="M14 36 L19 6 M26 36 L21 6" stroke="#7a4f2c" stroke-width="3" stroke-linecap="round"/><rect x="5" y="9" width="30" height="20" rx="2" fill="#3f6b4a" stroke="#7a4f2c" stroke-width="2.5"/><text x="20" y="24" font-size="11" font-weight="900" text-anchor="middle" fill="#ffd84d" font-family="sans-serif">1+2</text></svg>',
+  num2: '<svg viewBox="0 0 40 40"><path d="M14 36 L19 6 M26 36 L21 6" stroke="#7a4f2c" stroke-width="3" stroke-linecap="round"/><rect x="5" y="9" width="30" height="20" rx="2" fill="#3f6b4a" stroke="#7a4f2c" stroke-width="2.5"/><text x="20" y="24" font-size="11" font-weight="900" text-anchor="middle" fill="#ffd84d" font-family="sans-serif">1+2</text></svg>',
 };
 
 /** One very simple clue line for a hidden friend. `here`: you are already at its cell. */
