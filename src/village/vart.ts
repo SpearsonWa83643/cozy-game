@@ -207,6 +207,31 @@ function paintSign(c: Ctx, w: number, h: number) {
   rect(c, cx - 9, by - 54, 18, 11, 2, '#ffe9a6', 2);
 }
 
+/** 71: the village notice board: two posts, a little roof, pinned notes with tiny pictures. */
+function paintBoard(c: Ctx, w: number, h: number) {
+  const cx = w / 2, by = h - 4;
+  groundShadow(c, cx, by, 44);
+  rect(c, cx - 40, by - 70, 9, 70, 2, '#8a5a3c', 2.5);
+  rect(c, cx + 31, by - 70, 9, 70, 2, '#8a5a3c', 2.5);
+  // Board.
+  rect(c, cx - 50, by - 104, 100, 62, 8, '#c98b5a', 3);
+  rect(c, cx - 43, by - 97, 86, 48, 5, '#e8b884', 2);
+  // Roof.
+  poly(c, [[cx - 58, by - 102], [cx, by - 126], [cx + 58, by - 102]], '#e8604c', 3);
+  poly(c, [[cx - 46, by - 106], [cx, by - 120], [cx + 10, by - 116], [cx - 30, by - 104]], 'rgba(255,255,255,0.28)', 0.01);
+  // Pinned notes: an apple, a log, a little house.
+  const note = (x: number, y: number, rot: number, draw: () => void) => {
+    c.save(); c.translate(x, y); c.rotate(rot);
+    rect(c, -12, -12, 24, 24, 3, '#fffaf0', 2);
+    draw();
+    circ(c, 0, -10, 2.6, '#e8604c', 1.2);
+    c.restore();
+  };
+  note(cx - 26, by - 73, -0.12, () => { circ(c, 0, 2, 6, '#e8604c', 1.6); rect(c, -1, -7, 2, 4, 1, '#6b4a33', 0.01); });
+  note(cx, by - 75, 0.06, () => { rect(c, -8, -2, 16, 8, 3, '#b07a4f', 1.6); circ(c, 7, 2, 3, '#e8c49a', 1.2); });
+  note(cx + 26, by - 72, 0.14, () => { poly(c, [[-8, 0], [0, -7], [8, 0]], '#e8604c', 1.6); rect(c, -6, 0, 12, 8, 1, '#ffe9a6', 1.6); });
+}
+
 // ---------------------------------------------------------------- villagers (animal folk)
 type Kind = { body: string; belly: string; ear: 'bunny' | 'fox' | 'bear' | 'cat' | 'frog' | 'mouse'; shirt: string };
 export const KINDS: Kind[] = [
@@ -591,6 +616,7 @@ export function paintVillageArt(scene: Phaser.Scene) {
   T('d_statue', 80, 92, (c, w, h) => paintStatue(c, w, h), B);
   T('d_pantry', 80, 72, (c, w, h) => paintPantry(c, w, h), B);
   T('v_sign', 90, 76, (c, w, h) => paintSign(c, w, h), B);
+  T('v_board', 124, 134, (c, w, h) => paintBoard(c, w, h), B);
   T('v_cart', 120, 96, (c, w, h) => paintCart(c, w, h), B);
   KINDS.forEach((k, i) => { for (let f = 0; f < 2; f++) T(`vil${i}_${f}`, 44, 76, paintVillager(k, f), 3); });
   for (const [k, fn] of Object.entries(ICONS)) canvasTex(scene, k, 48, 48, icon(fn), 2.5);

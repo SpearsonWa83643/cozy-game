@@ -1,4 +1,4 @@
-// Village HUD: resource bar, build button + tray, and the tiny cards (villager, guest,
+// Village HUD: build button + tray, the notice-board panel (71: stuff, needs, season; no resource bar on the HUD), and the tiny cards (villager, guest,
 // building, merchant). Big icons, few words, few numbers.
 import Phaser from 'phaser';
 import { atlasOf } from '../art';
@@ -6,7 +6,7 @@ import { DPR } from '../dpr';
 import { safeInsets } from '../device';
 import { sfx } from '../audio';
 import { save, persist, BuildingType, Res } from '../save';
-import { theme, themeEvents } from '../theme';
+import { theme, themeEvents, THEMES, THEME_ORDER, setTheme } from '../theme';
 import { BUILD, BUILD_ORDER, isUnlockedB, canAfford, Village, Villager, Building, ResId, Alert, HAS_INTERIOR } from '../village/village';
 import type { WorldScene } from './World';
 import { FlyMap } from '../flyMap';
@@ -67,7 +67,7 @@ export class VillageUIScene extends Phaser.Scene {
     this.cameras.main.setOrigin(0, 0).setZoom(DPR);
     // Resource bar.
     this.barBg = this.add.graphics();
-    this.bar = this.add.container(0, 0, [this.barBg]);
+    this.bar = this.add.container(0, 0, [this.barBg]).setVisible(false); // 71: off the HUD; counts live on the notice board
     RES.forEach((id, i) => {
       const x = 26 + i * 104;
       const ic = this.icon(x, 26, RES_ICON[id], 38);
@@ -75,9 +75,6 @@ export class VillageUIScene extends Phaser.Scene {
       this.icons[id] = ic; this.counts[id] = t;
       this.bar.add([ic, t]);
     });
-    const bz = this.add.zone(0, 0, 312, 52).setOrigin(0, 0).setInteractive();
-    bz.on('pointerup', () => this.game.events.emit('toast', 'Food, wood and stone. Build and grow!'));
-    this.bar.add(bz);
     // Build button.
     this.buildBg = this.add.graphics();
     this.buildIcon = this.icon(0, -4, 'i_hammer', 46);
@@ -130,11 +127,12 @@ export class VillageUIScene extends Phaser.Scene {
     ev.on('build-moving', () => this.openTray());
     ev.on('card', this.openCard, this);
     ev.on('build-pick', (t: BuildingType) => { if (this.village.building) this.pick(t); });
-    ev.on('alert', (a: Alert | null) => this.showAlert(a));
+    ev.on('alert', () => this.showAlert(this.hudAlert()));
+    ev.on('needs', () => { this.showAlert(this.hudAlert()); this.refreshBoard(); });
     ev.on('undo', (u: { label: string; run: () => void }) => this.showUndo(u));
     ev.on('snacks', () => this.drawSnacks(true));
-    ev.on('build-mode', () => this.showAlert(this.village.alert));
-    themeEvents.on('change', () => { this.drawBar(); this.drawBuildBtn(); this.mountState = ''; this.drawMountBtn(); if (this.tray) this.openTray(); });
+    ev.on('build-mode', () => this.showAlert(this.hudAlert()));
+    themeEvents.on('change', () => { this.drawBar(); this.drawBuildBtn(); this.mountState = ''; this.drawMountBtn(); if (this.tray) this.openTray(); this.refreshBoard(); });
     this.refresh();
     (window as any).__vui = this;
   }
@@ -155,37 +153,24 @@ export class VillageUIScene extends Phaser.Scene {
     (this.mountC.getData('zone') as Phaser.GameObjects.Zone).setPosition(bx - 46, my - 46);
     this.rects.mount = { x: bx - 46, y: my - 46, w: 92, h: 92 };
     this.fly.layout();
-    this.rects.bar = { x: this.bar.x, y: this.bar.y, w: 312, h: 52 };
     if (this.tray) this.openTray();
     if (this.card) this.openCard(this.cardData);
     this.drawSnacks(false);
     if (this.alertC) this.showAlert(this.alertData);
   }
+  /** 71: only a friend's urgent need (hungry/sleepy/bored) pops up on the HUD, and only until it's fixed. */
+  hudAlert(): Alert | null {
+    const v = this.village;
+    if (!v || v.building) return null;
+    return v.needs.find((n) => n.urgent) ?? null;
+  }
 
   // ------------------------------------------------------------ fruit basket, alerts, undo
   snackC: Phaser.GameObjects.Container | null = null;
-  drawSnacks(bump: boolean) {
+  /** 71: the fruit basket lives on the notice board now; picking fruit only refreshes it. */
+  drawSnacks(_bump: boolean) {
     this.snackC?.destroy(); this.snackC = null; delete this.rects.snacks;
-    if (save.snacks <= 0) return;
-    const x = this.bar.x + 312 + 12, y = this.bar.y;
-    // Order 19: the basket shows each fruit kind with its own picture and count (tree fruit, berries).
-    const kinds = ([['apple', save.snacks - save.berries], ['berry', save.berries]] as [string, number][]).filter(([, n]) => n > 0);
-    const W = 20 + kinds.length * 72;
-    const g = this.add.graphics();
-    g.fillStyle(0x2a1d14, 0.25); g.fillRoundedRect(2, 5, W, 52, 26);
-    g.fillStyle(0xfbf1dc, 0.95); g.fillRoundedRect(0, 0, W, 52, 26);
-    g.lineStyle(3, 0xe8604c, 1); g.strokeRoundedRect(1.5, 1.5, W - 3, 49, 25);
-    const parts: Phaser.GameObjects.GameObject[] = [g];
-    kinds.forEach(([k, n], i) => {
-      const ic = this.add.image(28 + i * 72, 26, atlasOf(k), k); ic.setScale((k === 'berry' ? 38 : 34) / Math.max(ic.width, ic.height));
-      parts.push(ic, this.text(52 + i * 72, 26, `${n}`, 24).setOrigin(0, 0.5));
-    });
-    const z = this.add.zone(0, 0, W, 52).setOrigin(0, 0).setInteractive();
-    z.on('pointerup', () => this.game.events.emit('toast', save.berries > 0 ? 'Fruit and berries! Tap an animal or a hungry friend to feed them.' : 'Fruit! Tap an animal or a hungry friend to feed them.'));
-    parts.push(z);
-    this.snackC = this.add.container(x, y, parts);
-    this.rects.snacks = { x, y, w: W, h: 52 };
-    if (bump) this.tweens.add({ targets: this.snackC, scale: { from: 1.2, to: 1 }, duration: 300, ease: 'Back.easeOut' });
+    this.refreshBoard();
   }
   alertC: Phaser.GameObjects.Container | null = null;
   alertData: Alert | null = null;
@@ -196,7 +181,7 @@ export class VillageUIScene extends Phaser.Scene {
     const msg = this.text(0, 0, a.text, 20, INK, 900);
     const ft = this.text(0, 0, a.fix, 19, '#fffaf0', 900).setOrigin(0, 0.5).setStroke('#2f6b24', 4);
     const bw = 58 + ft.width, W = 64 + msg.width + 20 + bw + 12, H = 60;
-    const x0 = this.w / 2 - W / 2, y0 = this.bar.y + 66;
+    const x0 = this.w / 2 - W / 2, y0 = 14 + safeInsets().top;
     const g = this.add.graphics();
     g.fillStyle(0x2a1d14, 0.25); g.fillRoundedRect(2, 5, W, H, 29);
     g.fillStyle(a.urgent ? 0xfff0e6 : 0xfbf1dc, 0.97); g.fillRoundedRect(0, 0, W, H, 29);
@@ -324,28 +309,20 @@ export class VillageUIScene extends Phaser.Scene {
     for (const id of RES) this.counts[id].setText(String(save.village.res[id]));
   }
   onRes(id: ResId | null, n: number, wx?: number, wy?: number) {
+    this.refreshBoard();
     if (!id || wx === undefined || wy === undefined) { this.refresh(); return; }
-    // Fly an icon from the world spot to the bar, then bump the count.
+    this.refresh();
+    // 71: a tiny "+n" float where it came from, then gone (the totals live on the notice board).
     const cam = this.world.cameras.main;
     const sx = (wx - cam.worldView.x) * cam.zoom / DPR, sy = (wy - cam.worldView.y) * cam.zoom / DPR;
-    const target = this.icons[id];
-    const tx = this.bar.x + target.x, ty = this.bar.y + target.y;
-    const fly = this.icon(sx, sy, RES_ICON[id], 40);
-    const plus = this.text(sx, sy - 30, `+${n}`, 22, '#fffaf0', 900).setOrigin(0.5).setStroke('#5a3d28', 5);
-    this.tweens.add({ targets: plus, y: sy - 60, alpha: 0, duration: 900, ease: 'Sine.easeOut', onComplete: () => plus.destroy() });
-    this.tweens.add({
-      targets: fly, x: tx, y: ty, duration: 700, delay: 150, ease: 'Sine.easeIn', onComplete: () => {
-        fly.destroy();
-        this.refresh();
-        // Bump the count and the icon (the icon keeps its own base scale so it never balloons).
-        target.setDisplaySize(38, 38);
-        const base = target.scaleX;
-        this.tweens.killTweensOf([this.counts[id], target]);
-        this.counts[id].setScale(1);
-        this.tweens.add({ targets: this.counts[id], scale: { from: 1.4, to: 1 }, duration: 300, ease: 'Back.easeOut' });
-        this.tweens.add({ targets: target, scale: { from: base * 1.4, to: base }, duration: 300, ease: 'Back.easeOut', onComplete: () => target.setDisplaySize(38, 38) });
-      },
-    });
+    if (sx < -40 || sy < -40 || sx > this.w + 40 || sy > this.h + 40) return;
+    const fly = this.icon(sx - 16, sy, RES_ICON[id], 38);
+    const plus = this.text(sx + 6, sy, `+${n}`, 24, '#fffaf0', 900).setOrigin(0, 0.5).setStroke('#5a3d28', 5);
+    const c = this.add.container(0, 0, [fly, plus]);
+    c.setScale(1); c.setAlpha(0);
+    this.tweens.add({ targets: c, alpha: 1, duration: 160 });
+    this.tweens.add({ targets: c, y: -54, duration: 1300, ease: 'Sine.easeOut' });
+    this.tweens.add({ targets: c, alpha: 0, delay: 900, duration: 500, onComplete: () => c.destroy() });
   }
 
   // ------------------------------------------------------------ build tray
@@ -464,6 +441,7 @@ export class VillageUIScene extends Phaser.Scene {
     if (!data) return;
     this.cardData = data;
     this.registry.set('vcard', true);
+    if (data.kind === 'board') { this.openBoard(!data.quiet); data.quiet = false; return; }
     const v = this.village;
     let title = '', portrait = '', lines: string[] = [], btns: CardBtn[] = [], needs: Villager | null = null;
     let inside: CardBtn | null = null; // 9.4: "Go inside!" on buildings with a room
@@ -591,18 +569,125 @@ export class VillageUIScene extends Phaser.Scene {
     sfx.blip();
     this.game.events.emit('card-opened', data.kind);
   }
+  // ------------------------------------------------------------ 71: village notice board
+  /** Redraw the board panel in place when something on it changes. */
+  refreshBoard() {
+    if (this.cardData?.kind !== 'board' || !this.card) return;
+    this.cardData.quiet = true;
+    this.openCard(this.cardData);
+  }
+  /** Big, picture-first panel: what we have, who needs what (with a one-tap fix), and the season. */
+  openBoard(fade = true) {
+    const v = this.village;
+    const k = Math.min(1, (this.w - 32) / 720, (this.h - 24) / 640);
+    const s = (n: number) => Math.round(n * k);
+    const needs = v.needs.slice(0, 3);
+    const rows = Math.max(1, needs.length);
+    const W = s(720);
+    const H = s(24 + 64 + 30 + 120 + 22 + 30 + rows * 74 + 10 + 30 + 100 + 18);
+    const x0 = (this.w - W) / 2, y0 = Math.max(12, (this.h - H) / 2);
+    const c = this.add.container(0, 0).setDepth(30);
+    const dim = this.add.rectangle(0, 0, this.w, this.h, 0x1d1510, 0.4).setOrigin(0, 0).setInteractive();
+    dim.on('pointerup', () => this.closeCard());
+    const g = this.add.graphics();
+    // A wooden frame around a cream sheet: the board, up close.
+    g.fillStyle(0x2a1d14, 0.3); g.fillRoundedRect(x0 + 4, y0 + 9, W, H, s(30));
+    g.fillStyle(0xc98b5a, 1); g.fillRoundedRect(x0, y0, W, H, s(30));
+    g.fillStyle(0xfbf1dc, 0.99); g.fillRoundedRect(x0 + s(12), y0 + s(12), W - s(24), H - s(24), s(22));
+    g.lineStyle(3, 0x8a5a3c, 1); g.strokeRoundedRect(x0 + 1.5, y0 + 1.5, W - 3, H - 3, s(30));
+    const panelZone = this.add.zone(x0, y0, W, H).setOrigin(0, 0).setInteractive();
+    c.add([dim, g, panelZone]);
+    const label = (y: number, str: string) => c.add(this.text(x0 + s(40), y, str, Math.max(15, s(20)), '#8a6a50', 900).setOrigin(0, 0.5));
+    let y = y0 + s(24);
+    c.add(this.icon(x0 + s(56), y + s(32), 'b_home', s(50)));
+    c.add(this.text(x0 + W / 2, y + s(32), 'Village Board', Math.max(22, s(34)), INK, 900).setOrigin(0.5));
+    y += s(64);
+    // 1. Our stuff: big pictures and big numbers.
+    label(y + s(14), 'Our stuff');
+    y += s(30);
+    const fruit = save.snacks - save.berries;
+    const items: [string, string, number, string][] = [
+      ['food', RES_ICON.food, save.village.res.food, 'Food'],
+      ['wood', RES_ICON.wood, save.village.res.wood, 'Wood'],
+      ['stone', RES_ICON.stone, save.village.res.stone, 'Stone'],
+      ['apple', 'apple', fruit, 'Fruit'],
+      ['berry', 'berry', save.berries, 'Berries'],
+    ];
+    const tw = s(122), gap = s(12), tx0 = x0 + (W - (items.length * tw + (items.length - 1) * gap)) / 2;
+    items.forEach(([id, frame, n, name], i) => {
+      const tx = tx0 + i * (tw + gap);
+      g.fillStyle(0xfff4d6, 1); g.fillRoundedRect(tx, y, tw, s(120), s(18));
+      g.lineStyle(3, i < 3 ? theme.ui.accent : 0xe8604c, 1); g.strokeRoundedRect(tx + 1.5, y + 1.5, tw - 3, s(117), s(17));
+      const ic = this.add.image(tx + s(34), y + s(42), atlasOf(frame), frame);
+      ic.setScale(s(frame === 'berry' ? 50 : 46) / Math.max(ic.width, ic.height));
+      c.add(ic);
+      c.add(this.text(tx + s(62), y + s(44), String(n), Math.max(22, s(36)), INK, 900).setOrigin(0, 0.5));
+      c.add(this.text(tx + tw / 2, y + s(96), name, Math.max(13, s(17)), '#6b4f3a', 800).setOrigin(0.5));
+      this.rects[`board:res:${id}`] = { x: tx, y, w: tw, h: s(120) };
+    });
+    y += s(120) + s(22);
+    // 2. Friends need: who needs a home (or a snack, a nap...), each with a one-tap fix.
+    label(y + s(14), 'Friends need');
+    y += s(30);
+    if (!needs.length) {
+      g.fillStyle(0xeef7e2, 1); g.fillRoundedRect(x0 + s(36), y, W - s(72), s(64), s(20));
+      c.add(this.icon(x0 + s(74), y + s(32), 'i_heart', s(40)));
+      c.add(this.text(x0 + s(108), y + s(32), 'Everyone is happy!', Math.max(18, s(24)), INK, 900).setOrigin(0, 0.5));
+    }
+    needs.forEach((n, i) => {
+      const ry = y + i * s(74);
+      g.fillStyle(n.urgent ? 0xfff0e6 : 0xfff4d6, 1); g.fillRoundedRect(x0 + s(36), ry, W - s(72), s(64), s(20));
+      g.lineStyle(3, n.urgent ? 0xe8604c : theme.ui.accent, 1); g.strokeRoundedRect(x0 + s(36) + 1.5, ry + 1.5, W - s(72) - 3, s(61), s(19));
+      const ic = this.add.image(x0 + s(74), ry + s(32), atlasOf(n.icon), n.icon); ic.setScale(s(44) / Math.max(ic.width, ic.height));
+      c.add(ic);
+      c.add(this.text(x0 + s(108), ry + s(32), n.text, Math.max(18, s(24)), INK, 900).setOrigin(0, 0.5));
+      const ft = this.text(0, 0, n.fix, Math.max(16, s(21)), '#fffaf0', 900).setOrigin(0, 0.5).setStroke('#2f6b24', 4);
+      const bw = s(62) + ft.width, bx = x0 + W - s(46) - bw;
+      const [bg, z] = this.button(bx, ry + s(8), bw, s(48), 0x7cc463, 0x4f9a3c, () => { this.closeCard(true); n.run(); this.showAlert(null); }, s(22), `board:fix:${n.id}`);
+      c.add([bg, z, this.icon(bx + s(26), ry + s(32), n.fixIcon, s(30)), ft.setPosition(bx + s(48), ry + s(32))]);
+    });
+    y += rows * s(74) + s(10);
+    // 3. Season (the leaf button that used to sit on the HUD).
+    label(y + s(14), 'Season');
+    y += s(30);
+    const sw = s(84), sg = s(18), sx0 = x0 + (W - (THEME_ORDER.length * sw + (THEME_ORDER.length - 1) * sg)) / 2;
+    THEME_ORDER.forEach((id, i) => {
+      const bx = sx0 + i * (sw + sg);
+      const on = theme.id === id;
+      const [bg, z] = this.button(bx, y, sw, sw, on ? 0xfff2b0 : 0xfff8ea, on ? theme.ui.accentDark : 0xd9b98f, () => {
+        if (theme.id === id) return;
+        sfx.themeChime(id); setTheme(id);
+      }, s(22), `board:season:${id}`);
+      c.add([bg, z]);
+      if (on) { const ring = this.add.graphics(); ring.lineStyle(5, theme.ui.accentDark, 1); ring.strokeRoundedRect(bx - 4, y - 4, sw + 8, sw + 8, s(26)); c.add(ring); }
+      c.add(this.icon(bx + sw / 2, y + s(36), THEMES[id].icon, s(50)));
+      c.add(this.text(bx + sw / 2, y + sw - s(12), THEMES[id].name, Math.max(11, s(14)), INK, 900).setOrigin(0.5));
+    });
+    // Close button.
+    const cx = x0 + W - s(76), cy = y0 + s(22);
+    const [xb, xz] = this.button(cx, cy, s(56), s(56), 0xf3e6cc, 0xd9b98f, () => this.closeCard(), s(28), 'board:close');
+    const xg = this.add.graphics(); xg.lineStyle(5, 0x6b4a33, 1);
+    xg.lineBetween(cx + s(18), cy + s(18), cx + s(38), cy + s(38)); xg.lineBetween(cx + s(38), cy + s(18), cx + s(18), cy + s(38));
+    c.add([xb, xz, xg]);
+    this.card = c;
+    this.rects.board = { x: x0, y: y0, w: W, h: H };
+    if (fade) {
+      c.setAlpha(0); this.tweens.add({ targets: c, alpha: 1, duration: 180 });
+      this.game.events.emit('card-opened', 'board');
+    }
+  }
   closeCard(instant = false) {
     if (!this.card) return;
     const c = this.card; this.card = null; this.cardData = null;
-    for (const k of Object.keys(this.rects)) if (k.startsWith('card')) delete this.rects[k];
+    for (const k of Object.keys(this.rects)) if (k.startsWith('card') || k.startsWith('board')) delete this.rects[k];
     if (instant) c.destroy(); else this.tweens.add({ targets: c, alpha: 0, duration: 140, onComplete: () => c.destroy() });
-    this.time.delayedCall(60, () => this.registry.set('vcard', false));
+    this.time.delayedCall(60, () => { if (!this.card) this.registry.set('vcard', false); });
   }
 
   update() {
     // Keep the build button out of the way while the satchel is open.
     const hide = !!this.registry.get('menuOpen');
-    this.buildC.setVisible(!hide); this.bar.setVisible(!hide);
+    this.buildC.setVisible(!hide);
     this.snackC?.setVisible(!hide); this.alertC?.setVisible(!hide && !this.card); this.undoC?.setVisible(!hide);
     (this.buildC.getData('zone') as Phaser.GameObjects.Zone).input!.enabled = !hide;
     // Call Mount hides in build mode (and with the satchel open).

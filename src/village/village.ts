@@ -3,7 +3,7 @@ import { DPR } from '../dpr';
 // Rules for a young audience: no fail states, few numbers, big obvious feedback.
 import Phaser from 'phaser';
 import { atlasOf, frameScale, mulberry32 } from '../art';
-import { VILLAGE, VILLAGE_SIGN, VILLAGE_ENTRY, MERCHANT_SPOT, COTTAGE } from '../layout';
+import { VILLAGE, VILLAGE_SIGN, VILLAGE_BOARD, VILLAGE_ENTRY, MERCHANT_SPOT, COTTAGE } from '../layout';
 import { save, persist, hasTreasure, tipOnce, takeFruit, BuildingType, BuildingSave, VillagerSave, Res } from '../save';
 import { sfx } from '../audio';
 import { theme, themeEvents } from '../theme';
@@ -173,6 +173,12 @@ export class Village {
   weather: Weather;
   produced = 0;
   speed = 1; // test hook only
+  /** 71: notice board sprite, its "!" marker, and what is listed on it. */
+  board!: Phaser.GameObjects.Image;
+  boardMark!: Phaser.GameObjects.Container;
+  needs: Alert[] = [];
+  private needsKey = '';
+  private told = new Set<string>();
 
   constructor(public w: WorldScene) {
     this.grid = w.add.graphics().setDepth(-340).setVisible(false);
@@ -181,6 +187,17 @@ export class Village {
     w.solidCircle(VILLAGE_SIGN.x, VILLAGE_SIGN.y - 4, 8);
     w.interactables.push({ x: VILLAGE_SIGN.x, y: VILLAGE_SIGN.y, r: 56, label: 'Read', promptY: 80, enabled: () => true,
       action: () => w.game.events.emit('dialog', ['Willow Village!', 'Tap the hammer to build.', 'Tap a new friend to invite them.', 'Drag a friend to a building.', 'Now they have a job!']) });
+    // 71: the notice board: what the village has, who needs what, and the season. Tap it from anywhere on screen.
+    const B = VILLAGE_BOARD;
+    w.shadow(B.x + 3, B.y - 2, 52, 0.6);
+    this.board = w.img(B.x, B.y, 'v_board', 0.5, 1, 1).setDepth(B.y);
+    w.solidCircle(B.x - 34, B.y - 4, 7); w.solidCircle(B.x + 34, B.y - 4, 7);
+    w.interactables.push({ x: B.x, y: B.y, r: 70, label: 'Look', promptY: 140, reach: 900, enabled: () => !this.building, action: () => this.openBoard() });
+    this.boardMark = w.add.container(B.x + 44, B.y - 128, [
+      w.add.circle(0, 0, 15, 0xe8604c).setStrokeStyle(3, 0xfffaf0),
+      w.add.text(0, 1, '!', { fontFamily: 'Nunito, "Trebuchet MS", sans-serif', fontSize: '22px', color: '#fffaf0', fontStyle: '900', resolution: 3 } as any).setOrigin(0.5),
+    ]).setDepth(B.y + 1).setVisible(false);
+    w.tweens.add({ targets: this.boardMark, y: B.y - 136, duration: 700, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     this.rainFx = w.add.particles(0, 0, atlasOf('p_drop'), {
       frame: 'p_drop', emitZone: { type: 'random', source: new Phaser.Geom.Rectangle(0, 0, 10, 10) as any },
       lifespan: 900, speedY: { min: 520, max: 640 }, speedX: { min: -60, max: -30 }, quantity: 6, frequency: 30,
@@ -728,10 +745,24 @@ export class Village {
       const same = s && v.suggest && s.kind === v.suggest.kind && (s.kind === 'assign' ? s.b === (v.suggest as any).b : s.t === (v.suggest as any).t);
       if (!same) this.setBubble(v, s);
     }
-    const a = this.findAlert();
+    const all = this.findAlerts();
+    const a = this.building ? null : all[0] ?? null;
     if ((a?.id ?? null) !== (this.alert?.id ?? null)) { this.alert = a; this.w.game.events.emit('alert', a); }
     else this.alert = a;
+    // 71: everything that needs doing lives on the notice board; a "!" on the board says there is news.
+    const key = all.map((n) => n.id).join('|');
+    this.needs = all;
+    if (key !== this.needsKey) {
+      const fresh = all.filter((n) => !n.urgent && !this.needsKey.split('|').includes(n.id));
+      this.needsKey = key;
+      this.boardMark.setVisible(all.length > 0);
+      this.w.game.events.emit('needs', all);
+      // A quick heads-up (not a permanent HUD item) when a new need shows up on the board.
+      for (const n of fresh) if (!this.told.has(n.id)) { this.told.add(n.id); this.w.game.events.emit('toast', `${n.text} Look at the village board.`); break; }
+    }
   }
+  /** 71: open the notice board panel (stuff, needs, season). */
+  openBoard() { sfx.blip(); this.w.game.events.emit('card', { kind: 'board' }); }
   private setBubble(v: Villager, s: Suggest | null) {
     v.suggest = s;
     v.bubble?.destroy(); v.bubble = null;
@@ -778,33 +809,34 @@ export class Village {
       this.w.game.events.emit('build-pick', s.t);
     }
   }
-  private findAlert(): Alert | null {
+  /** Everything friends need right now, most important first (71: listed on the notice board). */
+  private findAlerts(): Alert[] {
     const w = this.w, res = save.village.res;
-    if (this.building) return null;
+    const out: Alert[] = [];
     // 1. A visitor wants to stay but there is no bed.
     if (this.wanderer && save.village.villagers.length >= this.beds()) {
       const name = this.wanderer.data.name;
-      return { id: 'home', icon: 'b_home', text: `${name} needs a home!`, fix: 'Build', fixIcon: 'i_hammer', urgent: false, run: () => {
+      out.push({ id: 'home', icon: 'b_home', text: `${name} needs a home!`, fix: 'Build', fixIcon: 'i_hammer', urgent: false, run: () => {
         if (!canAfford(BUILD.home.cost)) this.gift();
         this.enterBuild(); w.game.events.emit('build-pick', 'home');
-      } };
+      } });
     }
     // 2. A friend who really needs something right now.
     for (const v of this.villagers) {
       const d = v.data;
       if (v.task === 'drag' || v.task === 'eat' || v.task === 'sleep' || v.task === 'play') continue;
       // Friends look after themselves; only call for help when they can't (no food left) or it takes too long.
-      if (d.food < 0.25 && res.food <= 0) return { id: `food${d.id}`, icon: 'i_food', text: `${d.name} is hungry!`, fix: 'Snack', fixIcon: 'i_food', urgent: true, run: () => this.care(v, 'food') };
-      if (d.sleep < 0.1) return { id: `sleep${d.id}`, icon: 'i_sleep', text: `${d.name} is sleepy!`, fix: 'Nap', fixIcon: 'i_sleep', urgent: true, run: () => this.care(v, 'sleep') };
-      if (d.fun < 0.1) return { id: `fun${d.id}`, icon: 'i_fun', text: `${d.name} is bored!`, fix: 'Play', fixIcon: 'i_fun', urgent: true, run: () => this.care(v, 'fun') };
+      if (d.food < 0.25 && res.food <= 0) out.push({ id: `food${d.id}`, icon: 'i_food', text: `${d.name} is hungry!`, fix: 'Snack', fixIcon: 'i_food', urgent: true, run: () => this.care(v, 'food') });
+      else if (d.sleep < 0.1) out.push({ id: `sleep${d.id}`, icon: 'i_sleep', text: `${d.name} is sleepy!`, fix: 'Nap', fixIcon: 'i_sleep', urgent: true, run: () => this.care(v, 'sleep') });
+      else if (d.fun < 0.1) out.push({ id: `fun${d.id}`, icon: 'i_fun', text: `${d.name} is bored!`, fix: 'Play', fixIcon: 'i_fun', urgent: true, run: () => this.care(v, 'fun') });
     }
     // 3. Out of things to build with and nothing makes more: friends bring a gift.
     const core: BuildingType[] = ['home', 'garden', 'kitchen', 'workshop', 'fishhut'];
     const stuck = !core.some((t) => isUnlockedB(t) && canAfford(BUILD[t].cost));
     if (stuck && !this.cart && !this.buildings.some((b) => b.data.type === 'workshop' && b.worker)) {
-      return { id: 'wood', icon: 'i_wood', text: 'Need more wood?', fix: 'Get some', fixIcon: 'i_wood', urgent: false, run: () => this.gift() };
+      out.push({ id: 'wood', icon: 'i_wood', text: 'Need more wood?', fix: 'Get some', fixIcon: 'i_wood', urgent: false, run: () => this.gift() });
     }
-    return null;
+    return out;
   }
   /** Friends find a little pile of wood and stone. Always works, so building never gets stuck. */
   gift() {
