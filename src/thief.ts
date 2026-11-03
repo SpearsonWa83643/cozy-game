@@ -7,6 +7,8 @@
 import Phaser from 'phaser';
 import { Ctx, canvasTex, atlasOf, frameScale } from './art';
 import { save, persist, addFruit, jailAdd, jailOut, type Stolen } from './save';
+import { looks } from './looks/looks';
+import { padOf, setStyled } from './looks/styleFx';
 import { MOUNTS, isMountUnlocked, themeDefaultMount, mountById, type MountDef } from './mount/defs';
 import { sfx } from './audio';
 import type { WorldScene } from './scenes/World';
@@ -56,8 +58,11 @@ export const HIDES: Record<string, string> = {
   dig: 'the digging spot', stones: 'the stepping stones', trail: 'the deer tracks',
 };
 
-const TW = 64, TH = 58;
+// 60: headroom on top (the Bunny's long ears, the Squirrel's tufts) and a little room on each side (the Skunk's
+// big tail, whiskers) so no thief is ever cut off. The side pads are equal, so the sprite stays centred.
+const SIDE = 6, TW = 64 + SIDE * 2, TOP = 12, TH = 58 + TOP;
 function paintThief(c: Ctx, k: Kind) {
+  c.translate(SIDE, TOP);
   const line = '#3b2a22';
   c.lineWidth = 2;
   // Tail (behind, on the left).
@@ -181,6 +186,24 @@ function paintMask(c: Ctx) {
   c.fillStyle = '#1d1a22'; c.beginPath(); c.roundRect(2, 6, 36, 14, 7); c.fill();
   c.fillStyle = '#fffaf0'; for (const x of [12, 28]) { c.beginPath(); c.ellipse(x, 13, 4.6, 3.6, 0, 0, Math.PI * 2); c.fill(); }
 }
+/** 60 (test): paint each thief on a roomy canvas and count the inked pixels that fall outside its TW x TH texture
+ *  (that is, what would be cut off). Every thief should be 0. Also reports the topmost inked row inside the texture. */
+export function thiefFit() {
+  const M = 24, out: Record<string, { clipped: number; top: number }> = {};
+  for (const k of THIEVES) {
+    const cv = document.createElement('canvas'); cv.width = TW + M * 2; cv.height = TH + M * 2;
+    const c = cv.getContext('2d')!; c.lineCap = 'round'; c.lineJoin = 'round'; c.translate(M, M); paintThief(c, k);
+    const px = c.getImageData(0, 0, cv.width, cv.height).data;
+    let clipped = 0, top = -1;
+    for (let y = 0; y < cv.height; y++) for (let x = 0; x < cv.width; x++) {
+      if (px[(y * cv.width + x) * 4 + 3] < 24) continue;
+      const inside = x >= M && x < M + TW && y >= M && y < M + TH;
+      if (!inside) clipped++; else if (top < 0) top = y - M;
+    }
+    out[k.id] = { clipped, top };
+  }
+  return out;
+}
 export function paintThieves(scene: Phaser.Scene) {
   for (const k of THIEVES) canvasTex(scene, `thief_${k.id}`, TW, TH, (c) => paintThief(c, k));
   canvasTex(scene, 'thief_sack', 28, 32, paintSack);
@@ -211,10 +234,11 @@ export function stolenHint(list: Stolen[] = save.stolen ?? []): string {
   if (list.length === 1) return `Help your ${nameOf(list[0].mount)} first! It is at ${PLACE[list[0].puzzle]}.`;
   return `Help your friends first! ${list.map((s) => `The ${nameOf(s.mount)} is at ${PLACE[s.puzzle]}.`).join(' ')}`;
 }
-/** A body image of a friend (classic look), sized to `w` world px wide. */
-function friendImg(scene: Phaser.Scene, m: MountDef, x: number, y: number, w: number) {
-  const im = scene.add.image(x, y, atlasOf(m.body), m.body);
-  return im.setScale(w / Math.max(1, im.width));
+/** A body image of a friend in the applied art style (59), sized to `w` world px wide. Origin via setOrg. */
+function friendImg(scene: Phaser.Scene, m: MountDef, x: number, y: number, w: number, ox = 0.5, oy = 0.5) {
+  const im = setStyled(scene.add.image(x, y, atlasOf(m.body), m.body), scene, m.body, looks.art, ox, oy);
+  const pad = padOf[im.texture.key] ?? 0;
+  return im.setScale(w / Math.max(1, im.width - pad * 2));
 }
 
 /** 55: jailbreaks. After JAILBREAK.firstS seconds of play, and then every JAILBREAK.everyS, roll JAILBREAK.odds;
@@ -459,7 +483,7 @@ export class Thief {
     // 51: the friends ride off on its back, held up high (cute, waving along with the hop).
     this.sack?.setVisible(false);
     this.carryIds = taken.map((t) => t.mount);
-    this.carry = taken.map((t, i) => friendImg(w, mountById(t.mount)!, s.x, s.y, (taken.length === 1 ? 100 : 82) - i * 4).setOrigin(0.5, 0.85));
+    this.carry = taken.map((t, i) => friendImg(w, mountById(t.mount)!, s.x, s.y, (taken.length === 1 ? 100 : 82) - i * 4, 0.5, 0.85));
     const kn = this.kind.name;
     const names = taken.map((t) => `${nameOf(t.mount)}`);
     const one = taken.length === 1;
@@ -487,10 +511,19 @@ export class Thief {
     this.speed = 420;
     // 51: a bit slower (and a bit longer) when carrying friends, so you can see them go.
     if (this.carry.length) this.speed = 300;
-    w.time.delayedCall(reduceMotion() ? 600 : this.carry.length ? 2600 : 1600, done);
+    // Counted down in update with the game's frame time (dt, capped at 50 ms like the rest of the game) instead of a
+    // Clock event, so it always ends, even on a very slow, choppy frame rate.
+    this.fleeDone = done;
+    this.fleeLeft = (reduceMotion() ? 600 : this.carry.length ? 2600 : 1600);
+    // Backstop on the wall clock, in case frames come so rarely (or so short) that the game time barely moves.
+    this.fleeBy = performance.now() + this.fleeLeft + 8000;
   }
+  private fleeDone: (() => void) | null = null;
+  private fleeLeft = 0;
+  private fleeBy = 0;
 
   private clear() {
+    this.fleeDone = null;
     this.hop?.stop(); this.hop = null;
     this.spr?.destroy(); this.sack?.destroy(); this.pips?.destroy();
     for (const c of this.carry) c.destroy();
@@ -507,6 +540,8 @@ export class Thief {
   update(dt: number, paused: boolean) {
     if (!paused) this.jailTick(dt); else this.jbAt = 0;
     if (this.state === 'off' || !this.spr) return;
+    // The run-off ends even while a message is up (like the old Clock event did).
+    if (this.fleeDone && ((this.fleeLeft -= dt * 1000) <= 0 || performance.now() >= this.fleeBy)) { const d = this.fleeDone; this.fleeDone = null; d(); return; }
     if (paused) { if (this.state === 'sneak') this.endAt += dt * 1000; return; }
     const s = this.spr;
     if (this.state === 'caught') {
@@ -538,7 +573,7 @@ export class Thief {
     const g = this.pips!;
     g.clear();
     if (this.state === 'sneak') {
-      const x = s.x, y = s.y - 58 * SCALE - 10;
+      const x = s.x, y = s.y - 66 * SCALE - 10; // 60: above the tallest ears
       const left = Math.max(0, (this.endAt - this.w.time.now) / 12000);
       g.fillStyle(0xfffaf0, 0.9); g.fillRoundedRect(x - 40, y - 13, 80, 26, 13);
       for (let i = 0; i < TAPS; i++) {
@@ -573,7 +608,7 @@ export class Thief {
     if (!ch || !m || this.cells.has(st.puzzle)) return;
     const k = 1.25;
     const back = w.add.image(0, 0, atlasOf('thief_cell_back'), 'thief_cell_back').setOrigin(0.5, 1).setScale(k / (frameScale.thief_cell_back ?? 1));
-    const pet = friendImg(w, m, 0, -14, CW * k * 0.78).setOrigin(0.5, 1);
+    const pet = friendImg(w, m, 0, -14, CW * k * 0.78, 0.5, 1);
     const bars = w.add.image(0, 0, atlasOf('thief_cell'), 'thief_cell').setOrigin(0.5, 1).setScale(k / (frameScale.thief_cell ?? 1));
     const mask = w.add.image(0, -CH * k - 12, atlasOf('thief_mask'), 'thief_mask').setScale(0.8 / (frameScale.thief_mask ?? 1));
     const x = ch.x + 78, y = ch.y + 6;
@@ -627,7 +662,7 @@ export class Thief {
     const at = e ? { x: e.c.x, y: e.c.y } : { x: w.feet.x, y: w.feet.y };
     // The friend hops out of the cell with a happy burst, then flies off home to the stable.
     if (e && m) {
-      const pet = friendImg(w, m, at.x, at.y - 14, CW * 1.25 * 0.78).setOrigin(0.5, 1).setDepth(at.y + 20);
+      const pet = friendImg(w, m, at.x, at.y - 14, CW * 1.25 * 0.78, 0.5, 1).setDepth(at.y + 20);
       if (reduceMotion()) w.time.delayedCall(700, () => pet.destroy());
       else {
         w.tweens.add({ targets: pet, y: at.y - 70, duration: 260, yoyo: true, ease: 'Sine.easeOut' });
@@ -655,6 +690,8 @@ export class Thief {
   }
 
   /** 56: a quick lineup of every thief by the player (screenshots and tests); it fades after `ms`. */
+  /** 60 (test): screen (CSS px) foot positions of the lineup's thieves. */
+  lineupAt: Record<string, { x: number; y: number }> = {};
   lineup(ms = 9000) {
     const w = this.w, v = w.cameras.main.worldView;
     const n = THIEVES.length, cols = Math.ceil(n / 2), gap = v.width / (cols + 1);
@@ -664,6 +701,7 @@ export class Thief {
       const x = v.x + gap * (col + 1) + (row ? gap / 2 : 0), y = v.y + v.height * (row ? 0.78 : 0.48);
       const key = `thief_${k.id}`;
       items.push(w.add.image(x, y, atlasOf(key), key).setOrigin(0.5, 0.92).setScale(1.9 / (frameScale[key] ?? 1)).setDepth(9400));
+      const c = w.cameras.main; this.lineupAt[k.id] = { x: (x - v.x) * c.zoom / DPR, y: (y - v.y) * c.zoom / DPR };
       items.push(w.add.text(x, y + 14, k.name, { fontFamily: 'Fredoka, sans-serif', fontSize: '22px', color: '#4a321f', backgroundColor: '#fff6e3', padding: { x: 8, y: 3 } }).setOrigin(0.5, 0).setDepth(9401));
     });
     w.time.delayedCall(ms, () => items.forEach((o) => o.destroy()));
