@@ -949,6 +949,7 @@ export class Thief {
   update(dt: number, paused: boolean) {
     this.gt += dt * 1000;
     if (!paused) this.jailTick(dt); else this.jbAt = 0;
+    if (!paused) this.cellCallTick();
     if (this.state === 'lurk') {
       if (paused) { if (this.lk) this.lk.t0 += dt * 1000; return; }
       if (this.lk) this.lurkTick();
@@ -1064,6 +1065,43 @@ export class Thief {
     w.interactables.push(it);
     this.cells.set(pid, { c, it });
   }
+  /** 77: a friend in a cell calls "Help! Over here!" when you come close, so little ones can find it. */
+  cellCalls = 0;
+  lastCellCall = '';
+  cellCallTimes: number[] = [];
+  private callAt = new Map<string, number>();
+  private callChk = 0;
+  private cellCallTick() {
+    if (!this.cells.size) return;
+    const w = this.w, now = performance.now();
+    if (now < this.callChk) return;
+    this.callChk = now + 250;
+    for (const [pid, e] of this.cells) {
+      const d = Math.hypot(w.feet.x - e.c.x, w.feet.y - e.c.y);
+      if (d > 520 || d < 70) continue;
+      if (now - (this.callAt.get(pid) ?? -1e9) < 6500) continue;
+      this.callAt.set(pid, now);
+      this.callOut(pid);
+    }
+  }
+  private callOut(pid: string) {
+    const e = this.cells.get(pid); if (!e) return;
+    const w = this.w, c = e.c, pet = c.getData('pet') as Phaser.GameObjects.Image;
+    const st = save.stolen?.find((s) => s.puzzle === pid);
+    const m = st ? mountById(st.mount) : undefined;
+    this.cellCalls++; this.lastCellCall = pid; this.cellCallTimes = [...this.cellCallTimes.slice(-4), Math.round(performance.now())];
+    const by = c.y - CH * 1.25 - 28;
+    const t = w.add.text(c.x, by, 'Help! Over here!', { fontFamily: 'Fredoka, sans-serif', fontSize: '26px', fontStyle: 'bold', color: '#4a321f', backgroundColor: '#fffaf0', padding: { x: 14, y: 8 } })
+      .setOrigin(0.5, 1).setDepth(9300).setScale(0.4);
+    w.tweens.add({ targets: t, scale: 1, duration: 260, ease: 'Back.easeOut' });
+    w.tweens.add({ targets: t, y: by - 26, alpha: 0, delay: 1900, duration: 500, ease: 'Sine.easeIn', onComplete: () => t.destroy() });
+    if (!reduceMotion()) {
+      w.tweens.add({ targets: c, angle: { from: -5, to: 5 }, duration: 110, yoyo: true, repeat: 3, onComplete: () => c.setAngle(0) });
+      if (pet) w.tweens.add({ targets: pet, scaleY: pet.scaleY * 1.15, scaleX: pet.scaleX * 0.92, duration: 140, yoyo: true, repeat: 1 });
+    }
+    w.burst(c.x, by + 10, 0xffe08a, 8, 'spark');
+    if (m) sfx.mountHappy(m.id); else sfx.chirp();
+  }
   private dropCell(pid: string) {
     const e = this.cells.get(pid); if (!e) return;
     const i = this.w.interactables.indexOf(e.it as never);
@@ -1152,7 +1190,8 @@ export class Thief {
     const s = this.spr;
     const c = this.w.cameras.main;
     return {
-      state: this.state, kind: this.kind.id, taps: this.taps, stolen: save.stolen?.length ? save.stolen.map((x) => ({ ...x })) : null, carrying: [...this.carryIds], carried: [...this.carried], cells: [...this.cells.keys()], callHint: this.lastCallHint,
+      state: this.state, kind: this.kind.id, taps: this.taps, stolen: save.stolen?.length ? save.stolen.map((x) => ({ ...x })) : null, carrying: [...this.carryIds], carried: [...this.carried], cells: [...this.cells.keys()], callHint: this.lastCallHint, cellCalls: this.cellCalls, lastCellCall: this.lastCellCall, cellCallTimes: [...this.cellCallTimes],
+      cellAt: Object.fromEntries([...this.cells].map(([k, e]) => [k, { x: e.c.x, y: e.c.y }])),
       thanks: this.thanks, paws: this.paws, giggles: this.giggles, lastGiggle: this.lastGiggle, kinds: THIEVES.map((k) => k.id), caught: this.caughtN, stolenN: this.stolenN, rescued: this.rescuedN, marker: this.cells.size > 0,
       screen: s ? { x: (s.x - c.worldView.x) * c.zoom / DPR, y: (s.y - 24 * SCALE - c.worldView.y) * c.zoom / DPR } : null,
       blocked: this.blocked(),
