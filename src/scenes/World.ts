@@ -34,7 +34,7 @@ import { Pinwheels } from '../pinwheels';
 import { Mount } from '../mount/mount';
 import { looks } from '../looks/looks';
 import type { ArtStyleId } from '../looks/styleFx';
-import { CHASE_OFFER, Thief } from '../thief';
+import { CHASE_OFFER, Thief, thiefFit } from '../thief';
 import { CHASE } from './Chase';
 
 export type Interactable = {
@@ -1386,6 +1386,7 @@ export class WorldScene extends Phaser.Scene {
   // ------------------------------------------------------------ test hooks
   exposeDebug() {
     const self = this;
+    (window as any).__sfx = sfx; // 58 (tests): spy on sounds
     (window as any).__cozy = {
       ready: true,
       get state() {
@@ -1461,6 +1462,7 @@ export class WorldScene extends Phaser.Scene {
       thief: () => self.thief.snapshot(),
       startThief: (kind?: string, ms?: number, count?: number) => self.thief.start(kind, ms, count),
       thiefLineup: (ms?: number) => self.thief.lineup(ms),
+      thiefFit: () => thiefFit(),
       /** 69: Thief Chase. startChase(kind?, mountId?) = a thief grabs one friend and the chase starts right away.
        *  chase() = the running chase (or the last one); chaseOffer(false) = escapes skip the offer (old tests). */
       startChase: (kind?: string, mountId?: string) => self.thief.startChase(kind, mountId),

@@ -54,12 +54,13 @@ test('mount thief: button, arrest with 3 taps, escape hides a friend, rescue fro
     await expect.poll(() => page.evaluate(() => { const s = JSON.parse(localStorage.getItem('cozy.save.v2')!); return [s.snacks, s.berries]; }), { timeout: 5_000 }).toEqual([2, 2]);
 
     // 2) Next time nobody taps: it escapes with a friend and hides it behind a solved puzzle.
-    expect(await page.evaluate(() => (window as any).__cozy.startThief('raccoon', 1500, 1))).toBe(true);
+    expect(await page.evaluate(() => (window as any).__cozy.startThief('raccoon', 6000, 1))).toBe(true);
     await page.waitForTimeout(600);
     await page.screenshot({ path: `${SHOTS}/thief-sneak.png`, scale: 'css' });
-    await expect.poll(async () => (await thief(page)).stolen, { timeout: 120_000 }).not.toBeNull();
+    // The snapshot taken the moment it grabs a friend (asserted below), so a slow, loaded test machine can't miss the run-off.
+    let tc: any = null;
+    await expect.poll(async () => (tc = await thief(page)).stolen, { timeout: 120_000, intervals: [100] }).not.toBeNull();
     // 51: you see it carrying your friend off as it runs.
-    const tc = await thief(page);
     expect(tc.state).toBe('flee');
     expect(tc.carrying).toEqual([tc.stolen[0].mount]);
     expect(tc.stolen.length).toBe(1);
@@ -179,10 +180,9 @@ test('mount thief: carries two friends, cells, call-mount hint, cell rescue, old
 
     // Two friends: the thief carries both, each hides behind a different puzzle with its own cell.
     expect(await page.evaluate(() => (window as any).__cozy.startThief('fox', 6000, 2))).toBe(true);
-    await expect.poll(async () => (await thief(page)).carrying.length, { timeout: 90_000, intervals: [100] }).toBe(2);
-    await page.waitForTimeout(250);
+    let tc: any = null;
+    await expect.poll(async () => (tc = await thief(page)).carrying.length, { timeout: 90_000, intervals: [100] }).toBe(2);
     await page.screenshot({ path: `${SHOTS}/thief-carrying-two.png`, scale: 'css' });
-    const tc = await thief(page);
     expect(tc.state).toBe('flee');
     expect(tc.stolen.length).toBe(2);
     expect(new Set(tc.stolen.map((x: any) => x.puzzle)).size).toBe(2);

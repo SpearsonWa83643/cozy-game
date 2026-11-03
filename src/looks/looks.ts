@@ -54,12 +54,25 @@ function load(): Saved {
 type Listener = () => void;
 
 class Looks {
+  /** 59: the APPLIED (saved) choices: what the whole game uses. */
   art: ArtStyleId;
   motion: MotionChoice;
+  /** 59: what the Looks & Moves page is previewing (the arrows only change these until Apply). */
+  pArt: ArtStyleId;
+  pMotion: MotionChoice;
   /** What the main game loop's weather is right now (World feeds this every frame). */
   weather: Weatherish = 'clear';
   /** Flying (ride / travel) right now, and the stable picker open: either plays the soundscape. */
-  flying = false; previewing = false;
+  flying = false;
+  private _previewing = false;
+  /** The stable picker is open. Opening starts a preview from the applied choice; closing drops an un-applied preview. */
+  get previewing() { return this._previewing; }
+  set previewing(on: boolean) {
+    if (on === this._previewing) return;
+    this._previewing = on;
+    this.pArt = this.art; this.pMotion = this.motion;
+    this.sync(); this.emit();
+  }
   sim: MotionSim;
   private simId: MotionId;
   private t0 = performance.now();
@@ -69,32 +82,50 @@ class Looks {
   audio = new MotionAudio();
   private listeners: Listener[] = [];
   /** Test counters. */
-  stats = { switches: 0, events: 0, weatherSwitches: 0 };
+  stats = { switches: 0, events: 0, weatherSwitches: 0, applies: 0 };
 
   constructor() {
     const s = load();
     this.art = s.art; this.motion = s.motion;
+    this.pArt = s.art; this.pMotion = s.motion;
     this.simId = this.effective;
     this.sim = new MotionSim(motionById(this.simId));
   }
 
   /** The motion actually in use: the weather's pick under Auto, else the hand pick. */
-  get effective(): MotionId { return this.motion === 'auto' ? WEATHER_MOTION[this.weather] : this.motion; }
+  get effective(): MotionId { const m = this.shownMotion; return m === 'auto' ? WEATHER_MOTION[this.weather] : m; }
+  /** What the picker shows: the preview while it is open, else the applied choice. */
+  get shownArt(): ArtStyleId { return this._previewing ? this.pArt : this.art; }
+  get shownMotion(): MotionChoice { return this._previewing ? this.pMotion : this.motion; }
+  /** 59: the preview differs from the applied choice (Apply is live). */
+  get dirty() { return this.pArt !== this.art || this.pMotion !== this.motion; }
   get style(): MotionStyle { return this.sim.ms; }
   on(f: Listener) { this.listeners.push(f); return () => { this.listeners = this.listeners.filter((g) => g !== f); }; }
   private emit() { for (const f of this.listeners) f(); }
   private persist() { try { localStorage.setItem(KEY, JSON.stringify({ art: this.art, motion: this.motion })); } catch { /* private mode */ } }
 
-  setArt(id: ArtStyleId) { if (id === this.art) return; this.art = id; this.persist(); this.emit(); }
-  setMotion(m: MotionChoice) { if (m === this.motion) return; this.motion = m; this.persist(); this.sync(); this.emit(); }
-  cycleArt(dir: number) { const i = ART_STYLES.findIndex((a) => a.id === this.art); this.setArt(ART_STYLES[(i + dir + ART_STYLES.length) % ART_STYLES.length].id); }
-  cycleMotion(dir: number) { const i = MOTION_CHOICES.indexOf(this.motion); this.setMotion(MOTION_CHOICES[(i + dir + MOTION_CHOICES.length) % MOTION_CHOICES.length]); }
+  /** Apply right away (tests / debug): sets both the applied choice and the preview. */
+  setArt(id: ArtStyleId) { if (id === this.art && id === this.pArt) return; this.art = this.pArt = id; this.persist(); this.emit(); }
+  setMotion(m: MotionChoice) { if (m === this.motion && m === this.pMotion) return; this.motion = this.pMotion = m; this.persist(); this.sync(); this.emit(); }
+  /** 59: the picker's arrows only change the preview. */
+  previewArt(id: ArtStyleId) { if (id === this.pArt) return; this.pArt = id; this.emit(); }
+  previewMotion(m: MotionChoice) { if (m === this.pMotion) return; this.pMotion = m; this.sync(); this.emit(); }
+  cycleArt(dir: number) { const i = Math.max(0, ART_STYLES.findIndex((a) => a.id === this.pArt)); this.previewArt(ART_STYLES[(i + dir + ART_STYLES.length) % ART_STYLES.length].id); }
+  cycleMotion(dir: number) { const i = Math.max(0, MOTION_CHOICES.indexOf(this.pMotion)); this.previewMotion(MOTION_CHOICES[(i + dir + MOTION_CHOICES.length) % MOTION_CHOICES.length]); }
+  /** 59: Apply: the previewed art style + motion become the game's look everywhere, and are saved. */
+  apply() {
+    if (!this.dirty) return false;
+    this.art = this.pArt; this.motion = this.pMotion;
+    this.stats.applies++;
+    this.persist(); this.sync(); this.emit();
+    return true;
+  }
 
   /** Fed by the World every frame. Under Auto a weather change crossfades to its motion. */
   setWeather(k: Weatherish) {
     if (k === this.weather) return;
     this.weather = k;
-    if (this.motion === 'auto') { this.stats.weatherSwitches++; this.sync(); this.emit(); }
+    if (this.shownMotion === 'auto') { this.stats.weatherSwitches++; this.sync(); this.emit(); }
   }
 
   /** Swap the simulation to the effective motion (keeps the clock, so the beat carries on). */
@@ -146,7 +177,7 @@ class Looks {
   /** Test/debug snapshot. */
   snapshot() {
     return {
-      art: this.art, motion: this.motion, effective: this.effective, weather: this.weather,
+      art: this.art, motion: this.motion, pArt: this.pArt, pMotion: this.pMotion, dirty: this.dirty, effective: this.effective, weather: this.weather,
       scape: scapeName(this.effective), playing: this.audio.playing, flying: this.flying, previewing: this.previewing,
       simT: +this.sim.t.toFixed(2), ...this.stats, fx: { ...fxStats }, saved: localStorage.getItem(KEY),
     };

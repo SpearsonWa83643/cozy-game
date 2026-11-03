@@ -77,9 +77,42 @@ test('looks & moves: arrow pickers, weather auto-match, override, flying', async
     expect((await shown(page)).art).toBe('Ink and Wash');
     await tap(page, 'art:prev'); await tap(page, 'art:prev'); await tap(page, 'art:prev');
     expect((await shown(page)).art).toBe('Bold Cel-Shaded');
+    // 59: the arrows only preview. Nothing is applied (or saved) until Apply.
     L = await looks(page);
-    expect(L.art).toBe('cel'); expect(JSON.parse(L.saved).art).toBe('cel');
+    expect(L.pArt).toBe('cel'); expect(L.art).toBe('classic'); expect(L.dirty).toBe(true); expect(L.saved).toBeNull();
+    expect((await shown(page)).apply).toBe('Apply');
+    const ap = await rect(page, 'looks:apply');
+    expect(ap.w).toBeGreaterThanOrEqual(200); expect(ap.h).toBeGreaterThanOrEqual(56); expect(ap.y + ap.h).toBeLessThanOrEqual(vp.height);
+    await page.screenshot({ path: `${SHOTS}/looks-apply.png`, scale: 'css' });
+    // Leaving without Apply keeps the old choice.
+    await tap(page, 'looks:back');
+    await expect.poll(() => looks(page).then((l) => l.previewing)).toBe(false);
+    await tap(page, 'looks:open');
+    await expect.poll(() => looks(page).then((l) => l.previewing)).toBe(true);
+    expect((await shown(page)).art).toBe('Classic Glade');
+    L = await looks(page);
+    expect(L.art).toBe('classic'); expect(L.pArt).toBe('classic');
+    expect((await shown(page)).apply).toBe('Applied \u2713');
+    await tap(page, 'art:next'); await tap(page, 'art:next');
+    expect((await shown(page)).art).toBe('Bold Cel-Shaded');
+    await tap(page, 'looks:apply');
+    L = await looks(page);
+    expect(L.art).toBe('cel'); expect(L.dirty).toBe(false); expect(L.applies).toBe(1); expect(JSON.parse(L.saved).art).toBe('cel');
+    expect((await shown(page)).apply).toBe('Applied \u2713');
+    await page.screenshot({ path: `${SHOTS}/looks-applied.png`, scale: 'css' });
     await page.screenshot({ path: `${SHOTS}/looks-art-picker.png`, scale: 'css' });
+    // The stable stalls now show the friends in the applied style too.
+    await tap(page, 'looks:back');
+    await page.waitForTimeout(400);
+    const stallTex = await page.evaluate(() => {
+      const out: string[] = [];
+      const walk = (o: any) => { if (o.texture?.key) out.push(o.texture.key); for (const c of o.list ?? []) walk(c); };
+      for (const c of (window as any).__menu.children.list) walk(c);
+      return out.filter((k) => k.startsWith('look:cel:')).length;
+    });
+    expect(stallTex).toBeGreaterThan(0);
+    await tap(page, 'looks:open');
+    await expect.poll(() => looks(page).then((l) => l.previewing)).toBe(true);
 
     // ---- Motion: arrows step through Auto + the 7 motions; a hand pick overrides the weather. ----
     const MOT = ['Auto (weather)', 'Gentle Float', 'Springy Squash & Stretch', 'Floaty Dreamy Drift', 'Snappy Cartoon', 'Natural Physics', 'Playful Bounce', 'Storm Jitters'];
@@ -97,6 +130,9 @@ test('looks & moves: arrow pickers, weather auto-match, override, flying', async
     await tap(page, 'motion:prev'); // Playful Bounce
     expect(await rect(page, 'motion:auto')).toBeTruthy();
     await page.screenshot({ path: `${SHOTS}/looks-motion-picker.png`, scale: 'css' });
+    L = await looks(page);
+    expect(L.pMotion).toBe('playful'); expect(L.motion).toBe('auto'); expect(JSON.parse(L.saved).motion).toBe('auto');
+    await tap(page, 'looks:apply');
     L = await looks(page);
     expect(L.motion).toBe('playful'); expect(JSON.parse(L.saved).motion).toBe('playful');
 
@@ -119,6 +155,9 @@ test('looks & moves: arrow pickers, weather auto-match, override, flying', async
     S = await shown(page);
     expect(S.motion).toBe('Auto (weather)'); expect(S.auto).toBe('Rain \u2192 Storm Jitters'); expect(S.sound).toBe('Thunderstorm');
     expect(await rect(page, 'motion:auto')).toBeFalsy();
+    L = await looks(page);
+    expect(L.pMotion).toBe('auto'); expect(L.motion).toBe('playful');
+    await tap(page, 'looks:apply');
     L = await looks(page);
     expect(L.motion).toBe('auto'); expect(L.effective).toBe('storm');
     await expect.poll(() => looks(page).then((l) => l.playing), { timeout: 15_000 }).toBe('storm');
