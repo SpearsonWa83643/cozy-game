@@ -36,6 +36,10 @@ export class LearnPanel {
   hintText?: Phaser.GameObjects.Text;
   idle?: Phaser.Time.TimerEvent;
   k = 1;
+  /** Bumped on every show/close so stale timers from an earlier board do nothing. */
+  gen = 0;
+  shows = 0;
+  closes = 0;
 
   constructor(private ui: VillageUI) {
     (window as any).__cozyLearn = () => this.state();
@@ -43,7 +47,7 @@ export class LearnPanel {
 
   state() {
     return {
-      open: this.open, id: this.id, free: this.free, words: this.words, word: this.words[this.wi] ?? '', wordIndex: this.wi, letter: this.li, wrong: this.wrong,
+      open: this.open, ready: this.open && !this.busy, shows: this.shows, closes: this.closes, id: this.id, free: this.free, words: this.words, word: this.words[this.wi] ?? '', wordIndex: this.wi, letter: this.li, wrong: this.wrong,
       tiles: this.tiles.map((t) => ({ letter: t.letter, used: t.used, x: t.c.x, y: t.c.y, hint: t.glow.alpha > 0.05 })),
       ghost: this.slots.map((s) => s.ghost.alpha > 0.05),
       rects: JSON.parse(JSON.stringify(Object.fromEntries(Object.entries(this.ui.rects).filter(([k]) => k.startsWith('learn:'))))),
@@ -58,7 +62,7 @@ export class LearnPanel {
     this.free = !!save.puzzles[id];
     this.words = this.free ? shuffle(BONUS_WORDS).slice(0, 3) : def.words;
     this.wi = this.free ? 0 : Math.min(learn.progress(id), def.words.length - 1);
-    this.open = true;
+    this.open = true; this.gen++; this.shows++;
     this.ui.registry.set('vcard', true);
     sfx.blip();
     this.build(true);
@@ -67,7 +71,7 @@ export class LearnPanel {
   close() {
     if (!this.root) return;
     const r = this.root; this.root = undefined;
-    this.open = false;
+    this.open = false; this.gen++; this.closes++;
     this.idle?.remove(); this.idle = undefined;
     for (const k of Object.keys(this.ui.rects)) if (k.startsWith('learn:')) delete this.ui.rects[k];
     r.each((o: any) => o.disableInteractive?.());
@@ -227,6 +231,7 @@ export class LearnPanel {
       const sl = this.slots[this.li];
       ui.tweens.killTweensOf(t.c);
       t.glow.setAlpha(0);
+      ui.tweens.killTweensOf(sl.ghost);
       sl.ghost.setAlpha(0);
       const sc = Math.min(1, (sl.w - 14 * this.k) / t.c.width);
       ui.tweens.add({ targets: t.c, x: sl.x, y: sl.y + 6 * this.k, scale: sc, angle: 0, duration: 280, ease: 'Back.easeOut' });
@@ -257,6 +262,7 @@ export class LearnPanel {
     if (this.hintText) this.hintText.setText(wrong ? 'Almost! Try the bouncy one.' : 'Try the bouncy one!');
     const sl = this.slots[this.li];
     ui.tweens.killTweensOf(sl.ghost);
+    sl.ghost.setAlpha(0.35);
     ui.tweens.add({ targets: sl.ghost, alpha: { from: 0.2, to: 0.55 }, duration: 700, yoyo: true, repeat: -1 });
     ui.tweens.killTweensOf(t.glow);
     t.glow.setAlpha(0.9);
@@ -292,8 +298,9 @@ export class LearnPanel {
     this.hintText?.setText(['Yay!', 'Super!', 'Hooray!'][this.wi % 3]).setFontSize(Math.max(22, Math.round(36 * this.k))).setColor('#e8604c');
     this.wi++;
     if (!this.free) ui.world.learn.setProgress(this.id, Math.min(this.wi, this.words.length));
+    const gen = this.gen;
     ui.time.delayedCall(1500, () => {
-      if (!this.open) return;
+      if (!this.open || gen !== this.gen) return;
       if (this.wi < this.words.length) { this.build(); return; }
       this.finish();
     });
@@ -310,9 +317,9 @@ export class LearnPanel {
       ui.tweens.add({ targets: big, scale: { from: 0, to: 1 }, angle: { from: -90, to: 0 }, duration: 600, ease: 'Back.easeOut' });
       this.sparkle(ui.w / 2, ui.h / 2, 20);
     }
+    const id = this.id, free = this.free, gen = this.gen;
     ui.time.delayedCall(1800, () => {
-      const id = this.id, free = this.free;
-      this.close();
+      if (gen === this.gen) this.close();
       if (free) ui.game.events.emit('toast', 'Wonderful spelling!');
       else ui.world.learn.solve(id);
     });

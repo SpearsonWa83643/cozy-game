@@ -33,7 +33,7 @@ test('letter easel: spell 3 words with big tiles, gentle hints, chest + ABC Bloc
   const { x, y } = L.spell1;
 
   // 1. Walk up to the meadow easel and tap it (real touch).
-  await tp(page, x, y + 70);
+  await tp(page, x, y + 45);
   await expect.poll(async () => (await cozy(page, 'state')).prompt, { timeout: 30_000 }).toBe('Play');
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${SHOTS}/spell-01-easel.png` });
@@ -68,6 +68,7 @@ test('letter easel: spell 3 words with big tiles, gentle hints, chest + ABC Bloc
   await page.mouse.up();
   await expect.poll(async () => (await lp(page)).letter, { timeout: 20_000 }).toBe(1);
   const spellRest = async (word: string, from: number) => {
+    await expect.poll(async () => (await lp(page)).ready, { timeout: 30_000 }).toBe(true);
     for (let i = from; i < word.length; i++) {
       const s = await lp(page);
       const ti = tileFor(s, word[i]);
@@ -83,6 +84,7 @@ test('letter easel: spell 3 words with big tiles, gentle hints, chest + ABC Bloc
   await page.screenshot({ path: `${SHOTS}/spell-04-yay.png` });
   await expect.poll(async () => (await lp(page)).word, { timeout: 30_000 }).toBe('sun');
   expect((await cozy(page, 'learn()')).spell1.done).toBe(1);
+  await expect.poll(async () => (await lp(page)).ready, { timeout: 30_000 }).toBe(true);
 
   // 4. Closing keeps your place: reopen and carry on with SUN.
   await page.touchscreen.tap(mid((await lp(page)).rects['learn:close']).x, mid((await lp(page)).rects['learn:close']).y);
@@ -120,6 +122,7 @@ test('letter easel: spell 3 words with big tiles, gentle hints, chest + ABC Bloc
   expect((await lp(page)).words).toEqual(['hat', 'bee', 'cup']);
   await page.waitForTimeout(600);
   await page.screenshot({ path: `${SHOTS}/spell-08-seaside.png` });
+  await expect.poll(async () => (await lp(page)).ready, { timeout: 30_000 }).toBe(true);
   await page.touchscreen.tap(mid((await lp(page)).rects['learn:close']).x, mid((await lp(page)).rects['learn:close']).y);
   await expect.poll(async () => (await lp(page)).open, { timeout: 20_000 }).toBe(false);
   await page.waitForTimeout(400);
