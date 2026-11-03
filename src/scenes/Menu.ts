@@ -14,7 +14,8 @@ import type { WorldScene } from './World';
 import { buildWardrobeItems, isNoneItem } from '../wardrobeArt';
 import { LANDMARKS, ensureLandmarkIcons } from '../landmarks';
 import { MOUNTS, isMountUnlocked, isStolen, currentPick, seasonalThemeOf, type MountDef } from '../mount/defs';
-import { THIEVES } from '../thief';
+import { THIEVES, thiefById } from '../thief';
+import { JAIL_ACTS, jailLine, nickOf, speciesOf, shareFruit, type JailAct } from '../jail';
 import { showClue, clueLine } from '../clueCard';
 import { CAPE_AT, CAPE_FRAMES, CAPE_OX, CAPE_OY, capeFrame } from '../mount/cape';
 import { looks, ART_STYLES, MOTION_CHOICES, WEATHER_NAMES, scapeName } from '../looks/looks';
@@ -1276,6 +1277,7 @@ export class MenuScene extends Phaser.Scene {
   renderStable(a: { x: number; y: number; w: number; h: number }) {
     this.stablePets = []; this.rideBtn = null; this.badges = {};
     if (this.stableView === 'looks') { this.renderLooks(a); return; }
+    if (this.stableView === 'jail') { this.renderJail(a); return; }
     const list = MOUNTS;
     // 37 (Walker, Oct 29): seasonal friends are shown like the others (no ??? hiding); riding one brings its season.
     const shown = (m: MountDef) => !isStolen(m.id) && (isMountUnlocked(m) || !!seasonalThemeOf(m.id));
@@ -1297,8 +1299,19 @@ export class MenuScene extends Phaser.Scene {
     this.stableTitle = `Your stable: ${got} / ${list.length} friends` + (caught ? `   ·   Thieves caught: ${caught}` : '');
     // 47-48: the "Looks & Moves" button sits at the right end of the beam; the sign centres in what's left.
     const lw = 214, lh = 46, lx = a.x + a.w - lw - 8, ly = a.y + 2;
-    const sign = this.text((a.x + lx) / 2, a.y + 20, this.stableTitle, 18, '#fff3d6', 900).setOrigin(0.5).setStroke('#4a2a16', 4);
-    if (sign.width > lx - a.x - 20) sign.setScale((lx - a.x - 20) / sign.width);
+    // 54: the Thief Jail button sits beside it (left end of the beam).
+    const jw = 168, jx = a.x + 8;
+    {
+      const [bg, z] = this.btn(jx, ly, jw, lh, () => this.openJail(), 0x6f7fa0, 0x3e4a66, 20);
+      this.rects['jail:open'] = this.lastRect;
+      const ic = this.add.graphics();
+      ic.lineStyle(3, 0xfffaf0, 1); ic.strokeRoundedRect(jx + 12, ly + 11, 24, 24, 5);
+      for (let k = 1; k < 3; k++) ic.lineBetween(jx + 12 + k * 8, ly + 11, jx + 12 + k * 8, ly + 35);
+      this.content.add([bg, z, ic, this.text(jx + jw / 2 + 16, ly + lh / 2, 'Thief Jail', 19, '#fffaf0', 900).setOrigin(0.5)]);
+    }
+    const sl = jx + jw;
+    const sign = this.text((sl + lx) / 2, a.y + 20, this.stableTitle, 18, '#fff3d6', 900).setOrigin(0.5).setStroke('#4a2a16', 4);
+    if (sign.width > lx - sl - 20) sign.setScale((lx - sl - 20) / sign.width);
     this.content.add(sign);
     {
       const [bg, z] = this.btn(lx, ly, lw, lh, () => { sfx.sparkle(); this.stableView = 'looks'; this.render(); }, theme.ui.tabOn, theme.ui.accentDark, 20);
@@ -1376,7 +1389,207 @@ export class MenuScene extends Phaser.Scene {
   }
 
   /** 47-48: which page of the Stable tab is showing. */
-  stableView: 'barn' | 'looks' = 'barn';
+  stableView: 'barn' | 'looks' | 'jail' = 'barn';
+
+  // ------------------------------------------------------------ 54: Thief Jail
+  /** Cells on the Thief Jail page (tests): every thief, caught or not. */
+  jailCells: { id: string; n: number; fed: number; out: boolean; nick: string; species: string; img: Phaser.GameObjects.Image | null; x: number; y: number; w: number; h: number; taps: number }[] = [];
+  /** Last thing a jailed thief did when tapped (tests). */
+  lastJail: { id: string; act: JailAct | 'berry' | 'nofruit'; line: string } | null = null;
+  jailTitle = '';
+  private jailBubble: Phaser.GameObjects.Container | null = null;
+  private jailBerry: Phaser.GameObjects.Container | null = null;
+
+  /** Open the Stable tab straight on the Thief Jail page. */
+  openJail() {
+    if (!this.open || this.tab !== 'stable') this.show('stable');
+    sfx.blip();
+    this.stableView = 'jail';
+    this.render();
+  }
+
+  renderJail(a: { x: number; y: number; w: number; h: number }) {
+    this.jailCells = []; this.jailBubble = null; this.jailBerry = null;
+    const g = this.add.graphics();
+    // Soft stone walls under a wooden beam: cozy, not scary.
+    g.fillStyle(0x1e2230, 0.3); g.fillRoundedRect(a.x + 4, a.y + 8, a.w, a.h, 16);
+    g.fillStyle(0x9aa6bd, 1); g.fillRoundedRect(a.x, a.y, a.w, a.h, 16);
+    g.fillStyle(0xb3bdd0, 1);
+    for (let y = a.y + 46, r = 0; y < a.y + a.h - 10; y += 26, r++) for (let x = a.x + 6 + (r % 2) * 22; x < a.x + a.w - 40; x += 44) g.fillRoundedRect(x, y, 40, 22, 6);
+    g.fillStyle(0x5a4a6a, 1); g.fillRoundedRect(a.x, a.y, a.w, 40, { tl: 16, tr: 16, bl: 0, br: 0 });
+    g.fillStyle(0x76648a, 1); g.fillRect(a.x, a.y + 34, a.w, 6);
+    this.content.add(g);
+    {
+      const bw = 150, bh = 46, x = a.x + 8, y = a.y + 2;
+      const [bg, z] = this.btn(x, y, bw, bh, () => { sfx.blip(); this.stableView = 'barn'; this.render(); }, 0xfbf1dc, 0xd9b98f, 20);
+      this.rects['jail:back'] = this.lastRect;
+      this.content.add([bg, z, this.text(x + bw / 2, y + bh / 2, '\u2039  Stable', 20, INK, 900).setOrigin(0.5)]);
+    }
+    const got = THIEVES.filter((k) => (save.jail?.[k.id]?.n ?? 0) > 0).length;
+    const times = THIEVES.reduce((t, k) => t + (save.jail?.[k.id]?.n ?? 0), 0);
+    this.jailTitle = `Thief Jail: ${got} / ${THIEVES.length} thieves` + (times ? `   ·   Caught ${times} ${times === 1 ? 'time' : 'times'}` : '');
+    const sign = this.text(a.x + a.w / 2 + 40, a.y + 20, this.jailTitle, 19, '#fff3d6', 900).setOrigin(0.5).setStroke('#3a2e4a', 4);
+    if (sign.width > a.w - 360) sign.setScale((a.w - 360) / sign.width);
+    this.content.add(sign);
+    const rows = 2, cols = Math.ceil(THIEVES.length / rows);
+    const top = a.y + 54, gap = 10;
+    const sw = (a.w - 24 - (cols - 1) * gap) / cols, sh = (a.h - (top - a.y) - 12 - (rows - 1) * gap) / rows;
+    THIEVES.forEach((k, i) => {
+      const cell = save.jail?.[k.id];
+      const n = cell?.n ?? 0, on = n > 0, out = !!cell?.out;
+      const col = i % cols, row = Math.floor(i / cols);
+      const x = a.x + 12 + col * (sw + gap), y = top + row * (sh + gap);
+      const cg = this.add.graphics();
+      // Arched cell: warm wall, a bed with a pillow, a round rug and a flower pot.
+      cg.fillStyle(0x5c5470, 1); cg.fillRoundedRect(x - 4, y - 4, sw + 8, sh + 8, { tl: sw / 2, tr: sw / 2, bl: 10, br: 10 });
+      cg.fillStyle(on ? 0xf6e6c8 : 0x4e4860, 1); cg.fillRoundedRect(x, y, sw, sh, { tl: sw / 2 - 4, tr: sw / 2 - 4, bl: 8, br: 8 });
+      const fy = y + sh - 44;
+      if (on) {
+        cg.fillStyle(0xe9cfa4, 1); cg.fillRect(x, fy - sh * 0.16, sw, sh * 0.16 + 4);
+        cg.fillStyle(0x8fb3e0, 1); cg.fillRoundedRect(x + 8, fy - 22, sw * 0.42, 18, 6);
+        cg.fillStyle(0xffffff, 1); cg.fillRoundedRect(x + 10, fy - 28, 18, 10, 5);
+        cg.fillStyle(0xf2a0b4, 0.9); cg.fillEllipse(x + sw / 2, fy - 2, sw * 0.7, 14);
+        cg.fillStyle(0xc0683c, 1); cg.fillRect(x + sw - 22, fy - 16, 12, 12);
+        cg.fillStyle(0xff7fa0, 1); cg.fillCircle(x + sw - 16, fy - 22, 5);
+        cg.fillStyle(0xffd34d, 1); cg.fillCircle(x + sw - 16, fy - 22, 2);
+      }
+      this.content.add(cg);
+      let img: Phaser.GameObjects.Image | null = null;
+      if (on && !out) {
+        const key = `thief_${k.id}`;
+        img = this.add.image(x + sw / 2, fy + 2, atlasOf(key), key).setOrigin(0.5, 0.92);
+        img.setScale(Math.min(sh * 0.56 / img.height, sw * 0.9 / img.width));
+        img.setData('k0', img.scaleX); img.setData('y0', img.y);
+        this.content.add(img);
+        // A slow, happy breathing bob.
+        this.tweens.add({ targets: img, scaleY: img.scaleY * 1.035, duration: 900 + i * 37, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+      } else if (!on) {
+        this.content.add(this.text(x + sw / 2, y + sh * 0.45, '?', 34, '#c9c2db', 900).setOrigin(0.5).setStroke('#2e2a3a', 5));
+      }
+      // Rounded golden bars (in front, thin enough to see through).
+      const bars = this.add.graphics();
+      const by0 = y + Math.min(sh * 0.16, 30), by1 = y + sh - 44, nb = 4;
+      for (let b = 1; b <= nb; b++) {
+        const bx = x + (b / (nb + 1)) * sw;
+        bars.fillStyle(0x8a6a2a, 0.9); bars.fillRoundedRect(bx - 2.5, by0, 5, by1 - by0, 2.5);
+        bars.fillStyle(0xf3d27a, 0.9); bars.fillRoundedRect(bx - 1.5, by0, 2, by1 - by0, 1);
+      }
+      bars.fillStyle(0x8a6a2a, 1); bars.fillRoundedRect(x + 4, by1 - 6, sw - 8, 7, 3);
+      this.content.add(bars);
+      // Name board: name, then species and times caught.
+      const nb2 = this.add.graphics();
+      nb2.fillStyle(on ? 0xf3dfae : 0x8a8098, 1); nb2.fillRoundedRect(x + 5, y + sh - 40, sw - 10, 36, 7);
+      nb2.lineStyle(2, 0x5c5470, 1); nb2.strokeRoundedRect(x + 5, y + sh - 40, sw - 10, 36, 7);
+      this.content.add(nb2);
+      const t1 = this.text(x + sw / 2, y + sh - 30, on ? nickOf(k.id) : '???', 15, on ? '#3a2a16' : '#ece6f5', 900).setOrigin(0.5);
+      const t2 = this.text(x + sw / 2, y + sh - 13, on ? `${speciesOf(k.id)} · caught ${n}x` : 'Not caught yet', 11, on ? '#6a4a2a' : '#ece6f5', 800).setOrigin(0.5);
+      for (const t of [t1, t2]) if (t.width > sw - 16) t.setScale((sw - 16) / t.width);
+      this.content.add([t1, t2]);
+      const entry = { id: k.id, n, fed: cell?.fed ?? 0, out, nick: nickOf(k.id), species: speciesOf(k.id), img, x, y, w: sw, h: sh, taps: 0 };
+      this.jailCells.push(entry);
+      const z = this.add.zone(x, y, sw, sh).setOrigin(0, 0).setInteractive();
+      z.on('pointerup', (p: Phaser.Input.Pointer) => { if (p.getDistance() < 24) this.tapJail(k.id); });
+      this.content.add(z);
+      this.rects[`jail:${k.id}`] = { x, y, w: sw, h: sh };
+    });
+  }
+
+  /** A speech bubble over a cell (one at a time). */
+  private jailSay(c: { x: number; y: number; w: number }, line: string) {
+    this.jailBubble?.destroy();
+    const t = this.text(0, 0, line, 17, '#2a1d14', 900).setOrigin(0.5);
+    t.setWordWrapWidth(Math.max(150, c.w * 1.5));
+    const w = t.width + 26, h = t.height + 16;
+    const cx = Phaser.Math.Clamp(c.x + c.w / 2, this.box.x + w / 2 + 30, this.box.x + this.box.w - w / 2 - 30), cy = c.y + 12;
+    const g = this.add.graphics();
+    g.fillStyle(0x2a1a0e, 0.25); g.fillRoundedRect(-w / 2 + 2, -h / 2 + 4, w, h, 14);
+    g.fillStyle(0xffffff, 1); g.fillRoundedRect(-w / 2, -h / 2, w, h, 14);
+    g.lineStyle(3, 0x5c5470, 1); g.strokeRoundedRect(-w / 2, -h / 2, w, h, 14);
+    const tx = Phaser.Math.Clamp(c.x + c.w / 2 - cx, -w / 2 + 16, w / 2 - 16);
+    g.fillStyle(0xffffff, 1); g.fillTriangle(tx - 9, h / 2 - 2, tx + 9, h / 2 - 2, tx, h / 2 + 12);
+    g.lineStyle(3, 0x5c5470, 1); g.lineBetween(tx - 9, h / 2, tx, h / 2 + 12); g.lineBetween(tx + 9, h / 2, tx, h / 2 + 12);
+    const b = this.add.container(cx, cy, [g, t]).setScale(0.6).setAlpha(0);
+    this.content.add(b);
+    this.tweens.add({ targets: b, scale: 1, alpha: 1, duration: 200, ease: 'Back.easeOut' });
+    this.tweens.add({ targets: b, alpha: 0, delay: 4200, duration: 500, onComplete: () => b.destroy() });
+    this.jailBubble = b;
+  }
+
+  /** Tap a jailed thief: it talks, waves, says sorry or sulks (in turn); a berry button pops up. */
+  tapJail(id: string) {
+    const c = this.jailCells.find((q) => q.id === id), k = thiefById(id);
+    if (!c || !k) return null;
+    if (!c.n) { sfx.tock(); this.hint('No thief here yet. Catch one with the mask button!'); this.lastJail = null; return null; }
+    if (c.out || !c.img) { sfx.tock(); return null; }
+    const act = JAIL_ACTS[c.taps % JAIL_ACTS.length];
+    const line = jailLine(k, act, Math.floor(c.taps / JAIL_ACTS.length));
+    c.taps++;
+    const im = c.img, k0 = im.getData('k0') as number, y0 = im.getData('y0') as number;
+    this.tweens.killTweensOf(im);
+    im.setScale(k0).setPosition(im.x, y0).setRotation(0).setFlipX(false);
+    if (act === 'cheeky') {
+      sfx.giggle(k.voice ?? 700);
+      this.tweens.add({ targets: im, rotation: { from: -0.14, to: 0.14 }, duration: 110, yoyo: true, repeat: 2, onComplete: () => { im.rotation = 0; } });
+    } else if (act === 'wave') {
+      sfx.blip();
+      this.tweens.add({ targets: im, y: y0 - 18, duration: 170, yoyo: true, repeat: 1, ease: 'Quad.easeOut' });
+      this.tweens.add({ targets: im, scaleX: -k0, duration: 160, yoyo: true, repeat: 1 });
+    } else if (act === 'sorry') {
+      sfx.sparkle();
+      this.tweens.add({ targets: im, rotation: 0.28, scaleY: k0 * 0.92, duration: 380, yoyo: true, hold: 300, ease: 'Sine.easeInOut' });
+      this.hearts(c.x + c.w / 2, c.y + c.h * 0.4, 4);
+    } else {
+      sfx.tock();
+      im.setFlipX(true);
+      this.tweens.add({ targets: im, scaleY: k0 * 0.86, y: y0 + 3, duration: 260, yoyo: true, hold: 900, ease: 'Sine.easeInOut', onComplete: () => im.setFlipX(false) });
+    }
+    this.jailSay(c, line);
+    this.hint(`${c.nick} the ${c.species}. Tap again, or share a berry!`);
+    this.lastJail = { id, act, line };
+    this.showBerry(c);
+    return this.lastJail;
+  }
+
+  /** A "Share a berry" button on the thief you just tapped. */
+  private showBerry(c: { id: string; x: number; y: number; w: number; h: number }) {
+    this.jailBerry?.destroy(); this.jailBerry = null;
+    for (const k of Object.keys(this.rects)) if (k.startsWith('jailberry:')) delete this.rects[k];
+    const bw = Math.min(c.w - 8, 132), bh = 44;
+    const x = c.x + (c.w - bw) / 2, y = c.y + Math.min(c.h * 0.2, 56);
+    const ct = this.add.container(0, 0);
+    const [bg, z] = this.btn(x, y, bw, bh, () => this.giveBerry(c.id), 0xd94a6a, 0x8a2440, 22);
+    const g = this.add.graphics();
+    g.fillStyle(0xfffaf0, 1); g.fillCircle(x + 20, y + bh / 2 + 2, 8); g.fillStyle(0x9be07a, 1); g.fillEllipse(x + 20, y + bh / 2 - 7, 10, 5);
+    ct.add([bg, z, g, this.text(x + bw / 2 + 12, y + bh / 2, 'Berry!', 19, '#ffffff', 900).setOrigin(0.5)]);
+    this.content.add(ct);
+    this.jailBerry = ct;
+    this.rects[`jailberry:${c.id}`] = { x, y, w: bw, h: bh };
+  }
+
+  giveBerry(id: string) {
+    const c = this.jailCells.find((q) => q.id === id), k = thiefById(id);
+    if (!c || !k || !c.img) return null;
+    const f = shareFruit(id);
+    if (!f) {
+      sfx.tock();
+      const line = 'Your basket is empty. Pick berries from a berry bush!';
+      this.jailSay(c, 'No berries? Okay!');
+      this.hint(line);
+      this.lastJail = { id, act: 'nofruit', line };
+      return this.lastJail;
+    }
+    c.fed++;
+    sfx.mountHappy('bumblebee');
+    const im = c.img, y0 = im.getData('y0') as number;
+    this.tweens.add({ targets: im, y: y0 - 12, duration: 120, yoyo: true, repeat: 2 });
+    this.hearts(c.x + c.w / 2, c.y + c.h * 0.4, 7);
+    const line = f === 'berry' ? 'Yum! Thank you for the berry!' : 'Yum! Thank you for the apple!';
+    this.jailSay(c, line);
+    this.hint(`You shared ${f === 'berry' ? 'a berry' : 'an apple'} with ${c.nick}. So kind!`);
+    this.game.events.emit('snacks', save.snacks);
+    this.lastJail = { id, act: 'berry', line };
+    return this.lastJail;
+  }
   /** The animated friends on the Looks & Moves page ('art' and 'motion' cards). */
   lookPets: { kind: 'art' | 'motion'; m: MountDef; c: Phaser.GameObjects.Container; body: Phaser.GameObjects.Image; wing: Phaser.GameObjects.Image; wingFar: Phaser.GameObjects.Image; k: number; x0: number; y0: number; art: ArtStyleId; capeKey: string; flap: number; lastWing: number }[] = [];
   /** What the Looks & Moves cards say (tests). */

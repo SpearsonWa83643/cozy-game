@@ -6,7 +6,7 @@
 // slow target, and the friend is never lost for good.
 import Phaser from 'phaser';
 import { Ctx, canvasTex, atlasOf, frameScale } from './art';
-import { save, persist, addFruit, type Stolen } from './save';
+import { save, persist, addFruit, jailAdd, type Stolen } from './save';
 import { MOUNTS, isMountUnlocked, themeDefaultMount, mountById, type MountDef } from './mount/defs';
 import { sfx } from './audio';
 import type { WorldScene } from './scenes/World';
@@ -352,7 +352,7 @@ export class Thief {
     this.hop?.stop(); this.hop = null;
     this.caughtN++;
     save.minor.thief_caught = (save.minor.thief_caught ?? 0) + 1;
-    persist();
+    jailAdd(this.kind.id); // 54: off to its cozy cell in the Thief Jail (persists)
     sfx.solve();
     const cage = w.add.image(s.x, s.y - 300, atlasOf('thief_cage'), 'thief_cage').setOrigin(0.5, 1).setScale(2.3 / (frameScale.thief_cage ?? 1)).setDepth(s.depth + 2);
     w.tweens.add({ targets: cage, y: s.y + 10, duration: reduceMotion() ? 1 : 420, ease: 'Bounce.easeOut', onComplete: () => { w.cameras.main.shake(140, 0.002); w.burst(s.x, s.y - 40, 0xffd27a, 26, 'spark'); } });
@@ -362,7 +362,7 @@ export class Thief {
     for (let i = 0; i < 2; i++) if (addFruit('berry')) got++;
     if (got) { w.game.events.emit('snacks', save.snacks); w.burst(s.x + 40, s.y - 20, 0xd94a6a, 10, 'spark'); }
     this.thanks = got;
-    w.game.events.emit('toast', got ? `You caught the sneaky ${this.kind.name}! It says sorry and leaves you ${got === 1 ? 'a berry' : `${got} berries`}.` : `You caught the sneaky ${this.kind.name}! It says sorry and gives back the sack.`);
+    w.game.events.emit('toast', (got ? `You caught the sneaky ${this.kind.name}! It says sorry and leaves you ${got === 1 ? 'a berry' : `${got} berries`}.` : `You caught the sneaky ${this.kind.name}! It says sorry and gives back the sack.`) + ' Off to the Thief Jail!');
     w.game.events.emit('thief', 'caught');
     // Driven from update() (not a timer chain) so it always finishes, even on a slow frame rate.
     this.cage = cage; this.caughtAt = performance.now(); this.fading = false;

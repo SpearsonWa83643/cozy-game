@@ -35,6 +35,8 @@ export type SaveData = {
   /** 40: friends the Mount Thief hid behind puzzles (solve it and open the cell to rescue).
    *  51-53: a list (the thief can take 2 or 3); old single-friend saves are migrated on load. */
   stolen?: Stolen[];
+  /** 54: the Thief Jail, by thief kind: times caught, berries shared, and (55) whether it sneaked out. */
+  jail?: Record<string, JailCell>;
   /** One-time tips already shown. */
   tips: string[];
   /** Wilderness: trips taken, monsters poofed, rare finds banked at home. */
@@ -61,6 +63,36 @@ function fresh(): SaveData {
 /** True when this session began with no save at all (a brand-new player). */
 export let freshSave = false;
 
+/** 54: one thief's cozy cell in the jail. */
+export type JailCell = { n: number; fed?: number; out?: boolean };
+/** 54: the first six thieves (seed for old saves that only kept a caught count). */
+const JAIL_SEED = ['raccoon', 'fox', 'bunny', 'mouse', 'cat', 'pig'];
+/** 54: clean a stored jail; old saves without one are seeded from minor.thief_caught (spread over the classic six). */
+export function normJail(v: unknown, caught: unknown): Record<string, JailCell> | undefined {
+  if (v && typeof v === 'object' && !Array.isArray(v)) {
+    const out: Record<string, JailCell> = {};
+    for (const [id, c] of Object.entries(v as Record<string, any>)) {
+      const n = Math.max(0, Math.floor(Number(c?.n) || 0));
+      if (!n) continue;
+      out[id] = { n, ...(Number(c?.fed) > 0 ? { fed: Math.floor(Number(c.fed)) } : {}), ...(c?.out ? { out: true } : {}) };
+    }
+    return Object.keys(out).length ? out : undefined;
+  }
+  const k = Math.max(0, Math.floor(Number(caught) || 0));
+  if (!k) return undefined;
+  const out: Record<string, JailCell> = {};
+  for (let i = 0; i < k; i++) { const id = JAIL_SEED[i % JAIL_SEED.length]; (out[id] ??= { n: 0 }).n++; }
+  return out;
+}
+/** 54: a caught thief goes to (or back to) its jail cell. */
+export function jailAdd(id: string) {
+  save.jail ??= {};
+  const c = (save.jail[id] ??= { n: 0 });
+  c.n++; delete c.out;
+  persist();
+  return c;
+}
+
 export type Stolen = { mount: string; puzzle: string; kind: string };
 /** 53: old saves stored one stolen friend as an object; newer ones a list. Empty lists are dropped. */
 export function normStolen(v: unknown): Stolen[] | undefined {
@@ -82,7 +114,7 @@ export const save: SaveData = (() => {
         const v = { ...f.village, ...(d.village ?? {}) };
         v.res = { ...f.village.res, ...(v.res ?? {}) };
         const snacks = Math.max(0, Math.min(9, Number(d.snacks) || 0));
-        return { ...f, ...d, v: 2, snacks, berries: Math.max(0, Math.min(snacks, Number(d.berries) || 0)), tips: Array.isArray(d.tips) ? d.tips : [], wild: { ...f.wild, ...(d.wild ?? {}), loot: { ...(d.wild?.loot ?? {}) } }, theme: normTheme(d.theme), village: v, look: { ...DEFAULT_LOOK, ...(d.look ?? {}) }, stolen: normStolen(d.stolen) };
+        return { ...f, ...d, v: 2, snacks, berries: Math.max(0, Math.min(snacks, Number(d.berries) || 0)), tips: Array.isArray(d.tips) ? d.tips : [], wild: { ...f.wild, ...(d.wild ?? {}), loot: { ...(d.wild?.loot ?? {}) } }, theme: normTheme(d.theme), village: v, look: { ...DEFAULT_LOOK, ...(d.look ?? {}) }, stolen: normStolen(d.stolen), jail: normJail(d.jail, d.minor?.thief_caught) };
       }
     }
   } catch { /* storage unavailable or corrupt */ }
