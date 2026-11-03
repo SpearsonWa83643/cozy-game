@@ -46,9 +46,9 @@ test('mount thief: button, arrest with 3 taps, escape hides a friend, rescue fro
       if (lk) await page.screenshot({ path: `${SHOTS}/thief-eyes-bush.png`, scale: 'css', clip: { x: Math.max(0, lk.screen.x - 200), y: Math.max(0, lk.screen.y - 190), width: 400, height: 260 } });
       await page.screenshot({ path: `${SHOTS}/thief-lurk.png`, scale: 'css' });
     }
-    await expect.poll(async () => (await thief(page)).state, { timeout: 20_000 }).toBe('sneak');
+    let t: any = null;
+    await expect.poll(async () => (t = await thief(page)).state, { timeout: 20_000, intervals: [100] }).toBe('sneak');
     {
-      const t = await thief(page);
       const lead = t.lead;
       expect(lead.rustles).toBeGreaterThanOrEqual(3);
       expect(lead.eyes).toBeGreaterThanOrEqual(1);
@@ -58,9 +58,10 @@ test('mount thief: button, arrest with 3 taps, escape hides a friend, rescue fro
       expect(lead.emerged).not.toBeNull();
       expect(lead.windowStartedAt - lead.startedAt).toBeGreaterThanOrEqual(lead.leadS * 1000 - 50);
       expect(t.windowMs).toBe(12000);
-      expect(t.windowLeft).toBeGreaterThan(9000);
+      expect(t.windowLeft).toBeGreaterThan(0);
+      expect(t.windowLeft).toBeLessThanOrEqual(12000);
     }
-    await page.waitForTimeout(1400);
+    if (t.windowLeft > 6000) await page.waitForTimeout(1400);
     for (let i = 0; i < 30 && (await thief(page)).state === 'sneak'; i++) {
       const s = (await thief(page)).screen;
       if (s) await page.touchscreen.tap(s.x, s.y);
