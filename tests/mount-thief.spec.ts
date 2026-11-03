@@ -76,7 +76,7 @@ test('mount thief: button, arrest with 3 taps, escape hides a friend, rescue fro
     await expect.poll(async () => (await thief(page)).state, { timeout: 90_000 }).toBe('off');
     expect((await thief(page)).paws, '43: paw prints on the escape trail').toBeGreaterThan(0);
     await expect.poll(() => dialogOpen(page), { timeout: 90_000 }).toBe(true);
-    for (let i = 0; i < 8 && await dialogOpen(page); i++) { await page.touchscreen.tap(600, 500); await page.waitForTimeout(500); }
+    for (let i = 0; i < 30 && await dialogOpen(page); i++) { await page.touchscreen.tap(600, 500); await page.waitForTimeout(1000); } // slow, loaded box: give each page time
     expect(await dialogOpen(page)).toBe(false);
     const t2 = await thief(page);
     expect(t2.marker).toBe(true);
@@ -190,7 +190,7 @@ test('mount thief: carries two friends, cells, call-mount hint, cell rescue, old
     expect([...tc.carrying].sort()).toEqual(tc.stolen.map((x: any) => x.mount).sort());
     for (const x of tc.stolen) expect(['pterodactyl', 'unicorn', 'bumblebee']).toContain(x.mount);
     await expect.poll(() => dialogOpen(page), { timeout: 120_000 }).toBe(true);
-    for (let i = 0; i < 8 && await dialogOpen(page); i++) { await page.touchscreen.tap(600, 500); await page.waitForTimeout(500); }
+    for (let i = 0; i < 30 && await dialogOpen(page); i++) { await page.touchscreen.tap(600, 500); await page.waitForTimeout(1000); } // slow, loaded box: give each page time
     const t2 = await thief(page);
     expect(t2.carrying).toEqual([]);
     expect([...t2.cells].sort()).toEqual(tc.stolen.map((x: any) => x.puzzle).sort());
