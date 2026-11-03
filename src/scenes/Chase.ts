@@ -148,7 +148,7 @@ function paintAll(scene: Phaser.Scene) {
   paint(scene, 'ch_streak', 10, 140, (c) => { const gr = c.createLinearGradient(0, 0, 0, 140); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.5, 'rgba(255,255,255,.9)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = gr; c.fillRect(2, 0, 6, 140); });
   paint(scene, 'ch_spark', 32, 32, (c) => { c.fillStyle = '#fff'; c.beginPath(); c.moveTo(16, 0); c.quadraticCurveTo(18, 14, 32, 16); c.quadraticCurveTo(18, 18, 16, 32); c.quadraticCurveTo(14, 18, 0, 16); c.quadraticCurveTo(14, 14, 16, 0); c.fill(); });
   paint(scene, 'ch_heart', 48, 44, (c) => { c.fillStyle = '#ff6f91'; c.strokeStyle = '#b83a5c'; c.lineWidth = 3; c.beginPath(); c.moveTo(24, 40); c.bezierCurveTo(4, 28, 2, 14, 10, 7); c.bezierCurveTo(16, 2, 22, 6, 24, 11); c.bezierCurveTo(26, 6, 32, 2, 38, 7); c.bezierCurveTo(46, 14, 44, 28, 24, 40); c.closePath(); c.fill(); c.stroke(); });
-  paint(scene, 'ch_shadow', 120, 40, (c) => { const gr = c.createRadialGradient(60, 20, 2, 60, 20, 58); gr.addColorStop(0, 'rgba(0,30,0,.35)'); gr.addColorStop(1, 'rgba(0,30,0,0)'); c.fillStyle = gr; c.fillRect(0, 0, 120, 40); });
+  paint(scene, 'ch_shadow', 120, 40, (c) => { c.translate(60, 20); c.scale(1, 1 / 3); const gr = c.createRadialGradient(0, 0, 2, 0, 0, 58); gr.addColorStop(0, 'rgba(0,30,0,.32)'); gr.addColorStop(0.6, 'rgba(0,30,0,.16)'); gr.addColorStop(1, 'rgba(0,30,0,0)'); c.fillStyle = gr; c.beginPath(); c.arc(0, 0, 58, 0, Math.PI * 2); c.fill(); });
   return gk;
 }
 
@@ -656,8 +656,9 @@ export class ChaseScene extends Phaser.Scene {
     if (got) this.game.events.emit('snacks', save.snacks);
     this.consolation = got;
     this.time.delayedCall(rm ? 200 : 1000, () => {
-      const lines = quit ? [`The ${this.d.kindName} hid your friends.`, `You can find them by the puzzles!`]
-        : [`The ${this.d.kindName} hid your friends.`, `You can find them by the puzzles!`, got ? `Here ${got === 1 ? 'is a berry' : `are ${got} berries`} for trying so hard!` : `You tried so hard!`];
+      const one = this.d.taken.length === 1;
+      const hid = [`The ${this.d.kindName} hid your ${one ? 'friend' : 'friends'}.`, `You can find ${one ? 'it' : 'them'} by the ${one ? 'puzzle' : 'puzzles'}!`];
+      const lines = quit ? hid : [...hid, got ? `Here ${got === 1 ? 'is a berry' : `are ${got} berries`} for trying so hard!` : `You tried so hard!`];
       this.card(quit ? 'Okay!' : 'So close!', lines, [{ id: 'ok', label: 'OK!', primary: true, cb: () => this.finish(quit ? 'quit' : 'escaped') }]);
       void U;
     });
