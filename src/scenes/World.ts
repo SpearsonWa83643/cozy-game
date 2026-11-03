@@ -1385,6 +1385,7 @@ export class WorldScene extends Phaser.Scene {
   // ------------------------------------------------------------ test hooks
   exposeDebug() {
     const self = this;
+    (window as any).__sfx = sfx; // 58 (tests): spy on sounds
     (window as any).__cozy = {
       ready: true,
       get state() {
