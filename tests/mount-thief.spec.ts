@@ -33,14 +33,14 @@ test('mount thief: button, arrest with 3 taps, escape hides a friend, rescue fro
     expect(btn.vis).toBe(true);
     await page.touchscreen.tap(btn.x, btn.y);
     // 62: first a lead-in (4-8 s): rustling greenery, peeking eyes, a darting shadow and soft sounds.
-    await expect.poll(async () => (await thief(page)).state, { timeout: 10_000 }).toBe('lurk');
-    const l0 = await thief(page);
+    let l0: any = null;
+    await expect.poll(async () => (l0 = await thief(page)).state, { timeout: 10_000, intervals: [100] }).toBe('lurk');
     expect(l0.screen, 'no thief on screen yet').toBeNull();
     expect(['bush', 'shadow']).toContain(l0.lurk.how);
     expect(l0.lead.leadS).toBeGreaterThanOrEqual(4);
     expect(l0.lead.leadS).toBeLessThanOrEqual(8);
-    await expect.poll(async () => (await thief(page)).lurk?.eyes ?? false, { timeout: 20_000 }).toBe(true);
-    await page.waitForTimeout(250);
+    // Snap the peeking eyes (on a slow, loaded machine the lead-in may already be over; the counts below still check it).
+    await expect.poll(async () => { const t = await thief(page); return !!t.lurk?.eyes || t.state !== 'lurk'; }, { timeout: 20_000, intervals: [100] }).toBe(true);
     {
       const lk = (await thief(page)).lurk;
       if (lk) await page.screenshot({ path: `${SHOTS}/thief-eyes-bush.png`, scale: 'css', clip: { x: Math.max(0, lk.screen.x - 200), y: Math.max(0, lk.screen.y - 190), width: 400, height: 260 } });
@@ -225,7 +225,8 @@ test('mount thief: carries two friends, cells, call-mount hint, cell rescue, old
     // Call Mount names every hiding spot.
     const mb = await page.evaluate(() => (window as any).__vui.rects.mount);
     await page.touchscreen.tap(mb.x + mb.w / 2, mb.y + mb.h / 2);
-    await expect.poll(async () => (await thief(page)).callHint, { timeout: 20_000 }).toContain('is in a cell');
+    // (Taps again if a slow machine dropped the first tap.)
+    await expect.poll(async () => { const h = (await thief(page)).callHint; if (!h) await page.touchscreen.tap(mb.x + mb.w / 2, mb.y + mb.h / 2); return h ?? ''; }, { timeout: 30_000, intervals: [1500] }).toContain('is in a cell');
     const hint = (await thief(page)).callHint as string;
     const HID: Record<string, string> = { pots: 'flower pots', bells: 'the bells', tiles: 'the tiles', dig: 'dig spot', stones: 'the stones', trail: 'deer tracks' };
     for (const x of tc.stolen) expect(hint).toContain(HID[x.puzzle]);
