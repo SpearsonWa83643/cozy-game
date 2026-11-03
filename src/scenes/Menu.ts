@@ -84,6 +84,7 @@ export class MenuScene extends Phaser.Scene {
   show(tab: Tab) {
     this.tab = tab;
     this.stableView = 'barn';
+    this.gearOpen = false;
     this.open = true;
     this.registry.set('menuOpen', true);
     this.world.path = [];
@@ -319,7 +320,7 @@ export class MenuScene extends Phaser.Scene {
     this.playerDot = this.add.graphics();
     this.content.add(this.playerDot);
     // Legend on a paper tag pinned to the corner.
-    const lx = mx + 16, ly = my + mh - 46;
+    const lx = Math.max(mx + 16, a.x + 96), ly = my + mh - 46;
     const tag = this.add.graphics();
     tag.fillStyle(0x2a1a0e, 0.25); tag.fillRoundedRect(lx + 3, ly + 4, 236, 36, 8);
     tag.fillStyle(0xfff6e0, 1); tag.fillRoundedRect(lx, ly, 236, 36, 8);
@@ -329,6 +330,46 @@ export class MenuScene extends Phaser.Scene {
     this.content.add([tag, this.text(lx + 30, ly + 18, 'Puzzle', 14, '#6b4a33', 800).setOrigin(0, 0.5), this.text(lx + 128, ly + 18, 'Solved!', 14, '#6b4a33', 800).setOrigin(0, 0.5)]);
     // Unfold: the paper settles onto the table.
     for (const o of [paper, img, frame]) { o.setAlpha(0); this.tweens.add({ targets: o, alpha: 1, duration: 260, ease: 'Quad.easeOut' }); }
+    this.renderGear(a);
+  }
+
+  /** 73 (Walker, Nov 3): a settings gear in the map's bottom-left corner; it opens a little panel with Looks & Moves. */
+  gearOpen = false;
+  private renderGear(a: { x: number; y: number; w: number; h: number }) {
+    const R = 30, cx = a.x + R + 10, cy = a.y + a.h - R - 10;
+    const g = this.add.graphics();
+    g.fillStyle(0x2a1a0e, 0.3); g.fillCircle(cx + 2, cy + 4, R);
+    g.fillStyle(this.gearOpen ? theme.ui.tabOn : 0xfbf1dc, 1); g.fillCircle(cx, cy, R);
+    g.lineStyle(3, this.gearOpen ? theme.ui.accentDark : 0xb59b7c, 1); g.strokeCircle(cx, cy, R - 1.5);
+    // The gear: eight teeth around a ring with a hole.
+    const ink = this.gearOpen ? 0xfffaf0 : 0x6b4a33;
+    g.fillStyle(ink, 1);
+    for (let k = 0; k < 8; k++) {
+      const t = (k / 8) * Math.PI * 2, c = Math.cos(t), sn = Math.sin(t), w = 5.5, r0 = 11, r1 = 19;
+      const p0x = cx + c * r0 - sn * w, p0y = cy + sn * r0 + c * w, p1x = cx + c * r1 - sn * (w - 1), p1y = cy + sn * r1 + c * (w - 1);
+      const p2x = cx + c * r1 + sn * (w - 1), p2y = cy + sn * r1 - c * (w - 1), p3x = cx + c * r0 + sn * w, p3y = cy + sn * r0 - c * w;
+      g.fillTriangle(p0x, p0y, p1x, p1y, p2x, p2y); g.fillTriangle(p0x, p0y, p2x, p2y, p3x, p3y);
+    }
+    g.fillCircle(cx, cy, 14);
+    g.fillStyle(this.gearOpen ? theme.ui.tabOn : 0xfbf1dc, 1); g.fillCircle(cx, cy, 6);
+    this.content.add(g);
+    const z = this.add.zone(cx, cy, R * 2 + 12, R * 2 + 12).setInteractive();
+    z.on('pointerup', (p: Phaser.Input.Pointer) => { if (p.getDistance() >= 24) return; sfx.blip(); this.gearOpen = !this.gearOpen; this.render(); });
+    this.content.add(z);
+    this.rects['gear:open'] = { x: cx - R - 6, y: cy - R - 6, w: R * 2 + 12, h: R * 2 + 12 };
+    if (!this.gearOpen) return;
+    // The little settings panel pops up above the gear.
+    const pw = 260, ph = 96, px = a.x + 10, py = cy - R - 14 - ph;
+    const pg = this.add.graphics();
+    pg.fillStyle(0x2a1a0e, 0.3); pg.fillRoundedRect(px + 3, py + 6, pw, ph, 18);
+    pg.fillStyle(0xfff6e0, 1); pg.fillRoundedRect(px, py, pw, ph, 18);
+    pg.lineStyle(3, 0xd9b98f, 1); pg.strokeRoundedRect(px + 1.5, py + 1.5, pw - 3, ph - 3, 17);
+    pg.fillStyle(0xfff6e0, 1); pg.fillTriangle(cx - 12, py + ph - 1, cx + 12, py + ph - 1, cx, py + ph + 12);
+    this.content.add([pg, this.text(px + pw / 2, py + 16, 'Settings', 15, '#8a5434', 900).setOrigin(0.5)]);
+    const bw = pw - 24, bh = 52, bx = px + 12, by = py + 32;
+    const [bg, bz] = this.btn(bx, by, bw, bh, () => { sfx.sparkle(); this.gearOpen = false; this.tab = 'stable'; this.stableView = 'looks'; this.render(); }, theme.ui.tabOn, theme.ui.accentDark, 20);
+    this.rects['looks:open'] = this.lastRect;
+    this.content.add([bg, bz, this.text(bx + 28, by + bh / 2, '\u2728', 22, '#fffaf0', 900).setOrigin(0.5), this.text(bx + bw / 2 + 14, by + bh / 2, 'Looks & Moves', 20, '#fffaf0', 900).setOrigin(0.5)]);
   }
 
   mapPins: Record<string, Phaser.GameObjects.Container> = {};
@@ -1250,8 +1291,8 @@ export class MenuScene extends Phaser.Scene {
     // 42: once you've caught a sneaky thief, the sign shows your tally.
     const caught = save.minor.thief_caught ?? 0;
     this.stableTitle = `Your stable: ${got} / ${list.length} friends` + (caught ? `   ·   Thieves caught: ${caught}` : '');
-    // 47-48: the "Looks & Moves" button sits at the right end of the beam; the sign centres in what's left.
-    const lw = 214, lh = 46, lx = a.x + a.w - lw - 8, ly = a.y + 2;
+    // 73: Looks & Moves moved behind the settings gear on the Map; the sign centres right of the jail button.
+    const lh = 46, lx = a.x + a.w - 8, ly = a.y + 2;
     // 54: the Thief Jail button sits beside it (left end of the beam).
     const jw = 168, jx = a.x + 8;
     {
@@ -1266,13 +1307,6 @@ export class MenuScene extends Phaser.Scene {
     const sign = this.text((sl + lx) / 2, a.y + 20, this.stableTitle, 18, '#fff3d6', 900).setOrigin(0.5).setStroke('#4a2a16', 4);
     if (sign.width > lx - sl - 20) sign.setScale((lx - sl - 20) / sign.width);
     this.content.add(sign);
-    {
-      const [bg, z] = this.btn(lx, ly, lw, lh, () => { sfx.sparkle(); this.stableView = 'looks'; this.render(); }, theme.ui.tabOn, theme.ui.accentDark, 20);
-      this.rects['looks:open'] = this.lastRect;
-      const t = this.text(lx + lw / 2 + 14, ly + lh / 2, 'Looks & Moves', 19, '#fffaf0', 900).setOrigin(0.5);
-      const ic = this.text(lx + 24, ly + lh / 2, '\u2728', 22, '#fffaf0', 900).setOrigin(0.5);
-      this.content.add([bg, z, t, ic]);
-    }
     const top = a.y + 56, gap = 10;
     const sw = (a.w - 24 - (cols - 1) * gap) / cols, sh = (a.h - (top - a.y) - 12 - (rows - 1) * gap) / rows;
     list.forEach((m, i) => {
@@ -1656,9 +1690,9 @@ export class MenuScene extends Phaser.Scene {
     // Back to the barn.
     {
       const bw = 150, bh = 46, x = a.x + 8, y = a.y + 2;
-      const [bg, z] = this.btn(x, y, bw, bh, () => { sfx.blip(); this.stableView = 'barn'; this.render(); }, 0xfbf1dc, 0xd9b98f, 20);
+      const [bg, z] = this.btn(x, y, bw, bh, () => { sfx.blip(); this.stableView = 'barn'; this.tab = 'map'; this.gearOpen = false; this.render(); }, 0xfbf1dc, 0xd9b98f, 20);
       this.rects['looks:back'] = this.lastRect;
-      this.content.add([bg, z, this.text(x + bw / 2, y + bh / 2, '\u2039  Stable', 20, INK, 900).setOrigin(0.5)]);
+      this.content.add([bg, z, this.text(x + bw / 2, y + bh / 2, '\u2039  Map', 20, INK, 900).setOrigin(0.5)]);
     }
     this.content.add(this.text(a.x + a.w / 2, a.y + 20, 'Looks & Moves', 20, '#fff3d6', 900).setOrigin(0.5).setStroke('#4a2a16', 4));
     const pick = MOUNTS.find((m) => m.id === currentPick()) ?? MOUNTS[0];
