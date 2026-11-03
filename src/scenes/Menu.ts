@@ -1458,7 +1458,7 @@ export class MenuScene extends Phaser.Scene {
       if (on && !out) {
         const key = `thief_${k.id}`;
         img = this.add.image(x + sw / 2, fy + 2, atlasOf(key), key).setOrigin(0.5, 0.92);
-        img.setScale(Math.min(sh * 0.5 / img.height, sw * 0.86 / img.width));
+        img.setScale(Math.min(sh * 0.56 / img.height, sw * 0.9 / img.width));
         img.setData('k0', img.scaleX); img.setData('y0', img.y);
         this.content.add(img);
         // A slow, happy breathing bob.
@@ -1555,7 +1555,7 @@ export class MenuScene extends Phaser.Scene {
     this.jailBerry?.destroy(); this.jailBerry = null;
     for (const k of Object.keys(this.rects)) if (k.startsWith('jailberry:')) delete this.rects[k];
     const bw = Math.min(c.w - 8, 132), bh = 44;
-    const x = c.x + (c.w - bw) / 2, y = c.y + c.h - 44 - bh - 6;
+    const x = c.x + (c.w - bw) / 2, y = c.y + Math.min(c.h * 0.2, 56);
     const ct = this.add.container(0, 0);
     const [bg, z] = this.btn(x, y, bw, bh, () => this.giveBerry(c.id), 0xd94a6a, 0x8a2440, 22);
     const g = this.add.graphics();
