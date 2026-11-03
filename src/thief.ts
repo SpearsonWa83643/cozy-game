@@ -82,18 +82,19 @@ function paintThief(c: Ctx, k: Kind) {
   c.fillStyle = k.legs ?? k.dark;
   if (k.beak) for (const x of [24, 36]) { c.beginPath(); c.roundRect(x - 2, 42, 4, 8, 2); c.fill(); c.beginPath(); c.ellipse(x + 2, 50.5, 5, 2.4, 0, 0, Math.PI * 2); c.fill(); }
   else for (const x of [18, 25, 34, 41]) { c.beginPath(); c.roundRect(x - 2.6, 42, 5.2, 9, 2.4); c.fill(); }
-  // 56: hedgehog spines (soft, rounded points) peeking above the shirt.
-  if (k.spines) {
-    c.fillStyle = k.spines; c.beginPath(); c.moveTo(12, 38);
-    for (let i = 0; i <= 8; i++) { const a = Math.PI + i * Math.PI / 8; const r = i % 2 ? 15 : 20; c.lineTo(30 + Math.cos(a) * r * 1.05, 34 + Math.sin(a) * r * 0.85); }
-    c.closePath(); c.fill(); c.stroke();
-  }
   // Body with a striped robber shirt.
   c.save(); c.beginPath(); c.ellipse(30, 36, 16, 11, 0, 0, Math.PI * 2); c.clip();
   c.fillStyle = '#f7f3ea'; c.fillRect(10, 22, 40, 30);
   c.fillStyle = '#2c2a33'; for (let y = 27; y < 50; y += 6) c.fillRect(10, y, 40, 3);
   c.restore();
   c.strokeStyle = line; c.beginPath(); c.ellipse(30, 36, 16, 11, 0, 0, Math.PI * 2); c.stroke();
+  // 56: hedgehog spines (soft, rounded points) over its back, on top of the shirt.
+  if (k.spines) {
+    c.fillStyle = k.spines; c.strokeStyle = line; c.beginPath(); c.moveTo(13, 36);
+    for (let i = 0; i <= 12; i++) { const a = Math.PI * 1.02 + i * Math.PI * 0.62 / 12; const r = i % 2 ? 13 : 19; c.lineTo(30 + Math.cos(a) * r * 1.1, 37 + Math.sin(a) * r * 1.05); }
+    c.lineTo(36, 30); c.quadraticCurveTo(24, 26, 13, 36); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#f6e3c8'; for (const [x, y] of [[20, 24], [28, 21], [24, 29]]) { c.beginPath(); c.arc(x, y, 1.3, 0, Math.PI * 2); c.fill(); }
+  }
   // Ears.
   c.fillStyle = k.fur;
   const ear = (x: number) => {
@@ -584,6 +585,22 @@ export class Thief {
     this.lastCallHint = msg;
     this.w.game.events.emit('toast', msg);
     return msg;
+  }
+
+  /** 56: a quick lineup of every thief by the player (screenshots and tests); it fades after `ms`. */
+  lineup(ms = 9000) {
+    const w = this.w, v = w.cameras.main.worldView;
+    const n = THIEVES.length, cols = Math.ceil(n / 2), gap = v.width / (cols + 1);
+    const items: Phaser.GameObjects.GameObject[] = [];
+    THIEVES.forEach((k, i) => {
+      const row = Math.floor(i / cols), col = i % cols;
+      const x = v.x + gap * (col + 1) + (row ? gap / 2 : 0), y = v.y + v.height * (row ? 0.78 : 0.48);
+      const key = `thief_${k.id}`;
+      items.push(w.add.image(x, y, atlasOf(key), key).setOrigin(0.5, 0.92).setScale(1.9 / (frameScale[key] ?? 1)).setDepth(9400));
+      items.push(w.add.text(x, y + 14, k.name, { fontFamily: 'Fredoka, sans-serif', fontSize: '22px', color: '#4a321f', backgroundColor: '#fff6e3', padding: { x: 8, y: 3 } }).setOrigin(0.5, 0).setDepth(9401));
+    });
+    w.time.delayedCall(ms, () => items.forEach((o) => o.destroy()));
+    return THIEVES.map((k) => k.id);
   }
 
   snapshot() {
