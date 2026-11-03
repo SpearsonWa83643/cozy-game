@@ -65,6 +65,7 @@ Walker: "For the backlog: make a jail for the thieves like the stable where the 
 | 68 | World feels alive (Walker, 10:36 PM CT): roaming critters, moving villagers, birds, butterflies, swaying foliage and ambient life per region; dynamic and fluid | To do | 2026-11-14 | 1.5 |
 | 69 | Thief Chase mini-game (Walker, 10:36 PM CT): when a thief takes off with a mount you can choose "Chase after", then fly a chosen mount in a top-down vertical scroller and throw nets to catch the thief; very simple controls for a young child. Built on branch wip/thief-chase: Chase it!/Not now offer, mount picker, top-down sky scroller, slide/tap steering, auto bubble nets, stars/berries, soft clouds, Catch meter (4 hits) frees the friends and jails the thief, 50 s timeout falls back to cells + 2 berries; `__cozy.startChase(kind?, mountId?)` | Done/Live | 2026-11-05 | 2 |
 | 70 | Thief Chase polish and tuning (Walker, 10:36 PM CT): difficulty, feel, rewards and art pass after 69 lands | To do | 2026-11-06 | 1 |
+| 71 | HUD cleanup + village notice board (Walker, Nov 3 12:17 AM CT): top-left first-puzzle icons only when relevant; resources, 'needs a home' list and golden leaf move off the HUD onto a painted notice board in the village that opens a big kid-friendly panel. Branch wip/hud-board | In progress | 2026-11-03 | 1 |
 
 ## Walker's Nov 2 request: Sushi figurine mount (6:15 PM CT)
 
