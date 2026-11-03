@@ -13,12 +13,12 @@ import { atlasOf, frameScale, uploadTex } from '../art';
 import { DPR } from '../dpr';
 import { theme } from '../theme';
 import { sfx } from '../audio';
-import { addFruit, save, persist } from '../save';
+import { addFruit, save, persist, DEFAULT_LOOK } from '../save';
 import { mountById, type MountDef } from '../mount/defs';
-import { CAPE_AT, CAPE_OX, CAPE_OY } from '../mount/cape';
 import { looks } from '../looks/looks';
-import { setStyled } from '../looks/styleFx';
 import { chaseAudio } from '../chase/chaseAudio';
+import { paintTop, topSpec, capeTint, TOP_IDS, BH, WH, WY, CAPE_TH, CAPE_TW, type TopSpec } from '../chase/topArt';
+const CAPE_TW_R = CAPE_TW * 2;
 
 /** Tuning (design px = CSS px on an iPad; everything scales with the screen). */
 export const CHASE = {
@@ -146,6 +146,7 @@ function paintAll(scene: Phaser.Scene) {
   paint(scene, 'ch_net', 96, 96, (c) => net(c, 96));
   paint(scene, 'ch_bignet', 320, 320, (c) => net(c, 320));
   paint(scene, 'ch_streak', 10, 140, (c) => { const gr = c.createLinearGradient(0, 0, 0, 140); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.5, 'rgba(255,255,255,.9)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = gr; c.fillRect(2, 0, 6, 140); });
+  paint(scene, 'ch_dot', 16, 16, (c) => { const gr = c.createRadialGradient(8, 8, 0, 8, 8, 8); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.5, 'rgba(255,255,255,.7)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); c.fillStyle = gr; c.fillRect(0, 0, 16, 16); });
   paint(scene, 'ch_spark', 32, 32, (c) => { c.fillStyle = '#fff'; c.beginPath(); c.moveTo(16, 0); c.quadraticCurveTo(18, 14, 32, 16); c.quadraticCurveTo(18, 18, 16, 32); c.quadraticCurveTo(14, 18, 0, 16); c.quadraticCurveTo(14, 14, 16, 0); c.fill(); });
   paint(scene, 'ch_heart', 48, 44, (c) => { c.fillStyle = '#ff6f91'; c.strokeStyle = '#b83a5c'; c.lineWidth = 3; c.beginPath(); c.moveTo(24, 40); c.bezierCurveTo(4, 28, 2, 14, 10, 7); c.bezierCurveTo(16, 2, 22, 6, 24, 11); c.bezierCurveTo(26, 6, 32, 2, 38, 7); c.bezierCurveTo(46, 14, 44, 28, 24, 40); c.closePath(); c.fill(); c.stroke(); });
   paint(scene, 'ch_shadow', 120, 40, (c) => { c.translate(60, 20); c.scale(1, 1 / 3); const gr = c.createRadialGradient(0, 0, 2, 0, 0, 58); gr.addColorStop(0, 'rgba(0,30,0,.32)'); gr.addColorStop(0.6, 'rgba(0,30,0,.16)'); gr.addColorStop(1, 'rgba(0,30,0,0)'); c.fillStyle = gr; c.beginPath(); c.arc(0, 0, 58, 0, Math.PI * 2); c.fill(); });
@@ -173,8 +174,17 @@ export class ChaseScene extends Phaser.Scene {
   streaks: Phaser.GameObjects.Image[] = [];
   items: Item[] = [];
   netsL: Net[] = [];
-  body!: Phaser.GameObjects.Image; wing!: Phaser.GameObjects.Image; wingFar!: Phaser.GameObjects.Image; shadow!: Phaser.GameObjects.Image;
+  body!: Phaser.GameObjects.Image; shadow!: Phaser.GameObjects.Image;
   SC = 1;
+  // 74: top-down mount art (+ its way of flying) and the high-speed effects
+  td!: ReturnType<typeof paintTop>; spec!: TopSpec;
+  wingL: Phaser.GameObjects.Image | null = null; wingR: Phaser.GameObjects.Image | null = null;
+  capeIm: Phaser.GameObjects.Image | null = null; propIm: Phaser.GameObjects.Image | null = null;
+  ghosts: Phaser.GameObjects.Image[] = []; trail: { x: number; y: number; r: number }[] = [];
+  wind: { im: Phaser.GameObjects.Image; v: number; s: number }[] = []; wisps: Phaser.GameObjects.Image[] = [];
+  puffs: { im: Phaser.GameObjects.Image; life: number; max: number; vy: number; s: number; a: number }[] = [];
+  spd = 1; boostT = 0; boosts = 0; puffT = 0; thPuffT = 0; bank = 0; thBank = 0; span = 1; capeF = 0; capeT = 0;
+  hudCam: Phaser.Cameras.Scene2D.Camera | null = null; zoomTw: Phaser.Tweens.Tween | null = null;
   thief!: Phaser.GameObjects.Image; thShadow!: Phaser.GameObjects.Image; carry: Phaser.GameObjects.Image[] = [];
   meter: { ring: Phaser.GameObjects.Image; fill: Phaser.GameObjects.Image }[] = [];
   meterLabel: Phaser.GameObjects.Text | null = null;
@@ -194,6 +204,8 @@ export class ChaseScene extends Phaser.Scene {
     this.phase = 'intro'; this.paused = false;
     this.t = 0; this.hits = 0; this.stars = 0; this.berries = 0; this.bumps = 0; this.nets = 0;
     this.items = []; this.netsL = []; this.far = []; this.streaks = []; this.carry = []; this.meter = []; this.sparks = []; this.hint = []; this.panel = null; this.floats = []; this.lastPulse = null; this.meterLabel = null;
+    this.wingL = this.wingR = this.capeIm = this.propIm = null; this.ghosts = []; this.trail = []; this.wind = []; this.wisps = []; this.puffs = [];
+    this.spd = 1; this.boostT = 0; this.boosts = 0; this.puffT = 0; this.thPuffT = 0; this.bank = 0; this.thBank = 0; this.span = 1; this.hudCam = null; this.zoomTw = null;
     this.wobble = 0; this.netPause = 0; this.lastThrow = -9; this.autoT = 0.6; this.spawnT = 1.2; this.invul = 0; this.thSpin = 0; this.autopilot = false;
   }
 
@@ -209,22 +221,34 @@ export class ChaseScene extends Phaser.Scene {
       const im = this.add.image(Math.random() * W, Math.random() * H, 'ch_cloud').setDepth(2).setAlpha(0.5);
       im.setScale((U / R) * (0.8 + Math.random() * 0.6)); this.far.push(im);
     }
-    for (let i = 0; i < 9; i++) this.streaks.push(this.add.image(Math.random() * W, Math.random() * H, 'ch_streak').setDepth(40).setAlpha(0).setScale(U / R * 1.2, U / R * (1 + Math.random())));
+    const rm0 = reduceMotion();
+    for (let i = 0; i < (rm0 ? 6 : 16); i++) this.streaks.push(this.add.image(Math.random() * W, Math.random() * H, 'ch_streak').setDepth(40).setAlpha(0).setScale(U / R * (0.8 + Math.random() * 0.8), U / R * (1 + Math.random())));
+    if (!rm0) {
+      // wind: little soft specks rushing past (stretched into streaks when you speed up)
+      for (let i = 0; i < 26; i++) { const s = (U / R) * (0.35 + Math.random() * 0.5); this.wind.push({ im: this.add.image(Math.random() * W, Math.random() * H, 'ch_dot').setDepth(41).setAlpha(0.35 + Math.random() * 0.35).setScale(s), v: 1300 + Math.random() * 1100, s }); }
+      // near wisps: big see-through clouds whooshing by at the edges (the fastest parallax layer)
+      for (let i = 0; i < 2; i++) this.wisps.push(this.add.image(i ? W * 0.9 : W * 0.1, -H * (0.3 + i * 0.9), 'ch_cloud').setDepth(46).setAlpha(0.3).setScale((U / R) * 2.6, (U / R) * 3.4));
+    }
 
-    // the mount (its own sprite, in the Looks & Moves art style)
+    // 74: the mount seen from above, nose up the screen, with you riding on its back.
     this.def = mountById(this.d.mountId) ?? mountById('eagle')!;
-    const def = this.def, art = looks.art;
-    const fr = this.textures.getFrame(atlasOf(def.body), def.body);
-    const bodyW = (fr?.realWidth ?? 128) / (frameScale[def.body] ?? 1);
-    this.SC = (170 * U) / bodyW;
+    const look = { ...DEFAULT_LOOK, ...(save.look ?? {}) };
+    this.spec = topSpec(this.def.id);
+    this.td = paintTop(this, this.def.id, look);
+    this.SC = 0.62 * U;
+    const ms = this.SC / R, fly = this.spec.fly;
     this.px = this.tx = W / 2;
     this.shadow = this.add.image(this.px, H * 0.8 + 70 * U, 'ch_shadow').setDepth(9).setScale(U / R * 1.4);
-    const prop = def.style === 'prop', cape = def.style === 'cape';
-    this.wingFar = setStyled(this.add.image(0, 0, atlasOf(def.wingFar), def.wingFar), this, def.wingFar, art, cape ? CAPE_OX : 0.5, cape ? CAPE_OY : prop ? 0.5 : 0.96).setDepth(19);
-    this.body = setStyled(this.add.image(0, 0, atlasOf(def.body), def.body), this, def.body, art, 0.5, 0.52).setDepth(20);
-    this.wing = setStyled(this.add.image(0, 0, atlasOf(def.wing), def.wing), this, def.wing, art, 0.5, prop || cape ? 0.5 : 0.96).setDepth(prop ? 20.2 : 20.5);
-    if (cape && def.cape !== undefined) { this.wing.setTint(def.cape); this.wingFar.setTint(def.cape); }
-    if (def.style === 'none') { this.wing.setVisible(false); this.wingFar.setVisible(false); }
+    if (!rm0) for (let i = 0; i < 3; i++) this.ghosts.push(this.add.image(0, 0, this.td.body).setDepth(17 - i * 0.1).setAlpha(0).setTint(0xd8ecff));
+    if (fly === 'wings' || fly === 'membrane' || fly === 'bee') {
+      const dep = fly === 'bee' ? 20.5 : 19.5;
+      this.wingL = this.add.image(0, 0, this.td.wing).setOrigin(1, WY / WH).setDepth(dep).setScale(ms);
+      this.wingR = this.add.image(0, 0, this.td.wing).setOrigin(1, WY / WH).setDepth(dep).setScale(-ms, ms);
+      if (fly === 'bee') { this.wingL.setAlpha(0.85); this.wingR.setAlpha(0.85); }
+    }
+    if (fly === 'cape') this.capeIm = this.add.image(0, 0, 'td_cape0').setOrigin(0.5, 10 / CAPE_TH).setDepth(19).setTint(capeTint(this.def.id));
+    this.body = this.add.image(0, 0, this.td.body).setDepth(20).setScale(ms);
+    if (fly === 'prop') this.propIm = this.add.image(0, 0, this.td.prop).setDepth(20.6);
 
     // the thief, with your friends held up on its back
     const tk = `thief_${this.d.kind}`;
@@ -240,6 +264,14 @@ export class ChaseScene extends Phaser.Scene {
     });
 
     this.buildHud();
+    // 74: the HUD gets its own camera, so the shake and zoom punch only move the world.
+    if (!rm0) {
+      const main = this.cameras.main, hud = (this.hudCam = this.cameras.add(0, 0, W, H, false, 'hud'));
+      const seen = new WeakSet<object>();
+      const sort = () => { for (const o of this.children.list) { if (seen.has(o)) continue; seen.add(o); if (((o as any).depth ?? 0) >= 100) main.ignore(o); else hud.ignore(o); } };
+      this.events.on(Phaser.Scenes.Events.PRE_RENDER, sort);
+      this.events.once('shutdown', () => this.events.off(Phaser.Scenes.Events.PRE_RENDER, sort));
+    }
     this.input.on('pointerdown', (p: Phaser.Input.Pointer, over: unknown[]) => {
       if (over.length || this.panel || this.phase !== 'play' && this.phase !== 'intro') return;
       this.tx = p.x;
@@ -254,6 +286,7 @@ export class ChaseScene extends Phaser.Scene {
     this.events.once('shutdown', () => { document.removeEventListener('visibilitychange', this.offVis); chaseAudio.stop(); const last = { ...this.snapshot(), on: false }; Object.defineProperty(window, '__chase', { configurable: true, writable: true, value: last }); });
 
     this.cameras.main.fadeIn(reduceMotion() ? 1 : 450, 255, 255, 255);
+    this.hudCam?.fadeIn(450, 255, 255, 255);
     chaseAudio.start();
     sfx.giggle?.(this.d.voice);
     // A short, big "how to play" (also spoken by the pictures: a finger and arrows by the mount).
@@ -262,7 +295,7 @@ export class ChaseScene extends Phaser.Scene {
     const ra = this.txt(this.px + 130 * U, H * 0.8, '▶', 64, '#ffffff', 900).setOrigin(0.5).setDepth(200).setStroke('#2a4a7a', 6 * U);
     this.hint = [hint, la, ra];
     if (!reduceMotion()) this.tweens.add({ targets: [la, ra], scale: 1.15, duration: 380, yoyo: true, repeat: -1 });
-    this.time.delayedCall(1400, () => { if (this.phase === 'intro') this.phase = 'play'; });
+    this.time.delayedCall(1400, () => { if (this.phase === 'intro') { this.phase = 'play'; this.boost(1.2); } });
     this.time.delayedCall(3600, () => this.tweens.add({ targets: this.hint, alpha: 0, duration: 500, onComplete: () => { for (const h of this.hint) h.destroy(); this.hint = []; } }));
     // Live read for tests / the console (a getter, so it never goes stale).
     Object.defineProperty(window, '__chase', { configurable: true, get: () => this.snapshot() });
@@ -470,12 +503,36 @@ export class ChaseScene extends Phaser.Scene {
     const playing = this.phase === 'play';
     if (playing) this.t += dt;
     // Backdrop: the meadow far below, slow clouds, quick wind streaks.
-    const sp = this.phase === 'caught' ? 0.35 : 1;
-    this.ground.tilePositionY -= (rm ? 25 : 70) * sp * dt / (U / R * 1.1) * U;
-    for (const c of this.far) { c.y += (rm ? 50 : 150) * sp * U * dt; if (c.y > H + 120 * U) { c.y = -120 * U; c.x = Math.random() * W; } }
+    // 74: boosts kick the speed up, then it eases back down (every layer scales with it).
+    this.boostT = Math.max(0, this.boostT - dt);
+    const want = rm ? 1 : 1 + 0.9 * Math.min(1, this.boostT / 0.6);
+    this.spd += (want - this.spd) * (1 - Math.exp(-dt * (want > this.spd ? 10 : 3)));
+    const sp = (this.phase === 'caught' ? 0.35 : 1) * this.spd;
+    this.ground.tilePositionY -= (rm ? 25 : 110) * sp * dt / (U / R * 1.1) * U;
+    for (const c of this.far) { c.y += (rm ? 50 : 230) * sp * U * dt; if (c.y > H + 120 * U) { c.y = -120 * U; c.x = Math.random() * W; } }
     for (const s of this.streaks) {
-      s.y += (rm ? 0 : 1100) * sp * U * dt;
-      if (s.y > H + 150 * U || s.alpha === 0) { s.y = -Math.random() * H * 0.6; s.x = Math.random() * W; s.setAlpha(rm ? 0 : 0.25 + Math.random() * 0.25); }
+      s.y += (rm ? 0 : 1500) * sp * U * dt;
+      if (s.y > H + 150 * U || s.alpha === 0) { s.y = -Math.random() * H * 0.6; s.x = Math.random() * W; s.setAlpha(rm ? 0 : 0.2 + Math.random() * 0.25); }
+    }
+    if (!rm) {
+      const lean = -this.pvx * 0.1;
+      for (const w of this.wind) {
+        w.im.y += w.v * sp * U * dt; w.im.x += lean * dt;
+        w.im.setScale(w.s, w.s * (1.5 + (this.spd - 1) * 5));
+        if (w.im.y > H + 40 * U) { w.im.y = -Math.random() * H * 0.3; w.im.x = Math.random() * W; }
+      }
+      this.wisps.forEach((c, i) => {
+        c.y += 2000 * sp * U * dt;
+        if (c.y > H + 320 * U) { c.y = -320 * U - Math.random() * H * 1.4; c.x = (i ? W * 0.82 : 0) + Math.random() * W * 0.18; }
+      });
+      for (const p of this.puffs) {
+        if (p.life <= 0) continue;
+        p.life -= dt;
+        if (p.life <= 0) { p.im.setVisible(false); continue; }
+        const k = p.life / p.max;
+        p.im.y += p.vy * sp * U * dt;
+        p.im.setAlpha(p.a * k).setScale((U / R) * p.s * (1 + (1 - k) * 1.6));
+      }
     }
 
     // Steering: the mount glides to your finger (or the arrow keys / autopilot for tests).
@@ -506,7 +563,14 @@ export class ChaseScene extends Phaser.Scene {
     const bob = rm ? 0 : Math.sin(this.time.now / 140) * 8 * U;
     this.thSpin = Math.max(0, this.thSpin - dt);
     const wig = this.thSpin > 0 && !rm ? Math.sin(this.thSpin * 40) * 0.25 : 0;
-    this.thief.setPosition(this.thx, this.thy + bob).setFlipX(this.thFace < 0).setRotation(wig);
+    // 74: the thief banks into its turns and leaves a two-line contrail
+    const thv = (this.thx - (this.thief.x || this.thx)) / Math.max(dt, 1e-3);
+    this.thBank += ((rm ? 0 : Phaser.Math.Clamp(thv / (900 * U), -1, 1) * 0.2) - this.thBank) * (1 - Math.exp(-dt * 8));
+    this.thief.setPosition(this.thx, this.thy + bob).setFlipX(this.thFace < 0).setRotation(wig + this.thBank);
+    if (!rm && (this.phase === 'play' || this.phase === 'intro')) {
+      this.thPuffT -= dt;
+      if (this.thPuffT <= 0) { this.thPuffT = 0.05; for (const sg of [-1, 1]) this.puff(this.thx + sg * 24 * U, this.thy + bob + 30 * U, 0.55, 0.5, 0.75, 28); }
+    }
     if (this.invul > 0) { this.invul -= dt; this.thief.setAlpha(Math.floor(this.invul * 10) % 2 ? 0.55 : 1); } else this.thief.setAlpha(1);
     this.thShadow.setPosition(this.thx, this.thy + 90 * U);
     this.carry.forEach((c, i) => {
@@ -551,7 +615,7 @@ export class ChaseScene extends Phaser.Scene {
       if ((it.kind === 'star' || it.kind === 'berry') && dist < 170 * U) { it.img.x += dx * dt * 5; it.img.y += dy * dt * 5; }
       if (!it.hit && dist < 55 * U + it.r) {
         it.hit = true;
-        if (it.kind === 'star') { this.stars++; this.starTxt.setText(String(this.stars)); chaseAudio.star(); this.spark(it.img.x, it.img.y, 6, 0xffe27a); it.dead = true; it.img.destroy(); }
+        if (it.kind === 'star') { this.stars++; this.starTxt.setText(String(this.stars)); chaseAudio.star(); if (this.stars % 5 === 0) this.boost(0.7); this.spark(it.img.x, it.img.y, 6, 0xffe27a); it.dead = true; it.img.destroy(); }
         else if (it.kind === 'berry') {
           this.berries++; this.berryTxt.setText(String(this.berries)); chaseAudio.berry(); this.spark(it.img.x, it.img.y, 6, 0xff7aa8); it.dead = true; it.img.destroy();
           if (addFruit('berry')) this.game.events.emit('snacks', save.snacks);
@@ -565,47 +629,121 @@ export class ChaseScene extends Phaser.Scene {
   }
 
   drawMount(dt: number) {
-    const def = this.def, U = this.U, H = this.H, rm = reduceMotion(), SC = this.SC;
-    const d = this.face;
+    const U = this.U, H = this.H, rm = reduceMotion(), sp = this.spec, k = this.SC, s0 = k / R;
     this.wobble = Math.max(0, this.wobble - dt);
     const w = this.wobble > 0 && !rm ? Math.sin(this.wobble * 26) * 0.35 * (this.wobble / CHASE.bumpS) : 0;
-    const tilt = Phaser.Math.Clamp(this.pvx / (1600 * U), -0.3, 0.3) - d * 0.12 + w;
-    this.flap += dt * Math.PI * 2 * Phaser.Math.Clamp(0.7 * (def.flapRate ?? 2), 1.2, 3.2);
-    const lift = rm ? 0.6 : Math.cos(this.flap);
-    const x = this.px, y = H * 0.8 + (rm ? 0 : Math.sin(this.flap) * 5 * U + Math.sin(this.time.now / 600) * 6 * U);
-    this.shadow.setPosition(x, H * 0.8 + 80 * U);
-    const bs = SC / (frameScale[def.body] ?? 1);
-    this.body.setPosition(x, y).setFlipX(d < 0).setRotation(tilt).setScale(bs);
-    const cos = Math.cos(tilt), sin = Math.sin(tilt);
-    const at = (ox: number, oy: number) => [x + (ox * d) * cos - oy * sin, y + (ox * d) * sin + oy * cos];
-    const ws = SC / (frameScale[def.wing] ?? 1);
-    if (def.style === 'wings') {
-      const sy = ws * (lift >= 0 ? 0.35 + 0.65 * lift : 0.35 + 0.95 * lift);
-      const sweep = d * (0.32 + 0.08 * Math.sin(this.flap));
-      const [nx, ny] = at(-4 * SC, -7 * SC);
-      this.wing.setPosition(nx, ny).setScale(ws, sy).setRotation(-sweep + tilt).setFlipX(d < 0);
-      const [fx, fy] = at(3 * SC, -10 * SC);
-      this.wingFar.setPosition(fx, fy).setScale(ws * 0.9, sy * 0.88).setRotation(-sweep * 1.15 + tilt).setFlipX(d < 0);
-    } else if (def.style === 'prop') {
-      const [pa, pb] = def.propAt ?? [60, 0];
-      const [px, py] = at(pa * SC, pb * SC);
-      const spin = this.time.now / 22;
-      this.wing.setPosition(px, py).setScale(ws * 0.6, ws * (0.15 + 0.85 * Math.abs(Math.cos(spin)))).setRotation(tilt).setFlipX(d < 0);
-      this.wingFar.setPosition(px, py).setScale(ws * 0.9, ws).setRotation(tilt).setFlipX(d < 0);
-    } else if (def.style === 'cape') {
-      const [ca, cb] = CAPE_AT[def.id] ?? [2, -20];
-      const [cx, cy] = at(ca * SC, cb * SC);
-      const cs = SC / (frameScale[def.wingFar] ?? 1);
-      this.wingFar.setOrigin(d < 0 ? 1 - CAPE_OX : CAPE_OX, CAPE_OY).setPosition(cx, cy).setScale(cs * 1.12, cs * (0.95 + (rm ? 0 : Math.sin(this.time.now / 160) * 0.06))).setRotation(tilt + d * 0.18).setFlipX(d < 0);
-      const [bx, by] = at((ca + 4) * SC, (cb + 2) * SC);
-      this.wing.setPosition(bx, by).setScale(ws).setRotation(tilt).setFlipX(d < 0);
+    // Banking: lean into the turn (and squash a little, like rolling onto one side).
+    const bankT = rm ? 0 : Phaser.Math.Clamp(this.pvx / (1300 * U), -1, 1);
+    this.bank += (bankT - this.bank) * (1 - Math.exp(-dt * 10));
+    const b = this.bank, rot = b * 0.24 + w, squash = 1 - Math.abs(b) * 0.12;
+    this.flap += dt * Math.PI * 2 * (sp.beat ?? 1.6) * (0.85 + 0.15 * this.spd);
+    const flaps = sp.fly === 'wings' || sp.fly === 'membrane';
+    const x = this.px, y = H * 0.8 + (rm ? 0 : Math.sin(this.time.now / 600) * 6 * U + (flaps ? Math.sin(this.flap) * 4 * U : 0));
+    this.shadow.setPosition(x + 30 * U, y + 70 * U).setScale((U / R) * 1.5 * squash, (U / R) * 1.9);
+    let key = this.td.body;
+    if (sp.fly === 'carpet' && !rm) key = this.td.carpet[Math.floor(this.time.now / 110) % 3];
+    if (this.body.texture.key !== key) this.body.setTexture(key);
+    let sx = s0 * squash, sy = s0;
+    if (sp.fly === 'jelly' && !rm) { const p = Math.sin(this.time.now / 260); sx *= 1 + 0.07 * p; sy *= 1 - 0.07 * p; }
+    this.body.setPosition(x, y).setRotation(rot).setScale(sx, sy);
+    const cos = Math.cos(rot), sin = Math.sin(rot);
+    const at = (ox: number, oy: number): [number, number] => [x + ox * k * squash * cos - oy * k * sin, y + ox * k * squash * sin + oy * k * cos];
+    this.span = 1;
+    if (this.wingL && this.wingR) {
+      const [wx, wy] = sp.wingAt ?? [-30, -14];
+      const c = rm ? 0.6 : Math.cos(this.flap);
+      // seen from above a flap is the wing swinging in and out: its length on screen pulses
+      this.span = sp.fly === 'bee' ? 0.8 + 0.2 * c : 0.58 + 0.42 * c;
+      const lift = rm ? 0 : Math.sin(this.flap) * (sp.fly === 'bee' ? 0.06 : 0.14);
+      // the wing on the inside of a turn tucks in, the outer one stretches
+      const inL = 1 + b * 0.22, inR = 1 - b * 0.22, th = s0 * (0.9 + 0.1 * c);
+      const [lx, ly] = at(wx, wy), [rx, ry] = at(-wx, wy);
+      this.wingL.setPosition(lx, ly).setRotation(rot - lift).setScale(s0 * this.span * inL, th);
+      this.wingR.setPosition(rx, ry).setRotation(rot + lift).setScale(-s0 * this.span * inR, th);
     }
+    if (this.capeIm) {
+      const [cx, cy] = at(0, sp.capeAt ?? -10);
+      if (!rm && this.time.now - this.capeT > 90) { this.capeT = this.time.now; this.capeF = (this.capeF + 1) % 3; this.capeIm.setTexture(`td_cape${this.capeF}`); }
+      const stretch = 1 + (this.spd - 1) * 0.3 + (rm ? 0 : Math.sin(this.time.now / 140) * 0.05);
+      this.capeIm.setPosition(cx, cy).setRotation(rot - b * 0.35).setScale(s0 * squash * (1 - Math.abs(b) * 0.1), s0 * stretch);
+    }
+    if (this.propIm) {
+      const [qx, qy] = at(0, -BH / 2 + 10);
+      const spin = rm ? 0.6 : Math.abs(Math.cos(this.time.now / 18));
+      this.propIm.setPosition(qx, qy).setRotation(rot).setScale(s0 * (0.3 + 0.7 * spin), s0).setAlpha(0.7 + 0.3 * spin);
+    }
+    if (rm) return;
+    // Motion-blur trail: fading copies of you, lagging behind (stronger when fast or turning).
+    this.trail.unshift({ x, y, r: rot }); if (this.trail.length > 10) this.trail.pop();
+    const gA = Phaser.Math.Clamp(0.35 + (this.spd - 1) * 1.1 + Math.abs(b) * 0.7, 0, 1);
+    this.ghosts.forEach((g, i) => {
+      const t = this.trail[Math.min(this.trail.length - 1, (i + 1) * 3)];
+      if (g.texture.key !== key) g.setTexture(key);
+      g.setPosition(t.x, t.y + (i + 1) * 15 * U * this.spd).setRotation(t.r).setScale(sx, sy).setAlpha(gA * (0.3 - i * 0.08));
+    });
+    // Contrails from the wing tips (or the tail of a cape / carpet / jelly).
+    if (this.phase === 'play' || this.phase === 'intro') {
+      this.puffT -= dt;
+      if (this.puffT <= 0) {
+        this.puffT = 0.04;
+        const [tx, ty] = sp.tips ?? [-100, 40], wx = sp.wingAt?.[0] ?? 0;
+        for (const sg of [1, -1]) {
+          const ox = this.wingL ? sg * (wx + (tx - wx) * this.span * (sg > 0 ? 1 + b * 0.22 : 1 - b * 0.22)) : sg * tx;
+          const [ex, ey] = at(ox, ty);
+          this.puff(ex, ey, 0.4, 0.5, 0.5, 16);
+        }
+      }
+    }
+  }
+
+  /** Tests / review: paint every mount's top-down art (with your look) and lay them out on one sheet. */
+  artSheet(cols = 6) {
+    const look = { ...DEFAULT_LOOK, ...(save.look ?? {}) }, cw = 300, chh = 300;
+    const cv = document.createElement('canvas'); cv.width = cols * cw; cv.height = Math.ceil(TOP_IDS.length / cols) * chh;
+    const c = cv.getContext('2d')!; c.fillStyle = '#8fc47a'; c.fillRect(0, 0, cv.width, cv.height);
+    const src = (k: string) => this.textures.get(k).getSourceImage() as HTMLCanvasElement;
+    TOP_IDS.forEach((id, i) => {
+      const t = paintTop(this, id, look), sp = topSpec(id), s = 0.5, ox = (i % cols) * cw + cw / 2, oy = Math.floor(i / cols) * chh + chh / 2;
+      c.save(); c.translate(ox, oy); c.scale(s, s);
+      if (sp.fly === 'cape') { c.globalAlpha = 0.9; c.drawImage(src('td_cape1'), -CAPE_TW_R / 2, (sp.capeAt ?? -10) * R - 10 * R); c.globalAlpha = 1; }
+      const wImg = t.wing && this.textures.exists(t.wing) && (sp.fly === 'wings' || sp.fly === 'membrane' || sp.fly === 'bee') ? src(t.wing) : null;
+      const [wx, wy] = sp.wingAt ?? [0, 0];
+      const drawW = () => { if (!wImg) return; c.drawImage(wImg, wx * R - wImg.width, wy * R - WY * R); c.save(); c.scale(-1, 1); c.drawImage(wImg, wx * R - wImg.width, wy * R - WY * R); c.restore(); };
+      if (sp.fly !== 'bee') drawW();
+      const b = src(t.body); c.drawImage(b, -b.width / 2, -b.height / 2);
+      if (sp.fly === 'bee') drawW();
+      if (sp.fly === 'prop') { const pr = src(t.prop); c.drawImage(pr, -pr.width / 2, (-BH / 2 + 10) * R - pr.height / 2); }
+      c.restore();
+      c.fillStyle = '#123'; c.font = 'bold 20px sans-serif'; c.textAlign = 'center'; c.fillText(id, ox, oy + chh / 2 - 10);
+    });
+    return cv.toDataURL('image/png');
+  }
+
+  /** A pooled contrail puff (soft white dot that drifts back, grows and fades). */
+  puff(x: number, y: number, s: number, a: number, life: number, depth: number) {
+    let p = this.puffs.find((q) => q.life <= 0);
+    if (!p) { if (this.puffs.length >= 80) return; p = { im: this.add.image(0, 0, 'ch_dot'), life: 0, max: 1, vy: 0, s: 1, a: 1 }; this.puffs.push(p); }
+    p.life = p.max = life; p.s = s; p.a = a; p.vy = 700;
+    p.im.setVisible(true).setPosition(x, y).setDepth(depth).setAlpha(a).setScale((this.U / R) * s);
+  }
+
+  /** 74: a burst of speed: shake, a quick zoom punch, extra speed for a moment. */
+  boost(power = 1) {
+    this.boosts++;
+    if (reduceMotion()) return;
+    this.boostT = Math.max(this.boostT, 0.9 * power);
+    const cam = this.cameras.main;
+    cam.shake(260, 0.0035 * power);
+    this.zoomTw?.stop(); cam.setZoom(1);
+    this.zoomTw = this.tweens.add({ targets: cam, zoom: 1 + 0.055 * power, duration: 170, yoyo: true, ease: 'Sine.easeOut', onComplete: () => cam.setZoom(1) });
+    for (const s of this.streaks) s.setAlpha(Math.min(0.85, s.alpha + 0.3));
   }
 
   netHit(net: Phaser.GameObjects.Image) {
     const U = this.U;
     this.hits++;
     this.invul = CHASE.invulnS; this.thSpin = 0.7;
+    this.boost(1);
     // The net wraps the thief for a moment, then it wriggles free (a bit slower now).
     net.setDepth(31).setPosition(this.thx, this.thy - 10 * U);
     this.tweens.add({ targets: net, scale: (U / R) * 1.7, alpha: 0, duration: 700, ease: 'Cubic.easeOut', onComplete: () => net.destroy() });
@@ -708,7 +846,7 @@ export class ChaseScene extends Phaser.Scene {
     const cam = this.cameras.main;
     const go = () => { const d = this.d; (window as any).__chaseLast = stats; this.scene.stop(); d.onEnd(stats); };
     if (reduceMotion()) go();
-    else { cam.fadeOut(350, 255, 255, 255); cam.once('camerafadeoutcomplete', go); }
+    else { this.hudCam?.fadeOut(350, 255, 255, 255); cam.fadeOut(350, 255, 255, 255); cam.once('camerafadeoutcomplete', go); }
   }
 
   snapshot() {
@@ -718,7 +856,10 @@ export class ChaseScene extends Phaser.Scene {
       px: Math.round(this.px / DPR), thx: Math.round(this.thx / DPR), thy: Math.round(this.thy / DPR), card: this.cardInfo, consolation: this.consolation,
       floats: this.floats.map((t) => ({ x: Math.round(t.x / DPR), y: Math.round(t.y / DPR), w: Math.round(t.width / DPR), h: Math.round(t.height / DPR), s: t.text })),
       meter: { x: Math.round(this.meterBox.x / DPR), w: Math.round(this.meterBox.w / DPR), bottom: Math.round(114 * this.U / DPR), filled: this.meter.filter((m) => m.ring.alpha === 0).length, label: this.meterLabel?.text ?? null },
-      art: looks.art, pause: { x: Math.round(64 * this.U / DPR), y: Math.round(64 * this.U / DPR) },
+      art: looks.art,
+      top: { art: 'topdown', tex: this.td?.body, fly: this.spec?.fly, wings: !!this.wingL, cape: !!this.capeIm, prop: !!this.propIm, ids: TOP_IDS.length },
+      fx: { boosts: this.boosts, spd: Math.round(this.spd * 100) / 100, streaks: this.streaks.length, wind: this.wind.length, wisps: this.wisps.length, ghosts: this.ghosts.length, puffs: this.puffs.filter((p) => p.life > 0).length, cams: this.cameras.cameras.length, zoom: Math.round(this.cameras.main.zoom * 1000) / 1000, bank: Math.round(this.bank * 100) / 100 },
+      pause: { x: Math.round(64 * this.U / DPR), y: Math.round(64 * this.U / DPR) },
     };
   }
 }

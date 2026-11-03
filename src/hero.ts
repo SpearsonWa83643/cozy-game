@@ -6,7 +6,7 @@ import { Look } from './save';
 export const HERO_W = 60;
 export const HERO_H = 80;
 
-const OUTFITS: Record<string, { a: [number, number, number]; b: [number, number, number]; arm: [number, number, number] }> = {
+export const OUTFITS: Record<string, { a: [number, number, number]; b: [number, number, number]; arm: [number, number, number] }> = {
   teal: { a: [178, 45, 52], b: [190, 50, 36], arm: [185, 45, 42] },
   moss: { a: [95, 34, 50], b: [108, 38, 33], arm: [100, 34, 40] },
   sea: { a: [205, 58, 60], b: [218, 55, 40], arm: [210, 50, 48] },
@@ -14,7 +14,7 @@ const OUTFITS: Record<string, { a: [number, number, number]; b: [number, number,
   ranger: { a: [28, 55, 40], b: [32, 45, 28], arm: [30, 50, 34] },
   fawn: { a: [30, 52, 64], b: [24, 44, 46], arm: [28, 48, 56] },
 };
-const SCARVES: Record<string, [[number, number, number], [number, number, number]] | null> = {
+export const SCARVES: Record<string, [[number, number, number], [number, number, number]] | null> = {
   red: [[10, 78, 56], [18, 85, 66]], sunny: [[44, 90, 56], [50, 95, 72]], petal: [[340, 70, 72], [345, 85, 84]],
   silver: [[210, 14, 76], [210, 25, 92]], moss: [[150, 60, 46], [120, 80, 70]], sky: [[202, 70, 58], [194, 85, 78]], abc: [[214, 72, 56], [48, 95, 62]], none: null,
 };
