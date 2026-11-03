@@ -233,7 +233,7 @@ test('mount thief: carries two friends, cells, call-mount hint, cell rescue, old
     // (Taps again if a slow machine dropped the first tap.)
     await expect.poll(async () => { const h = (await thief(page)).callHint; if (!h) await page.touchscreen.tap(mb.x + mb.w / 2, mb.y + mb.h / 2); return h ?? ''; }, { timeout: 90_000, intervals: [1500] }).toContain('is in a cell');
     const hint = (await thief(page)).callHint as string;
-    const HID: Record<string, string> = { pots: 'flower pots', bells: 'the bells', tiles: 'the tiles', dig: 'dig spot', stones: 'the stones', trail: 'deer tracks' };
+    const HID: Record<string, string> = { pots: 'flower pots', bells: 'the bells', tiles: 'the tiles', dig: 'dig spot', stones: 'the stones', trail: 'deer tracks', spell1: 'meadow easel', spell2: 'seaside easel', num1: 'counting board', num2: 'pebble board' };
     for (const x of tc.stolen) expect(hint).toContain(HID[x.puzzle]);
     // 57: one simple line per friend on the big card.
     await expect(page.locator('#clue li')).toHaveCount(2, { timeout: 5_000 });
