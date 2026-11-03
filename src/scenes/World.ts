@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { attachScreenStyle } from '../looks/screenStyle';
 import { stickInput, steerBody, stepPath, pulseTapMarker, slideOutOfWater, CamZoom, ZOOM } from '../controls';
 import { S, ATLAS, atlasOf, frameScale, mulberry32, pondValue, distToPaths, pathDist, ALL_PATHS , TREE_SCALE} from '../art';
 import { GroundStreamer } from '../ground';
@@ -257,6 +258,7 @@ export class WorldScene extends Phaser.Scene {
 
   // ------------------------------------------------------------ create
   create() {
+    attachScreenStyle(this); // 63: whole-game art style (dev preview)
     this.reacts = new Reacts(this);
     this.swayers = []; this.interactables = []; this.lanterns = []; this.litOrder = []; this.tappables = []; this.canopies = [];
     this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
