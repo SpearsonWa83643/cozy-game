@@ -311,7 +311,7 @@ export class MenuScene extends Phaser.Scene {
         this.tweens.killTweensOf(pin);
         pin.setScale(1).setY(y);
         this.tweens.add({ targets: pin, y: y - 12, scale: 1.18, duration: 140, yoyo: true, ease: 'Quad.easeOut' });
-        this.hint(`${lm.name}! Ride your mount and tap ${lm.name} to fly here.`);
+        this.hint(`${lm.name}! Ride your mount, tap Fly! and pick ${lm.name}.`);
       });
       this.content.add(z);
     }

@@ -2,12 +2,15 @@ import { test, expect, chromium, type Page } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 
-// 9.3 Mount fast travel: while riding, big landmark buttons fly you to Home, Village, Pond,
-// Brookside, Mistbirch Wood and the Wild Woods trailhead. Places you haven't found on foot are locked.
-const FILE = pathToFileURL(resolve('dist-single/index.html')).href;
+// 9.3 Mount fast travel -> 65 waypoint fly map: while riding, one big Fly! button opens a paper map of the whole
+// world with big round site icons (village, stable, jail, every region and puzzle). Tap one and the mount flies there;
+// long flights ease the camera out. Places you haven't found on foot are locked.
+const FILE = pathToFileURL(resolve(process.env.SINGLE ?? 'dist-single/index.html')).href;
 const SHOTS = process.env.FT_SHOTS ?? '/workspace/cozy-game/screenshots';
 const mount = (page: Page) => page.evaluate(() => (window as any).__cozy.mount());
-const IDS = ['home', 'village', 'pond', 'brookside', 'mistbirch', 'wild'];
+// The flight tour: old landmarks, the new regions, the stable and jail, and a puzzle.
+const TOUR = ['brookside', 'stable', 'meadow', 'hills', 'jail', 'bay', 'grove', 'p:bells', 'village', 'home'];
+const fly = (page: Page) => page.evaluate(() => { const f = (window as any).__vui.fly; return { btn: f.btnShown, open: f.open, pins: f.pins.map((p: any) => ({ id: p.site.id, name: p.site.name, x: p.site.x, y: p.site.y, locked: p.locked, px: p.x, py: p.y, r: p.r })) }; });
 
 async function boot(page: Page, saveJson: string | null, query = '') {
   await page.goto(FILE + query);
@@ -28,7 +31,7 @@ const tapRect = async (page: Page, id: string) => {
 };
 
 test('fast travel: each landmark button flies the mount there; unknown places stay locked', async ({ playwright: _pw }, info) => {
-  test.setTimeout(600_000);
+  test.setTimeout(2_400_000);
   const use = info.project.use as any;
   const browser = await chromium.launch(use.launchOptions);
   try {
@@ -42,40 +45,69 @@ test('fast travel: each landmark button flies the mount there; unknown places st
       const hidden = await page.evaluate(() => (window as any).__vui.travelShown);
       expect(hidden).toBe(false);
       await ride(page);
-      await expect.poll(() => page.evaluate(() => (window as any).__vui.travelShown), { timeout: 10_000 }).toBe(true);
-      const locks = await page.evaluate(() => Object.fromEntries((window as any).__vui.travelBtns.map((b: any) => [b.lm.id, b.locked])));
-      console.log('fresh locks', JSON.stringify(locks));
-      expect(Object.values(locks).every((v) => v === false)).toBe(true);
-      // Every button is on screen, big enough for a finger, and they don't overlap.
-      const rects = await page.evaluate((ids) => ids.map((k: string) => (window as any).__vui.rects['travel:' + k]), IDS);
+      await expect.poll(async () => (await fly(page)).btn, { timeout: 10_000 }).toBe(true);
       const vp = page.viewportSize()!;
-      for (const r of rects) { expect(r.w).toBeGreaterThanOrEqual(60); expect(r.x + r.w).toBeLessThanOrEqual(vp.width); expect(r.y).toBeGreaterThan(80); expect(r.y + r.h).toBeLessThan(vp.height - 120); }
-      for (let i = 1; i < rects.length; i++) expect(rects[i].y).toBeGreaterThanOrEqual(rects[i - 1].y + rects[i - 1].h - 4);
-      // A locked one (somewhere you can't walk to) wiggles and doesn't fly.
-      await page.evaluate(() => { const v = (window as any).__vui; v.travelBtns.find((b: any) => b.lm.id === 'mistbirch').locked = true; v.travelState = ''; });
-      await page.waitForTimeout(200);
+      const fb = await page.evaluate(() => (window as any).__vui.rects.flymap);
+      expect(fb.w).toBeGreaterThanOrEqual(84); expect(fb.x + fb.w).toBeLessThanOrEqual(vp.width);
+      const openMap = async () => {
+        await expect.poll(async () => (await fly(page)).btn, { timeout: 10_000 }).toBe(true);
+        await tapRect(page, 'flymap');
+        await expect.poll(async () => (await fly(page)).open, { timeout: 5_000 }).toBe(true);
+        await page.waitForTimeout(500);
+      };
+      await openMap();
+      const f0 = await fly(page);
+      const locks = Object.fromEntries(f0.pins.map((p: any) => [p.id, p.locked]));
+      console.log('fresh locks', JSON.stringify(locks));
+      expect(f0.pins.length).toBeGreaterThanOrEqual(19);
+      // Every landmark and region can be found on foot from a fresh glade.
+      for (const id of TOUR) expect(locks[id]).toBe(false);
+      // Every pin is on screen, big enough for a finger, and no two overlap.
+      for (const p of f0.pins) {
+        const r = await page.evaluate((k) => (window as any).__vui.rects['travel:' + k], p.id);
+        expect(r.w).toBeGreaterThanOrEqual(60);
+        expect(r.x).toBeGreaterThanOrEqual(0); expect(r.x + r.w).toBeLessThanOrEqual(vp.width + 1);
+        expect(r.y).toBeGreaterThan(60); expect(r.y + r.h).toBeLessThanOrEqual(vp.height + 1);
+      }
+      for (let i = 0; i < f0.pins.length; i++) for (let j = i + 1; j < f0.pins.length; j++) {
+        const a = f0.pins[i], b = f0.pins[j];
+        expect(Math.hypot(a.px - b.px, a.py - b.py), `${a.id}/${b.id}`).toBeGreaterThanOrEqual(a.r + b.r - 1);
+      }
+      await page.screenshot({ path: `${SHOTS}/fast-travel-map.png` });
+      // A locked one (somewhere you can't walk to) wiggles and doesn't fly; the map stays open.
+      await page.evaluate(() => { (window as any).__vui.fly.pins.find((b: any) => b.site.id === 'mistbirch').locked = true; });
       const before = (await mount(page)).travels;
       await tapRect(page, 'travel:mistbirch');
-      await page.waitForTimeout(400);
+      await page.waitForTimeout(600);
       expect((await mount(page)).travels).toBe(before);
-      await page.screenshot({ path: `${SHOTS}/fast-travel-buttons.png` });
+      expect((await fly(page)).open).toBe(true);
+      // The big X closes it; the Fly! button comes back.
+      await tapRect(page, 'flyclose');
+      await expect.poll(async () => (await fly(page)).open, { timeout: 5_000 }).toBe(false);
 
-      // 2) Fly to each landmark in turn.
-      await page.evaluate(() => { const v = (window as any).__vui; v.travelBtns.find((b: any) => b.lm.id === 'mistbirch').locked = false; v.travelState = ''; });
-      const lms = await page.evaluate(() => (window as any).__vui.travelBtns.map((b: any) => ({ id: b.lm.id, name: b.lm.name, x: b.lm.x, y: b.lm.y })));
+      // 2) Fly the tour, opening the map each time.
+      const zoomOf = () => page.evaluate(() => (window as any).__cozy.zoomInfo().zoom);
+      const z0 = await zoomOf();
       let shotMid = false;
-      for (const lm of lms) {
+      for (const id of TOUR) {
+        const lm = f0.pins.find((p: any) => p.id === id)!;
         const n0 = (await mount(page)).arrivals;
-        await tapRect(page, 'travel:' + lm.id);
-        await expect.poll(async () => (await mount(page)).phase, { timeout: 5_000, intervals: [100] }).toBe('travel');
-        if (!shotMid && lm.id === 'brookside') {
-          await page.waitForTimeout(900);
+        await openMap();
+        await tapRect(page, 'travel:' + id);
+        await expect.poll(async () => (await mount(page)).phase, { timeout: 8_000, intervals: [100] }).toBe('travel');
+        await expect.poll(async () => (await fly(page)).open, { timeout: 5_000 }).toBe(false);
+        if (!shotMid && id === 'stable') {
+          // A long flight: up high, and the camera eases out to show the land rolling by.
+          await expect.poll(async () => (await mount(page)).seg ?? 0, { timeout: 120_000, intervals: [100] }).toBeGreaterThan(0.4);
           const s = await mount(page);
-          expect(s.alt).toBeGreaterThan(80); // up high on the way
+          expect(s.alt).toBeGreaterThan(80);
+          const zm = await zoomOf();
+          console.log('zoom base', z0, 'mid-flight', zm);
+          expect(zm).toBeLessThan(z0 * 0.93);
           await page.screenshot({ path: `${SHOTS}/fast-travel-flying.png` });
           shotMid = true;
         }
-        await expect.poll(async () => (await mount(page)).arrivals, { timeout: 30_000, intervals: [150] }).toBe(n0 + 1).catch(async (e) => {
+        await expect.poll(async () => (await mount(page)).arrivals, { timeout: 180_000, intervals: [150] }).toBe(n0 + 1).catch(async (e) => {
           console.log('stuck', JSON.stringify(await mount(page)), JSON.stringify(await page.evaluate(() => (window as any).__cozy.state)));
           throw e;
         });
@@ -83,15 +115,17 @@ test('fast travel: each landmark button flies the mount there; unknown places st
         expect(s.phase).toBe('ride');
         expect(s.travelName).toBe(lm.name);
         const d = Math.hypot(s.ground[0] - lm.x, s.ground[1] - lm.y);
-        console.log(lm.id, 'arrived', s.ground, 'dist', Math.round(d));
+        console.log(id, 'arrived', s.ground, 'dist', Math.round(d));
         expect(d).toBeLessThan(260);
-        // Player rides along; the camera keeps the mount on screen.
         const st = await page.evaluate(() => (window as any).__cozy.state);
         expect(Math.hypot(st.x - lm.x, st.y - lm.y)).toBeLessThan(260);
         const sc = await page.evaluate(([x, y]) => (window as any).__cozy.worldToScreen(x, y), s.eagle);
         expect(sc.x).toBeGreaterThan(0); expect(sc.x).toBeLessThan(vp.width); expect(sc.y).toBeGreaterThan(0); expect(sc.y).toBeLessThan(vp.height);
-        if (lm.id === 'pond') await page.screenshot({ path: `${SHOTS}/fast-travel-pond.png` });
+        if (id === 'bay') await page.screenshot({ path: `${SHOTS}/fast-travel-bay.png` });
       }
+      // Back to normal zoom once landed.
+      await page.waitForTimeout(800);
+      expect(Math.abs((await zoomOf()) - z0)).toBeLessThan(z0 * 0.03);
       // After hovering a moment it goes back to touring on its own; a ground tap still lands.
       await expect.poll(async () => (await mount(page)).steering, { timeout: 40_000, intervals: [250] }).toBe(false);
       const s = await mount(page);
