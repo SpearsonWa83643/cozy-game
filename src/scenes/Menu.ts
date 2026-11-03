@@ -9,7 +9,7 @@ import { save, persist, resetSave, Look } from '../save';
 import { COSMETICS, Cosmetic, isUnlocked, isEquipped, equip, TREASURES, MINORS, SPECIES, RARITY_STARS } from '../catalog';
 import { buildPreviewSheet, HERO_W, HERO_H } from '../hero';
 import { WORLD_W, WORLD_H, AREA_NAMES, AreaId, COTTAGE, SHRINE, WINDMILL, BRIDGES, PIER, POT_CHEST, BELL_CHEST, TILES, DIG, POND } from '../layout';
-import { areaAt, waterAt } from '../geo';
+import { areaAt, waterAt, lakeValue } from '../geo';
 import type { WorldScene } from './World';
 import { buildWardrobeItems, isNoneItem } from '../wardrobeArt';
 import { LANDMARKS, ensureLandmarkIcons } from '../landmarks';
@@ -227,9 +227,10 @@ export class MenuScene extends Phaser.Scene {
     canvas.width = px; canvas.height = ph;
     const c = canvas.getContext('2d')!;
     const k = px / WORLD_W;
-    const cols: Record<AreaId, string> = { glade: '#a3c26e', river: '#9cc47f', forest: '#83a57c', orchard: '#c8c477', lake: '#a9c77e', village: '#b3cf7c' };
+    const cols: Record<AreaId, string> = { glade: '#a3c26e', river: '#9cc47f', forest: '#83a57c', orchard: '#c8c477', lake: '#a9c77e', village: '#b3cf7c',
+      meadow: '#cfcf6e', hills: '#9db07a', grove: '#6f9a86', bay: '#b2cc86' };
     // Sample the world coarsely into a tiny canvas, then upscale with smoothing for soft painted edges.
-    const cell = 25;
+    const cell = 40; // 64: the world is 4x bigger, so sample coarser (same cost as before)
     const cw = Math.ceil(WORLD_W / cell), chh = Math.ceil(WORLD_H / cell);
     const lo = document.createElement('canvas'); lo.width = cw; lo.height = chh;
     const lc = lo.getContext('2d')!;
@@ -240,7 +241,7 @@ export class MenuScene extends Phaser.Scene {
       const cx = i * cell + cell / 2, cy = j * cell + cell / 2;
       const ar = areaAt(cx, cy);
       const wa = waterAt(cx, cy);
-      const lake = ar === 'lake' && !wa ? Math.hypot((cx - 1050) / 700, (cy - 2480) / 330) : 9;
+      const lake = (ar === 'lake' || ar === 'bay' || ar === 'grove') && !wa ? lakeValue(cx, cy) : 9;
       lc.fillStyle = wa ? '#6fb0c8' : lake < 1.3 ? '#e8d6a6' : cols[ar];
       lc.fillRect(i, j, 1, 1);
       if (!save.visited.includes(ar)) fc.fillRect(i, j, 1, 1);
@@ -263,14 +264,14 @@ export class MenuScene extends Phaser.Scene {
     c.fillRect((PIER.x - 20) * k, PIER.y0 * k, 40 * k, (PIER.y1 - PIER.y0) * k);
     // Little inked trees in the forest and orchard, waves on the water (deterministic scatter).
     let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-    for (let n = 0; n < 900; n++) {
+    for (let n = 0; n < 2400; n++) {
       const wx = rnd() * WORLD_W, wy = rnd() * WORLD_H, ar = areaAt(wx, wy);
       if (!save.visited.includes(ar)) continue;
       if (waterAt(wx, wy)) {
         if (rnd() < 0.25) { c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = Math.max(1.2, 4 * k); c.beginPath(); c.arc(wx * k, wy * k, 14 * k * 2, Math.PI * 1.15, Math.PI * 1.85); c.stroke(); }
-      } else if ((ar === 'forest' && rnd() < 0.5) || (ar === 'orchard' && rnd() < 0.18)) {
-        const r = (ar === 'forest' ? 26 : 20) * k * 2;
-        c.fillStyle = ar === 'forest' ? 'rgba(74,112,72,0.75)' : 'rgba(150,150,70,0.7)';
+      } else if ((ar === 'forest' && rnd() < 0.5) || (ar === 'orchard' && rnd() < 0.18) || (ar === 'hills' && rnd() < 0.3) || (ar === 'grove' && rnd() < 0.35) || (ar === 'meadow' && rnd() < 0.12)) {
+        const r = (ar === 'forest' || ar === 'hills' || ar === 'grove' ? 26 : 20) * k * 2;
+        c.fillStyle = ar === 'forest' || ar === 'hills' ? 'rgba(74,112,72,0.75)' : ar === 'grove' ? 'rgba(150,96,170,0.7)' : ar === 'meadow' ? 'rgba(232,190,50,0.8)' : 'rgba(150,150,70,0.7)';
         c.beginPath(); c.arc(wx * k, wy * k, r, 0, Math.PI * 2); c.fill();
         c.strokeStyle = 'rgba(70,50,32,0.5)'; c.lineWidth = Math.max(1, 2.5 * k); c.stroke();
       }
@@ -314,7 +315,8 @@ export class MenuScene extends Phaser.Scene {
     this.content.add([paper, img, frame]);
     this.drawCompass(mx + mw - 58, my + 62, Math.min(46, mh * 0.09));
     // Area names on little ribbon banners.
-    const centers: Record<AreaId, [number, number]> = { glade: [900, 760], river: [2120, 1150], forest: [3400, 380], orchard: [3200, 2250], lake: [700, 2250], village: [470, 1760] };
+    const centers: Record<AreaId, [number, number]> = { glade: [900, 760], river: [2120, 1150], forest: [3400, 380], orchard: [3200, 2250], lake: [700, 2250], village: [470, 1760],
+      meadow: [6300, 500], hills: [6000, 1950], grove: [2000, 4700], bay: [6500, 3600] };
     for (const [id, [x, y]] of Object.entries(centers) as [AreaId, [number, number]][]) {
       this.ribbon(mx + x * s, my + y * s, save.visited.includes(id) ? AREA_NAMES[id] : '? ? ?', save.visited.includes(id));
     }

@@ -1,6 +1,11 @@
 // Shared world layout (world units). Art and gameplay both read from here.
-export const WORLD_W = 4400;
-export const WORLD_H = 3000;
+// 64: the world grew 4x (2x each way). The original map is the top-left OLD_W x OLD_H quarter;
+// new regions fill the rest: Sunflower Meadow + Pinecone Hills (east), Glowcap Grove (south),
+// Seashell Bay (south-east).
+export const WORLD_W = 8800;
+export const WORLD_H = 6000;
+export const OLD_W = 4400;
+export const OLD_H = 3000;
 /** The original glade occupies the top-left of the world. */
 export const GLADE_W = 2000;
 export const GLADE_H = 1500;
@@ -43,9 +48,10 @@ export const PATH_SOUTH: [number, number][] = [
 ];
 
 // ------------------------------------------------------------------ the wider world
-export type AreaId = 'glade' | 'river' | 'forest' | 'orchard' | 'lake' | 'village';
+export type AreaId = 'glade' | 'river' | 'forest' | 'orchard' | 'lake' | 'village' | 'meadow' | 'hills' | 'grove' | 'bay';
 export const AREA_NAMES: Record<AreaId, string> = {
   glade: 'Willowmere Glade', river: 'Brookside', forest: 'Mistbirch Wood', orchard: 'Windmill Orchard', lake: 'Shellwater Shore', village: 'Willow Village',
+  meadow: 'Sunflower Meadow', hills: 'Pinecone Hills', grove: 'Glowcap Grove', bay: 'Seashell Bay',
 };
 
 /** River centre line, north to south, flowing into the lake. */
@@ -111,3 +117,36 @@ export const VILLAGE_SIGN = { x: 870, y: 1640 };
 export const VILLAGE_ENTRY = { x: 880, y: 1760 };
 export const MERCHANT_SPOT = { x: 860, y: 1880 };
 export const START_AREAS: AreaId[] = ['glade'];
+
+// ------------------------------------------------------------------ 64: the new regions
+/** Meadow (north) / hills (south) divide in the east, around this y. */
+export const MEADOW_EDGE_Y = 1500;
+/** Seashell Bay: a big sandy lake in the south-east. */
+export const BAY = { x: 6500, y: 4750, rx: 950, ry: 520 };
+export const LAKES = [LAKE, BAY];
+export const HIVES: [number, number][] = [[5350, 560], [6900, 1050], [7900, 420]];
+export const LIGHTHOUSE = { x: 7560, y: 4050 };
+export const CAIRNS: [number, number][] = [[5300, 2250], [6500, 2650], [7700, 2050]];
+export const GROVE_RING = { x: 1500, y: 4300, r: 230 };
+/** Region hubs (open clearings on the paths); fast travel lands here. */
+export const HUBS = {
+  meadow: { x: 6200, y: 760 }, hills: { x: 6300, y: 2330 }, grove: { x: 2200, y: 4150 }, bay: { x: 6050, y: 3950 },
+};
+/** 66-67: clearings kept open (no trees) for the spelling and number puzzle sites. */
+export const PUZZLE_SITES = [
+  { id: 'spell1', kind: 'spelling', x: 5550, y: 1060 },
+  { id: 'spell2', kind: 'spelling', x: 7300, y: 3780 },
+  { id: 'num1', kind: 'numbers', x: 2950, y: 4500 },
+  { id: 'num2', kind: 'numbers', x: 7200, y: 2420 },
+] as const;
+export const PUZZLE_SITE_R = 220;
+
+export const PATH_MEADOW: [number, number][] = [[3950, 900], [4300, 960], [4700, 900], [5200, 820], [5700, 880], [6200, 760], [6800, 700], [7400, 760], [8100, 700]];
+export const PATH_SPELL1: [number, number][] = [[5200, 820], [5400, 960], [5550, 1060]];
+export const PATH_HILLS: [number, number][] = [[3760, 2010], [4100, 2080], [4600, 2150], [5200, 2200], [5800, 2320], [6300, 2330], [6800, 2380], [7200, 2420]];
+export const PATH_MEADOW_HILLS: [number, number][] = [[6200, 760], [6280, 1200], [6250, 1700], [6300, 2330]];
+export const PATH_GROVE: [number, number][] = [[3650, 2700], [3480, 2950], [3300, 3300], [2900, 3700], [2200, 4150], [1500, 4300], [900, 4700], [700, 5300]];
+export const PATH_SHORE_S: [number, number][] = [[1050, 2900], [1080, 3300], [1300, 3800], [1500, 4300]];
+export const PATH_NUM1: [number, number][] = [[2200, 4150], [2600, 4380], [2950, 4500]];
+export const PATH_BAY: [number, number][] = [[2200, 4150], [3200, 4000], [4200, 3900], [5100, 3900], [6050, 3950], [6800, 3820], [7300, 3780], [7560, 4050]];
+export const PATH_HILLS_BAY: [number, number][] = [[6300, 2330], [6200, 2900], [6000, 3400], [6050, 3950]];

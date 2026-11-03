@@ -11,7 +11,7 @@ import { theme } from './theme';
 const hsl = (h: number, s: number, l: number, a = 1) => { const [H, S, L] = theme.ground(h, s, l); return hslRaw(H, S, L, a); };
 const softCircle = (ctx: Ctx, x: number, y: number, r: number, c: [number, number, number], a: number) => softRaw(ctx, x, y, r, theme.ground(c[0], c[1], c[2]), a);
 import {
-  WORLD_W, WORLD_H, GLADE_W, GLADE_H, POND, SHRINE, GARDEN, COTTAGE, LAKE, AreaId, PIER,
+  WORLD_W, WORLD_H, GLADE_W, GLADE_H, POND, SHRINE, GARDEN, COTTAGE, LAKES, AreaId, PIER,
 } from './layout';
 import { RIVER, riverDist, riverHalfAt, lakeValue, areaAt } from './geo';
 
@@ -19,12 +19,18 @@ export const TILE = 512;
 
 type Pal = { base: [number, number, number]; dabH: [number, number]; dabS: [number, number]; dabL: [number, number];
   lightH: [number, number]; darkH: [number, number]; lightL: [number, number]; darkL: [number, number]; blades: number; dabs: number };
+type Lake = { x: number; y: number; rx: number; ry: number };
 const PAL: Record<AreaId, Pal> = {
   glade: { base: [92, 46, 51], dabH: [75, 125], dabS: [35, 60], dabL: [38, 62], lightH: [70, 95], darkH: [110, 140], lightL: [62, 74], darkL: [24, 34], blades: 120, dabs: 88 },
   river: { base: [105, 48, 46], dabH: [85, 135], dabS: [38, 60], dabL: [34, 56], lightH: [80, 105], darkH: [115, 145], lightL: [58, 70], darkL: [22, 32], blades: 130, dabs: 88 },
   forest: { base: [138, 26, 36], dabH: [110, 175], dabS: [18, 38], dabL: [26, 46], lightH: [90, 130], darkH: [150, 180], lightL: [48, 62], darkL: [18, 28], blades: 90, dabs: 100 },
   orchard: { base: [70, 52, 56], dabH: [48, 95], dabS: [40, 62], dabL: [44, 66], lightH: [50, 75], darkH: [90, 115], lightL: [66, 78], darkL: [30, 40], blades: 120, dabs: 88 },
   village: { base: [86, 50, 55], dabH: [65, 115], dabS: [38, 62], dabL: [42, 64], lightH: [60, 90], darkH: [100, 130], lightL: [64, 76], darkL: [28, 38], blades: 90, dabs: 80 },
+  // 64: new regions.
+  meadow: { base: [78, 56, 58], dabH: [50, 100], dabS: [45, 70], dabL: [46, 68], lightH: [52, 80], darkH: [90, 120], lightL: [66, 80], darkL: [30, 40], blades: 140, dabs: 90 },
+  hills: { base: [110, 30, 50], dabH: [80, 150], dabS: [18, 40], dabL: [36, 58], lightH: [75, 110], darkH: [130, 160], lightL: [58, 70], darkL: [24, 34], blades: 100, dabs: 92 },
+  grove: { base: [168, 30, 30], dabH: [150, 200], dabS: [20, 42], dabL: [22, 40], lightH: [120, 170], darkH: [180, 220], lightL: [42, 56], darkL: [14, 24], blades: 80, dabs: 100 },
+  bay: { base: [88, 44, 60], dabH: [60, 110], dabS: [30, 55], dabL: [44, 68], lightH: [60, 90], darkH: [100, 130], lightL: [64, 78], darkL: [28, 38], blades: 100, dabs: 80 },
   lake: { base: [96, 42, 54], dabH: [70, 120], dabS: [32, 55], dabL: [40, 62], lightH: [65, 95], darkH: [105, 135], lightL: [62, 74], darkL: [26, 36], blades: 110, dabs: 80 },
 };
 
@@ -76,7 +82,7 @@ export function paintGroundTile(ctx: Ctx, x0: number, y0: number, size: number) 
         const x = (cx + rng()) * PC, y = (cy + rng()) * PC, r = rr(rng, 70, 230);
         const warm = rng() < 0.5;
         const a = areaAt(x, y);
-        const hh = a === 'forest' ? (warm ? rr(rng, 90, 110) : rr(rng, 150, 175)) : a === 'orchard' ? (warm ? rr(rng, 45, 65) : rr(rng, 85, 110)) : (warm ? rr(rng, 60, 85) : rr(rng, 110, 150));
+        const hh = a === 'grove' ? (warm ? rr(rng, 150, 175) : rr(rng, 250, 280)) : a === 'meadow' ? (warm ? rr(rng, 44, 58) : rr(rng, 80, 110)) : a === 'hills' ? (warm ? rr(rng, 30, 42) : rr(rng, 120, 150)) : a === 'forest' ? (warm ? rr(rng, 90, 110) : rr(rng, 150, 175)) : a === 'orchard' ? (warm ? rr(rng, 45, 65) : rr(rng, 85, 110)) : (warm ? rr(rng, 60, 85) : rr(rng, 110, 150));
         const ll = warm ? rr(rng, 56, 66) : rr(rng, 30, 40);
         const aa = rr(rng, 0.1, 0.26);
         if (vis(x - r, y - r, x + r, y + r)) softCircle(ctx, x, y, r, [hh, warm ? 60 : 38, ll], aa);
@@ -87,7 +93,7 @@ export function paintGroundTile(ctx: Ctx, x0: number, y0: number, size: number) 
   if (vis(SHRINE.x - 420, SHRINE.y - 400, SHRINE.x + 420, SHRINE.y + 440)) softCircle(ctx, SHRINE.x, SHRINE.y + 20, 420, [140, 35, 28], 0.45);
 
   // 3. Sandy lake shore (under everything grassy).
-  if (vis(LAKE.x - LAKE.rx * 1.5, LAKE.y - LAKE.ry * 1.5, LAKE.x + LAKE.rx * 1.5, LAKE.y + LAKE.ry * 1.5)) paintLake(ctx, x0, y0, x1, y1);
+  for (const L of LAKES) if (vis(L.x - L.rx * 1.5, L.y - L.ry * 1.5, L.x + L.rx * 1.5, L.y + L.ry * 1.5)) paintLake(ctx, L, x0, y0, x1, y1);
 
   // 4. Brush dabs + grass blades in 128-unit cells.
   const C = 128;
@@ -116,8 +122,20 @@ export function paintGroundTile(ctx: Ctx, x0: number, y0: number, size: number) 
         ctx.strokeStyle = light ? hsl(hh, 60, ll, 0.5) : hsl(hh, 45, ll, 0.45);
         ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + lean * 0.3, y - len * 0.6, x + lean, y - len); ctx.stroke();
       }
+      // 64: meadow wildflower specks, grove glow-moss, hills pebbles.
+      const ca = areaAt((cx + 0.5) * C, (cy + 0.5) * C);
+      if (ca === 'meadow' || ca === 'grove' || ca === 'hills') {
+        rng = cellRng(cx, cy, 5);
+        for (let i = 0; i < 18; i++) {
+          const x = (cx + rng()) * C, y = (cy + rng()) * C, t = rng();
+          const col = ca === 'meadow' ? (t < 0.55 ? hsl(rr(rng, 44, 54), 90, 62, 0.8) : t < 0.8 ? hsl(rr(rng, 0, 340), 70, 80, 0.75) : hsl(0, 0, 97, 0.8))
+            : ca === 'grove' ? (t < 0.5 ? hsl(rr(rng, 165, 190), 70, rr(rng, 55, 70), 0.55) : hsl(rr(rng, 260, 290), 50, 55, 0.4))
+            : hsl(rr(rng, 30, 45), 12, rr(rng, 55, 70), 0.6);
+          if (x > x0 - 6 && x < x1 + 6 && y > y0 - 6 && y < y1 + 6 && !isSand(x, y)) dab(ctx, x, y, rr(rng, 1.4, 3), rr(rng, 1.2, 2.2), rng() * 3, col);
+        }
+      }
       // Forest floor: fallen birch leaves + moss.
-      if (areaAt((cx + 0.5) * C, (cy + 0.5) * C) === 'forest') {
+      if (ca === 'forest') {
         rng = cellRng(cx, cy, 4);
         for (let i = 0; i < 22; i++) {
           const x = (cx + rng()) * C, y = (cy + rng()) * C;
@@ -313,41 +331,41 @@ function paintPond(ctx: Ctx) {
   }
 }
 
-function lakeShape(ctx: Ctx | Path2D, scale: number, dy = 0) {
+function lakeShape(ctx: Ctx | Path2D, L: Lake, scale: number, dy = 0) {
   const n = 96;
   for (let i = 0; i <= n; i++) {
     const a = (i / n) * Math.PI * 2;
     const w = 1 + 0.06 * Math.sin(3 * a + 1) + 0.04 * Math.sin(5 * a + 2) + 0.025 * Math.sin(9 * a + 0.5);
-    const x = LAKE.x + Math.cos(a) * LAKE.rx * w * scale, y = LAKE.y + dy + Math.sin(a) * LAKE.ry * w * scale;
+    const x = L.x + Math.cos(a) * L.rx * w * scale, y = L.y + dy + Math.sin(a) * L.ry * w * scale;
     if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
   }
 }
 
-function paintLake(ctx: Ctx, x0: number, y0: number, x1: number, y1: number) {
+function paintLake(ctx: Ctx, L: Lake, x0: number, y0: number, x1: number, y1: number) {
   // Sand beach ring.
   ctx.save();
-  ctx.globalAlpha = 0.35; ctx.beginPath(); lakeShape(ctx, sandLimit + 0.03); ctx.fillStyle = hsl(42, 45, 74); ctx.fill();
-  ctx.globalAlpha = 0.6; ctx.beginPath(); lakeShape(ctx, sandLimit - 0.02); ctx.fill();
-  ctx.globalAlpha = 1; ctx.beginPath(); lakeShape(ctx, sandLimit - 0.08); ctx.fill();
-  ctx.beginPath(); lakeShape(ctx, 1.12);
+  ctx.globalAlpha = 0.35; ctx.beginPath(); lakeShape(ctx, L, sandLimit + 0.03); ctx.fillStyle = hsl(42, 45, 74); ctx.fill();
+  ctx.globalAlpha = 0.6; ctx.beginPath(); lakeShape(ctx, L, sandLimit - 0.02); ctx.fill();
+  ctx.globalAlpha = 1; ctx.beginPath(); lakeShape(ctx, L, sandLimit - 0.08); ctx.fill();
+  ctx.beginPath(); lakeShape(ctx, L, 1.12);
   ctx.fillStyle = hsl(40, 42, 70); ctx.fill();
-  ctx.beginPath(); lakeShape(ctx, 1.03);
+  ctx.beginPath(); lakeShape(ctx, L, 1.03);
   ctx.fillStyle = hsl(36, 32, 58); ctx.fill(); // wet sand
   ctx.restore();
   // Water.
   ctx.save();
-  ctx.beginPath(); lakeShape(ctx, 1);
+  ctx.beginPath(); lakeShape(ctx, L, 1);
   ctx.clip();
-  const g = ctx.createRadialGradient(LAKE.x, LAKE.y + 40, 30, LAKE.x, LAKE.y, LAKE.rx);
+  const g = ctx.createRadialGradient(L.x, L.y + 40, 30, L.x, L.y, L.rx);
   g.addColorStop(0, hsl(208, 60, 30)); g.addColorStop(0.6, hsl(195, 56, 42)); g.addColorStop(1, hsl(175, 50, 60));
   ctx.fillStyle = g;
   ctx.fillRect(x0 - 2, y0 - 2, x1 - x0 + 4, y1 - y0 + 4);
-  softCircle(ctx, LAKE.x - 220, LAKE.y - 100, 300, [45, 80, 85], 0.18);
-  softCircle(ctx, LAKE.x + 260, LAKE.y + 60, 260, [200, 70, 78], 0.18);
+  softCircle(ctx, L.x - 220, L.y - 100, 300, [45, 80, 85], 0.18);
+  softCircle(ctx, L.x + 260, L.y + 60, 260, [200, 70, 78], 0.18);
   // Shallow lighter rim.
   for (const [lw, a] of [[56, 0.12], [36, 0.16], [18, 0.2]]) {
     ctx.lineWidth = lw; ctx.strokeStyle = hsl(170, 50, 66, a);
-    ctx.beginPath(); lakeShape(ctx, 1); ctx.stroke();
+    ctx.beginPath(); lakeShape(ctx, L, 1); ctx.stroke();
   }
   // Ripple strokes (cell based).
   const C = 128;
@@ -363,7 +381,7 @@ function paintLake(ctx: Ctx, x0: number, y0: number, x1: number, y1: number) {
   ctx.restore();
   // Foam line.
   ctx.lineWidth = 2.2; ctx.strokeStyle = 'rgba(255,252,240,0.6)';
-  ctx.beginPath(); lakeShape(ctx, 1.005); ctx.stroke();
+  ctx.beginPath(); lakeShape(ctx, L, 1.005); ctx.stroke();
 }
 
 function paintRiver(ctx: Ctx, x0: number, y0: number, x1: number, y1: number) {

@@ -16,7 +16,7 @@ import { Puzzles, resetStone } from '../puzzles';
 import { Fishing } from '../fishing';
 import { Reacts } from '../react';
 import {
-  WORLD_W, WORLD_H, GLADE_W, GLADE_H, AREA_NAMES, AreaId, VILLAGE, TRACKS, PLAYER_START, POND, COTTAGE, GARDEN, WALL_Y, GATE, SHRINE, SHRINE_CLEARING, SIGN,
+  WORLD_W, WORLD_H, OLD_W, GLADE_W, GLADE_H, AREA_NAMES, AreaId, VILLAGE, TRACKS, PLAYER_START, POND, COTTAGE, GARDEN, WALL_Y, GATE, SHRINE, SHRINE_CLEARING, SIGN,
   LANTERNS, LANTERN_ORDER, LanternId,
   TRAILHEAD,
 } from '../layout';
@@ -854,8 +854,8 @@ export class WorldScene extends Phaser.Scene {
       r.setScale(3.2 * s, 2.4 * s);
       this.rays.push(r);
     }
-    // Drifting cloud shadows.
-    for (let i = 0; i < 10; i++) {
+    // Drifting cloud shadows (64: 4x the sky for the 4x world).
+    for (let i = 0; i < 40; i++) {
       const c = this.fx(Math.random() * WORLD_W, 200 + Math.random() * (WORLD_H - 300), 'cloud', 4 + Math.random() * 2)
         .setTint(0x1c2a3a).setAlpha(0.13).setDepth(8400);
       this.clouds.push(c);
@@ -1298,7 +1298,7 @@ export class WorldScene extends Phaser.Scene {
     }
     for (const m of this.mist) {
       m.x += dt * 6;
-      if (m.x > WORLD_W - 40) m.x = 2450;
+      if (m.x > OLD_W - 40) m.x = 2450; // Mistbirch mist stays in the wood
       m.setVisible(Math.abs(m.x - this.feet.x) < 1100 && Math.abs(m.y - this.feet.y) < 800);
     }
     if (this.windmill) {

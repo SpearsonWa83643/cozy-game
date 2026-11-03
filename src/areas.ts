@@ -3,13 +3,14 @@
 import Phaser from 'phaser';
 import { mulberry32, pondValue, pathDist, ATLAS , TREE_SCALE } from './art';
 import {
-  WORLD_W, WORLD_H, GLADE_W, GLADE_H, LAKE, BRIDGES, BRIDGE_GATE, PIER, WINDMILL, FOREST_EDGE_Y, RIDGE_X,
+  WORLD_W, WORLD_H, OLD_W, OLD_H, PUZZLE_SITES, PUZZLE_SITE_R, HUBS, GLADE_W, GLADE_H, LAKE, BRIDGES, BRIDGE_GATE, PIER, WINDMILL, FOREST_EDGE_Y, RIDGE_X,
   TILES, OWL, BELLS, DIG, DIG_STONES, DIG_SIGN, BELL_SIGN, TILE_SIGN, POTS, POT_SIGN, SONGBIRD, VILLAGE, VILLAGE_SIGN, MERCHANT_SPOT, PSTONES, PSTONE_SIGN, PSTONE_CHEST, TRACKS, TRACK_SIGN,
 } from './layout';
 import { riverXAt, riverDist, riverHalfAt, lakeValue, waterAt, RIVER } from './geo';
 import { sfx } from './audio';
 import { hasTreasure, save, setPuzzle } from './save';
 import type { WorldScene } from './scenes/World';
+import { buildRegions } from './regions';
 
 type Rng = () => number;
 
@@ -35,6 +36,11 @@ export function buildAreas(w: WorldScene) {
     if (lakeValue(x, y, pad) < 1.02) return false;
     if (pondValue(x, y, pad) < 1) return false;
     for (const [kx, ky, kr] of keep) if (Math.hypot(kx - x, ky - y) < kr + pad * 0.5) return false;
+    // 64: open clearings at the region hubs and the future (66-67) puzzle sites.
+    if (x > OLD_W - 200 || y > OLD_H - 200) {
+      for (const p of PUZZLE_SITES) if (Math.hypot(p.x - x, p.y - y) < PUZZLE_SITE_R + pad) return false;
+      for (const h of Object.values(HUBS)) if (Math.hypot(h.x - x, h.y - y) < 130 + pad) return false;
+    }
     return true;
   };
 
@@ -163,24 +169,24 @@ export function buildAreas(w: WorldScene) {
   {
     const rng = mulberry32(601);
     const xr = (y: number) => riverXAt(y) + riverHalfAt(y) + 40;
-    scatter(rng, 2380, 40, WORLD_W - 20, FOREST_EDGE_Y - 30, 150, 96, 30, (x, y) => {
+    scatter(rng, 2380, 40, OLD_W - 20, FOREST_EDGE_Y - 30, 150, 96, 30, (x, y) => {
       if (x < xr(y)) return;
       tree(x, y, rng() < 0.82 ? `birch${Math.floor(rng() * 2)}` : 'teal' === 'teal' ? 'tree1' : 'pine0', 0.85 + rng() * 0.35, rng, 'birch');
     });
-    scatter(rng, 2380, 60, WORLD_W - 20, FOREST_EDGE_Y - 40, 120, 40, 10, (x, y) => {
+    scatter(rng, 2380, 60, OLD_W - 20, FOREST_EDGE_Y - 40, 120, 40, 10, (x, y) => {
       if (x < xr(y)) return;
       const f = w.img(x, y, `fern${Math.floor(rng() * 2)}`, 0.5, 1, 0.9 + rng() * 0.5).setDepth(y);
       w.sway(f, 0.05, 1 + rng());
       w.reacts.bush(f);
     });
-    scatter(rng, 2380, 60, WORLD_W - 20, FOREST_EDGE_Y - 40, 40, 90, 20, (x, y) => {
+    scatter(rng, 2380, 60, OLD_W - 20, FOREST_EDGE_Y - 40, 40, 90, 20, (x, y) => {
       if (x < xr(y)) return;
       const r = rng();
       if (r < 0.4) rock(x, y, Math.floor(rng() * 3));
       else if (r < 0.7) bush(x, y, rng);
       else { const m = w.img(x, y, 'mushrooms', 0.5, 1, 1 + rng() * 0.3).setDepth(y); w.reacts.flower(m); }
     });
-    scatter(rng, 2380, 60, WORLD_W - 20, FOREST_EDGE_Y - 40, 120, 16, 4, (x, y) => { if (x > xr(y)) tuft(x, y, `tuft${Math.floor(rng() * 3)}`, rng); });
+    scatter(rng, 2380, 60, OLD_W - 20, FOREST_EDGE_Y - 40, 120, 16, 4, (x, y) => { if (x > xr(y)) tuft(x, y, `tuft${Math.floor(rng() * 3)}`, rng); });
     for (let i = 0; i < 8; i++) flowerClump(2700 + rng() * 1600, 150 + rng() * 1100, rng, 4);
     // Ring of mushrooms + stones around the tile clearing.
     for (let i = 0; i < 14; i++) {
@@ -193,13 +199,13 @@ export function buildAreas(w: WorldScene) {
     // The owl's birch.
     tree(OWL.x, OWL.y + 120, 'birch0', 1.2, rng, 'birch');
     // Divider between wood and orchard: a dense hedge of pines.
-    for (let x = 2300; x < WORLD_W + 40; x += 46) {
+    for (let x = 2300; x < OLD_W + 40; x += 46) {
       const y = FOREST_EDGE_Y + (rng() * 2 - 1) * 14;
       if (riverDist(x, y) < riverHalfAt(y) + 30) continue;
       tree(x, y, rng() < 0.6 ? `pine${Math.floor(rng() * 2)}` : 'tree5', 0.9 + rng() * 0.35, rng, 'leaf', false);
     }
     const x0 = riverXAt(FOREST_EDGE_Y) + riverHalfAt(FOREST_EDGE_Y) + 4;
-    w.solidRect(x0, FOREST_EDGE_Y - 30, WORLD_W - x0, 44);
+    w.solidRect(x0, FOREST_EDGE_Y - 30, OLD_W - x0, 44);
     // Drifting mist.
     for (let i = 0; i < 18; i++) {
       const m = w.add.image(2500 + rng() * 1850, 80 + rng() * 1250, ATLAS, 'mist').setDepth(8100).setAlpha(0.16 + rng() * 0.14)
@@ -221,18 +227,27 @@ export function buildAreas(w: WorldScene) {
       }
     }
     // Scattered trees + bushes in the upper meadow.
-    scatter(rng, 2450, FOREST_EDGE_Y + 60, WORLD_W - 30, 2200, 16, 160, 50, (x, y) => { if (x > xr(y)) tree(x, y, rng() < 0.5 ? 'tree0' : 'apple0', 0.9 + rng() * 0.2, rng, 'apple'); });
-    scatter(rng, 2450, FOREST_EDGE_Y + 60, WORLD_W - 30, WORLD_H - 60, 22, 120, 30, (x, y) => { if (x > xr(y)) (rng() < 0.6 ? bush(x, y, rng) : rock(x, y, Math.floor(rng() * 3))); });
-    scatter(rng, 2450, FOREST_EDGE_Y + 60, WORLD_W - 30, WORLD_H - 40, 240, 16, 4, (x, y) => { if (x > xr(y)) tuft(x, y, `tuft${Math.floor(rng() * 3)}`, rng); });
+    scatter(rng, 2450, FOREST_EDGE_Y + 60, OLD_W - 30, 2200, 16, 160, 50, (x, y) => { if (x > xr(y)) tree(x, y, rng() < 0.5 ? 'tree0' : 'apple0', 0.9 + rng() * 0.2, rng, 'apple'); });
+    scatter(rng, 2450, FOREST_EDGE_Y + 60, OLD_W - 30, OLD_H - 60, 22, 120, 30, (x, y) => { if (x > xr(y)) (rng() < 0.6 ? bush(x, y, rng) : rock(x, y, Math.floor(rng() * 3))); });
+    scatter(rng, 2450, FOREST_EDGE_Y + 60, OLD_W - 30, OLD_H - 40, 240, 16, 4, (x, y) => { if (x > xr(y)) tuft(x, y, `tuft${Math.floor(rng() * 3)}`, rng); });
     for (let i = 0; i < 26; i++) flowerClump(2500 + rng() * 1850, 1500 + rng() * 1450, rng);
     // South + east rims.
-    for (let x = RIDGE_X; x < WORLD_W + 40; x += 58) tree(x + rng() * 30, WORLD_H - 10 + rng() * 20, rng() < 0.5 ? 'tree0' : 'tree2', 0.95 + rng() * 0.3, rng, 'leaf');
-    for (let y = FOREST_EDGE_Y + 40; y < WORLD_H; y += 64) tree(WORLD_W - 30 - rng() * 30, y, rng() < 0.5 ? 'tree0' : 'pine1', 0.95 + rng() * 0.3, rng, 'leaf');
+    // (64: each rim has a gap where a trail leads on into the new regions; skipped trees still use their rng draws.)
+    for (let x = RIDGE_X; x < OLD_W + 40; x += 58) {
+      const tx = x + rng() * 30, ty = OLD_H - 10 + rng() * 20, key = rng() < 0.5 ? 'tree0' : 'tree2', sc = 0.95 + rng() * 0.3;
+      if (tx > 3300 && tx < 3640) { rng(); rng(); continue; }
+      tree(tx, ty, key, sc, rng, 'leaf');
+    }
+    for (let y = FOREST_EDGE_Y + 40; y < OLD_H; y += 64) {
+      const tx = OLD_W - 30 - rng() * 30, key = rng() < 0.5 ? 'tree0' : 'pine1', sc = 0.95 + rng() * 0.3;
+      if (y > 1920 && y < 2220) { rng(); rng(); continue; }
+      tree(tx, y, key, sc, rng, 'leaf');
+    }
     // Wooded ridge between the orchard and the lake shore, below the river mouth.
-    for (let y = 2330; y < WORLD_H + 20; y += 44) {
+    for (let y = 2330; y < OLD_H + 20; y += 44) {
       for (let k = 0; k < 3; k++) tree(RIDGE_X - 60 + k * 60 + rng() * 26, y + rng() * 20, rng() < 0.5 ? 'pine0' : 'pine1', 0.95 + rng() * 0.3, rng, 'leaf', false);
     }
-    w.solidRect(RIDGE_X - 70, 2360, 170, WORLD_H - 2360);
+    w.solidRect(RIDGE_X - 70, 2360, 170, OLD_H - 2360);
     // Windmill.
     const { x, y } = WINDMILL;
     w.shadow(x + 14, y - 6, 200, 0.8);
@@ -257,13 +272,15 @@ export function buildAreas(w: WorldScene) {
   {
     const rng = mulberry32(801);
     // West rim + south rim.
-    for (let y = GLADE_H + 60; y < WORLD_H + 20; y += 56) {
+    for (let y = GLADE_H + 60; y < OLD_H + 20; y += 56) {
       tree(30 + rng() * 50, y, rng() < 0.5 ? 'tree1' : 'pine0', 0.95 + rng() * 0.3, rng, 'leaf');
       if (rng() < 0.6) tree(110 + rng() * 40, y + 25, rng() < 0.5 ? 'tree2' : 'tree5', 0.9 + rng() * 0.3, rng, 'leaf');
     }
     for (let x = 140; x < RIDGE_X - 60; x += 60) {
-      if (lakeValue(x, WORLD_H - 40) < 1.3) continue;
-      tree(x + rng() * 30, WORLD_H - 20 + rng() * 20, rng() < 0.5 ? 'tree1' : 'tree5', 0.95 + rng() * 0.3, rng, 'leaf');
+      if (lakeValue(x, OLD_H - 40) < 1.3) continue;
+      const tx = x + rng() * 30, ty = OLD_H - 20 + rng() * 20, key = rng() < 0.5 ? 'tree1' : 'tree5', sc = 0.95 + rng() * 0.3;
+      if (tx > 930 && tx < 1210) { rng(); rng(); continue; } // 64: the beach trail south to Glowcap Grove
+      tree(tx, ty, key, sc, rng, 'leaf');
     }
     // Meadow between the glade and the beach.
     scatter(rng, 150, GLADE_H + 90, RIDGE_X, 2150, 16, 150, 50, (x, y) => {
@@ -272,8 +289,8 @@ export function buildAreas(w: WorldScene) {
       const key = ['tree0', 'tree3', 'tree1'][Math.floor(rng() * 3)], sc = 0.85 + rng() * 0.3, kind = rng() < 0.5 ? 'blossom' : 'fruit';
       tree(x, y, kind === 'fruit' && key === 'tree1' ? 'tree0' : key, sc, rng, kind);
     });
-    scatter(rng, 150, GLADE_H + 80, RIDGE_X, WORLD_H - 60, 14, 120, 30, (x, y) => { if (lakeValue(x, y) > 1.45) (rng() < 0.6 ? bush(x, y, rng) : rock(x, y, Math.floor(rng() * 3))); });
-    scatter(rng, 150, GLADE_H + 60, RIDGE_X + 300, WORLD_H - 40, 200, 16, 4, (x, y) => { if (lakeValue(x, y) > 1.38) tuft(x, y, `tuft${Math.floor(rng() * 3)}`, rng); });
+    scatter(rng, 150, GLADE_H + 80, RIDGE_X, OLD_H - 60, 14, 120, 30, (x, y) => { if (lakeValue(x, y) > 1.45) (rng() < 0.6 ? bush(x, y, rng) : rock(x, y, Math.floor(rng() * 3))); });
+    scatter(rng, 150, GLADE_H + 60, RIDGE_X + 300, OLD_H - 40, 200, 16, 4, (x, y) => { if (lakeValue(x, y) > 1.38) tuft(x, y, `tuft${Math.floor(rng() * 3)}`, rng); });
     for (let i = 0; i < 16; i++) { const fx = 200 + rng() * 1700, fy = 1620 + rng() * 500; if (lakeValue(fx, fy) > 1.5 && free(fx, fy, 10)) flowerClump(fx, fy, rng); }
     // Beach dressing: dune grass, driftwood, starfish.
     for (let i = 0; i < 70; i++) {
@@ -309,6 +326,8 @@ export function buildAreas(w: WorldScene) {
     // The three white stones of the riddle.
     for (const [x, y] of DIG_STONES) w.img(x, y, 'wstone', 0.5, 1, 1.4).setDepth(y);
   }
+
+  buildRegions(w, { tree, bush, rock, tuft, flowerClump, scatter, free });
 
   // Ambient water life: ripples + glints on any water near the camera.
   w.time.addEvent({

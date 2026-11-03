@@ -1,6 +1,6 @@
 // World geometry shared by painting, collision, navigation and fishing.
 import {
-  GLADE_W, GLADE_H, RIVER_PTS, RIVER_HALF, LAKE, RIDGE_X, FOREST_EDGE_Y, BRIDGES, PIER, AreaId,
+  GLADE_W, GLADE_H, RIVER_PTS, RIVER_HALF, LAKE, LAKES, OLD_W, OLD_H, MEADOW_EDGE_Y, RIDGE_X, FOREST_EDGE_Y, BRIDGES, PIER, AreaId,
 } from './layout';
 import { pondHit, pondValue } from './art';
 
@@ -63,11 +63,24 @@ export function riverHalfAt(y: number) {
 }
 
 const lakeWob = (a: number) => 1 + 0.06 * Math.sin(3 * a + 1) + 0.04 * Math.sin(5 * a + 2) + 0.025 * Math.sin(9 * a + 0.5);
-/** <1 inside the lake water. */
-export function lakeValue(x: number, y: number, pad = 0) {
-  const dx = (x - LAKE.x) / (LAKE.rx + pad);
-  const dy = (y - LAKE.y) / (LAKE.ry + pad);
+type Lake = { x: number; y: number; rx: number; ry: number };
+/** <1 inside one lake's water. */
+export function lakeValueOf(L: Lake, x: number, y: number, pad = 0) {
+  const dx = (x - L.x) / (L.rx + pad);
+  const dy = (y - L.y) / (L.ry + pad);
   return Math.hypot(dx, dy) / lakeWob(Math.atan2(dy, dx));
+}
+/** The lake nearest in shape terms (Shellwater or Seashell Bay). */
+export function lakeAt(x: number, y: number): Lake {
+  let best = LAKES[0], bv = Infinity;
+  for (const L of LAKES) { const v = lakeValueOf(L, x, y); if (v < bv) { bv = v; best = L; } }
+  return best;
+}
+/** <1 inside any lake's water (Shellwater Shore or Seashell Bay). */
+export function lakeValue(x: number, y: number, pad = 0) {
+  let v = Infinity;
+  for (const L of LAKES) v = Math.min(v, lakeValueOf(L, x, y, pad));
+  return v;
 }
 
 export function onBridge(x: number, y: number) {
@@ -82,7 +95,7 @@ export type WaterId = 'pond' | 'river' | 'lake';
 /** Water body at a point (inner area, ignoring bridges / pier decks). */
 export function waterAt(x: number, y: number, inset = 0): WaterId | null {
   if (x < GLADE_W && y < GLADE_H && pondValue(x, y, 30) < 1 && (inset ? pondValue(x, y, -inset) < 0.9 : pondHit(x, y))) return 'pond';
-  if (lakeValue(x, y) < 1 - inset / LAKE.ry - 0.035) return 'lake';
+  if (lakeValue(x, y) < 1 - inset / lakeAt(x, y).ry - 0.035) return 'lake';
   if (riverDist(x, y) < riverHalfAt(y) - 8 - inset && y < RIVER_END_Y + 60) return 'river';
   return null;
 }
@@ -93,7 +106,15 @@ export function waterBlocks(x: number, y: number) {
   return waterAt(x, y) !== null;
 }
 
+/** 64: wobbly borders of the original map, so the new regions blend in rather than meet on a ruler line. */
+const eastEdge = (y: number) => OLD_W + Math.sin(y * 0.004) * 70 + Math.sin(y * 0.0011 + 1) * 50;
+const southEdge = (x: number) => OLD_H + Math.sin(x * 0.0035 + 2) * 60 + Math.sin(x * 0.0009) * 40;
+const meadowEdge = (x: number) => MEADOW_EDGE_Y + Math.sin(x * 0.003) * 90;
+const groveEdge = (y: number) => OLD_W + Math.sin(y * 0.003 + 0.5) * 120;
+
 export function areaAt(x: number, y: number): AreaId {
+  if (y > southEdge(x)) return x < groveEdge(y) ? 'grove' : 'bay';
+  if (x > eastEdge(y)) return y < meadowEdge(x) ? 'meadow' : 'hills';
   if (x > 60 && x < 900 && y > 1545 && y < 1990) return 'village';
   if (x < GLADE_W && y < GLADE_H) return 'glade';
   if (y >= RIVER_END_Y) return x < RIDGE_X ? 'lake' : 'orchard';

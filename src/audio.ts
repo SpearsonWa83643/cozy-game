@@ -252,6 +252,8 @@ class Synth {
     glade: { tr: 0, dens: 0.3, cut: 950 }, river: { tr: 0, dens: 0.36, cut: 1200 },
     forest: { tr: -3, dens: 0.2, cut: 700 }, orchard: { tr: 2, dens: 0.42, cut: 1350 }, lake: { tr: -1, dens: 0.26, cut: 850 },
     village: { tr: 2, dens: 0.4, cut: 1250 },
+    meadow: { tr: 4, dens: 0.46, cut: 1450 }, hills: { tr: -2, dens: 0.28, cut: 900 },
+    grove: { tr: -5, dens: 0.22, cut: 650 }, bay: { tr: 1, dens: 0.34, cut: 1150 },
   };
   private mood = Synth.MOODS.glade;
   area = 'glade';

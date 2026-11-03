@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
+import { paintRegionArt } from './regionArt';
 import { IS_TOUCH } from './device';
 import {
-  WORLD_W, WORLD_H, POND, PATH_MAIN, PATH_NORTH, PATH_EAST, PATH_SOUTH, SHRINE, GARDEN, COTTAGE, PATH_RIVER_W, PATH_RIVERSIDE, PATH_FOREST, PATH_ORCHARD, PATH_ORCHARD_S, PATH_LAKE } from './layout';
+  WORLD_W, WORLD_H, POND, PATH_MAIN, PATH_NORTH, PATH_EAST, PATH_SOUTH, SHRINE, GARDEN, COTTAGE, PATH_RIVER_W, PATH_RIVERSIDE, PATH_FOREST, PATH_ORCHARD, PATH_ORCHARD_S, PATH_LAKE,
+  PATH_MEADOW, PATH_SPELL1, PATH_HILLS, PATH_MEADOW_HILLS, PATH_GROVE, PATH_SHORE_S, PATH_NUM1, PATH_BAY, PATH_HILLS_BAY } from './layout';
 
 /** Supersampling for object textures (texture px per world unit). */
 export const S = 3;
@@ -219,7 +221,8 @@ export function distToPaths(x: number, y: number, paths: [number, number][][]) {
   return best;
 }
 
-export const ALL_PATHS = [PATH_MAIN, PATH_NORTH, PATH_EAST, PATH_SOUTH, PATH_RIVER_W, PATH_RIVERSIDE, PATH_FOREST, PATH_ORCHARD, PATH_ORCHARD_S, PATH_LAKE].map((p) => sampleSpline(p, 10));
+export const ALL_PATHS = [PATH_MAIN, PATH_NORTH, PATH_EAST, PATH_SOUTH, PATH_RIVER_W, PATH_RIVERSIDE, PATH_FOREST, PATH_ORCHARD, PATH_ORCHARD_S, PATH_LAKE,
+  PATH_MEADOW, PATH_SPELL1, PATH_HILLS, PATH_MEADOW_HILLS, PATH_GROVE, PATH_SHORE_S, PATH_NUM1, PATH_BAY, PATH_HILLS_BAY].map((p) => sampleSpline(p, 10));
 
 // Spatial buckets so path-distance queries stay cheap on the big map.
 const PB = 64;
@@ -1451,6 +1454,7 @@ export function paintAll(scene: Phaser.Scene) {
   canvasTex(scene, 'leafw', 14, 9, (c) => paintLeafBig(c, 14, 9), 3);
   canvasTex(scene, 'white', 4, 4, (c) => { c.fillStyle = '#fff'; c.fillRect(0, 0, 4, 4); }, 2);
   paintAll2(scene);
+  paintRegionArt(scene);
   paintEagle(scene);
   paintPtero(scene);
   paintCloudPuppy(scene);
