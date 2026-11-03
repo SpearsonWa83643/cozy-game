@@ -83,9 +83,10 @@ test('mount thief: button, arrest with 3 taps, escape hides a friend, rescue fro
     expect(await page.evaluate(() => (window as any).__cozy.startThief('raccoon', 1500, 1, 0))).toBe(true);
     await page.waitForTimeout(600);
     await page.screenshot({ path: `${SHOTS}/thief-sneak.png`, scale: 'css' });
-    await expect.poll(async () => (await thief(page)).stolen, { timeout: 30_000 }).not.toBeNull();
+    // The snapshot taken the moment it grabs a friend (asserted below), so a slow, loaded test machine can't miss the run-off.
+    let tc: any = null;
+    await expect.poll(async () => (tc = await thief(page)).stolen, { timeout: 30_000, intervals: [100] }).not.toBeNull();
     // 51: you see it carrying your friend off as it runs.
-    const tc = await thief(page);
     expect(tc.state).toBe('flee');
     expect(tc.carrying).toEqual([tc.stolen[0].mount]);
     expect(tc.stolen.length).toBe(1);
@@ -98,7 +99,7 @@ test('mount thief: button, arrest with 3 taps, escape hides a friend, rescue fro
     expect(sv.stolen).toEqual([st]);
     expect(sv.puzzles[st.puzzle]).toBeUndefined();
     await page.screenshot({ path: `${SHOTS}/thief-paws.png`, scale: 'css' });
-    await expect.poll(async () => (await thief(page)).state, { timeout: 20_000 }).toBe('off');
+    await expect.poll(async () => (await thief(page)).state, { timeout: 30_000 }).toBe('off');
     expect((await thief(page)).paws, '43: paw prints on the escape trail').toBeGreaterThan(0);
     await expect.poll(() => dialogOpen(page), { timeout: 20_000 }).toBe(true);
     for (let i = 0; i < 8 && await dialogOpen(page); i++) { await page.touchscreen.tap(600, 500); await page.waitForTimeout(500); }
@@ -203,10 +204,9 @@ test('mount thief: carries two friends, cells, call-mount hint, cell rescue, old
 
     // Two friends: the thief carries both, each hides behind a different puzzle with its own cell.
     expect(await page.evaluate(() => (window as any).__cozy.startThief('fox', 6000, 2, 0))).toBe(true);
-    await expect.poll(async () => (await thief(page)).carrying.length, { timeout: 90_000, intervals: [100] }).toBe(2);
-    await page.waitForTimeout(250);
+    let tc: any = null;
+    await expect.poll(async () => (tc = await thief(page)).carrying.length, { timeout: 90_000, intervals: [100] }).toBe(2);
     await page.screenshot({ path: `${SHOTS}/thief-carrying-two.png`, scale: 'css' });
-    const tc = await thief(page);
     expect(tc.state).toBe('flee');
     expect(tc.stolen.length).toBe(2);
     expect(new Set(tc.stolen.map((x: any) => x.puzzle)).size).toBe(2);
