@@ -42,6 +42,16 @@ Walker: "For immediate implementation: When the thief steals a mount you should 
 | 52 | Stolen friend waits in a friendly cell (red roof, wooden bars, gold heart padlock) beside its hiding puzzle instead of the star sack; locked until the puzzle is solved, then tap the cell (or open the chest, reward kept) for a happy burst and the friend hops home | Done/Live (merge 987f14e, bundle index-87rzwmXe.js) | 2026-11-02 | 0.25 |
 | 53 | Multi-steal: 20% two friends, 5% three (when that many are stealable), each behind a different puzzle with its own cell; dialog, toasts, stable hint, Call Mount and the "Rescue ... first!" hint list them all; save.stolen becomes a list (old single saves migrate) | Done/Live (merge 987f14e, bundle index-87rzwmXe.js) | 2026-11-02 | 0.25 |
 
+## Walker's Nov 2 backlog request: thief jail + more thieves (8:09 PM CT)
+
+Walker: "For the backlog: make a jail for the thieves like the stable where the player can see and interact with them, thieves can from time to time escape the jail, also add several more thief characters"
+
+| Order | Task | Status | ETA live | Estimate (dev days) |
+|---|---|---|---|---|
+| 54 | Thief Jail page, like the stable: every caught thief gets its own cozy cell on one screen (name, species, times caught); tap a thief to interact (cheeky line, sulk/wave, says sorry, you can hand it a berry); kid-friendly, no scary bits; caught thieves move here instead of vanishing | Open | 2026-11-04 | 1 |
+| 55 | Jailbreaks: from time to time a jailed thief sneaks out (dug tunnel / unlocked padlock, with a cheeky toast); it comes back later as a thief event you can catch again; never more than one escape per play session, and never while another thief is active | Open (after 54) | 2026-11-05 | 0.5 |
+| 56 | Several more thief characters (e.g. Squirrel, Hedgehog, Otter, Skunk, Possum, Badger, Duckling) with their own masks, colors, voices and giggle lines; added to the random pick and the jail | Open | 2026-11-04 | 0.5 |
+
 ## Walker's Nov 2 request: Sushi figurine mount (6:15 PM CT)
 
 Walker: "For immediate implementation : Add this sushi figurine to the mounts" (photo saved as docs/refs/figurine-sushi.jpg).
