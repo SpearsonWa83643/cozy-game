@@ -20,7 +20,16 @@ const openLooks = async (page: Page) => {
     await page.evaluate(() => (window as any).__menu.show('map'));
     await page.waitForTimeout(800);
   }
-  await expect.poll(async () => { if (!(await rect(page, 'looks:open'))) await tap(page, 'gear:open'); return !!(await rect(page, 'looks:open')); }, { timeout: 30_000 }).toBe(true);
+  // Tap the gear once (it toggles; tapping again on a slow frame would close it), then wait for the panel.
+  await expect.poll(() => rect(page, 'gear:open'), { timeout: 30_000 }).toBeTruthy();
+  // (gearOpen flips right in the tap handler, so re-tapping only while it's still closed can't toggle it shut;
+  // a tap can miss while the menu is still sliding in on a slow software-GPU frame.)
+  await expect.poll(async () => {
+    if (await page.evaluate(() => (window as any).__menu.gearOpen)) return true;
+    await tap(page, 'gear:open');
+    return page.evaluate(() => (window as any).__menu.gearOpen);
+  }, { timeout: 60_000, intervals: [1000] }).toBe(true);
+  await expect.poll(() => rect(page, 'looks:open'), { timeout: 30_000 }).toBeTruthy();
   await tap(page, 'looks:open');
   await expect.poll(() => page.evaluate(() => (window as any).__menu.stableView), { timeout: 15_000 }).toBe('looks');
 };
