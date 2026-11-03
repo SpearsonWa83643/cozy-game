@@ -25,11 +25,11 @@ test("what's new: after entry, shows once, closes, stays closed; none when empty
   await expect(page.locator('#entry')).toHaveCount(0);
   await expect(page.locator('#whatsnew h2')).toContainText("What's new");
   await expect(page.locator('#whatsnew li')).toHaveCount(5);
-  await expect(page.locator('#whatsnew li').first()).toContainText('Counting boards!');
-  await expect(page.locator('#whatsnew li').nth(1)).toContainText('Letter easels!');
-  await expect(page.locator('#whatsnew li').nth(2)).toContainText('Fly anywhere!');
-  await expect(page.locator('#whatsnew li').nth(3)).toContainText('4 times bigger');
-  await expect(page.locator('#whatsnew li').nth(4)).toContainText('The Village Board!');
+  await expect(page.locator('#whatsnew li').first()).toContainText('The world is alive!');
+  await expect(page.locator('#whatsnew li').nth(1)).toContainText('Counting boards!');
+  await expect(page.locator('#whatsnew li').nth(2)).toContainText('Letter easels!');
+  await expect(page.locator('#whatsnew li').nth(3)).toContainText('Fly anywhere!');
+  await expect(page.locator('#whatsnew li').nth(4)).toContainText('4 times bigger');
   const ok = await page.locator('#whatsnew .w-ok').boundingBox();
   expect(ok!.height).toBeGreaterThanOrEqual(70);
   await page.waitForTimeout(700);

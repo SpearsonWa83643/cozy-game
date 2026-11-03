@@ -609,6 +609,71 @@ class Synth {
   swish() { if (!this.ready) return; this.noiseBurst(0.3, 1600, 0.8, 0.04, 'bandpass', 0, 0.5); this.plip(); }
   softFail() { if (!this.ready) return; this.voice(330, 0, 0.06, 0.4, 'triangle'); this.voice(311, 0.12, 0.05, 0.5, 'triangle'); }
 
+  /** 68: shared noise for the little region sounds (made once, not per sound). */
+  private ambNoise: AudioBuffer | null = null;
+  /**
+   * 68: one small ambient sound for the region you're in (quiet, panned off to a side, through the reverb).
+   * Returns false when audio is off / not unlocked yet.
+   */
+  ambience(kind: 'birds' | 'drops' | 'owl' | 'cuckoo' | 'chimes' | 'creak' | 'woodpecker' | 'buzz' | 'crickets' | 'breeze' | 'waves' | 'gull'): boolean {
+    if (!this.ready) return false;
+    const ctx = this.ctx!, at = ctx.currentTime + 0.05;
+    if (kind === 'birds' || kind === 'drops' || kind === 'owl' || kind === 'cuckoo' || kind === 'chimes' || kind === 'creak') {
+      if (!this.layer) return false;
+      this.playExtra({ kind: kind === 'chimes' ? ('chimes' as any) : kind, every: [1, 1], vol: 0.9 }, at);
+      return true;
+    }
+    const pan = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+    if (pan) pan.pan.value = (Math.random() < 0.5 ? -1 : 1) * (0.25 + Math.random() * 0.5);
+    const dest: AudioNode = pan ?? this.out;
+    if (pan) { pan.connect(this.out); pan.connect(this.wet); }
+    const tone = (f0: number, f1: number, w: number, d: number, vol: number, type: OscillatorType = 'sine') => {
+      const o = ctx.createOscillator(); o.type = type;
+      o.frequency.setValueAtTime(f0, at + w); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), at + w + d);
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, at + w);
+      g.gain.linearRampToValueAtTime(vol, at + w + Math.min(0.03, d * 0.3)); g.gain.exponentialRampToValueAtTime(0.0001, at + w + d);
+      o.connect(g); g.connect(dest); o.start(at + w); o.stop(at + w + d + 0.05);
+    };
+    const hiss = (dur: number, type: BiquadFilterType, f0: number, f1: number, q: number, peak: number, rise: number) => {
+      if (!this.ambNoise) { const src = this.noise(3); this.ambNoise = src.buffer; }
+      const src = ctx.createBufferSource(); src.buffer = this.ambNoise; src.loop = true;
+      const f = ctx.createBiquadFilter(); f.type = type; f.Q.value = q;
+      f.frequency.setValueAtTime(f0, at); f.frequency.exponentialRampToValueAtTime(f1, at + dur);
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, at);
+      g.gain.linearRampToValueAtTime(peak, at + dur * rise); g.gain.linearRampToValueAtTime(0.0001, at + dur);
+      src.connect(f); f.connect(g); g.connect(dest); src.start(at); src.stop(at + dur + 0.05);
+    };
+    if (kind === 'woodpecker') {
+      // A far-off woodpecker: a quick dry rat-a-tat.
+      const n = 8 + Math.floor(Math.random() * 6);
+      for (let i = 0; i < n; i++) tone(1100, 700, i * 0.055, 0.025, 0.012 * (1 - i / (n + 4)), 'triangle');
+    } else if (kind === 'buzz') {
+      // A bee drifting past: a soft wavering hum that swells and fades.
+      const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.setValueAtTime(210 + Math.random() * 40, at);
+      const lf = ctx.createOscillator(); lf.frequency.value = 7; const la = ctx.createGain(); la.gain.value = 9; lf.connect(la); la.connect(o.frequency);
+      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 900;
+      const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, at); g.gain.linearRampToValueAtTime(0.006, at + 0.6); g.gain.linearRampToValueAtTime(0.0001, at + 1.8);
+      o.connect(f); f.connect(g); g.connect(dest); o.start(at); lf.start(at); o.stop(at + 1.9); lf.stop(at + 1.9);
+    } else if (kind === 'crickets') {
+      // A little chorus of crickets: high, quick chirp pulses.
+      for (let c = 0; c < 2; c++) {
+        const f = 4200 + Math.random() * 900, w0 = c * 0.35;
+        for (let i = 0; i < 6; i++) tone(f, f * 0.98, w0 + i * 0.16 + (i % 3 === 2 ? 0.08 : 0), 0.035, 0.0045, 'sine');
+      }
+    } else if (kind === 'breeze') {
+      // Wind over the hilltops.
+      hiss(3.6, 'bandpass', 320, 820, 0.7, 0.03, 0.45);
+    } else if (kind === 'waves') {
+      // A wave washing up the sand and sighing back.
+      hiss(3.2, 'lowpass', 500, 1700, 0.3, 0.045, 0.35);
+      hiss(2.4, 'highpass', 2400, 4200, 0.4, 0.006, 0.5);
+    } else if (kind === 'gull') {
+      // A gull's cry: two bright falling squeals.
+      for (const w of [0, 0.32]) { tone(1700, 1100, w, 0.22, 0.012, 'triangle'); tone(3400, 2200, w, 0.16, 0.002, 'sine'); }
+    }
+    return true;
+  }
+
   private get ready() {
     return !!this.ctx && !this.muted && this.level !== 'off' && this.ctx.state === 'running';
   }

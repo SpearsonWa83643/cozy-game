@@ -26,6 +26,7 @@ import { DPR } from '../dpr';
 import { NavGrid } from '../pathfind';
 import { startCandidates, pickStart, rng32, StartOpts } from '../startSpot';
 import { Life } from '../life';
+import { Ambient } from '../ambient';
 import { HeroJoy } from '../heroJoy';
 import { Dandelions } from '../dandelions';
 import { SnowPrints } from '../snowPrints';
@@ -158,6 +159,8 @@ export class WorldScene extends Phaser.Scene {
   pathLastD = Infinity;
   tapMarker!: Phaser.GameObjects.Image;
   life!: Life;
+  /** 68: travellers, butterflies, sky clouds and region sounds across the big map. */
+  alive!: Ambient;
   catPets = 0;
   ground!: GroundStreamer;
   swayerOf = new Map<Phaser.GameObjects.Image, Swayer>();
@@ -294,6 +297,7 @@ export class WorldScene extends Phaser.Scene {
     this.mount = new Mount(this);
     this.thief = new Thief(this);
     this.placeStart();
+    this.alive = new Ambient(this);
     this.tapMarker = this.fx(0, 0, 'ripple', 0.5).setBlendMode('ADD').setAlpha(0).setDepth(-300);
     this.boat = new Boats(this);
     this.ice = new FrozenWater(this);
@@ -1318,6 +1322,7 @@ export class WorldScene extends Phaser.Scene {
     }
 
     this.life.update(time, dt);
+    this.alive.update(time, dt);
     this.puzzles.update(time, dt);
     this.fishing.update(time, dt);
     this.reacts.update(time, dt);
@@ -1687,6 +1692,8 @@ export class WorldScene extends Phaser.Scene {
       villageEvent: (e: 'merchant' | 'rain' | 'festival') => self.village.start(e),
       /** 11.85: fast-forward the rainy-day event to N seconds left. */
       /** 11.95: seasonal off-screen culling counters (props skipped by the camera, animations run/skipped). */
+      /** 68: the living world (travellers, butterflies, clouds, region sounds). */
+      alive: () => self.alive.stats(),
       seasonPerf: () => ({ ...self.dresser.stats, cullOn: self.dresser.cullOn, zoom: self.cameras.main.zoom }),
       seasonCull: (on: boolean) => { self.dresser.cullOn = on; },
       /** Time n extra dresser updates (ms per update) with culling on or off: a headless measurement. */
