@@ -185,7 +185,7 @@ export class ChaseScene extends Phaser.Scene {
   wind: { im: Phaser.GameObjects.Image; v: number; s: number }[] = []; wisps: Phaser.GameObjects.Image[] = [];
   puffs: { im: Phaser.GameObjects.Image; life: number; max: number; vy: number; s: number; a: number }[] = [];
   spd = 1; boostT = 0; boosts = 0; puffT = 0; thPuffT = 0; bank = 0; thBank = 0; span = 1; capeF = 0; capeT = 0;
-  hudCam: Phaser.Cameras.Scene2D.Camera | null = null; zoomTw: Phaser.Tweens.Tween | null = null;
+  hudCam: Phaser.Cameras.Scene2D.Camera | null = null; sheet: Phaser.GameObjects.Container | null = null; zoomTw: Phaser.Tweens.Tween | null = null;
   thief!: Phaser.GameObjects.Image; thShadow!: Phaser.GameObjects.Image; carry: Phaser.GameObjects.Image[] = [];
   meter: { ring: Phaser.GameObjects.Image; fill: Phaser.GameObjects.Image }[] = [];
   meterLabel: Phaser.GameObjects.Text | null = null;
@@ -206,7 +206,7 @@ export class ChaseScene extends Phaser.Scene {
     this.t = 0; this.hits = 0; this.stars = 0; this.berries = 0; this.bumps = 0; this.nets = 0;
     this.items = []; this.netsL = []; this.far = []; this.streaks = []; this.carry = []; this.meter = []; this.sparks = []; this.hint = []; this.panel = null; this.floats = []; this.lastPulse = null; this.meterLabel = null;
     this.wingL = this.wingR = this.capeIm = this.propIm = null; this.ghosts = []; this.trail = []; this.wind = []; this.wisps = []; this.puffs = [];
-    this.spd = 1; this.boostT = 0; this.boosts = 0; this.puffT = 0; this.thPuffT = 0; this.bank = 0; this.thBank = 0; this.span = 1; this.hudCam = null; this.zoomTw = null;
+    this.spd = 1; this.boostT = 0; this.boosts = 0; this.puffT = 0; this.thPuffT = 0; this.bank = 0; this.thBank = 0; this.span = 1; this.hudCam = null; this.zoomTw = null; this.sheet = null;
     this.wobble = 0; this.netPause = 0; this.lastThrow = -9; this.autoT = 0.6; this.spawnT = 1.2; this.invul = 0; this.thSpin = 0; this.autopilot = false;
   }
 
@@ -699,26 +699,36 @@ export class ChaseScene extends Phaser.Scene {
   }
 
   /** Tests / review: paint every mount's top-down art (with your look) and lay them out on one sheet. */
-  artSheet(cols = 6) {
-    const look = { ...DEFAULT_LOOK, ...(save.look ?? {}) }, cw = 300, chh = 300;
-    const cv = document.createElement('canvas'); cv.width = cols * cw; cv.height = Math.ceil(TOP_IDS.length / cols) * chh;
-    const c = cv.getContext('2d')!; c.fillStyle = '#8fc47a'; c.fillRect(0, 0, cv.width, cv.height);
-    const src = (k: string) => this.textures.get(k).getSourceImage() as HTMLCanvasElement;
+  /**
+   * Test/preview helper: lays all 23 top-down mounts (with you riding, wings, cape, prop) out on one
+   * screen above everything else, so a single screenshot shows the whole set. Painted textures release
+   * their canvases after upload, so this uses Phaser images, not a 2D canvas. Call again with false to hide.
+   */
+  artSheet(on = true, cols = 6) {
+    this.sheet?.destroy(true); this.sheet = null;
+    if (!on) return 0;
+    const look = { ...DEFAULT_LOOK, ...(save.look ?? {}) }, W = this.scale.width, H = this.scale.height;
+    const rows = Math.ceil(TOP_IDS.length / cols), cw = W / cols, chh = H / rows;
+    const box = (this.sheet = this.add.container(0, 0).setDepth(900));
+    box.add(this.add.rectangle(0, 0, W, H, 0x8fc47a).setOrigin(0));
     TOP_IDS.forEach((id, i) => {
-      const t = paintTop(this, id, look), sp = topSpec(id), s = 0.5, ox = (i % cols) * cw + cw / 2, oy = Math.floor(i / cols) * chh + chh / 2;
-      c.save(); c.translate(ox, oy); c.scale(s, s);
-      if (sp.fly === 'cape') { c.globalAlpha = 0.9; c.drawImage(src('td_cape1'), -CAPE_TW_R / 2, (sp.capeAt ?? -10) * R - 10 * R); c.globalAlpha = 1; }
-      const wImg = t.wing && this.textures.exists(t.wing) && (sp.fly === 'wings' || sp.fly === 'membrane' || sp.fly === 'bee') ? src(t.wing) : null;
+      const t = paintTop(this, id, look), sp = topSpec(id), ox = (i % cols) * cw + cw / 2, oy = Math.floor(i / cols) * chh + chh / 2 - 8 * this.U;
+      const g = this.add.container(ox, oy), kids: Phaser.GameObjects.GameObject[] = [];
+      if (sp.fly === 'cape') kids.push(this.add.image(-CAPE_TW_R / 2, (sp.capeAt ?? -10) * R - 10 * R, 'td_cape1').setOrigin(0).setAlpha(0.9).setTint(capeTint(id)));
+      const hasW = t.wing && this.textures.exists(t.wing) && (sp.fly === 'wings' || sp.fly === 'membrane' || sp.fly === 'bee');
       const [wx, wy] = sp.wingAt ?? [0, 0];
-      const drawW = () => { if (!wImg) return; c.drawImage(wImg, wx * R - wImg.width, wy * R - WY * R); c.save(); c.scale(-1, 1); c.drawImage(wImg, wx * R - wImg.width, wy * R - WY * R); c.restore(); };
-      if (sp.fly !== 'bee') drawW();
-      const b = src(t.body); c.drawImage(b, -b.width / 2, -b.height / 2);
-      if (sp.fly === 'bee') drawW();
-      if (sp.fly === 'prop') { const pr = src(t.prop); c.drawImage(pr, -pr.width / 2, (-BH / 2 + 10) * R - pr.height / 2); }
-      c.restore();
-      c.fillStyle = '#123'; c.font = 'bold 20px sans-serif'; c.textAlign = 'center'; c.fillText(id, ox, oy + chh / 2 - 10);
+      const wings = hasW ? [this.add.image(wx * R, wy * R - WY * R, t.wing).setOrigin(1, 0), this.add.image(-wx * R, wy * R - WY * R, t.wing).setOrigin(1, 0).setScale(-1, 1)] : [];
+      if (sp.fly !== 'bee') kids.push(...wings);
+      const body = this.add.image(0, 0, t.body); kids.push(body);
+      if (sp.fly === 'bee') kids.push(...wings.map((w) => w.setAlpha(0.85)));
+      if (sp.fly === 'prop') kids.push(this.add.image(0, (-BH / 2 + 10) * R, t.prop));
+      g.add(kids);
+      const span = Math.max(body.width, hasW ? 2 * (wings[0].width + Math.abs(wx * R)) : 0), tall = body.height * 1.15;
+      g.setScale(Math.min((cw * 0.92) / span, (chh * 0.8) / tall));
+      box.add(g);
+      box.add(this.txt(ox, (Math.floor(i / cols) + 1) * chh - 4 * this.U, id.replace(/_/g, ' '), 15, '#123322', 900).setOrigin(0.5, 1));
     });
-    return cv.toDataURL('image/png');
+    return TOP_IDS.length;
   }
 
   /** A pooled contrail puff (soft white dot that drifts back, grows and fades). */

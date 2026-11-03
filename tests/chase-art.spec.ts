@@ -1,7 +1,6 @@
 import { test, expect, chromium, type Page, type BrowserContext } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
-import { writeFileSync } from 'node:fs';
 
 // 74 (Walker, Nov 3): the Thief Chase shows every mount from above (nose up the screen) with you riding
 // it, each with its own way of flying, plus high-speed effects: speed lines, wind, near/far cloud
@@ -49,8 +48,10 @@ test('chase art: top-down mount + rider for every mount, high-speed effects', as
     await expect.poll(async () => (await chase(page)).fx.puffs, { timeout: 60_000 }).toBeGreaterThan(0);
 
     // Every mount's top-down art paints (one sheet, for review).
-    const url: string = await page.evaluate(() => (window as any).__chaseScene.artSheet());
-    writeFileSync(`${SHOTS}/chase-art-sheet.png`, Buffer.from(url.split(',')[1], 'base64'));
+    expect(await page.evaluate(() => (window as any).__chaseScene.artSheet(true))).toBe(23);
+    await page.waitForTimeout(1500);
+    await page.screenshot({ path: `${SHOTS}/chase-art-sheet.png`, scale: 'css' });
+    await page.evaluate(() => (window as any).__chaseScene.artSheet(false));
     const all = await page.evaluate(() => { const s = (window as any).__chaseScene; return (s.td && (window as any).__chase.top.ids) ? Object.keys(s.textures.list).filter((k: string) => /^td_[a-z_]+_straw_teal_red_backpack_1$/.test(k)).length : 0; });
     expect(all).toBe(23);
 
