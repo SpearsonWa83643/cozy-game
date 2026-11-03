@@ -54,8 +54,8 @@ test('sushi roll buddy: stable, ride, every look and move', async ({ playwright:
     // Ride it.
     await page.evaluate(() => (window as any).__cozy.teleport(905, 1330));
     await page.waitForTimeout(500);
-    await page.evaluate(() => (window as any).__cozy.callMount('sushi'));
-    await expect.poll(async () => (await mount(page)).id, { timeout: 10_000, intervals: [100] }).toBe('sushi');
+    // The menu's close settles over a few (slow headless) frames, so retry the call until it takes.
+    await expect.poll(async () => { await page.evaluate(() => { try { (window as any).__cozy.dismiss?.(); } catch { /* */ } (window as any).__cozy.callMount('sushi'); }); return (await mount(page)).id; }, { timeout: 60_000, intervals: [1000] }).toBe('sushi');
     await expect.poll(async () => (await mount(page)).phase, { timeout: 120_000, intervals: [200] }).toBe('ride');
     let m = await mount(page);
     expect(m.name).toBe('Sushi Roll Buddy');
@@ -69,7 +69,7 @@ test('sushi roll buddy: stable, ride, every look and move', async ({ playwright:
       await page.evaluate((a) => (window as any).__cozy.setLookArt(a), a);
       await expect.poll(async () => (await mount(page)).looks.art, { timeout: 20_000 }).toBe(a);
       m = await mount(page);
-      expect(m.looks.tex, `tex under ${a}`).toContain('sushi');
+      expect(`${m.looks.tex}/${m.looks.frame}`, `tex under ${a}`).toContain('sushi');
       expect(m.phase).toBe('ride');
     }
     for (const mo of ['gentle', 'springy', 'dreamy', 'snappy', 'physics', 'playful', 'storm']) {

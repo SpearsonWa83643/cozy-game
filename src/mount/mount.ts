@@ -702,7 +702,7 @@ export class Mount {
       canCall: this.canCall(), reachable: this.reachList.length, seg: this.seg ? +this.seg.t.toFixed(2) : null,
       travels: this.travels, arrivals: this.arrivals, travelName: this.travelName, travelTarget: this.travelTarget ? this.travelTarget.map(Math.round) : null,
       seasonSwaps: this.seasonSwaps, wingStyle: this.def.style ?? 'wings', cape: this.capeKey, capeVisible: this.wingFar.visible, wingVisible: this.wing.visible, capeLift: +this.capeLift.toFixed(2),
-      looks: { art: looks.art, motion: looks.effective, mix: +this.moveMix.toFixed(2), tex: this.body.texture.key },
+      looks: { art: looks.art, motion: looks.effective, mix: +this.moveMix.toFixed(2), tex: this.body.texture.key, frame: String(this.body.frame.name) },
       fx: this.fxId, fxOn: !!this.fx?.emitting, fxAlive: this.fx?.getAliveParticleCount() ?? 0,
       reachableHere: this.reach ? this.isReachable(this.w.feet.x, this.w.feet.y) : null,
     };
