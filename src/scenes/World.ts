@@ -34,7 +34,7 @@ import { Pinwheels } from '../pinwheels';
 import { Mount } from '../mount/mount';
 import { looks } from '../looks/looks';
 import type { ArtStyleId } from '../looks/styleFx';
-import { CHASE_OFFER, Thief, thiefFit } from '../thief';
+import { CHASE_OFFER, Thief, thiefFit, THIEF_LEAD } from '../thief';
 import { CHASE } from './Chase';
 
 export type Interactable = {
@@ -1460,7 +1460,9 @@ export class WorldScene extends Phaser.Scene {
       wildSave: () => JSON.parse(JSON.stringify(save.wild)),
       tapWorld: (x: number, y: number) => self.tapWorld(x, y),
       thief: () => self.thief.snapshot(),
-      startThief: (kind?: string, ms?: number, count?: number) => self.thief.start(kind, ms, count),
+      startThief: (kind?: string, ms?: number, count?: number, lead?: number) => self.thief.start(kind, ms, count, lead),
+      /** 62: force the lead-in length (seconds) for every thief event; null goes back to the normal 4-8 s. */
+      thiefLead: (sec: number | null) => { THIEF_LEAD.force = sec; return THIEF_LEAD; },
       thiefLineup: (ms?: number) => self.thief.lineup(ms),
       thiefFit: () => thiefFit(),
       /** 69: Thief Chase. startChase(kind?, mountId?) = a thief grabs one friend and the chase starts right away.
