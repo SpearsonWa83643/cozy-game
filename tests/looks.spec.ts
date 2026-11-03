@@ -14,6 +14,25 @@ const tap = async (page: Page, k: string) => {
   await page.touchscreen.tap(r.x + r.w / 2, r.y + r.h / 2);
   await page.waitForTimeout(350);
 };
+// 73: Looks & Moves lives behind the settings gear in the Map's bottom-left corner.
+const openLooks = async (page: Page) => {
+  if (!(await page.evaluate(() => (window as any).__menu.open && (window as any).__menu.tab === 'map'))) {
+    await page.evaluate(() => (window as any).__menu.show('map'));
+    await page.waitForTimeout(800);
+  }
+  // Tap the gear once (it toggles; tapping again on a slow frame would close it), then wait for the panel.
+  await expect.poll(() => rect(page, 'gear:open'), { timeout: 30_000 }).toBeTruthy();
+  // (gearOpen flips right in the tap handler, so re-tapping only while it's still closed can't toggle it shut;
+  // a tap can miss while the menu is still sliding in on a slow software-GPU frame.)
+  await expect.poll(async () => {
+    if (await page.evaluate(() => (window as any).__menu.gearOpen)) return true;
+    await tap(page, 'gear:open');
+    return page.evaluate(() => (window as any).__menu.gearOpen);
+  }, { timeout: 60_000, intervals: [1000] }).toBe(true);
+  await expect.poll(() => rect(page, 'looks:open'), { timeout: 30_000 }).toBeTruthy();
+  await tap(page, 'looks:open');
+  await expect.poll(() => page.evaluate(() => (window as any).__menu.stableView), { timeout: 15_000 }).toBe('looks');
+};
 const looks = (page: Page) => page.evaluate(() => (window as any).__cozy.looks());
 const shown = (page: Page) => page.evaluate(() => ({ ...(window as any).__menu.looksShown }));
 
@@ -40,12 +59,23 @@ test('looks & moves: arrow pickers, weather auto-match, override, flying', async
     let L = await looks(page);
     expect(L.art).toBe('classic'); expect(L.motion).toBe('auto'); expect(L.weather).toBe('clear'); expect(L.effective).toBe('gentle');
 
+    // The stable beam no longer has the button; it's tucked behind the Map's settings gear (bottom-left).
     await page.evaluate(() => (window as any).__menu.show('stable'));
     await expect.poll(() => page.evaluate(() => (window as any).__menu.open)).toBe(true);
     await page.waitForTimeout(600);
-    // The button on the stable beam is a big tap target that fits the screen.
+    expect(await rect(page, 'looks:open')).toBeFalsy();
+    await page.evaluate(() => (window as any).__menu.show('map'));
+    await page.waitForTimeout(800);
+    const gear = await rect(page, 'gear:open');
+    const vp0 = page.viewportSize()!;
+    expect(gear.w).toBeGreaterThanOrEqual(56); expect(gear.x).toBeLessThan(120); expect(gear.y + gear.h).toBeGreaterThan(vp0.height - 120);
+    expect(await rect(page, 'looks:open')).toBeFalsy(); // hidden until the gear is tapped
+    await tap(page, 'gear:open');
+    await expect.poll(() => rect(page, 'looks:open'), { timeout: 15_000 }).toBeTruthy();
     const open = await rect(page, 'looks:open');
     expect(open.w).toBeGreaterThanOrEqual(150); expect(open.h).toBeGreaterThanOrEqual(44);
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: `${SHOTS}/looks-gear-panel.png`, scale: 'css' });
     await tap(page, 'looks:open');
     expect(await page.evaluate(() => (window as any).__menu.stableView)).toBe('looks');
     const vp = page.viewportSize()!;
@@ -86,8 +116,9 @@ test('looks & moves: arrow pickers, weather auto-match, override, flying', async
     await page.screenshot({ path: `${SHOTS}/looks-apply.png`, scale: 'css' });
     // Leaving without Apply keeps the old choice.
     await tap(page, 'looks:back');
+    await expect.poll(() => page.evaluate(() => (window as any).__menu.tab)).toBe('map');
     await expect.poll(() => looks(page).then((l) => l.previewing)).toBe(false);
-    await tap(page, 'looks:open');
+    await openLooks(page);
     await expect.poll(() => looks(page).then((l) => l.previewing)).toBe(true);
     expect((await shown(page)).art).toBe('Classic Glade');
     L = await looks(page);
@@ -102,8 +133,8 @@ test('looks & moves: arrow pickers, weather auto-match, override, flying', async
     await page.screenshot({ path: `${SHOTS}/looks-applied.png`, scale: 'css' });
     await page.screenshot({ path: `${SHOTS}/looks-art-picker.png`, scale: 'css' });
     // The stable stalls now show the friends in the applied style too.
-    await tap(page, 'looks:back');
-    await page.waitForTimeout(400);
+    await page.evaluate(() => (window as any).__menu.show('stable'));
+    await page.waitForTimeout(800);
     const stallTex = await page.evaluate(() => {
       const out: string[] = [];
       const walk = (o: any) => { if (o.texture?.key) out.push(o.texture.key); for (const c of o.list ?? []) walk(c); };
@@ -111,7 +142,7 @@ test('looks & moves: arrow pickers, weather auto-match, override, flying', async
       return out.filter((k) => k.startsWith('look:cel:')).length;
     });
     expect(stallTex).toBeGreaterThan(0);
-    await tap(page, 'looks:open');
+    await openLooks(page);
     await expect.poll(() => looks(page).then((l) => l.previewing)).toBe(true);
 
     // ---- Motion: arrows step through Auto + the 7 motions; a hand pick overrides the weather. ----
@@ -147,10 +178,9 @@ test('looks & moves: arrow pickers, weather auto-match, override, flying', async
     expect(L.effective).toBe('playful'); expect(L.weatherSwitches).toBe(0);
 
     // "Match weather" goes back to Auto, and the rain picks Storm Jitters + Thunderstorm.
-    await page.evaluate(() => { const m = (window as any).__menu; m.show('stable'); });
-    await expect.poll(() => rect(page, 'looks:open'), { timeout: 10_000 }).toBeTruthy();
+    await openLooks(page);
     await page.waitForTimeout(800); // let the menu settle (slow headless frames)
-    await expect.poll(async () => { if (!(await rect(page, 'motion:auto'))) await tap(page, 'looks:open'); return !!(await rect(page, 'motion:auto')); }, { timeout: 15_000 }).toBe(true);
+    await expect.poll(() => rect(page, 'motion:auto'), { timeout: 15_000 }).toBeTruthy();
     await tap(page, 'motion:auto');
     S = await shown(page);
     expect(S.motion).toBe('Auto (weather)'); expect(S.auto).toBe('Rain \u2192 Storm Jitters'); expect(S.sound).toBe('Thunderstorm');

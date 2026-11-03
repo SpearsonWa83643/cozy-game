@@ -1,6 +1,7 @@
 // 9.4 Building interiors: step inside a building. Tap things to play with them; tap Decorate to
 // add, drag and put away furniture. Each building keeps its own room (saved).
 import Phaser from 'phaser';
+import { attachScreenStyle } from '../looks/screenStyle';
 import { DPR } from '../dpr';
 import { safeInsets } from '../device';
 import { sfx } from '../audio';
@@ -69,6 +70,7 @@ export class InteriorScene extends Phaser.Scene {
   }
 
   create() {
+    attachScreenStyle(this); // 63: whole-game art style (dev preview)
     this.cameras.main.setOrigin(0, 0).setZoom(DPR);
     this.res = Math.max(2, Math.ceil(DPR));
     this.scale.on('resize', () => { if (this.open) this.render(); });
