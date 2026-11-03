@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-11-03 12:45 PM (CT). Live: main fe51e97, https://willowmere-glade.pages.dev (bundle index-DEYm3tZB.js).
+Updated: 2026-11-03 1:05 PM (CT). Live: main 5f6dc0b, https://willowmere-glade.pages.dev (bundle index-CHBtqbxn.js).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -109,8 +109,8 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 | Order | Task | Status | ETA live | Estimate (dev days) |
 |---|---|---|---|---|
 | 75 | More words to spell: six new big picture words (fox, egg, bug, car, owl, pie) join the Letter Easels' free play | Done, live 2026-11-03 12:43 PM CT (merge fe51e97, bundle index-DEYm3tZB.js, 200) | 2026-11-03 | 0.25 |
-| 76 | Surprise things to count: Counting Board free play counts a different friendly thing each round (shells, stars, strawberries, little fish, apples, stones) | In progress | 2026-11-03 | 0.25 |
-| 77 | "Over here!": a stolen friend waiting in a cell calls out when you come close (hops, a big "Help! Over here!" bubble, a soft call), so little ones can find it | Planned | 2026-11-03 | 0.25 |
+| 76 | Surprise things to count: Counting Board free play counts a different friendly thing each round (shells, stars, strawberries, little fish, apples, stones) | Done, live by 2026-11-03 1:03 PM CT (merge 5f6dc0b, bundle index-CHBtqbxn.js, 200) | 2026-11-03 | 0.25 |
+| 77 | "Over here!": a stolen friend waiting in a cell calls out when you come close (hops, a big "Help! Over here!" bubble, a soft call), so little ones can find it | In progress | 2026-11-03 | 0.25 |
 | 78 | Seashell Bay hermit crabs: little crabs scuttle sideways along the beach, duck into their shells when you walk up, and wave their claws when tapped | Planned | 2026-11-03 | 0.5 |
 
 ## Recently done
