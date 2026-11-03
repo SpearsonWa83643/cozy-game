@@ -71,6 +71,18 @@ test('jailbreak: once per session, escaped cell, sneaks back, caught again', asy
 
     // It sneaks back as a normal thief event: catch it and it is back in its cell.
     await page.evaluate(() => { const t = (window as any).__game.scene.getScene('world').thief; t.jb.backAt = t.jb.played + 1; });
+    // 62: the return gets the same lead-in (rustles, eyes, a darting shadow) before it pops out; no jailbreak meanwhile.
+    await expect.poll(async () => (await thief(page)).state, { timeout: 30_000 }).toBe('lurk');
+    expect((await thief(page)).kind).toBe(first);
+    expect(await jb(page, 'fox', 'lock')).toBe(false);
+    await expect.poll(async () => (await thief(page)).state, { timeout: 30_000 }).toBe('sneak');
+    {
+      const lead = (await thief(page)).lead;
+      expect(lead.leadS).toBeGreaterThanOrEqual(4);
+      expect(lead.rustles).toBeGreaterThanOrEqual(3);
+      expect(lead.emerged).not.toBeNull();
+      expect(lead.windowStartedAt - lead.startedAt).toBeGreaterThanOrEqual(lead.leadS * 1000 - 50);
+    }
 
     await catchIt(page, first);
     expect((await toasts(page)).some((t: string) => /is sneaking back!/.test(t))).toBe(true);

@@ -32,7 +32,34 @@ test('mount thief: button, arrest with 3 taps, escape hides a friend, rescue fro
     const btn = await page.evaluate(() => { const ui = (window as any).__game.scene.getScene('ui'); return { x: ui.thiefC.x, y: ui.thiefC.y, vis: ui.thiefC.visible }; });
     expect(btn.vis).toBe(true);
     await page.touchscreen.tap(btn.x, btn.y);
+    // 62: first a lead-in (4-8 s): rustling greenery, peeking eyes, a darting shadow and soft sounds.
+    await expect.poll(async () => (await thief(page)).state, { timeout: 10_000 }).toBe('lurk');
+    const l0 = await thief(page);
+    expect(l0.screen, 'no thief on screen yet').toBeNull();
+    expect(['bush', 'shadow']).toContain(l0.lurk.how);
+    expect(l0.lead.leadS).toBeGreaterThanOrEqual(4);
+    expect(l0.lead.leadS).toBeLessThanOrEqual(8);
+    await expect.poll(async () => (await thief(page)).lurk?.eyes ?? false, { timeout: 20_000 }).toBe(true);
+    await page.waitForTimeout(250);
+    {
+      const lk = (await thief(page)).lurk;
+      if (lk) await page.screenshot({ path: `${SHOTS}/thief-eyes-bush.png`, scale: 'css', clip: { x: Math.max(0, lk.screen.x - 200), y: Math.max(0, lk.screen.y - 190), width: 400, height: 260 } });
+      await page.screenshot({ path: `${SHOTS}/thief-lurk.png`, scale: 'css' });
+    }
     await expect.poll(async () => (await thief(page)).state, { timeout: 20_000 }).toBe('sneak');
+    {
+      const t = await thief(page);
+      const lead = t.lead;
+      expect(lead.rustles).toBeGreaterThanOrEqual(3);
+      expect(lead.eyes).toBeGreaterThanOrEqual(1);
+      expect(lead.darts).toBe(1);
+      for (const snd of ['rustle', 'twig', 'tiptoe', 'giggle']) expect(lead.sounds).toContain(snd);
+      // It popped out of the hint spot, and the 12 s catch window only started then.
+      expect(lead.emerged).not.toBeNull();
+      expect(lead.windowStartedAt - lead.startedAt).toBeGreaterThanOrEqual(lead.leadS * 1000 - 50);
+      expect(t.windowMs).toBe(12000);
+      expect(t.windowLeft).toBeGreaterThan(9000);
+    }
     await page.waitForTimeout(1400);
     for (let i = 0; i < 30 && (await thief(page)).state === 'sneak'; i++) {
       const s = (await thief(page)).screen;
@@ -53,7 +80,7 @@ test('mount thief: button, arrest with 3 taps, escape hides a friend, rescue fro
     await expect.poll(() => page.evaluate(() => { const s = JSON.parse(localStorage.getItem('cozy.save.v2')!); return [s.snacks, s.berries]; }), { timeout: 5_000 }).toEqual([2, 2]);
 
     // 2) Next time nobody taps: it escapes with a friend and hides it behind a solved puzzle.
-    expect(await page.evaluate(() => (window as any).__cozy.startThief('raccoon', 1500, 1))).toBe(true);
+    expect(await page.evaluate(() => (window as any).__cozy.startThief('raccoon', 1500, 1, 0))).toBe(true);
     await page.waitForTimeout(600);
     await page.screenshot({ path: `${SHOTS}/thief-sneak.png`, scale: 'css' });
     await expect.poll(async () => (await thief(page)).stolen, { timeout: 30_000 }).not.toBeNull();
@@ -175,7 +202,7 @@ test('mount thief: carries two friends, cells, call-mount hint, cell rescue, old
     await page.waitForTimeout(2500);
 
     // Two friends: the thief carries both, each hides behind a different puzzle with its own cell.
-    expect(await page.evaluate(() => (window as any).__cozy.startThief('fox', 6000, 2))).toBe(true);
+    expect(await page.evaluate(() => (window as any).__cozy.startThief('fox', 6000, 2, 0))).toBe(true);
     await expect.poll(async () => (await thief(page)).carrying.length, { timeout: 90_000, intervals: [100] }).toBe(2);
     await page.waitForTimeout(250);
     await page.screenshot({ path: `${SHOTS}/thief-carrying-two.png`, scale: 'css' });
