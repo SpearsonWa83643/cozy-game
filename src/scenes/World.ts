@@ -1458,7 +1458,10 @@ export class WorldScene extends Phaser.Scene {
       wildSave: () => JSON.parse(JSON.stringify(save.wild)),
       tapWorld: (x: number, y: number) => self.tapWorld(x, y),
       thief: () => self.thief.snapshot(),
-      startThief: (kind?: string, ms?: number) => self.thief.start(kind, ms),
+      startThief: (kind?: string, ms?: number, count?: number) => self.thief.start(kind, ms, count),
+      /** 52: tap a hidden friend's cell (solve=true first marks its puzzle's chest as revealed, like solving it). */
+      thiefCell: (pid: string, solve = false) => { if (solve) { const c = self.puzzles.chestById(pid); if (c) c.revealed = true; } return self.thief.tapCell(pid); },
+      thiefCellAt: (pid: string) => { const e = self.thief.cells.get(pid); if (!e) return null; const cam = self.cameras.main; return { x: (e.c.x - cam.worldView.x) * cam.zoom / DPR, y: (e.c.y - 60 - cam.worldView.y) * cam.zoom / DPR, wx: e.c.x, wy: e.c.y }; },
       openPuzzleChest: (id: string) => { const c = self.puzzles.chestById(id); if (c) { c.revealed = true; c.open(); } return !!c; },
       critters() {
         const c = self.life.creatures;
