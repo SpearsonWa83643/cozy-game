@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
+import { ITEMS } from '../src/whatsnew';
 
 // One-time "What's new" note. Forced on with ?whatsnew=1 (webdriver skips it otherwise).
 const BASE = pathToFileURL(resolve('dist-single/index.html')).href;
@@ -24,12 +25,9 @@ test("what's new: after entry, shows once, closes, stays closed; none when empty
   await page.waitForSelector('#whatsnew .w-ok', { timeout: 10_000 });
   await expect(page.locator('#entry')).toHaveCount(0);
   await expect(page.locator('#whatsnew h2')).toContainText("What's new");
-  await expect(page.locator('#whatsnew li')).toHaveCount(5);
-  await expect(page.locator('#whatsnew li').first()).toContainText('Thief Chase is even more fun!');
-  await expect(page.locator('#whatsnew li').nth(1)).toContainText('The world is alive!');
-  await expect(page.locator('#whatsnew li').nth(2)).toContainText('Counting boards!');
-  await expect(page.locator('#whatsnew li').nth(3)).toContainText('Letter easels!');
-  await expect(page.locator('#whatsnew li').nth(4)).toContainText('Fly anywhere!');
+  // Bullets follow src/whatsnew.ts (one per player-facing change, newest first).
+  await expect(page.locator('#whatsnew li')).toHaveCount(ITEMS.length);
+  for (const [i, it] of ITEMS.entries()) await expect(page.locator('#whatsnew li').nth(i)).toContainText(it.text.slice(0, 24));
   const ok = await page.locator('#whatsnew .w-ok').boundingBox();
   expect(ok!.height).toBeGreaterThanOrEqual(70);
   await page.waitForTimeout(700);
