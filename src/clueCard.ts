@@ -109,6 +109,6 @@ export function showClue(list: Stolen[] = save.stolen ?? [], opts: { here?: bool
   document.body.appendChild(el);
   api.open = true; api.shown++; api.title = title; api.lines = lines;
   (api as any).close = close;
-  sfx.ting?.();
+  sfx.sparkle();
   return true;
 }
