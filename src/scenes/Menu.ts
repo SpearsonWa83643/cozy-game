@@ -14,7 +14,8 @@ import type { WorldScene } from './World';
 import { buildWardrobeItems, isNoneItem } from '../wardrobeArt';
 import { LANDMARKS, ensureLandmarkIcons } from '../landmarks';
 import { MOUNTS, isMountUnlocked, isStolen, currentPick, seasonalThemeOf, type MountDef } from '../mount/defs';
-import { HIDES, THIEVES } from '../thief';
+import { THIEVES } from '../thief';
+import { showClue, clueLine } from '../clueCard';
 import { CAPE_AT, CAPE_FRAMES, CAPE_OX, CAPE_OY, capeFrame } from '../mount/cape';
 import { looks, ART_STYLES, MOTION_CHOICES, WEATHER_NAMES, scapeName } from '../looks/looks';
 import { motionById } from '../looks/motion';
@@ -1238,7 +1239,8 @@ export class MenuScene extends Phaser.Scene {
 
   private mountHint(m: MountDef) {
     const st = save.stolen?.find((s) => s.mount === m.id);
-    if (st) return `The sneaky ${THIEVES.find((k) => k.id === st.kind)?.name ?? 'thief'} hid the ${m.name} in a little cell behind ${HIDES[st.puzzle]}! Solve it and tap the cell to rescue your friend.`;
+    // 57: simple words; the big clue card opens too (see tapStall).
+    if (st) return `The ${THIEVES.find((k) => k.id === st.kind)?.name ?? 'thief'} hid your ${m.name}. ${clueLine(st)}`;
     if (!m.treasure) return `${m.name} is always free!`;
     const t = TREASURES.find((x) => x.id === m.treasure);
     if (t) return `Find the ${t.name} to meet the ${m.name}. Hint: ${t.hint}`;
@@ -1257,6 +1259,8 @@ export class MenuScene extends Phaser.Scene {
     if (!p.on) {
       sfx.tock();
       this.hint(this.mountHint(m));
+      const sto = save.stolen?.find((x) => x.mount === m.id);
+      if (sto) showClue([sto]);
       this.tweens.add({ targets: p.c, x: p.c.x + 5, duration: 50, yoyo: true, repeat: 2 });
       return;
     }

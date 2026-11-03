@@ -11,16 +11,43 @@ import { MOUNTS, isMountUnlocked, themeDefaultMount, mountById, type MountDef } 
 import { sfx } from './audio';
 import type { WorldScene } from './scenes/World';
 import { DPR } from './dpr';
+import { showClue, clueLine, PLACE } from './clueCard';
 
-type Kind = { id: string; name: string; fur: string; dark: string; belly: string; ear: 'round' | 'point' | 'long' | 'big'; tail: 'ring' | 'bush' | 'puff' | 'thin' | 'curl' };
+export type Kind = {
+  id: string; name: string; fur: string; dark: string; belly: string;
+  ear: 'round' | 'point' | 'long' | 'big' | 'tuft' | 'tiny' | 'none';
+  tail: 'ring' | 'bush' | 'puff' | 'thin' | 'curl' | 'big' | 'otter' | 'stripe' | 'duck' | 'none';
+  /** 56: extra looks. */
+  spines?: string; stripe?: string; face?: string; nose?: string; beak?: boolean; legs?: string; mask?: string;
+  /** 56: its own giggle lines and voice (giggle pitch in Hz). */
+  giggles?: string[]; voice?: number;
+};
 export const THIEVES: Kind[] = [
-  { id: 'raccoon', name: 'Raccoon', fur: '#8f939c', dark: '#4a4d55', belly: '#d9dbe0', ear: 'round', tail: 'ring' },
-  { id: 'fox', name: 'Fox', fur: '#e07a32', dark: '#7a3a18', belly: '#fff3e0', ear: 'point', tail: 'bush' },
-  { id: 'bunny', name: 'Bunny', fur: '#d8c0a0', dark: '#8a6a4c', belly: '#fff6ea', ear: 'long', tail: 'puff' },
-  { id: 'mouse', name: 'Mouse', fur: '#b5a79e', dark: '#6a5c55', belly: '#efe6df', ear: 'big', tail: 'thin' },
-  { id: 'cat', name: 'Kitty', fur: '#5d5966', dark: '#2e2b35', belly: '#f2f0f5', ear: 'point', tail: 'curl' },
-  { id: 'pig', name: 'Piglet', fur: '#f2a7b5', dark: '#b8606f', belly: '#ffd8df', ear: 'point', tail: 'curl' },
+  { id: 'raccoon', name: 'Raccoon', fur: '#8f939c', dark: '#4a4d55', belly: '#d9dbe0', ear: 'round', tail: 'ring', voice: 620 },
+  { id: 'fox', name: 'Fox', fur: '#e07a32', dark: '#7a3a18', belly: '#fff3e0', ear: 'point', tail: 'bush', voice: 700 },
+  { id: 'bunny', name: 'Bunny', fur: '#d8c0a0', dark: '#8a6a4c', belly: '#fff6ea', ear: 'long', tail: 'puff', voice: 880 },
+  { id: 'mouse', name: 'Mouse', fur: '#b5a79e', dark: '#6a5c55', belly: '#efe6df', ear: 'big', tail: 'thin', voice: 1180 },
+  { id: 'cat', name: 'Kitty', fur: '#5d5966', dark: '#2e2b35', belly: '#f2f0f5', ear: 'point', tail: 'curl', voice: 760 },
+  { id: 'pig', name: 'Piglet', fur: '#f2a7b5', dark: '#b8606f', belly: '#ffd8df', ear: 'point', tail: 'curl', voice: 520 },
+  // 56 (Walker, Nov 2): more sneaky friends, each with its own look, mask color and giggles.
+  { id: 'squirrel', name: 'Squirrel', fur: '#c4703a', dark: '#6e3a1c', belly: '#ffe8cc', ear: 'tuft', tail: 'big', mask: '#3a2a6e', voice: 1040,
+    giggles: ['Nutty nut nut!', 'Acorn party!', 'Zoom zoom!', 'Chitter chatter!'] },
+  { id: 'hedgehog', name: 'Hedgehog', fur: '#c9a27a', dark: '#5a4030', belly: '#f6e3c8', ear: 'tiny', tail: 'none', spines: '#7a5a40', nose: '#2b2028', mask: '#1f4f3a', voice: 900,
+    giggles: ['Prickle tickle!', 'Snuffle snuff!', 'Roll away!', 'Hee hee, pointy!'] },
+  { id: 'otter', name: 'Otter', fur: '#8a5a3a', dark: '#4e301c', belly: '#f0d9b5', ear: 'tiny', tail: 'otter', mask: '#1d3f66', voice: 820,
+    giggles: ['Splishy splash!', 'Wheee, slide!', 'Bubble bubble!', 'Otterly sneaky!'] },
+  { id: 'skunk', name: 'Skunk', fur: '#34303c', dark: '#1d1a22', belly: '#f7f3ea', ear: 'round', tail: 'stripe', stripe: '#fffaf0', mask: '#6a2a5a', voice: 680,
+    giggles: ['Pee-yew? Nope, flowers!', 'Sniff sniff!', 'Stripy and speedy!', 'Tee hee!'] },
+  { id: 'possum', name: 'Possum', fur: '#a9a6ad', dark: '#5a5660', belly: '#f2eff2', ear: 'round', tail: 'curl', face: '#f7f3ea', nose: '#f29aa8', mask: '#5a3a1a', voice: 740,
+    giggles: ['Playing pretend!', 'Hang on tight!', 'Hiss-giggle!', 'Upside down fun!'] },
+  { id: 'badger', name: 'Badger', fur: '#7d7a80', dark: '#2a272e', belly: '#e6e3e8', ear: 'tiny', tail: 'puff', stripe: '#fffaf0', mask: '#7a2020', voice: 480,
+    giggles: ['Dig dig dig!', 'Grumble giggle!', 'Badger dash!', 'Ho ho!'] },
+  { id: 'duckling', name: 'Duckling', fur: '#ffd84d', dark: '#d9a21a', belly: '#fff3b0', ear: 'none', tail: 'duck', beak: true, legs: '#f28c28', mask: '#2a3f7a', voice: 1300,
+    giggles: ['Quack quack!', 'Waddle waddle!', 'Peep peep!', 'Splash dash!'] },
 ];
+/** 56: every thief's own giggles (the first six share the classic lines). */
+export const gigglesOf = (k: Kind) => k.giggles ?? ['Hee hee!', 'Nope!', 'Too slow!', 'Catch me!', 'Whoopsie!'];
+export const thiefById = (id: string) => THIEVES.find((k) => k.id === id);
 
 /** Puzzles a friend can be hidden behind, with a kid-readable place name. */
 export const HIDES: Record<string, string> = {
@@ -39,22 +66,45 @@ function paintThief(c: Ctx, k: Kind) {
     if (k.tail === 'ring') { c.fillStyle = k.dark; for (const t of [0.35, 0.65]) { c.beginPath(); c.ellipse(11 + (t - 0.5) * 14, 30 - (t - 0.5) * -10, 2.4, 6, -0.6, 0, Math.PI * 2); c.fill(); } }
     else { c.fillStyle = '#fffaf0'; c.beginPath(); c.ellipse(4, 25, 4, 3.4, -0.6, 0, Math.PI * 2); c.fill(); }
   } else if (k.tail === 'puff') { c.fillStyle = '#fffaf0'; c.beginPath(); c.arc(13, 36, 5, 0, Math.PI * 2); c.fill(); c.stroke(); }
+  else if (k.tail === 'big') {
+    // A big fluffy tail curling up over its back.
+    c.fillStyle = k.fur; c.beginPath(); c.moveTo(18, 40); c.bezierCurveTo(-2, 40, -2, 6, 14, 4); c.bezierCurveTo(24, 3, 26, 14, 18, 16); c.bezierCurveTo(10, 18, 12, 32, 22, 34); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = k.belly; c.beginPath(); c.ellipse(9, 14, 3, 6, -0.3, 0, Math.PI * 2); c.fill();
+  } else if (k.tail === 'otter') {
+    c.fillStyle = k.fur; c.beginPath(); c.moveTo(16, 33); c.quadraticCurveTo(2, 38, 1, 46); c.quadraticCurveTo(8, 44, 18, 41); c.closePath(); c.fill(); c.stroke();
+  } else if (k.tail === 'stripe') {
+    c.fillStyle = k.fur; c.beginPath(); c.ellipse(10, 22, 9, 15, -0.35, 0, Math.PI * 2); c.fill(); c.stroke();
+    c.fillStyle = k.stripe ?? '#fff'; c.beginPath(); c.ellipse(10, 21, 3, 12, -0.35, 0, Math.PI * 2); c.fill();
+  } else if (k.tail === 'duck') {
+    c.fillStyle = k.fur; c.beginPath(); c.moveTo(16, 32); c.lineTo(6, 26); c.lineTo(10, 36); c.closePath(); c.fill(); c.stroke();
+  } else if (k.tail === 'none') { /* no tail */ }
   else { c.strokeStyle = k.dark; c.lineWidth = 2.4; c.beginPath(); c.moveTo(16, 38); c.bezierCurveTo(6, 40, 4, 28, 10, 27); if (k.tail === 'curl') c.arc(10, 30, 3, -Math.PI / 2, Math.PI); c.stroke(); c.lineWidth = 2; c.strokeStyle = line; }
   // Legs.
-  c.fillStyle = k.dark;
-  for (const x of [18, 25, 34, 41]) { c.beginPath(); c.roundRect(x - 2.6, 42, 5.2, 9, 2.4); c.fill(); }
+  c.fillStyle = k.legs ?? k.dark;
+  if (k.beak) for (const x of [24, 36]) { c.beginPath(); c.roundRect(x - 2, 42, 4, 8, 2); c.fill(); c.beginPath(); c.ellipse(x + 2, 50.5, 5, 2.4, 0, 0, Math.PI * 2); c.fill(); }
+  else for (const x of [18, 25, 34, 41]) { c.beginPath(); c.roundRect(x - 2.6, 42, 5.2, 9, 2.4); c.fill(); }
   // Body with a striped robber shirt.
   c.save(); c.beginPath(); c.ellipse(30, 36, 16, 11, 0, 0, Math.PI * 2); c.clip();
   c.fillStyle = '#f7f3ea'; c.fillRect(10, 22, 40, 30);
   c.fillStyle = '#2c2a33'; for (let y = 27; y < 50; y += 6) c.fillRect(10, y, 40, 3);
   c.restore();
   c.strokeStyle = line; c.beginPath(); c.ellipse(30, 36, 16, 11, 0, 0, Math.PI * 2); c.stroke();
+  // 56: hedgehog spines (soft, rounded points) over its back, on top of the shirt.
+  if (k.spines) {
+    c.fillStyle = k.spines; c.strokeStyle = line; c.beginPath(); c.moveTo(13, 36);
+    for (let i = 0; i <= 12; i++) { const a = Math.PI * 1.02 + i * Math.PI * 0.62 / 12; const r = i % 2 ? 13 : 19; c.lineTo(30 + Math.cos(a) * r * 1.1, 37 + Math.sin(a) * r * 1.05); }
+    c.lineTo(36, 30); c.quadraticCurveTo(24, 26, 13, 36); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#f6e3c8'; for (const [x, y] of [[20, 24], [28, 21], [24, 29]]) { c.beginPath(); c.arc(x, y, 1.3, 0, Math.PI * 2); c.fill(); }
+  }
   // Ears.
   c.fillStyle = k.fur;
   const ear = (x: number) => {
     c.beginPath();
     if (k.ear === 'round') c.arc(x, 11, 4.5, 0, Math.PI * 2);
     else if (k.ear === 'big') c.arc(x, 10, 6.5, 0, Math.PI * 2);
+    else if (k.ear === 'tiny') c.arc(x, 13, 3.2, 0, Math.PI * 2);
+    else if (k.ear === 'none') return;
+    else if (k.ear === 'tuft') { c.moveTo(x - 5, 16); c.lineTo(x - 1, 3); c.lineTo(x + 1, 0); c.lineTo(x + 2, 4); c.lineTo(x + 4, 15); c.closePath(); }
     else if (k.ear === 'long') c.ellipse(x, 5, 3.6, 9, (x - 46) * 0.04, 0, Math.PI * 2);
     else { c.moveTo(x - 5, 16); c.lineTo(x - 1, 4); c.lineTo(x + 4, 15); c.closePath(); }
     c.fill(); c.stroke();
@@ -62,15 +112,27 @@ function paintThief(c: Ctx, k: Kind) {
   ear(40); ear(51);
   // Head.
   c.fillStyle = k.fur; c.beginPath(); c.arc(46, 22, 11, 0, Math.PI * 2); c.fill(); c.stroke();
-  c.fillStyle = k.belly; c.beginPath(); c.ellipse(53, 26, 6, 4.6, 0, 0, Math.PI * 2); c.fill();
-  c.fillStyle = k.id === 'pig' ? '#e07f92' : '#2b2028'; c.beginPath(); c.ellipse(58, 25, k.id === 'pig' ? 3.2 : 2.2, k.id === 'pig' ? 2.6 : 1.8, 0, 0, Math.PI * 2); c.fill();
-  // The robber mask: a black band with two eye holes.
-  c.fillStyle = '#1d1a22'; c.beginPath(); c.roundRect(36, 15.5, 22, 7.5, 3.6); c.fill();
+  if (k.face) { c.fillStyle = k.face; c.beginPath(); c.ellipse(50, 24, 8, 7, 0, 0, Math.PI * 2); c.fill(); }
+  if (k.stripe && k.tail !== 'stripe') { c.fillStyle = k.stripe; c.beginPath(); c.ellipse(45, 15, 3, 7, -0.5, 0, Math.PI * 2); c.fill(); }
+  if (k.tail === 'stripe' && k.stripe) { c.fillStyle = k.stripe; c.beginPath(); c.ellipse(42, 13, 2.4, 5, -0.8, 0, Math.PI * 2); c.fill(); }
+  if (k.beak) {
+    // A round orange duck bill.
+    c.fillStyle = '#f28c28'; c.beginPath(); c.ellipse(57, 26, 6, 3.2, 0.1, 0, Math.PI * 2); c.fill(); c.stroke();
+    c.strokeStyle = '#b8601a'; c.lineWidth = 1; c.beginPath(); c.moveTo(52, 26.4); c.lineTo(62, 26.4); c.stroke(); c.strokeStyle = line; c.lineWidth = 2;
+    // A fluffy head tuft.
+    c.fillStyle = k.fur; c.beginPath(); c.ellipse(45, 11, 2, 4, -0.3, 0, Math.PI * 2); c.fill(); c.beginPath(); c.ellipse(48, 11, 1.6, 3.4, 0.3, 0, Math.PI * 2); c.fill();
+  } else {
+    c.fillStyle = k.belly; c.beginPath(); c.ellipse(53, 26, 6, 4.6, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = k.nose ?? (k.id === 'pig' ? '#e07f92' : '#2b2028'); c.beginPath(); c.ellipse(58, 25, k.id === 'pig' ? 3.2 : 2.2, k.id === 'pig' ? 2.6 : 1.8, 0, 0, Math.PI * 2); c.fill();
+    if (k.id === 'otter' || k.id === 'cat') { c.strokeStyle = k.dark; c.lineWidth = 0.9; for (const dy of [-1.5, 1.5]) { c.beginPath(); c.moveTo(56, 27 + dy); c.lineTo(63, 26 + dy * 2); c.stroke(); } c.strokeStyle = line; c.lineWidth = 2; }
+  }
+  // The robber mask: a band (black, or the thief's own color) with two eye holes.
+  c.fillStyle = k.mask ?? '#1d1a22'; c.beginPath(); c.roundRect(36, 15.5, 22, 7.5, 3.6); c.fill();
   c.beginPath(); c.moveTo(37, 18); c.lineTo(31, 15); c.lineTo(32, 21); c.closePath(); c.fill();
   c.fillStyle = '#fffaf0'; for (const x of [44, 52]) { c.beginPath(); c.ellipse(x, 19.2, 2.6, 2.2, 0, 0, Math.PI * 2); c.fill(); }
   c.fillStyle = '#1d1a22'; for (const x of [45, 53]) { c.beginPath(); c.arc(x, 19.4, 1.2, 0, Math.PI * 2); c.fill(); }
-  // A cheeky smile.
-  c.strokeStyle = line; c.lineWidth = 1.4; c.beginPath(); c.arc(53, 28, 3, 0.2, Math.PI - 0.6); c.stroke();
+  // A cheeky smile (ducklings smile with their bill).
+  if (!k.beak) { c.strokeStyle = line; c.lineWidth = 1.4; c.beginPath(); c.arc(53, 28, 3, 0.2, Math.PI - 0.6); c.stroke(); }
 }
 function paintSack(c: Ctx) {
   c.strokeStyle = '#4a321f'; c.lineWidth = 2;
@@ -136,7 +198,6 @@ export function paintThieves(scene: Phaser.Scene) {
 const reduceMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 const TAPS = 3;
 const SCALE = 2.3;
-const GIGGLES = ['Hee hee!', 'Nope!', 'Too slow!', 'Catch me!', 'Whoopsie!'];
 /** 53: odds the thief takes more than one friend (only when that many can be taken). */
 export const MULTI_ODDS = { three: 0.05, two: 0.2 };
 
@@ -145,8 +206,9 @@ const andList = (xs: string[]) => xs.length <= 1 ? xs.join('') : `${xs.slice(0, 
 /** 51-53: one kid-readable line naming every hidden friend and where it is. */
 export function stolenHint(list: Stolen[] = save.stolen ?? []): string {
   if (!list.length) return '';
-  if (list.length === 1) return `Rescue the ${nameOf(list[0].mount)} first! It's hidden behind ${HIDES[list[0].puzzle]}.`;
-  return `Rescue your friends first! ${andList(list.map((s) => `the ${nameOf(s.mount)} is behind ${HIDES[s.puzzle]}`)).replace(/^t/, 'T')}.`;
+  // 57: very simple words (early readers).
+  if (list.length === 1) return `Help your ${nameOf(list[0].mount)} first! It is at ${PLACE[list[0].puzzle]}.`;
+  return `Help your friends first! ${list.map((s) => `The ${nameOf(s.mount)} is at ${PLACE[s.puzzle]}.`).join(' ')}`;
 }
 /** A body image of a friend (classic look), sized to `w` world px wide. */
 function friendImg(scene: Phaser.Scene, m: MountDef, x: number, y: number, w: number) {
@@ -180,6 +242,7 @@ export class Thief {
   paws = 0;
   /** 46: cheeky giggles when tapped but not caught yet (tests). */
   giggles = 0;
+  lastGiggle = '';
   private pawAt: { x: number; y: number } | null = null;
   private pawSide = 1;
   private entering = false;
@@ -209,7 +272,12 @@ export class Thief {
   start(kindId?: string, ms = 12000, count = 0) {
     this.forceCount = count;
     const why = this.blocked();
-    if (why) { if (why !== 'busy') this.w.game.events.emit('toast', why); return false; }
+    if (why) {
+      // 57: with friends hidden, the clue opens big and centered (no timeout) instead of a toast.
+      if (save.stolen?.length) showClue(save.stolen, { title: save.stolen.length === 1 ? 'Help your friend first!' : 'Help your friends first!' });
+      else if (why !== 'busy') this.w.game.events.emit('toast', why);
+      return false;
+    }
     const w = this.w;
     const pool = THIEVES.filter((k) => k.id !== this.last);
     this.kind = THIEVES.find((k) => k.id === kindId) ?? pool[Math.floor(Math.random() * pool.length)];
@@ -269,7 +337,10 @@ export class Thief {
     this.speed = 170 + 40 * this.taps; this.entering = false;
     // 46: a cheeky giggle bubble as it scampers away.
     this.giggles++;
-    w.floatText(s.x, cy - 46, GIGGLES[(this.giggles - 1) % GIGGLES.length], '#ffe9a8');
+    const gl = gigglesOf(this.kind);
+    this.lastGiggle = gl[(this.giggles - 1) % gl.length];
+    w.floatText(s.x, cy - 46, this.lastGiggle, '#ffe9a8');
+    sfx.giggle?.(this.kind.voice ?? 700);
     this.pickSpot();
     w.game.events.emit('toast', this.taps === 1 ? 'Got it once! Again!' : 'One more tap!');
     return true;
@@ -473,7 +544,8 @@ export class Thief {
     const ch = this.w.puzzles.chestById(pid);
     if (!save.puzzles[pid] && !ch?.revealed) {
       const st = save.stolen?.find((s) => s.puzzle === pid);
-      this.w.game.events.emit('toast', `It's locked! Solve ${HIDES[pid]} to open the cell for the ${nameOf(st?.mount ?? '')}.`);
+      // 57: a big, simple clue card (stays until tapped).
+      if (st) showClue([st], { here: true, title: 'It is locked!' });
       sfx.blip?.();
       return false;
     }
@@ -516,11 +588,27 @@ export class Thief {
   callMountHint() {
     const list = save.stolen ?? [];
     if (!list.length) return '';
-    const msg = list.length === 1 ? `Your ${nameOf(list[0].mount)} is hiding behind ${HIDES[list[0].puzzle]}!`
-      : `Your friends are hiding: ${andList(list.map((s) => `the ${nameOf(s.mount)} behind ${HIDES[s.puzzle]}`))}!`;
+    // 57: one simple line per friend, on a big centered card with no timeout.
+    const msg = list.map((s) => clueLine(s)).join(' ');
     this.lastCallHint = msg;
-    this.w.game.events.emit('toast', msg);
+    showClue(list);
     return msg;
+  }
+
+  /** 56: a quick lineup of every thief by the player (screenshots and tests); it fades after `ms`. */
+  lineup(ms = 9000) {
+    const w = this.w, v = w.cameras.main.worldView;
+    const n = THIEVES.length, cols = Math.ceil(n / 2), gap = v.width / (cols + 1);
+    const items: Phaser.GameObjects.GameObject[] = [];
+    THIEVES.forEach((k, i) => {
+      const row = Math.floor(i / cols), col = i % cols;
+      const x = v.x + gap * (col + 1) + (row ? gap / 2 : 0), y = v.y + v.height * (row ? 0.78 : 0.48);
+      const key = `thief_${k.id}`;
+      items.push(w.add.image(x, y, atlasOf(key), key).setOrigin(0.5, 0.92).setScale(1.9 / (frameScale[key] ?? 1)).setDepth(9400));
+      items.push(w.add.text(x, y + 14, k.name, { fontFamily: 'Fredoka, sans-serif', fontSize: '22px', color: '#4a321f', backgroundColor: '#fff6e3', padding: { x: 8, y: 3 } }).setOrigin(0.5, 0).setDepth(9401));
+    });
+    w.time.delayedCall(ms, () => items.forEach((o) => o.destroy()));
+    return THIEVES.map((k) => k.id);
   }
 
   snapshot() {
@@ -528,7 +616,7 @@ export class Thief {
     const c = this.w.cameras.main;
     return {
       state: this.state, kind: this.kind.id, taps: this.taps, stolen: save.stolen?.length ? save.stolen.map((x) => ({ ...x })) : null, carrying: [...this.carryIds], cells: [...this.cells.keys()], callHint: this.lastCallHint,
-      thanks: this.thanks, paws: this.paws, giggles: this.giggles, caught: this.caughtN, stolenN: this.stolenN, rescued: this.rescuedN, marker: this.cells.size > 0,
+      thanks: this.thanks, paws: this.paws, giggles: this.giggles, lastGiggle: this.lastGiggle, kinds: THIEVES.map((k) => k.id), caught: this.caughtN, stolenN: this.stolenN, rescued: this.rescuedN, marker: this.cells.size > 0,
       screen: s ? { x: (s.x - c.worldView.x) * c.zoom / DPR, y: (s.y - 24 * SCALE - c.worldView.y) * c.zoom / DPR } : null,
       blocked: this.blocked(),
     };

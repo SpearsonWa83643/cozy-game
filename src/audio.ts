@@ -699,9 +699,10 @@ class Synth {
   }
 
   /** A tiny "hee-hee-hee" for jack-o'-lanterns and peekaboo ghosts. */
-  giggle() {
+  giggle(pitch?: number) {
     if (!this.ready) return;
-    const base = 740 + Math.random() * 120;
+    // 56: thieves giggle at their own pitch.
+    const base = pitch ?? 740 + Math.random() * 120;
     [1, 1.12, 1.26, 1.19].forEach((m, i) => { this.voice(base * m, i * 0.085, 0.045, 0.09, 'triangle', 0.01); this.voice(base * m * 2, i * 0.085, 0.012, 0.07, 'sine', 0.01); });
   }
 

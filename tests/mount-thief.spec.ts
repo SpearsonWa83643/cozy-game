@@ -80,7 +80,7 @@ test('mount thief: button, arrest with 3 taps, escape hides a friend, rescue fro
     expect(t2.marker).toBe(true);
     expect(t2.carrying).toEqual([]);
     expect(t2.cells, '52: a cell at the hiding puzzle').toEqual([st.puzzle]);
-    expect(t2.blocked).toContain('Rescue');
+    expect(t2.blocked).toContain('Help your');
 
     // The stolen friend is missing from the stable, and its stall says where it's hidden.
     await page.evaluate(() => (window as any).__menu.show('stable'));
@@ -91,7 +91,27 @@ test('mount thief: button, arrest with 3 taps, escape hides a friend, rescue fro
     expect(pets.find((p: any) => p[0] === st.mount)[1]).toBe(false);
     const r = await page.evaluate((id) => (window as any).__menu.rects[`stall:${id}`], st.mount);
     await page.touchscreen.tap(r.x + r.w / 2, r.y + r.h / 2);
-    await expect.poll(() => page.evaluate(() => (window as any).__menu.hintText?.text ?? ''), { timeout: 20_000 }).toContain('Raccoon hid the');
+    await expect.poll(() => page.evaluate(() => (window as any).__menu.hintText?.text ?? ''), { timeout: 20_000 }).toContain('Raccoon hid your');
+    // 57: the clue opens big and centered, in simple words, and stays until you tap it.
+    await expect(page.locator('#clue')).toBeVisible({ timeout: 10_000 });
+    const nm = await page.evaluate((id) => (window as any).__menu.stablePets.find((p: any) => p.id === id)?.m?.name ?? '', st.mount);
+    await expect(page.locator('#clue li')).toHaveCount(1);
+    await expect(page.locator('#clue li').first()).toContainText('is in a cell. Go to');
+    await expect(page.locator('#clue li').first()).toContainText('Solve it. Tap the cell.');
+    if (nm) await expect(page.locator('#clue li').first()).toContainText(`Your ${nm}`);
+    await expect(page.locator('#clue li img')).toHaveCount(1); // a picture of the friend
+    const fs = await page.locator('#clue li').first().evaluate((e) => parseFloat(getComputedStyle(e).fontSize));
+    expect(fs).toBeGreaterThanOrEqual(28);
+    const vp = page.viewportSize()!;
+    const cb = (await page.locator('#clue .c-card').boundingBox())!;
+    expect(Math.abs(cb.x + cb.width / 2 - vp.width / 2)).toBeLessThan(12);
+    expect(Math.abs(cb.y + cb.height / 2 - vp.height / 2)).toBeLessThan(40);
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: `${SHOTS}/thief-clue.png`, scale: 'css' });
+    await page.waitForTimeout(8000);
+    await expect(page.locator('#clue'), 'no timeout').toBeVisible();
+    await page.locator('#clue .c-ok').tap();
+    await expect(page.locator('#clue')).toHaveCount(0, { timeout: 5_000 });
     await page.evaluate(() => (window as any).__menu.close());
     await expect.poll(() => page.evaluate(() => (window as any).__menu.open), { timeout: 20_000 }).toBe(false);
 
@@ -137,9 +157,14 @@ test('mount thief: carries two friends, cells, call-mount hint, cell rescue, old
     const t0 = await thief(page);
     expect(t0.stolen).toEqual([{ mount: 'unicorn', puzzle: 'stones', kind: 'fox' }]);
     expect(t0.cells).toEqual(['stones']);
-    expect(t0.blocked).toContain('Rescue the Unicorn');
+    expect(t0.blocked).toContain('Help your Unicorn first!');
     // Locked until its puzzle is solved; then a tap opens the cell and the friend comes home.
     expect(await page.evaluate(() => (window as any).__cozy.thiefCell('stones'))).toBe(false);
+    // 57: a locked cell opens the big clue card.
+    await expect(page.locator('#clue h2')).toHaveText('It is locked!', { timeout: 5_000 });
+    await expect(page.locator('#clue li').first()).toContainText('Your Unicorn is in this cell. Solve the stones. Then tap the cell.');
+    await page.locator('#clue').tap({ position: { x: 20, y: 20 } });
+    await expect(page.locator('#clue')).toHaveCount(0, { timeout: 5_000 });
     expect((await thief(page)).stolen).not.toBeNull();
     expect(await page.evaluate(() => (window as any).__cozy.thiefCell('stones', true))).toBe(true);
     const tr = await thief(page);
@@ -166,17 +191,24 @@ test('mount thief: carries two friends, cells, call-mount hint, cell rescue, old
     const t2 = await thief(page);
     expect(t2.carrying).toEqual([]);
     expect([...t2.cells].sort()).toEqual(tc.stolen.map((x: any) => x.puzzle).sort());
-    expect(t2.blocked).toContain('Rescue your friends first!');
+    expect(t2.blocked).toContain('Help your friends first!');
     const sv = await page.evaluate(() => JSON.parse(localStorage.getItem('cozy.save.v2')!));
     expect(sv.stolen.length).toBe(2);
 
     // Call Mount names every hiding spot.
     const mb = await page.evaluate(() => (window as any).__vui.rects.mount);
     await page.touchscreen.tap(mb.x + mb.w / 2, mb.y + mb.h / 2);
-    await expect.poll(async () => (await thief(page)).callHint, { timeout: 20_000 }).toContain('hiding');
+    await expect.poll(async () => (await thief(page)).callHint, { timeout: 20_000 }).toContain('is in a cell');
     const hint = (await thief(page)).callHint as string;
-    const HID: Record<string, string> = { pots: 'flower pots', bells: 'singing bells', tiles: 'turning tiles', dig: 'digging spot', stones: 'stepping stones', trail: 'deer tracks' };
+    const HID: Record<string, string> = { pots: 'flower pots', bells: 'the bells', tiles: 'the tiles', dig: 'dig spot', stones: 'the stones', trail: 'deer tracks' };
     for (const x of tc.stolen) expect(hint).toContain(HID[x.puzzle]);
+    // 57: one simple line per friend on the big card.
+    await expect(page.locator('#clue li')).toHaveCount(2, { timeout: 5_000 });
+    await expect(page.locator('#clue h2')).toHaveText('Help your friends!');
+    await page.waitForTimeout(500);
+    await page.screenshot({ path: `${SHOTS}/thief-clue-two.png`, scale: 'css' });
+    await page.locator('#clue .c-ok').tap();
+    await expect(page.locator('#clue')).toHaveCount(0, { timeout: 5_000 });
     await page.evaluate(() => (window as any).__vui.closeMountPicker?.(true));
     await page.waitForTimeout(500);
 
