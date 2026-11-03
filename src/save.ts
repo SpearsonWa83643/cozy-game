@@ -107,7 +107,7 @@ export type Stolen = { mount: string; puzzle: string; kind: string; chase?: bool
 export function normStolen(v: unknown): Stolen[] | undefined {
   const arr = Array.isArray(v) ? v : v && typeof v === 'object' ? [v] : [];
   const ok = arr.filter((x): x is Stolen => !!x && typeof (x as Stolen).mount === 'string' && typeof (x as Stolen).puzzle === 'string')
-    .map((x) => ({ mount: x.mount, puzzle: x.puzzle, kind: typeof x.kind === 'string' ? x.kind : 'raccoon' }));
+    .map((x) => ({ mount: x.mount, puzzle: x.puzzle, kind: typeof x.kind === 'string' ? x.kind : 'raccoon', ...(x.chase === true ? { chase: true } : {}) }));
   return ok.length ? ok : undefined;
 }
 

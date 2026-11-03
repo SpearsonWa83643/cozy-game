@@ -110,8 +110,9 @@ test('thief chase: offer, pick a friend, steer, nets hit, catch frees friends', 
     c = await chase(page);
     const f = c.floats.find((q: any) => q.s === 'Got it! 3 more!');
     expect(f).toBeTruthy();
-    expect(f.x - f.w / 2).toBeGreaterThan(c.pause.x + 30);
-    expect(f.y - f.h / 2).toBeGreaterThan(c.meter.bottom);
+    expect(f.x - f.w / 2).toBeGreaterThan(0); // on screen
+    expect(f.y - f.h / 2).toBeGreaterThan(c.meter.bottom + 20); // below the pause button and the meter
+    expect(f.y - f.h / 2).toBeGreaterThan(c.pause.y + 70);
     expect(c.meter.label).toBe('Catch!');
 
     // Nets: back on the gentle beat; follow the thief (autopilot stands in for a child's finger).
