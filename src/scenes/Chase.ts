@@ -17,6 +17,7 @@ import { addFruit, save, persist, DEFAULT_LOOK } from '../save';
 import { mountById, type MountDef } from '../mount/defs';
 import { looks } from '../looks/looks';
 import { chaseAudio } from '../chase/chaseAudio';
+import { attachScreenStyle } from '../looks/screenStyle';
 import { paintTop, topSpec, capeTint, TOP_IDS, BH, WH, WY, CAPE_TH, CAPE_TW, type TopSpec } from '../chase/topArt';
 const CAPE_TW_R = CAPE_TW * 2;
 
@@ -272,6 +273,7 @@ export class ChaseScene extends Phaser.Scene {
       this.events.on(Phaser.Scenes.Events.PRE_RENDER, sort);
       this.events.once('shutdown', () => this.events.off(Phaser.Scenes.Events.PRE_RENDER, sort));
     }
+    attachScreenStyle(this); // 63: the chosen whole-game art style also paints the chase world (HUD camera stays crisp)
     this.input.on('pointerdown', (p: Phaser.Input.Pointer, over: unknown[]) => {
       if (over.length || this.panel || this.phase !== 'play' && this.phase !== 'intro') return;
       this.tx = p.x;
@@ -283,7 +285,7 @@ export class ChaseScene extends Phaser.Scene {
     kb?.on('keydown-ESC', () => { if (this.phase === 'play') this.setPaused(!this.paused); });
     this.keys = kb?.addKeys('LEFT,RIGHT,A,D') as Record<string, Phaser.Input.Keyboard.Key> | undefined;
     document.addEventListener('visibilitychange', this.offVis);
-    this.events.once('shutdown', () => { document.removeEventListener('visibilitychange', this.offVis); chaseAudio.stop(); const last = { ...this.snapshot(), on: false }; Object.defineProperty(window, '__chase', { configurable: true, writable: true, value: last }); });
+    this.events.once('shutdown', () => { document.removeEventListener('visibilitychange', this.offVis); chaseAudio.stop(); let last: unknown = null; try { last = { ...this.snapshot(), on: false }; } catch { /* mid-teardown */ } Object.defineProperty(window, '__chase', { configurable: true, writable: true, value: last }); });
 
     this.cameras.main.fadeIn(reduceMotion() ? 1 : 450, 255, 255, 255);
     this.hudCam?.fadeIn(450, 255, 255, 255);
@@ -298,7 +300,7 @@ export class ChaseScene extends Phaser.Scene {
     this.time.delayedCall(1400, () => { if (this.phase === 'intro') { this.phase = 'play'; this.boost(1.2); } });
     this.time.delayedCall(3600, () => this.tweens.add({ targets: this.hint, alpha: 0, duration: 500, onComplete: () => { for (const h of this.hint) h.destroy(); this.hint = []; } }));
     // Live read for tests / the console (a getter, so it never goes stale).
-    Object.defineProperty(window, '__chase', { configurable: true, get: () => this.snapshot() });
+    Object.defineProperty(window, '__chase', { configurable: true, get: () => { try { return this.snapshot(); } catch { return null; } } });
     (window as any).__chaseScene = this;
   }
   keys?: Record<string, Phaser.Input.Keyboard.Key>;
@@ -858,7 +860,7 @@ export class ChaseScene extends Phaser.Scene {
       meter: { x: Math.round(this.meterBox.x / DPR), w: Math.round(this.meterBox.w / DPR), bottom: Math.round(114 * this.U / DPR), filled: this.meter.filter((m) => m.ring.alpha === 0).length, label: this.meterLabel?.text ?? null },
       art: looks.art,
       top: { art: 'topdown', tex: this.td?.body, fly: this.spec?.fly, wings: !!this.wingL, cape: !!this.capeIm, prop: !!this.propIm, ids: TOP_IDS.length },
-      fx: { boosts: this.boosts, spd: Math.round(this.spd * 100) / 100, streaks: this.streaks.length, wind: this.wind.length, wisps: this.wisps.length, ghosts: this.ghosts.length, puffs: this.puffs.filter((p) => p.life > 0).length, cams: this.cameras.cameras.length, zoom: Math.round(this.cameras.main.zoom * 1000) / 1000, bank: Math.round(this.bank * 100) / 100 },
+      fx: { boosts: this.boosts, spd: Math.round(this.spd * 100) / 100, streaks: this.streaks.length, wind: this.wind.length, wisps: this.wisps.length, ghosts: this.ghosts.length, puffs: this.puffs.filter((p) => p.life > 0).length, cams: this.cameras.cameras.length, zoom: Math.round((this.cameras.main?.zoom ?? 1) * 1000) / 1000, bank: Math.round(this.bank * 100) / 100 },
       pause: { x: Math.round(64 * this.U / DPR), y: Math.round(64 * this.U / DPR) },
     };
   }
