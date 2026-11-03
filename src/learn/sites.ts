@@ -1,4 +1,4 @@
-// 66: learning puzzle sites for young kids. A painted letter easel sits in a reserved clearing;
+// 66-67: learning puzzle sites for young kids. A painted letter easel sits in a reserved clearing;
 // tap Play to open a big picture-and-letters board (see learn/panel.ts). Spell all three words and a
 // chest pops up with a treasure. No typing, no fail state, and replays are always free.
 // The sites also work as Mount Thief hiding spots (HIDES in thief.ts).
@@ -15,7 +15,12 @@ export type LearnDef = { id: string; kind: LearnKind; name: string; words: strin
 export const LEARN_DEFS: LearnDef[] = [
   { id: 'spell1', kind: 'spelling', name: 'Letter Easel', words: ['cat', 'sun', 'dog'], treasure: 'letter_block' },
   { id: 'spell2', kind: 'spelling', name: 'Seaside Easel', words: ['hat', 'bee', 'cup'], treasure: 'story_book' },
+  // 67: counting boards. Each "word" is a sum to count out with fruit (grove) or stones (hills).
+  { id: 'num1', kind: 'numbers', name: 'Counting Board', words: ['1+2', '2+3', '4-1'], treasure: 'abacus' },
+  { id: 'num2', kind: 'numbers', name: 'Pebble Board', words: ['3+1', '5-2', '2+4'], treasure: 'number_star' },
 ];
+/** What each counting board counts. */
+export const COUNT_THING: Record<string, 'apple' | 'stone'> = { num1: 'apple', num2: 'stone' };
 /** Extra words for free play once a site is solved. */
 export const BONUS_WORDS = ['pig', 'bus', 'cat', 'sun', 'dog', 'hat', 'bee', 'cup'];
 
@@ -36,11 +41,12 @@ export class LearnSites {
     const glow = w.fx(x, y - 60, 'glow', 0.5).setBlendMode('ADD').setTint(0xfff0a8).setAlpha(solved ? 0 : 0.45).setDepth(y - 1);
     w.tweens.add({ targets: glow, scale: glow.scale * 1.25, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     w.shadow(x + 2, y - 2, 110, 0.6);
-    const easel = w.img(x, y, 'learn_easel', 0.5, 1, 0.72).setDepth(y);
+    const num = def.kind === 'numbers';
+    const easel = w.img(x, y, num ? 'learn_numboard' : 'learn_easel', 0.5, 1, 0.72).setDepth(y);
     w.tweens.add({ targets: easel, angle: { from: -1.2, to: 1.2 }, duration: 2200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
     w.solidCircle(x, y - 10, 30);
-    // A few big ABC blocks scattered on the grass.
-    ([['A', -74, -22], ['B', -50, -2], ['C', 70, -26]] as const).forEach(([l, dx, dy]) => {
+    // A few big ABC (or 1 2 3) blocks scattered on the grass.
+    (num ? ([['1', -74, -22], ['2', -50, -2], ['3', 70, -26]] as const) : ([['A', -74, -22], ['B', -50, -2], ['C', 70, -26]] as const)).forEach(([l, dx, dy]) => {
       w.shadow(x + dx, y + dy - 2, 30, 0.5);
       w.img(x + dx, y + dy, `learn_block_${l}`, 0.5, 1, 0.5).setDepth(y + dy);
     });
@@ -78,7 +84,7 @@ export class LearnSites {
     setPuzzle(id);
     this.w.tweens.add({ targets: s.glow, alpha: 0, duration: 600 });
     this.w.burst(s.x, s.y - 80, 0xffe08a, 24, 'spark');
-    if (s.chest.revealed) { if (!s.chest.opened) this.w.game.events.emit('toast', 'Your chest is waiting!'); else this.w.game.events.emit('toast', 'Wonderful spelling!'); return; }
+    if (s.chest.revealed) { if (!s.chest.opened) this.w.game.events.emit('toast', 'Your chest is waiting!'); else this.w.game.events.emit('toast', s.def.kind === 'numbers' ? 'Wonderful counting!' : 'Wonderful spelling!'); return; }
     this.w.time.delayedCall(450, () => { s.chest.reveal(); this.w.game.events.emit('toast', first ? 'A chest appeared!' : 'The chest is back!'); });
   }
   /** Debug/test view. */

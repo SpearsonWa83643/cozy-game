@@ -94,12 +94,7 @@ function block(g: G, letter: string, fill: string) {
   g.fillStyle = '#fffaf0'; g.strokeStyle = INK; g.lineWidth = 4; g.strokeText(letter, 18, 38); g.fillText(letter, 18, 38);
 }
 
-/** The world props, pictures and treasure icons (packed into the atlas at boot, from paintAll2). */
-export function paintLearnArt(scene: Phaser.Scene) {
-  // Pictures are UI-only and big, so they get their own textures (key = frame) instead of the world atlas.
-  for (const k of WORD_PICS) tex(scene, `lw_${k}`, 160, 160, PICS[k], 1.5, true);
-  // The letter easel: an A-frame stand with a chalk board full of bright letters.
-  tex(scene, 'learn_easel', 150, 176, (g) => {
+function easel(g: G, chars: readonly (readonly [string, number, string])[]) {
     g.lineWidth = 5; g.strokeStyle = INK;
     blob(g, '#a8703f', () => { g.moveTo(30, 172); g.lineTo(64, 18); g.lineTo(72, 18); g.lineTo(44, 172); g.closePath(); }, 4);
     blob(g, '#a8703f', () => { g.moveTo(120, 172); g.lineTo(86, 18); g.lineTo(78, 18); g.lineTo(106, 172); g.closePath(); }, 4);
@@ -107,11 +102,23 @@ export function paintLearnArt(scene: Phaser.Scene) {
     blob(g, '#3f6b4a', () => { g.rect(20, 40, 110, 76); }, 3);
     blob(g, '#c98b5a', () => { g.rect(14, 124, 122, 10); }, 4);
     g.font = '900 34px Nunito, "Arial Rounded MT Bold", sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
-    ([['A', 44, '#ff8a9a'], ['B', 75, '#ffd84d'], ['C', 106, '#8fd0ff']] as const).forEach(([l, x, c]) => { g.fillStyle = c; g.fillText(l, x, 72); });
+    chars.forEach(([l, x, c]) => { g.fillStyle = c; g.fillText(l, x, 72); });
     g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = 3; g.beginPath(); g.moveTo(36, 100); g.lineTo(114, 100); g.stroke();
     for (const [x, c] of [[40, '#ff8a9a'], [64, '#fffaf0'], [96, '#9be07a']] as const) blob(g, c, () => g.rect(x, 116, 16, 6), 2);
-  });
-  ([['A', '#e8604c'], ['B', '#5f8fd8'], ['C', '#7cc463']] as const).forEach(([l, c]) => tex(scene, `learn_block_${l}`, 64, 64, (g) => block(g, l, c)));
+}
+
+/** The world props, pictures and treasure icons (packed into the atlas at boot, from paintAll2). */
+export function paintLearnArt(scene: Phaser.Scene) {
+  // Pictures are UI-only and big, so they get their own textures (key = frame) instead of the world atlas.
+  for (const k of WORD_PICS) tex(scene, `lw_${k}`, 160, 160, PICS[k], 1.5, true);
+  // The letter easel: an A-frame stand with a chalk board full of bright letters.
+  tex(scene, 'learn_easel', 150, 176, (g) => easel(g, [['A', 44, '#ff8a9a'], ['B', 75, '#ffd84d'], ['C', 106, '#8fd0ff']]));
+  // 67: the counting board: the same easel with 1 + 2 on it.
+  tex(scene, 'learn_numboard', 150, 176, (g) => easel(g, [['1', 40, '#ff8a9a'], ['+', 75, '#fffaf0'], ['2', 110, '#ffd84d']]));
+  ([['A', '#e8604c'], ['B', '#5f8fd8'], ['C', '#7cc463'], ['1', '#f2a65a'], ['2', '#9372c8'], ['3', '#4fb0a8']] as const).forEach(([l, c]) => tex(scene, `learn_block_${l}`, 64, 64, (g) => block(g, l, c)));
+  // 67: things to count (UI only, so standalone textures).
+  tex(scene, 'lc_apple', 96, 96, (g) => apple(g, 48, 52, 1), 1.5, true);
+  tex(scene, 'lc_stone', 96, 96, (g) => stone(g, 48, 54, 1), 1.5, true);
   // Treasure icons (48x48 like the others).
   tex(scene, 'ic_letterblock', 48, 48, (g) => { g.save(); g.translate(6, 6); g.scale(0.58, 0.58); block(g, 'A', '#e8604c'); g.restore(); g.save(); g.translate(18, 14); g.scale(0.5, 0.5); block(g, 'B', '#5f8fd8'); g.restore(); });
   tex(scene, 'ic_storybook', 48, 48, (g) => {
@@ -120,4 +127,37 @@ export function paintLearnArt(scene: Phaser.Scene) {
     blob(g, '#fff8ea', () => { g.moveTo(39, 14); g.quadraticCurveTo(32, 11, 25, 15); g.lineTo(25, 35); g.quadraticCurveTo(32, 32, 39, 35); g.closePath(); }, 2);
     g.fillStyle = '#5f8fd8'; g.font = '900 11px sans-serif'; g.textAlign = 'center'; g.fillText('A', 16, 28); g.fillStyle = '#7cc463'; g.fillText('b', 32, 28);
   });
+  // 67 treasures: a little bead abacus and a smiling counting star.
+  tex(scene, 'ic_abacus', 48, 48, (g) => {
+    blob(g, '#c98b5a', () => g.rect(5, 6, 38, 36), 3);
+    blob(g, '#fff8ea', () => g.rect(10, 11, 28, 26), 2);
+    g.strokeStyle = INK; g.lineWidth = 2;
+    const cols = ['#e8604c', '#ffd84d', '#5f8fd8'];
+    for (let r = 0; r < 3; r++) {
+      const y = 16 + r * 8.5; g.beginPath(); g.moveTo(10, y); g.lineTo(38, y); g.stroke();
+      for (let b = 0; b < 3; b++) blob(g, cols[r], () => g.arc(14 + b * 6 + (r === 1 ? 8 : 0), y, 3.2, 0, Math.PI * 2), 1.5);
+    }
+  });
+  tex(scene, 'ic_numstar', 48, 48, (g) => {
+    blob(g, '#ffd84d', () => { for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 5, r = i % 2 ? 9 : 20; const x = 24 + Math.cos(a) * r, y = 25 + Math.sin(a) * r; if (i) g.lineTo(x, y); else g.moveTo(x, y); } g.closePath(); }, 3);
+    g.fillStyle = INK; g.font = '900 14px sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('3', 24, 27);
+  });
+}
+
+/** A shiny red apple with a leaf (size 1 = about 80px). */
+function apple(g: G, x: number, y: number, k: number) {
+  g.save(); g.translate(x, y); g.scale(k, k);
+  g.lineWidth = 5; g.strokeStyle = INK; g.beginPath(); g.moveTo(0, -24); g.quadraticCurveTo(2, -36, 8, -40); g.stroke();
+  blob(g, '#7cc463', () => { g.moveTo(4, -30); g.quadraticCurveTo(20, -44, 30, -34); g.quadraticCurveTo(18, -22, 4, -30); }, 3);
+  blob(g, '#e8604c', () => { g.moveTo(0, -22); g.bezierCurveTo(-22, -36, -42, -14, -32, 10); g.bezierCurveTo(-24, 30, -8, 34, 0, 28); g.bezierCurveTo(8, 34, 24, 30, 32, 10); g.bezierCurveTo(42, -14, 22, -36, 0, -22); g.closePath(); });
+  g.fillStyle = 'rgba(255,255,255,0.55)'; g.beginPath(); g.ellipse(-16, -8, 6, 11, 0.4, 0, Math.PI * 2); g.fill();
+  g.restore();
+}
+/** A smooth round river stone with a little shine. */
+function stone(g: G, x: number, y: number, k: number) {
+  g.save(); g.translate(x, y); g.scale(k, k);
+  blob(g, '#9aa7b4', () => { g.moveTo(-34, 6); g.bezierCurveTo(-36, -22, -8, -30, 10, -26); g.bezierCurveTo(32, -22, 40, -2, 34, 14); g.bezierCurveTo(28, 30, -28, 30, -34, 6); g.closePath(); });
+  g.fillStyle = 'rgba(255,255,255,0.5)'; g.beginPath(); g.ellipse(-10, -14, 12, 5, -0.25, 0, Math.PI * 2); g.fill();
+  g.fillStyle = 'rgba(61,44,32,0.18)'; g.beginPath(); g.ellipse(6, 16, 20, 5, 0, 0, Math.PI * 2); g.fill();
+  g.restore();
 }

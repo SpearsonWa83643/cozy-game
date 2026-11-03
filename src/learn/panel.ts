@@ -76,7 +76,7 @@ export class LearnPanel {
     for (const k of Object.keys(this.ui.rects)) if (k.startsWith('learn:')) delete this.ui.rects[k];
     r.each((o: any) => o.disableInteractive?.());
     this.ui.tweens.add({ targets: r, alpha: 0, duration: 160, onComplete: () => r.destroy() });
-    this.ui.time.delayedCall(60, () => { if (!this.open && !(this.ui as any).card) this.ui.registry.set('vcard', false); });
+    this.ui.time.delayedCall(60, () => { if (!this.open && !(this.ui as any).card && !(this.ui as any).numPanel?.open) this.ui.registry.set('vcard', false); });
   }
 
   /** Lay out the board for the current word. */

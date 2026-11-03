@@ -11,6 +11,7 @@ import { BUILD, BUILD_ORDER, isUnlockedB, canAfford, Village, Villager, Building
 import type { WorldScene } from './World';
 import { FlyMap } from '../flyMap';
 import { LearnPanel } from '../learn/panel';
+import { NumberPanel } from '../learn/numbers';
 import { unlockedMounts, directMount, currentPick, mountById, type MountDef } from '../mount/defs';
 
 const INK = '#3d2c20';
@@ -119,6 +120,7 @@ export class VillageUIScene extends Phaser.Scene {
     this.drawMountBtn();
     this.fly = new FlyMap(this);
     this.learnPanel = new LearnPanel(this);
+    this.numPanel = new NumberPanel(this);
 
     this.layout();
     this.scale.on('resize', this.layout, this);
@@ -142,7 +144,11 @@ export class VillageUIScene extends Phaser.Scene {
   }
 
   /** 66: open the spelling board for a letter easel. */
-  onLearn(id: string) { if (this.learnPanel.open || this.registry.get('menuOpen')) return; this.closeCard(true); this.learnPanel.show(id); }
+  onLearn(id: string) {
+    if (this.learnPanel.open || this.numPanel.open || this.registry.get('menuOpen')) return;
+    this.closeCard(true);
+    if (this.world.learn.def(id)?.kind === 'numbers') this.numPanel.show(id); else this.learnPanel.show(id);
+  }
   layout() {
     this.w = this.scale.width / DPR; this.h = this.scale.height / DPR;
     this.cameras.main.setZoom(DPR);
@@ -687,7 +693,7 @@ export class VillageUIScene extends Phaser.Scene {
     const c = this.card; this.card = null; this.cardData = null;
     for (const k of Object.keys(this.rects)) if (k.startsWith('card') || k.startsWith('board')) delete this.rects[k];
     if (instant) c.destroy(); else this.tweens.add({ targets: c, alpha: 0, duration: 140, onComplete: () => c.destroy() });
-    this.time.delayedCall(60, () => { if (!this.card && !this.learnPanel?.open) this.registry.set('vcard', false); });
+    this.time.delayedCall(60, () => { if (!this.card && !this.learnPanel?.open && !this.numPanel?.open) this.registry.set('vcard', false); });
   }
 
   update() {
@@ -708,6 +714,7 @@ export class VillageUIScene extends Phaser.Scene {
   // ------------------------------------------------------------ fast travel (9.3) -> 65: the Fly! map
   fly!: FlyMap;
   learnPanel!: LearnPanel;
+  numPanel!: NumberPanel;
   /** Kept for older hooks/tests: true while the Fly! button is up. */
   get travelShown() { return !!this.fly?.btnShown || !!this.fly?.open; }
 }
