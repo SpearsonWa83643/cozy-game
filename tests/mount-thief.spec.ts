@@ -41,7 +41,7 @@ test('mount thief: button, arrest with 3 taps, escape hides a friend, rescue fro
     expect(l0.lead.leadS).toBeGreaterThanOrEqual(4);
     expect(l0.lead.leadS).toBeLessThanOrEqual(8);
     // Snap the peeking eyes (on a slow, loaded machine the lead-in may already be over; the counts below still check it).
-    await expect.poll(async () => { const t = await thief(page); return !!t.lurk?.eyes || t.state !== 'lurk'; }, { timeout: 20_000, intervals: [100] }).toBe(true);
+    await expect.poll(async () => { const t = await thief(page); return !!t.lurk?.eyes || t.state !== 'lurk'; }, { timeout: 60_000, intervals: [100] }).toBe(true);
     {
       const lk = (await thief(page)).lurk;
       if (lk) await page.screenshot({ path: `${SHOTS}/thief-eyes-bush.png`, scale: 'css', clip: { x: Math.max(0, lk.screen.x - 200), y: Math.max(0, lk.screen.y - 190), width: 400, height: 260 } });

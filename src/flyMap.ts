@@ -96,7 +96,12 @@ export class FlyMap {
     const r = this.root; this.root = undefined; this.here = undefined;
     for (const k of Object.keys(this.ui.rects)) if (k.startsWith('travel:') || k === 'flyclose' || k === 'flysheet') delete this.ui.rects[k];
     this.pins = [];
-    if (r) this.ui.tweens.add({ targets: r, alpha: 0, duration: 180, onComplete: () => r.destroy() });
+    if (r) {
+      // The fading sheet must not swallow taps (a quick tap on Fly! right after closing reopens the map).
+      const off = (o: Phaser.GameObjects.GameObject) => { o.disableInteractive?.(); if (o instanceof Phaser.GameObjects.Container) o.list.forEach(off); };
+      off(r);
+      this.ui.tweens.add({ targets: r, alpha: 0, duration: 180, onComplete: () => r.destroy() });
+    }
     this.ui.game.events.emit('flymap', false);
   }
 
