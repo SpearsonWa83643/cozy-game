@@ -96,6 +96,7 @@ test('counting board: 3 sums with big number buttons, count-along hints, chest +
   await answer('2+3');
   // 5. Take away: 4 - 1 shows 4 apples, 1 floats off.
   await expect.poll(async () => (await np(page)).prob, { timeout: 30_000 }).toBe('4-1');
+  await expect.poll(async () => (await np(page)).ready, { timeout: 30_000 }).toBe(true);
   st = await np(page);
   expect(st.items).toBe(4);
   expect(st.leaving).toBe(1);
