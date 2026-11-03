@@ -34,7 +34,7 @@ import { Pinwheels } from '../pinwheels';
 import { Mount } from '../mount/mount';
 import { looks } from '../looks/looks';
 import type { ArtStyleId } from '../looks/styleFx';
-import { Thief } from '../thief';
+import { CHASE_OFFER, Thief } from '../thief';
 
 export type Interactable = {
   x: number; y: number; r: number; label: string;
@@ -1460,6 +1460,12 @@ export class WorldScene extends Phaser.Scene {
       thief: () => self.thief.snapshot(),
       startThief: (kind?: string, ms?: number, count?: number) => self.thief.start(kind, ms, count),
       thiefLineup: (ms?: number) => self.thief.lineup(ms),
+      /** 69: Thief Chase. startChase(kind?, mountId?) = a thief grabs one friend and the chase starts right away.
+       *  chase() = the running chase (or the last one); chaseOffer(false) = escapes skip the offer (old tests). */
+      startChase: (kind?: string, mountId?: string) => self.thief.startChase(kind, mountId),
+      chase: () => (window as any).__chase ?? null,
+      chaseOffer: (on = true) => { CHASE_OFFER.on = on; return on; },
+      chaseAuto: (on = true) => { const c = self.scene.get('chase') as any; if (c) c.autopilot = on; return !!c; },
       /** 55: force a jailbreak now (kind / 'tunnel' | 'lock' / seconds until it sneaks back). False when one already happened this session or a thief is about. */
       jailbreak: (kind?: string, how?: 'tunnel' | 'lock', backS?: number) => self.thief.jailbreak(kind, how, backS),
       jailbreakInfo: () => ({ ...self.thief.jb, can: self.thief.canBreak(), jail: JSON.parse(JSON.stringify(save.jail ?? {})) }),
