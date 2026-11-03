@@ -44,7 +44,7 @@ test('thief crew: 13 masked thieves, a lineup, new thieves giggle their own line
 
     // A new thief (the Duckling) giggles its own line when tapped.
     expect(await page.evaluate(() => (window as any).__cozy.startThief('duckling', 60000, 1, 0))).toBe(true);
-    await expect.poll(async () => (await thief(page)).state, { timeout: 20_000 }).toBe('sneak');
+    await expect.poll(async () => (await thief(page)).state, { timeout: 90_000 }).toBe('sneak');
     expect((await thief(page)).kind).toBe('duckling');
     // 61: a tiptoe run cycle from its own pose sheet (and over-the-shoulder peeks now and then).
     const frames = new Set<string>();

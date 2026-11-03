@@ -51,15 +51,18 @@ test('jailbreak: once per session, escaped cell, sneaks back, caught again', asy
     expect(j).toMatchObject({ broke: false, can: true, nextCheck: 240 });
 
     // Never while another thief is about.
-    await expect.poll(() => page.evaluate(() => (window as any).__cozy.startThief('bunny', 60000)), { timeout: 20_000 }).toBe(true);
-    await expect.poll(async () => (await thief(page)).state, { timeout: 20_000 }).toBe('sneak');
+    await expect.poll(() => page.evaluate(() => (window as any).__cozy.startThief('bunny', 60000, 0, 0)), { timeout: 20_000 }).toBe(true);
+    await expect.poll(async () => (await thief(page)).state, { timeout: 90_000 }).toBe('sneak');
     expect(await jb(page, 'raccoon', 'tunnel', 3)).toBe(false);
     expect((await info(page)).broke).toBe(false);
     await catchIt(page, 'bunny');
 
     // The natural roll: force the next check now with a lucky roll.
-    await page.evaluate(() => { const t = (window as any).__game.scene.getScene('world').thief; t.jb.nextCheck = t.jb.played + 0.2; const r = Math.random; Math.random = () => 0.01; setTimeout(() => { Math.random = r; }, 4000); });
-        await expect.poll(async () => (await info(page)).broke, { timeout: 30_000 }).toBe(true);
+    // (Waits for the caught thief to leave first, and checks right away: on a slow, loaded box frames can be over 1 s apart.)
+    await expect.poll(async () => (await thief(page)).state, { timeout: 90_000 }).toBe('off');
+    await page.evaluate(() => { const t = (window as any).__game.scene.getScene('world').thief; t.jb.nextCheck = t.jb.played; const r = Math.random; Math.random = () => 0.01; (window as any).__restoreRandom = () => { Math.random = r; }; });
+    await expect.poll(async () => (await info(page)).broke, { timeout: 90_000 }).toBe(true);
+    await page.evaluate(() => (window as any).__restoreRandom());
     j = await info(page);
     expect(j.checks).toBe(1);
     expect(['raccoon', 'fox', 'bunny']).toContain(j.kind);
@@ -70,12 +73,14 @@ test('jailbreak: once per session, escaped cell, sneaks back, caught again', asy
     const first = j.kind;
 
     // It sneaks back as a normal thief event: catch it and it is back in its cell.
-    await page.evaluate(() => { const t = (window as any).__game.scene.getScene('world').thief; t.jb.backAt = t.jb.played + 1; });
+    // (A short 4 s lead-in, so a slow, loaded test box still gets through it.)
+    await page.evaluate(() => (window as any).__cozy.thiefLead(4));
+    await page.evaluate(() => { const t = (window as any).__game.scene.getScene('world').thief; t.jb.backAt = t.jb.played; });
     // 62: the return gets the same lead-in (rustles, eyes, a darting shadow) before it pops out; no jailbreak meanwhile.
-    await expect.poll(async () => (await thief(page)).state, { timeout: 30_000 }).toBe('lurk');
+    await expect.poll(async () => (await thief(page)).state, { timeout: 90_000 }).toBe('lurk');
     expect((await thief(page)).kind).toBe(first);
     expect(await jb(page, 'fox', 'lock')).toBe(false);
-    await expect.poll(async () => (await thief(page)).state, { timeout: 30_000 }).toBe('sneak');
+    await expect.poll(async () => (await thief(page)).state, { timeout: 90_000 }).toBe('sneak');
     {
       const lead = (await thief(page)).lead;
       expect(lead.leadS).toBeGreaterThanOrEqual(4);
@@ -84,6 +89,7 @@ test('jailbreak: once per session, escaped cell, sneaks back, caught again', asy
       expect(lead.windowStartedAt - lead.startedAt).toBeGreaterThanOrEqual(lead.leadS * 1000 - 50);
     }
 
+    await page.evaluate(() => (window as any).__cozy.thiefLead(null));
     await catchIt(page, first);
     expect((await toasts(page)).some((t: string) => /is sneaking back!/.test(t))).toBe(true);
     await page.waitForTimeout(600);
@@ -120,7 +126,7 @@ test('jailbreak: once per session, escaped cell, sneaks back, caught again', asy
     j = await info(page);
     expect(j).toMatchObject({ broke: false, can: false, kind: 'raccoon' });
     const n0 = (await stored(page)).jail.raccoon.n;
-    await expect.poll(() => page.evaluate(() => (window as any).__cozy.startThief()), { timeout: 20_000 }).toBe(true);
+    await expect.poll(() => page.evaluate(() => (window as any).__cozy.startThief(undefined, undefined, 0, 0)), { timeout: 20_000 }).toBe(true);
     await catchIt(page, 'raccoon');
     await page.waitForTimeout(600);
     sv = await stored(page);
