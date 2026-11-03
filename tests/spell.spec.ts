@@ -106,7 +106,7 @@ test('letter easel: spell 3 words with big tiles, gentle hints, chest + ABC Bloc
   expect((await cozy(page, 'state')).puzzles.spell1).toBe(true);
   expect((await cozy(page, 'chests()')).spell1).toBe(true);
   const [cx, cy] = (await cozy(page, 'learn()')).spell1.chest;
-  await tp(page, cx, cy + 50);
+  await tp(page, cx, cy + 36);
   await expect.poll(async () => (await cozy(page, 'state')).prompt, { timeout: 20_000 }).toBe('Open');
   await page.waitForTimeout(800);
   await page.screenshot({ path: `${SHOTS}/spell-06-chest.png` });
