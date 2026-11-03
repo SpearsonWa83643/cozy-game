@@ -185,6 +185,24 @@ function paintMask(c: Ctx) {
   c.fillStyle = '#1d1a22'; c.beginPath(); c.roundRect(2, 6, 36, 14, 7); c.fill();
   c.fillStyle = '#fffaf0'; for (const x of [12, 28]) { c.beginPath(); c.ellipse(x, 13, 4.6, 3.6, 0, 0, Math.PI * 2); c.fill(); }
 }
+/** 60 (test): paint each thief on a roomy canvas and count the inked pixels that fall outside its TW x TH texture
+ *  (that is, what would be cut off). Every thief should be 0. Also reports the topmost inked row inside the texture. */
+export function thiefFit() {
+  const M = 24, out: Record<string, { clipped: number; top: number }> = {};
+  for (const k of THIEVES) {
+    const cv = document.createElement('canvas'); cv.width = TW + M * 2; cv.height = TH + M * 2;
+    const c = cv.getContext('2d')!; c.lineCap = 'round'; c.lineJoin = 'round'; c.translate(M, M); paintThief(c, k);
+    const px = c.getImageData(0, 0, cv.width, cv.height).data;
+    let clipped = 0, top = -1;
+    for (let y = 0; y < cv.height; y++) for (let x = 0; x < cv.width; x++) {
+      if (px[(y * cv.width + x) * 4 + 3] < 24) continue;
+      const inside = x >= M && x < M + TW && y >= M && y < M + TH;
+      if (!inside) clipped++; else if (top < 0) top = y - M;
+    }
+    out[k.id] = { clipped, top };
+  }
+  return out;
+}
 export function paintThieves(scene: Phaser.Scene) {
   for (const k of THIEVES) canvasTex(scene, `thief_${k.id}`, TW, TH, (c) => paintThief(c, k));
   canvasTex(scene, 'thief_sack', 28, 32, paintSack);
@@ -660,6 +678,8 @@ export class Thief {
   }
 
   /** 56: a quick lineup of every thief by the player (screenshots and tests); it fades after `ms`. */
+  /** 60 (test): screen (CSS px) foot positions of the lineup's thieves. */
+  lineupAt: Record<string, { x: number; y: number }> = {};
   lineup(ms = 9000) {
     const w = this.w, v = w.cameras.main.worldView;
     const n = THIEVES.length, cols = Math.ceil(n / 2), gap = v.width / (cols + 1);
@@ -669,6 +689,7 @@ export class Thief {
       const x = v.x + gap * (col + 1) + (row ? gap / 2 : 0), y = v.y + v.height * (row ? 0.78 : 0.48);
       const key = `thief_${k.id}`;
       items.push(w.add.image(x, y, atlasOf(key), key).setOrigin(0.5, 0.92).setScale(1.9 / (frameScale[key] ?? 1)).setDepth(9400));
+      const c = w.cameras.main; this.lineupAt[k.id] = { x: (x - v.x) * c.zoom / DPR, y: (y - v.y) * c.zoom / DPR };
       items.push(w.add.text(x, y + 14, k.name, { fontFamily: 'Fredoka, sans-serif', fontSize: '22px', color: '#4a321f', backgroundColor: '#fff6e3', padding: { x: 8, y: 3 } }).setOrigin(0.5, 0).setDepth(9401));
     });
     w.time.delayedCall(ms, () => items.forEach((o) => o.destroy()));

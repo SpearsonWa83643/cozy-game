@@ -34,7 +34,7 @@ import { Pinwheels } from '../pinwheels';
 import { Mount } from '../mount/mount';
 import { looks } from '../looks/looks';
 import type { ArtStyleId } from '../looks/styleFx';
-import { Thief } from '../thief';
+import { Thief, thiefFit } from '../thief';
 
 export type Interactable = {
   x: number; y: number; r: number; label: string;
@@ -1460,6 +1460,7 @@ export class WorldScene extends Phaser.Scene {
       thief: () => self.thief.snapshot(),
       startThief: (kind?: string, ms?: number, count?: number) => self.thief.start(kind, ms, count),
       thiefLineup: (ms?: number) => self.thief.lineup(ms),
+      thiefFit: () => thiefFit(),
       /** 55: force a jailbreak now (kind / 'tunnel' | 'lock' / seconds until it sneaks back). False when one already happened this session or a thief is about. */
       jailbreak: (kind?: string, how?: 'tunnel' | 'lock', backS?: number) => self.thief.jailbreak(kind, how, backS),
       jailbreakInfo: () => ({ ...self.thief.jb, can: self.thief.canBreak(), jail: JSON.parse(JSON.stringify(save.jail ?? {})) }),

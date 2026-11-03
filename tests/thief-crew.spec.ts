@@ -35,6 +35,12 @@ test('thief crew: 13 masked thieves, a lineup, new thieves giggle their own line
     expect(ids.length).toBe(13);
     await page.waitForTimeout(1500);
     await page.screenshot({ path: `${SHOTS}/thief-lineup.png`, scale: 'css' });
+    // 60: nothing is cut off any more: the Bunny's long ears and the Squirrel's tufts fit inside every thief's texture.
+    const fit = await page.evaluate(() => (window as any).__cozy.thiefFit());
+    for (const [id, f] of Object.entries(fit) as [string, any][]) expect(f.clipped, `${id} clipped`).toBe(0);
+    expect(fit.bunny.top).toBeGreaterThanOrEqual(1);
+    const at = await page.evaluate(() => (window as any).__game.scene.getScene('world').thief.lineupAt.bunny);
+    await page.screenshot({ path: `${SHOTS}/thief-bunny.png`, scale: 'css', clip: { x: Math.max(0, at.x - 110), y: Math.max(0, at.y - 170), width: 220, height: 220 } });
 
     // A new thief (the Duckling) giggles its own line when tapped.
     expect(await page.evaluate(() => (window as any).__cozy.startThief('duckling', 60000))).toBe(true);
