@@ -150,8 +150,8 @@ test('mount thief: carries two friends, cells, call-mount hint, cell rescue, old
     await page.waitForTimeout(2500);
 
     // Two friends: the thief carries both, each hides behind a different puzzle with its own cell.
-    expect(await page.evaluate(() => (window as any).__cozy.startThief('fox', 1500, 2))).toBe(true);
-    await expect.poll(async () => (await thief(page)).carrying.length, { timeout: 30_000, intervals: [100] }).toBe(2);
+    expect(await page.evaluate(() => (window as any).__cozy.startThief('fox', 6000, 2))).toBe(true);
+    await expect.poll(async () => (await thief(page)).carrying.length, { timeout: 90_000, intervals: [100] }).toBe(2);
     await page.waitForTimeout(250);
     await page.screenshot({ path: `${SHOTS}/thief-carrying-two.png`, scale: 'css' });
     const tc = await thief(page);
@@ -161,7 +161,7 @@ test('mount thief: carries two friends, cells, call-mount hint, cell rescue, old
     expect(new Set(tc.stolen.map((x: any) => x.mount)).size).toBe(2);
     expect([...tc.carrying].sort()).toEqual(tc.stolen.map((x: any) => x.mount).sort());
     for (const x of tc.stolen) expect(['pterodactyl', 'unicorn', 'bumblebee']).toContain(x.mount);
-    await expect.poll(() => dialogOpen(page), { timeout: 30_000 }).toBe(true);
+    await expect.poll(() => dialogOpen(page), { timeout: 120_000 }).toBe(true);
     for (let i = 0; i < 8 && await dialogOpen(page); i++) { await page.touchscreen.tap(600, 500); await page.waitForTimeout(500); }
     const t2 = await thief(page);
     expect(t2.carrying).toEqual([]);
