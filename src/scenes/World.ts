@@ -1694,6 +1694,8 @@ export class WorldScene extends Phaser.Scene {
       /** 11.95: seasonal off-screen culling counters (props skipped by the camera, animations run/skipped). */
       /** 68: the living world (travellers, butterflies, clouds, region sounds). */
       alive: () => self.alive.stats(),
+      /** 68: force dusk (0..1) for the lighthouse beam and fireflies; null follows the clock. */
+      dusk: (k: number | null) => { self.alive.duskOverride = k; },
       seasonPerf: () => ({ ...self.dresser.stats, cullOn: self.dresser.cullOn, zoom: self.cameras.main.zoom }),
       seasonCull: (on: boolean) => { self.dresser.cullOn = on; },
       /** Time n extra dresser updates (ms per update) with culling on or off: a headless measurement. */

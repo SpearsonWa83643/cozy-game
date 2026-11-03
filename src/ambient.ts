@@ -6,9 +6,9 @@ import Phaser from 'phaser';
 import { atlasOf, frameScale, sampleSpline, S } from './art';
 import {
   PATH_MEADOW, PATH_MEADOW_HILLS, PATH_HILLS, PATH_HILLS_BAY, PATH_BAY, PATH_GROVE, PATH_SHORE_S, PATH_FOREST, PATH_ORCHARD_S,
-  WORLD_W, WORLD_H, OLD_W, OLD_H,
+  WORLD_W, WORLD_H, OLD_W, OLD_H, BAY, LIGHTHOUSE,
 } from './layout';
-import { areaAt, waterAt } from './geo';
+import { areaAt, waterAt, lakeValueOf } from './geo';
 import { sfx } from './audio';
 import type { WorldScene } from './scenes/World';
 
@@ -21,6 +21,8 @@ type Walker = {
   base: number; hop: number; x: number; y: number; on: boolean;
 };
 type Fly = { img: Phaser.GameObjects.Image; x: number; y: number; tx: number; ty: number; retarget: number; phase: number; base: number; on: boolean };
+type Glint = { img: Phaser.GameObjects.Image; x: number; y: number; t: number; life: number; on: boolean; foam: boolean; dx: number; dy: number; base: number };
+type Firefly = { img: Phaser.GameObjects.Image; x: number; y: number; hx: number; hy: number; ph: number; sp: number; on: boolean; base: number };
 type Puff = { cloud: Phaser.GameObjects.Image; shade: Phaser.GameObjects.Image; x: number; y: number; on: boolean };
 
 /** Trails the travellers stroll (each walks one end to the other and back, pausing now and then). */
@@ -65,12 +67,23 @@ export class Ambient {
   lastSound = '';
   private soundAt: Record<string, number> = {};
   private flyActive = false;
+  private glints: Glint[] = [];
+  private foam: Glint[] = [];
+  private bugs: Firefly[] = [];
+  private beams: Phaser.GameObjects.Image[] = [];
+  private beamRot = 0;
+  /** Test/photo override for dusk (0 day .. 1 night); null = follow the real clock. */
+  duskOverride: number | null = null;
   private t = 0;
 
   constructor(private w: WorldScene) {
     for (const r of ROUTES) this.addWalker(r.path, r.kind, r.vil ?? 0, r.at);
     for (let i = 0; i < 8; i++) this.addFly(i);
     for (let i = 0; i < 4; i++) this.addPuff(i);
+    for (let i = 0; i < 14; i++) this.glints.push(this.addGlint(false));
+    for (let i = 0; i < 7; i++) this.foam.push(this.addGlint(true));
+    for (let i = 0; i < 18; i++) this.addBug(i);
+    this.addBeams();
   }
 
   private inView(x: number, y: number, m = 160) {
@@ -221,6 +234,122 @@ export class Ambient {
     }
   }
 
+
+  // ------------------------------------------------------------ Seashell Bay: sun glints + waves lapping the sand
+  private addGlint(foam: boolean): Glint {
+    const img = foam
+      ? this.w.fx(0, 0, 'ripple', 0.6).setBlendMode('ADD').setTint(0xffffff).setDepth(-390).setVisible(false)
+      : this.w.fx(0, 0, 'spark', 0.55).setBlendMode('ADD').setTint(0xfffbe8).setDepth(-389).setVisible(false);
+    return { img, x: 0, y: 0, t: 0, life: 0, on: false, foam, dx: 0, dy: 0, base: img.scaleX };
+  }
+  /** A random spot of bay water in view: anywhere (glints) or just inside the shoreline (foam). */
+  private bayPoint(foam: boolean): [number, number] | null {
+    const v = this.w.cameras.main.worldView;
+    for (let k = 0; k < 6; k++) {
+      const x = v.x + Math.random() * v.width, y = v.y + Math.random() * v.height;
+      const lv = lakeValueOf(BAY, x, y);
+      if (foam ? lv > 0.86 && lv < 0.97 : lv < 0.93) return [x, y];
+    }
+    return null;
+  }
+  private updateBay(dt: number) {
+    const v = this.w.cameras.main.worldView;
+    const near = !(v.right < BAY.x - BAY.rx - 200 || v.x > BAY.x + BAY.rx + 200 || v.bottom < BAY.y - BAY.ry - 200 || v.y > BAY.y + BAY.ry + 200);
+    for (const g of [...this.glints, ...this.foam]) {
+      if (!g.on) {
+        if (!near || Math.random() > dt * (g.foam ? 0.9 : 2.5)) continue;
+        const p = this.bayPoint(g.foam);
+        if (!p) continue;
+        g.on = true; g.t = 0; [g.x, g.y] = p;
+        g.life = g.foam ? rand(2.4, 3.4) : rand(0.6, 1.3);
+        // Foam rolls in towards the sand (away from the bay's middle), lined up with the shore.
+        const a = Math.atan2((g.y - BAY.y) / BAY.ry, (g.x - BAY.x) / BAY.rx);
+        g.dx = Math.cos(a) * 14; g.dy = Math.sin(a) * 9;
+        if (g.foam) g.img.setRotation(a + Math.PI / 2);
+        g.img.setVisible(true);
+      }
+      g.t += dt;
+      const k = g.t / g.life;
+      if (k >= 1 || !this.inView(g.x, g.y, 80)) { g.on = false; g.img.setVisible(false); continue; }
+      const bell = Math.sin(k * Math.PI);
+      if (g.foam) {
+        g.img.setPosition(g.x + g.dx * g.t, g.y + g.dy * g.t).setAlpha(0.65 * bell).setScale(g.base * (1.4 + k * 1.2), g.base * (0.45 + k * 0.25));
+      } else {
+        g.img.setPosition(g.x, g.y).setAlpha(0.85 * bell).setScale(g.base * (0.5 + bell * 0.6));
+        g.img.rotation += dt * 1.5;
+      }
+    }
+  }
+
+  // ------------------------------------------------------------ Glowcap Grove fireflies (and everywhere at dusk)
+  private addBug(i: number) {
+    const img = this.w.fx(0, 0, 'dot', 1.15).setBlendMode('ADD').setTint(i % 2 ? 0xd8ff8a : 0x9af5ff).setDepth(8200).setVisible(false);
+    this.bugs.push({ img, x: 0, y: 0, hx: 0, hy: 0, ph: Math.random() * 10, sp: rand(0.4, 0.9), on: false, base: img.scaleX });
+  }
+  private updateBugs(dt: number, dusk: number) {
+    const v = this.w.cameras.main.worldView;
+    const area = areaAt(v.centerX, v.centerY);
+    const want = area === 'grove' ? this.bugs.length : Math.round(dusk * 8);
+    let n = 0;
+    for (const b of this.bugs) {
+      const active = n++ < want;
+      if (active && (!b.on || !this.inView(b.hx, b.hy, 200))) {
+        // (Re)home it somewhere in view, on land.
+        let ok = false;
+        for (let k = 0; k < 4 && !ok; k++) {
+          b.hx = v.x + Math.random() * v.width; b.hy = v.y + Math.random() * v.height;
+          ok = !waterAt(b.hx, b.hy);
+        }
+        if (!ok) { if (b.on) { b.on = false; b.img.setVisible(false); } continue; }
+        b.on = true; b.img.setVisible(true);
+      } else if (!active && b.on) { b.on = false; b.img.setVisible(false); }
+      if (!b.on) continue;
+      b.ph += dt * b.sp;
+      b.x = b.hx + Math.sin(b.ph * 1.3) * 70 + Math.sin(b.ph * 3.1) * 14;
+      b.y = b.hy + Math.cos(b.ph) * 40 - Math.abs(Math.sin(b.ph * 0.7)) * 30;
+      const glow = Math.max(0, Math.sin(b.ph * 2.2));
+      b.img.setPosition(b.x, b.y).setAlpha(0.35 + glow * 0.65).setScale(b.base * (0.8 + glow * 0.5));
+    }
+  }
+
+  // ------------------------------------------------------------ the lighthouse beam, sweeping at dusk
+  private addBeams() {
+    const key = 'lh-beam';
+    if (!this.w.textures.exists(key)) {
+      const W = 512, H = 180, cv = this.w.textures.createCanvas(key, W, H)!, c = cv.getContext();
+      const grad = c.createLinearGradient(0, 0, W, 0);
+      grad.addColorStop(0, 'rgba(255,246,200,0.95)'); grad.addColorStop(0.5, 'rgba(255,240,180,0.35)'); grad.addColorStop(1, 'rgba(255,240,180,0)');
+      c.fillStyle = grad;
+      c.beginPath(); c.moveTo(0, H / 2 - 6); c.lineTo(W, 0); c.lineTo(W, H); c.lineTo(0, H / 2 + 6); c.closePath(); c.fill();
+      cv.refresh();
+    }
+    const lampY = LIGHTHOUSE.y - (236 - 52 + 15) * 1.15;
+    for (let i = 0; i < 2; i++) {
+      this.beams.push(this.w.add.image(LIGHTHOUSE.x, lampY, key).setOrigin(0, 0.5).setScale(2.4, 1.6)
+        .setBlendMode('ADD').setDepth(9001).setAlpha(0).setVisible(false));
+    }
+  }
+  /** 0 by day, 1 at night, easing in over the evening and out at dawn (the player's own clock). */
+  dusk(): number {
+    if (this.duskOverride !== null) return this.duskOverride;
+    const d = new Date(), h = d.getHours() + d.getMinutes() / 60;
+    if (h >= 19 || h < 6) return 1;
+    if (h >= 17) return (h - 17) / 2;
+    if (h < 8) return 1 - (h - 6) / 2;
+    return 0;
+  }
+  private updateBeams(dt: number, dusk: number) {
+    const on = dusk > 0.02 && this.inView(LIGHTHOUSE.x, LIGHTHOUSE.y, 1300);
+    this.beamRot += dt * 0.55;
+    this.beams.forEach((b, i) => {
+      if (b.visible !== on) b.setVisible(on);
+      if (!on) return;
+      const r = this.beamRot + i * Math.PI;
+      // Seen from above at a slant: the beam looks shorter when it points up or down the screen.
+      b.setRotation(r).setScale(2.4 * (0.55 + 0.45 * Math.abs(Math.cos(r))), 1.6).setAlpha(0.5 * dusk);
+    });
+  }
+
   // ------------------------------------------------------------ sounds per region
   private updateSounds() {
     const area = this.w.area;
@@ -242,6 +371,10 @@ export class Ambient {
     this.updateWalkers(dt);
     this.updateFlies(dt);
     this.updatePuffs(dt);
+    const dusk = this.dusk();
+    this.updateBay(dt);
+    this.updateBugs(dt, dusk);
+    this.updateBeams(dt, dusk);
     this.updateSounds();
   }
 
@@ -254,7 +387,10 @@ export class Ambient {
       flies: this.flies.filter((f) => f.on).length,
       puffs: this.puffs.filter((p) => p.on).length,
       played: { ...this.played }, due: { ...this.due }, lastSound: this.lastSound,
-      objects: this.walkers.length * 2 + this.flies.length + this.puffs.length * 2,
+      glints: this.glints.filter((g) => g.on).length, foam: this.foam.filter((g) => g.on).length,
+      fireflies: this.bugs.filter((b) => b.on).length, dusk: this.dusk(),
+      beam: this.beams[0].visible ? +this.beams[0].alpha.toFixed(2) : 0, beamRot: +this.beamRot.toFixed(2),
+      objects: this.walkers.length * 2 + this.flies.length + this.puffs.length * 2 + this.glints.length + this.foam.length + this.bugs.length + this.beams.length,
     };
   }
 }

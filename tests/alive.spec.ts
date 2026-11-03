@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 
 // 68: the world feels alive. Villagers and critters stroll the trails between regions, butterflies
 // over the meadow and hills, soft clouds drift over with their shadows, each region has little sounds.
+// Seashell Bay glints and lapping waves, the lighthouse sweeping at dusk, Glowcap Grove fireflies.
 // Everything is pooled (a fixed number of objects) and hidden off-screen.
 const FILE = pathToFileURL(resolve('dist-single/index.html')).href;
 const SHOTS = process.env.ALIVE_SHOTS ?? '/tmp/wgl/shots';
@@ -19,7 +20,7 @@ async function boot(page: Page) {
   await page.evaluate(() => { try { (window as any).__cozy.dismiss?.(); } catch { /* */ } });
 }
 
-test('alive: travellers on the trails, butterflies, clouds, region sounds (pooled + culled)', async ({ playwright: _pw }, info) => {
+test('alive: travellers on the trails, butterflies, clouds, region sounds, bay waves, lighthouse, fireflies (pooled + culled)', async ({ playwright: _pw }, info) => {
   test.setTimeout(900_000);
   const use = info.project.use as any;
   const browser = await chromium.launch(use.launchOptions);
@@ -35,6 +36,7 @@ test('alive: travellers on the trails, butterflies, clouds, region sounds (poole
       // In the glade at the start, most far-off travellers are hidden (culled).
       expect(s0.walkersOnScreen).toBeLessThan(4);
       const objs = s0.objects;
+      await page.screenshot({ path: `${SHOTS}/alive-glade.png` });
       // Walk up to the meadow traveller: on screen, and actually strolling along the trail.
       const near = async (i: number) => {
         const [x, y] = (await alive(page)).walkerPos[i];
@@ -54,7 +56,7 @@ test('alive: travellers on the trails, butterflies, clouds, region sounds (poole
       // A cloud drifts over somewhere with its shadow, sooner or later.
       await expect.poll(async () => (await alive(page)).puffs, { timeout: 120_000, intervals: [1000] }).toBeGreaterThan(0);
       // Other trails: hills villager, the bay walker, the grove walker.
-      for (const [i, id] of [[2, 'hills'], [4, 'bay'], [5, 'grove']] as const) {
+      for (const [i, id] of [[2, 'hills'], [4, 'bay'], [5, 'grove'], [6, 'forest'], [7, 'orchard'], [8, 'shore']] as const) {
         await near(i);
         await page.waitForTimeout(2500);
         await page.screenshot({ path: `${SHOTS}/alive-${id}.png` });
@@ -65,6 +67,30 @@ test('alive: travellers on the trails, butterflies, clouds, region sounds (poole
         await expect.poll(async () => (await page.evaluate(() => (window as any).__cozy.state)).area, { timeout: 60_000, intervals: [300] }).toBe(id);
         await expect.poll(async () => (await alive(page)).due[id] ?? 0, { timeout: 180_000, intervals: [1000] }).toBeGreaterThan(0);
       }
+      // Seashell Bay: sun glints on the water and little waves rolling up the sand.
+      await tp(page, 7180, 4230);
+      await expect.poll(async () => { const a = await alive(page); return a.glints > 0 && a.foam > 0; }, { timeout: 120_000, intervals: [500] }).toBe(true);
+      await page.screenshot({ path: `${SHOTS}/alive-bay-waves.png` });
+      // The lighthouse beam only sweeps at dusk, and it turns.
+      await page.evaluate(() => (window as any).__cozy.dusk(0));
+      await page.waitForTimeout(1500);
+      expect((await alive(page)).beam).toBe(0);
+      await page.evaluate(() => (window as any).__cozy.dusk(1));
+      await expect.poll(async () => (await alive(page)).beam, { timeout: 30_000, intervals: [300] }).toBeGreaterThan(0.3);
+      const r0 = (await alive(page)).beamRot;
+      await page.waitForTimeout(3000);
+      expect((await alive(page)).beamRot).toBeGreaterThan(r0);
+      await page.screenshot({ path: `${SHOTS}/alive-lighthouse-dusk.png` });
+      // Glowcap Grove fireflies (a fixed pool), and a few out everywhere at dusk.
+      await tp(page, 2200, 4150);
+      await expect.poll(async () => (await alive(page)).fireflies, { timeout: 60_000, intervals: [500] }).toBeGreaterThanOrEqual(12);
+      await page.waitForTimeout(1500);
+      await page.screenshot({ path: `${SHOTS}/alive-grove-fireflies.png` });
+      await tp(page, 6200, 760);
+      await expect.poll(async () => (await alive(page)).fireflies, { timeout: 60_000, intervals: [500] }).toBe(8);
+      await page.evaluate(() => (window as any).__cozy.dusk(0));
+      await expect.poll(async () => (await alive(page)).fireflies, { timeout: 60_000, intervals: [500] }).toBe(0);
+      await page.evaluate(() => (window as any).__cozy.dusk(null));
       // Pooled: nothing new gets made as you travel around.
       expect((await alive(page)).objects).toBe(objs);
       expect(errors).toEqual([]);

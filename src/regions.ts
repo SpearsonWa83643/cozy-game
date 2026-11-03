@@ -293,10 +293,7 @@ export function buildRegions(w: WorldScene, H: RegionHelpers) {
       if (waterAt(x, y)) return;
       const near = (px: number, py: number, r: number) => Math.hypot(px - x, py - y) < r;
       if (y > S0 && x < E + 100) {
-        // Firefly: a soft glowing dot that wanders and fades.
-        const f = w.fx(x, y, 'dot', 0.6).setDepth(8200).setBlendMode('ADD').setTint(Math.random() < 0.5 ? 0xd8ff8a : 0x9af5ff).setAlpha(0);
-        w.tweens.add({ targets: f, x: x + (Math.random() * 2 - 1) * 80, y: y - 30 - Math.random() * 60, duration: 4200, ease: 'Sine.easeInOut' });
-        w.tweens.add({ targets: f, alpha: 0.95, duration: 900, yoyo: true, hold: 1800, onComplete: () => f.destroy() });
+        // Fireflies in the grove are a fixed pool now (68, src/ambient.ts).
       } else if (y < FOREST_EDGE_Y && x > E) {
         // Bees buzzing around the nearest hive.
         const hv = HIVES.find(([hx, hy]) => near(hx, hy, 900));
