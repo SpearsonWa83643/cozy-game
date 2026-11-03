@@ -988,7 +988,7 @@ export class Village {
       const id: ResId = d.makes === 'woodstone' ? (b.alt++ % 2 ? 'stone' : 'wood') : d.makes;
       this.add(id, d.amount, b.cx, y - 10);
       this.produced++;
-      sfx.pickup();
+      // 58 (Walker): no "ding" when workers deliver; the floating +N pop and the counter bump are enough.
     }
   }
 

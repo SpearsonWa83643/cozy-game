@@ -56,8 +56,10 @@ export const HIDES: Record<string, string> = {
   dig: 'the digging spot', stones: 'the stepping stones', trail: 'the deer tracks',
 };
 
-const TW = 64, TH = 58;
+// 60: a 12px headroom band on top so tall ears (the Bunny's long ears, the Squirrel's tufts) are never cut off.
+const TW = 64, TOP = 12, TH = 58 + TOP;
 function paintThief(c: Ctx, k: Kind) {
+  c.translate(0, TOP);
   const line = '#3b2a22';
   c.lineWidth = 2;
   // Tail (behind, on the left).
