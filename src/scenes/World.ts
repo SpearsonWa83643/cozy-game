@@ -1413,6 +1413,8 @@ export class WorldScene extends Phaser.Scene {
         self.path = [];
         self.ground.update(self.cameras.main.worldView, 99);
       },
+      /** 64: can you walk from the start to (x, y)? (nav grid; water + solids block) */
+      reachable: (x: number, y: number) => !!self.nav.find(PLAYER_START.x, PLAYER_START.y, x, y),
       lanterns: LANTERNS,
       enterWild: (seed?: number) => self.enterWild(seed),
       startInfo: () => ({ ...self.startInfo }),

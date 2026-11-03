@@ -62,11 +62,16 @@ export function buildRegions(w: WorldScene, H: RegionHelpers) {
   {
     const rng = mulberry32(1601);
     // The pine hedge that already divides wood from orchard runs on east, between meadow and hills.
+    // One gap where the meadow trail runs down into the hills.
+    const gap0 = 6170, gap1 = 6370;
     for (let x = E + 40; x < WORLD_W + 40; x += 46) {
       const y = FOREST_EDGE_Y + (rng() * 2 - 1) * 14;
-      tree(x, y, rng() < 0.6 ? `pine${Math.floor(rng() * 2)}` : 'tree5', 0.9 + rng() * 0.35, rng, 'leaf', false);
+      const key = rng() < 0.6 ? `pine${Math.floor(rng() * 2)}` : 'tree5', sc = 0.9 + rng() * 0.35;
+      if (x > gap0 - 20 && x < gap1 + 20) continue;
+      tree(x, y, key, sc, rng, 'leaf', false);
     }
-    w.solidRect(E, FOREST_EDGE_Y - 30, WORLD_W - E, 44);
+    w.solidRect(E, FOREST_EDGE_Y - 30, gap0 - E, 44);
+    w.solidRect(gap1, FOREST_EDGE_Y - 30, WORLD_W - gap1, 44);
     // Sunflower patches (sway in the breeze, nod when tapped).
     for (let i = 0; i < 22; i++) {
       const cx = E + 300 + rng() * (WORLD_W - E - 600), cy = 160 + rng() * (FOREST_EDGE_Y - 360);
