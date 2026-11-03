@@ -537,6 +537,8 @@ export class Thief {
   update(dt: number, paused: boolean) {
     if (!paused) this.jailTick(dt); else this.jbAt = 0;
     if (this.state === 'off' || !this.spr) return;
+    // The run-off ends even while a message is up (like the old Clock event did).
+    if (this.fleeDone && (this.fleeLeft -= dt * 1000) <= 0) { const d = this.fleeDone; this.fleeDone = null; d(); return; }
     if (paused) { if (this.state === 'sneak') this.endAt += dt * 1000; return; }
     const s = this.spr;
     if (this.state === 'caught') {
@@ -548,7 +550,6 @@ export class Thief {
         if (a <= 0) { this.cage?.destroy(); this.cage = null; this.clear(); return; }
       }
     }
-    if (this.fleeDone && (this.fleeLeft -= dt * 1000) <= 0) { const d = this.fleeDone; this.fleeDone = null; d(); return; }
     if (this.state === 'sneak' && this.w.time.now > this.endAt) { this.escape(); }
     if (this.state === 'sneak' || this.state === 'flee') {
       const dx = this.to.x - s.x, dy = this.to.y - s.y, d = Math.hypot(dx, dy);
