@@ -11,6 +11,7 @@ import { MOUNTS, isMountUnlocked, themeDefaultMount, mountById, type MountDef } 
 import { sfx } from './audio';
 import type { WorldScene } from './scenes/World';
 import { DPR } from './dpr';
+import { showClue, clueLine, PLACE } from './clueCard';
 
 export type Kind = {
   id: string; name: string; fur: string; dark: string; belly: string;
@@ -205,8 +206,9 @@ const andList = (xs: string[]) => xs.length <= 1 ? xs.join('') : `${xs.slice(0, 
 /** 51-53: one kid-readable line naming every hidden friend and where it is. */
 export function stolenHint(list: Stolen[] = save.stolen ?? []): string {
   if (!list.length) return '';
-  if (list.length === 1) return `Rescue the ${nameOf(list[0].mount)} first! It's hidden behind ${HIDES[list[0].puzzle]}.`;
-  return `Rescue your friends first! ${andList(list.map((s) => `the ${nameOf(s.mount)} is behind ${HIDES[s.puzzle]}`)).replace(/^t/, 'T')}.`;
+  // 57: very simple words (early readers).
+  if (list.length === 1) return `Help your ${nameOf(list[0].mount)} first! It is at ${PLACE[list[0].puzzle]}.`;
+  return `Help your friends first! ${list.map((s) => `The ${nameOf(s.mount)} is at ${PLACE[s.puzzle]}.`).join(' ')}`;
 }
 /** A body image of a friend (classic look), sized to `w` world px wide. */
 function friendImg(scene: Phaser.Scene, m: MountDef, x: number, y: number, w: number) {
@@ -270,7 +272,12 @@ export class Thief {
   start(kindId?: string, ms = 12000, count = 0) {
     this.forceCount = count;
     const why = this.blocked();
-    if (why) { if (why !== 'busy') this.w.game.events.emit('toast', why); return false; }
+    if (why) {
+      // 57: with friends hidden, the clue opens big and centered (no timeout) instead of a toast.
+      if (save.stolen?.length) showClue(save.stolen, { title: save.stolen.length === 1 ? 'Help your friend first!' : 'Help your friends first!' });
+      else if (why !== 'busy') this.w.game.events.emit('toast', why);
+      return false;
+    }
     const w = this.w;
     const pool = THIEVES.filter((k) => k.id !== this.last);
     this.kind = THIEVES.find((k) => k.id === kindId) ?? pool[Math.floor(Math.random() * pool.length)];
@@ -537,7 +544,8 @@ export class Thief {
     const ch = this.w.puzzles.chestById(pid);
     if (!save.puzzles[pid] && !ch?.revealed) {
       const st = save.stolen?.find((s) => s.puzzle === pid);
-      this.w.game.events.emit('toast', `It's locked! Solve ${HIDES[pid]} to open the cell for the ${nameOf(st?.mount ?? '')}.`);
+      // 57: a big, simple clue card (stays until tapped).
+      if (st) showClue([st], { here: true, title: 'It is locked!' });
       sfx.blip?.();
       return false;
     }
@@ -580,10 +588,10 @@ export class Thief {
   callMountHint() {
     const list = save.stolen ?? [];
     if (!list.length) return '';
-    const msg = list.length === 1 ? `Your ${nameOf(list[0].mount)} is hiding behind ${HIDES[list[0].puzzle]}!`
-      : `Your friends are hiding: ${andList(list.map((s) => `the ${nameOf(s.mount)} behind ${HIDES[s.puzzle]}`))}!`;
+    // 57: one simple line per friend, on a big centered card with no timeout.
+    const msg = list.map((s) => clueLine(s)).join(' ');
     this.lastCallHint = msg;
-    this.w.game.events.emit('toast', msg);
+    showClue(list);
     return msg;
   }
 
