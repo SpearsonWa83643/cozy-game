@@ -209,6 +209,10 @@ export class UIScene extends Phaser.Scene {
     this.camZone.setPosition(this.camC.x, this.camC.y);
     this.thiefC.setPosition(this.w - 300 - si.right, 58 + si.top);
     this.thiefZone.setPosition(this.thiefC.x, this.thiefC.y);
+    this.stableC.setPosition(this.w - 364 - si.right, 58 + si.top);
+    this.stableZone.setPosition(this.stableC.x, this.stableC.y);
+    this.jailC.setPosition(this.w - 428 - si.right, 58 + si.top);
+    this.jailZone.setPosition(this.jailC.x, this.jailC.y);
     // Left column, stacked above Call Mount / Build (same spot in the Wild).
     this.zoomBtns?.layout(68 + si.left, this.h - 340 - si.bottom);
     // Under the lantern sigils, top-left; the choices fan out to the right.
@@ -390,6 +394,18 @@ export class UIScene extends Phaser.Scene {
   }
   camC!: Phaser.GameObjects.Container; camZone!: Phaser.GameObjects.Zone;
   thiefC!: Phaser.GameObjects.Container; thiefZone!: Phaser.GameObjects.Zone;
+  /** 72 (Walker, Nov 3): shortcuts straight to the Stable and the Thief Jail pages. */
+  stableC!: Phaser.GameObjects.Container; stableZone!: Phaser.GameObjects.Zone;
+  jailC!: Phaser.GameObjects.Container; jailZone!: Phaser.GameObjects.Zone;
+  openStable() {
+    if (this.registry.get('dialogOpen') || this.cardOpen) return;
+    const m = this.scene.get('menu') as unknown as { show(t: string): void };
+    m.show('stable');
+  }
+  openJail() {
+    if (this.registry.get('dialogOpen') || this.cardOpen) return;
+    (this.scene.get('menu') as unknown as { openJail(): void }).openJail();
+  }
   photo = new PhotoMode(this as any);
   takePhoto() {
     if (this.registry.get('menuOpen') || this.registry.get('dialogOpen') || this.cardOpen) return;
@@ -422,6 +438,23 @@ export class UIScene extends Phaser.Scene {
       g.fillStyle(0x1d1a22, 1); g.fillCircle(-5, 0, 1.6); g.fillCircle(7, 0, 1.6);
       g.fillStyle(0xe85d3a, 1); g.fillTriangle(12, 4, 16, 10, 9, 9);
     }, () => { if (this.registry.get('dialogOpen') || this.cardOpen) return; this.world.thief?.start(); });
+    // 72: Stable shortcut (a little red barn) and Thief Jail shortcut (a cell with bars).
+    [this.stableC, this.stableZone] = this.roundButton((g) => {
+      g.fillStyle(0xb8432f, 1); g.lineStyle(2, 0x6b2a1e, 1);
+      g.beginPath(); g.moveTo(-12, 12); g.lineTo(-12, -2); g.lineTo(0, -12); g.lineTo(12, -2); g.lineTo(12, 12); g.closePath(); g.fillPath(); g.strokePath();
+      g.fillStyle(0x6a3a22, 1); g.fillTriangle(-14, -1, 0, -14, 14, -1);
+      g.fillStyle(0xfff3d6, 1); g.fillRoundedRect(-5, 1, 10, 11, { tl: 5, tr: 5, bl: 0, br: 0 });
+      g.lineStyle(1.6, 0xb8432f, 1); g.lineBetween(-5, 1, 5, 12); g.lineBetween(5, 1, -5, 12);
+      g.fillStyle(0xf2c14e, 1); g.fillCircle(0, -5, 2);
+    }, () => this.openStable());
+    [this.jailC, this.jailZone] = this.roundButton((g) => {
+      g.fillStyle(0x8f9bb5, 1); g.fillRoundedRect(-12, -11, 24, 23, 5);
+      g.fillStyle(0x5a4a6a, 1); g.fillRoundedRect(-13, -13, 26, 6, 3);
+      g.lineStyle(2.6, 0x3e4a66, 1);
+      for (let k = -1; k <= 1; k++) g.lineBetween(k * 6, -7, k * 6, 12);
+      g.strokeRoundedRect(-12, -11, 24, 23, 5);
+      g.fillStyle(0xf2c14e, 1); g.fillCircle(8, 4, 3.4); g.fillStyle(0xe85d3a, 1); g.fillCircle(8, 4.5, 1.3);
+    }, () => this.openJail());
     this.badge = this.add.graphics().setVisible(false);
     this.badge.fillStyle(0xe85d3a, 1); this.badge.fillCircle(17, -17, 7); this.badge.lineStyle(2, 0xfffaf0, 1); this.badge.strokeCircle(17, -17, 7);
     this.bagC.add(this.badge);
@@ -564,7 +597,7 @@ export class UIScene extends Phaser.Scene {
       if (p.wasTouch && !this.touchMode) { this.touchMode = true; this.applyTouchMode(); }
       if (this.registry.get('menuOpen') || this.registry.get('vcard')) return;
       if (this.photo.open) return;
-      if (over.some((o) => this.zoomBtns.zones.includes(o as Phaser.GameObjects.Zone) || o === this.volZone || o === this.mapZone || o === this.bagZone || o === this.camZone || o === this.thiefZone || this.photo.zones.includes(o as Phaser.GameObjects.Zone) || (o === this.actionZone && this.actionShown))) return;
+      if (over.some((o) => this.zoomBtns.zones.includes(o as Phaser.GameObjects.Zone) || o === this.volZone || o === this.mapZone || o === this.bagZone || o === this.camZone || o === this.thiefZone || o === this.stableZone || o === this.jailZone || this.photo.zones.includes(o as Phaser.GameObjects.Zone) || (o === this.actionZone && this.actionShown))) return;
       if (this.cardOpen) { this.closeCard(); return; }
       if (this.registry.get('dialogOpen')) { this.world.tryInteract(); return; }
       const fs = this.world.fishing?.state;
