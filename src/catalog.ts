@@ -32,12 +32,13 @@ export const TREASURES: Treasure[] = [
   { id: 'corn_husk', name: 'Golden Corn Husk', icon: 'ic_corn_husk', blurb: 'Crinkly! Call Mount to ride a flying tamale!', hint: 'A lunchbox in the Wild Woods.' },
   { id: 'golden_bag', name: 'Tiny Golden Bag', icon: 'ic_golden_bag', blurb: 'So shiny! Call Mount to ride H-E-Buddy!', hint: 'A lunchbox in the Wild Woods.' },
   { id: 'chef_hat', name: "Tiny Chef's Hat", icon: 'ic_chef_hat', blurb: 'Oui chef! Call Mount to ride a pink concha!', hint: 'A lunchbox in the Wild Woods.' },
+  { id: 'chopsticks', name: 'Tiny Chopsticks', icon: 'ic_chopsticks', blurb: 'Itadakimasu! Call Mount to ride the Sushi Roll Buddy!', hint: 'A lunchbox in the Wild Woods.' },
 ];
 
 export type MinorId = 'petal' | 'shell' | 'apple' | 'acorn' | 'beetle' | 'glowmoss' | 'starshard';
 export const WILD_SET = ['acorn_cap', 'glow_scarf', 'ranger_coat'];
 /** Mounts found in Wild Woods chests after the cosmetic set. */
-export const WILD_MOUNTS = ['pterodactyl_egg', 'cloud_puppy_tuft', 'rainbow_horseshoe', 'golden_honeycomb', 'glow_pearl', 'sugar_cube', 'toy_propeller', 'pumpkin_seed', 'cowboy_hat', 'chili_poncho', 'magic_tassel', 'duck_squeak', 'jelly_gem', 'berry_seed', 'corn_husk', 'golden_bag', 'chef_hat'];
+export const WILD_MOUNTS = ['pterodactyl_egg', 'cloud_puppy_tuft', 'rainbow_horseshoe', 'golden_honeycomb', 'glow_pearl', 'sugar_cube', 'toy_propeller', 'pumpkin_seed', 'cowboy_hat', 'chili_poncho', 'magic_tassel', 'duck_squeak', 'jelly_gem', 'berry_seed', 'corn_husk', 'golden_bag', 'chef_hat', 'chopsticks'];
 export const MINORS: { id: MinorId; name: string; icon: string }[] = [
   { id: 'petal', name: 'Petals', icon: 'petal' }, { id: 'shell', name: 'Shells', icon: 'shell0' },
   { id: 'apple', name: 'Fruit', icon: 'apple' }, { id: 'acorn', name: 'Acorns', icon: 'acorn' }, { id: 'beetle', name: 'Beetles spotted', icon: 'beetle' },

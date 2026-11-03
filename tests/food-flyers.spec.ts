@@ -72,12 +72,12 @@ test('food flyers: stable, picker, ride, fx', async ({ playwright: _pw }, info) 
     await page.evaluate(() => (window as any).__game.scene.remove('foodPreview'));
     await page.waitForTimeout(300);
 
-    // Stable: 22 stalls, every friend awake, new stalls big and on screen.
+    // Stable: 23 stalls, every friend awake, new stalls big and on screen.
     await page.evaluate(() => (window as any).__menu.show('stable'));
     await expect.poll(() => page.evaluate(() => (window as any).__menu.open), { timeout: 30_000 }).toBe(true);
     await page.waitForTimeout(1200);
     const pets = await page.evaluate(() => (window as any).__menu.stablePets.map((p: any) => [p.id, p.on]));
-    expect(pets.length).toBe(22);
+    expect(pets.length).toBe(23);
     const vp = page.viewportSize()!;
     for (const [id] of NEW) {
       expect(pets.find((p: any) => p[0] === id)?.[1], `${id} awake`).toBe(true);
@@ -91,7 +91,7 @@ test('food flyers: stable, picker, ride, fx', async ({ playwright: _pw }, info) 
     await page.touchscreen.tap(closeBtn.x + closeBtn.w / 2, closeBtn.y + closeBtn.h / 2);
     await expect.poll(() => page.evaluate(() => (window as any).__menu.open), { timeout: 30_000 }).toBe(false);
 
-    // Picker: all 22 tiles fully on screen and big enough to tap.
+    // Picker: all 23 tiles fully on screen and big enough to tap.
     await page.evaluate(() => (window as any).__cozy.teleport(905, 1330));
     await page.waitForTimeout(500);
     await tapV(page, 'mount');

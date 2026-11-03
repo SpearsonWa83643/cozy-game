@@ -224,6 +224,16 @@ export const MOUNTS: MountDef[] = [
     blurb: 'A sweet pink concha in a chef\'s hat!',
     flapRate: 1.0,
   },
+  // 50 (Walker's photo, Nov 2): a happy maki roll with salmon roe and cucumber on top.
+  {
+    id: 'sushi',
+    name: 'Sushi Roll Buddy',
+    treasure: 'chopsticks',
+    body: 'sushi_body', wing: 'sushi_wing', wingFar: 'sushi_wing_far', icon: 'i_sushi',
+    scale: 1.0,
+    blurb: 'A happy sushi roll with a big orange topping. Rolling through the sky!',
+    flapRate: 1.1,
+  },
 ];
 
 // 36 (Walker, Oct 29): capes for friends that aren't naturally winged; carpet and jellyfish fly wingless.
