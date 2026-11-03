@@ -33,7 +33,7 @@ test('wardrobe: big hero, illustrated wardrobe, tap to wear', async ({ playwrigh
       // Every item has a spot, all inside the panel, none overlapping the hero stage.
       const all = await page.evaluate(() => { const m = (window as any).__menu; return { rects: m.rects, box: m.box }; });
       const ids = Object.keys(all.rects).filter((k) => /^(hat|scarf|outfit|back|feather|shells):/.test(k));
-      expect(ids.length).toBe(23);
+      expect(ids.length).toBe(24); // 66: + the ABC scarf
       for (const k of ids) {
         const r = all.rects[k];
         expect(r.x).toBeGreaterThanOrEqual(all.rects.hero.x + all.rects.hero.w);
