@@ -58,10 +58,11 @@ export const HIDES: Record<string, string> = {
   dig: 'the digging spot', stones: 'the stepping stones', trail: 'the deer tracks',
 };
 
-// 60: a 12px headroom band on top so tall ears (the Bunny's long ears, the Squirrel's tufts) are never cut off.
-const TW = 64, TOP = 12, TH = 58 + TOP;
+// 60: headroom on top (the Bunny's long ears, the Squirrel's tufts) and a little room on each side (the Skunk's
+// big tail, whiskers) so no thief is ever cut off. The side pads are equal, so the sprite stays centred.
+const SIDE = 6, TW = 64 + SIDE * 2, TOP = 12, TH = 58 + TOP;
 function paintThief(c: Ctx, k: Kind) {
-  c.translate(0, TOP);
+  c.translate(SIDE, TOP);
   const line = '#3b2a22';
   c.lineWidth = 2;
   // Tail (behind, on the left).
