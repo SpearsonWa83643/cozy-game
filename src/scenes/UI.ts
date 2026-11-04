@@ -213,6 +213,8 @@ export class UIScene extends Phaser.Scene {
     this.stableZone.setPosition(this.stableC.x, this.stableC.y);
     this.jailC.setPosition(this.w - 428 - si.right, 58 + si.top);
     this.jailZone.setPosition(this.jailC.x, this.jailC.y);
+    this.skyC.setPosition(this.w - 492 - si.right, 58 + si.top);
+    this.skyZone.setPosition(this.skyC.x, this.skyC.y);
     // Left column, stacked above Call Mount / Build (same spot in the Wild).
     this.zoomBtns?.layout(68 + si.left, this.h - 340 - si.bottom);
     // Under the lantern sigils, top-left; the choices fan out to the right.
@@ -397,6 +399,13 @@ export class UIScene extends Phaser.Scene {
   /** 72 (Walker, Nov 3): shortcuts straight to the Stable and the Thief Jail pages. */
   stableC!: Phaser.GameObjects.Container; stableZone!: Phaser.GameObjects.Zone;
   jailC!: Phaser.GameObjects.Container; jailZone!: Phaser.GameObjects.Zone;
+  skyC!: Phaser.GameObjects.Container; skyZone!: Phaser.GameObjects.Zone;
+  syncSky() {
+    const on = !!this.world?.mount?.riding;
+    if (on === this.skyC.visible) return;
+    this.skyC.setVisible(on);
+    if (on) { this.skyZone.setInteractive(); this.tweens.add({ targets: this.skyC, scale: { from: 0.5, to: 1 }, duration: 320, ease: 'Back.easeOut' }); } else this.skyZone.disableInteractive();
+  }
   openStable() {
     if (this.registry.get('dialogOpen') || this.cardOpen) return;
     const m = this.scene.get('menu') as unknown as { show(t: string): void };
@@ -455,6 +464,14 @@ export class UIScene extends Phaser.Scene {
       g.strokeRoundedRect(-12, -11, 24, 23, 5);
       g.fillStyle(0xf2c14e, 1); g.fillCircle(8, 4, 3.4); g.fillStyle(0xe85d3a, 1); g.fillCircle(8, 4.5, 1.3);
     }, () => this.openJail());
+    // 38: Sky View (only while riding a mount): a wing over a cloud.
+    [this.skyC, this.skyZone] = this.roundButton((g) => {
+      g.fillStyle(0x8fd0ff, 1); g.fillCircle(0, 0, 14);
+      g.fillStyle(0xffffff, 1); g.fillCircle(-6, 6, 6); g.fillCircle(1, 4, 7); g.fillCircle(8, 7, 5);
+      g.fillStyle(0xf2c14e, 1); g.lineStyle(1.8, 0x8a5a1e, 1);
+      g.beginPath(); g.moveTo(-10, -2); g.lineTo(10, -12); g.lineTo(6, -6); g.lineTo(11, -5); g.lineTo(5, 0); g.lineTo(9, 1); g.lineTo(-2, 4); g.closePath(); g.fillPath(); g.strokePath();
+    }, () => { if (this.registry.get('dialogOpen') || this.cardOpen) return; if (this.world.mount?.riding) this.world.skyView(); });
+    this.skyC.setVisible(false); this.skyZone.disableInteractive();
     this.badge = this.add.graphics().setVisible(false);
     this.badge.fillStyle(0xe85d3a, 1); this.badge.fillCircle(17, -17, 7); this.badge.lineStyle(2, 0xfffaf0, 1); this.badge.strokeCircle(17, -17, 7);
     this.bagC.add(this.badge);
@@ -597,7 +614,7 @@ export class UIScene extends Phaser.Scene {
       if (p.wasTouch && !this.touchMode) { this.touchMode = true; this.applyTouchMode(); }
       if (this.registry.get('menuOpen') || this.registry.get('vcard')) return;
       if (this.photo.open) return;
-      if (over.some((o) => this.zoomBtns.zones.includes(o as Phaser.GameObjects.Zone) || o === this.volZone || o === this.mapZone || o === this.bagZone || o === this.camZone || o === this.thiefZone || o === this.stableZone || o === this.jailZone || this.photo.zones.includes(o as Phaser.GameObjects.Zone) || (o === this.actionZone && this.actionShown))) return;
+      if (over.some((o) => this.zoomBtns.zones.includes(o as Phaser.GameObjects.Zone) || o === this.volZone || o === this.mapZone || o === this.bagZone || o === this.camZone || o === this.thiefZone || o === this.stableZone || o === this.jailZone || o === this.skyZone || this.photo.zones.includes(o as Phaser.GameObjects.Zone) || (o === this.actionZone && this.actionShown))) return;
       if (this.cardOpen) { this.closeCard(); return; }
       if (this.registry.get('dialogOpen')) { this.world.tryInteract(); return; }
       const fs = this.world.fishing?.state;
@@ -778,6 +795,7 @@ export class UIScene extends Phaser.Scene {
     this.updateTouchUI(time);
     this.updateDayTint(time);
     this.updateSigils(delta);
+    if (this.skyC) this.syncSky();
     // Typewriter.
     if (this.registry.get('dialogOpen') && this.typing) {
       const full = this.pages[this.page];
