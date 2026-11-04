@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-11-04 1:10 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
+Updated: 2026-11-04 2:05 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -118,9 +118,9 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 
 | Order | Task | Status | ETA live | Estimate (dev days) |
 |---|---|---|---|---|
-| 80 | Sky rings for flying friends: while you ride, a loop of five glowing star rings floats over the glade; fly through one for a chime and sparkles ("2 of 5!"); all five gives a happy cheer and confetti, then they come back | Done, shipping 2026-11-04 (merge on main; see log for bundle) | 2026-11-04 | 0.5 |
-| 81 | Tide-pool starfish in Seashell Bay: tap the starfish one by one and each shows a big number (1, 2, 3 ...) and says it, so little ones count to five; then they all twirl | In progress (wip/starfish) | 2026-11-04 | 0.25 |
-| 82 | Fall leaf piles: crunchy leaf piles in the glade in Fall; walk or tap through one and the leaves scatter with a crunch, then gently pile up again | Planned | 2026-11-04 | 0.25 |
+| 80 | Sky rings for flying friends: while you ride, a loop of five glowing star rings floats over the glade; fly through one for a chime and sparkles ("2 of 5!"); all five gives a happy cheer and confetti, then they come back | Done/Live 23b114f (2026-11-04, bundle index-BKM2xl4v.js) | 2026-11-04 | 0.5 |
+| 81 | Tide-pool starfish in Seashell Bay: tap the starfish one by one and each shows a big number (1, 2, 3 ...) and says it, so little ones count to five; then they all twirl | Done, shipping 9c45b4a (2026-11-04, bundle index-DQQNEbsQ.js pending CF) | 2026-11-04 | 0.25 |
+| 82 | Fall leaf piles: crunchy leaf piles in the glade in Fall; walk or tap through one and the leaves scatter with a crunch, then gently pile up again | In progress (wip/leaf-piles) | 2026-11-04 | 0.25 |
 
 ## Recently done
 
