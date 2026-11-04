@@ -1683,7 +1683,8 @@ export class WorldScene extends Phaser.Scene {
         const tufts = d.tufts ?? [];
         return { theme: theme.id, autumn, petal, soundscape: theme.soundscape.id,
           leafPiles: d.leafPiles.filter((p) => p.visible).map((p) => [r(p.x), r(p.y - 10)]), hay: d.hay.filter((p) => p.visible).map((p) => [r(p.x), r(p.y - 16)]),
-          goldTufts: tufts.filter((t) => t.isTinted).length, tufts: tufts.length, taps: { leaves: d.taps.leaves, hay: d.taps.hay } };
+          goldTufts: tufts.filter((t) => t.isTinted).length, tufts: tufts.length, taps: { leaves: d.taps.leaves, hay: d.taps.hay }, leafWalks: d.leafWalks,
+          leafFlat: d.leafPiles.filter((p) => p.visible && (d.leafState.get(p)?.flat ?? 0) > 0).map((p) => [r(p.x), r(p.y - 10)]) };
       },
       /** Test hook (Christmas): frosted canopies, which particle emitter runs, soundscape. */
       christmas() {

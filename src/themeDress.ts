@@ -53,6 +53,11 @@ export class ThemeDresser {
   /** Fall: leaf piles + hay bales (made once, shown only in Fall). */
   fallProps: Phaser.GameObjects.Image[] = [];
   leafPiles: Phaser.GameObjects.Image[] = [];
+  /** 82: per-pile squash state (flat = seconds left lying flat before it heaps back up). */
+  leafState = new Map<Phaser.GameObjects.Image, { sx: number; sy: number; flat: number; near: boolean }>();
+  /** 82: walk-through crunches so far (test hook). */
+  leafWalks = 0;
+  private leafLast = { x: 0, y: 0 };
   hay: Phaser.GameObjects.Image[] = [];
   fallBuilt = false;
   tufts: Phaser.GameObjects.Image[] | null = null;
@@ -301,19 +306,10 @@ export class ThemeDresser {
       if (!free(x, y)) return;
       const img = put(x, y, 'f_leafpile', scale);
       this.leafPiles.push(img);
-      const sx = img.scaleX, sy = img.scaleY;
+      this.leafState.set(img, { sx: img.scaleX, sy: img.scaleY, flat: 0, near: false });
       w.tappables.push({
         x: () => img.x, y: () => img.y - 10, r: 38, enabled: () => img.visible,
-        tap: () => {
-          this.taps.leaves++; w.life.reactions++;
-          sfx.rustle();
-          w.floatText(img.x, img.y - 44, ['Crunch!', 'Wheee!', 'Swish!'][Math.floor(Math.random() * 3)], '#ffd27a');
-          w.burst(img.x, img.y - 12, 0xf2603a, 9, 'p_maple');
-          w.burst(img.x, img.y - 12, 0xffc24a, 9, 'p_maple');
-          w.tweens.killTweensOf(img);
-          img.setScale(sx * 1.25, sy * 0.55);
-          w.tweens.add({ targets: img, scaleX: sx, scaleY: sy, duration: 900, ease: 'Back.easeOut' });
-        },
+        tap: () => { this.taps.leaves++; this.crunchPile(img, true); },
       });
     };
     // Leaf piles along the paths, alternating sides.
@@ -711,8 +707,45 @@ export class ThemeDresser {
     }
   }
 
+  /** 82: a leaf pile bursts: leaves fly up and flutter down with a crunch, the pile lies flat a few
+   *  seconds, then heaps back up. Tapping a flat pile just tosses a few more leaves. */
+  crunchPile(img: Phaser.GameObjects.Image, tapped: boolean) {
+    const w = this.w, st = this.leafState.get(img);
+    if (!st) return;
+    w.life.reactions++;
+    if (st.flat > 0) { sfx.rustle(); w.burst(img.x, img.y - 6, 0xf2603a, 5, 'p_maple'); return; }
+    sfx.rustle(); sfx.crackle();
+    if (tapped) w.floatText(img.x, img.y - 44, ['Crunch!', 'Wheee!', 'Swish!'][Math.floor(Math.random() * 3)], '#ffd27a');
+    w.burst(img.x, img.y - 12, 0xf2603a, 14, 'p_maple');
+    w.burst(img.x, img.y - 12, 0xffc24a, 14, 'p_maple');
+    w.burst(img.x, img.y - 12, 0xd9452b, 8, 'p_maple');
+    w.tweens.killTweensOf(img);
+    st.flat = 5;
+    w.tweens.add({ targets: img, scaleX: st.sx * 1.3, scaleY: st.sy * 0.32, duration: 180, ease: 'Quad.easeOut' });
+  }
+
+  /** 82: walk (or ride) through a Fall leaf pile and it crunches; flattened piles heap back up. */
+  private tickLeafPiles(dt: number) {
+    const w = this.w, fx = w.feet.x, fy = w.feet.y;
+    const moving = Math.hypot(fx - this.leafLast.x, fy - this.leafLast.y) > 0.5;
+    this.leafLast.x = fx; this.leafLast.y = fy;
+    for (const [img, st] of this.leafState) {
+      if (!img.visible) continue;
+      if (st.flat > 0) {
+        st.flat -= dt;
+        if (st.flat <= 0) { st.flat = 0; w.tweens.add({ targets: img, scaleX: st.sx, scaleY: st.sy, duration: 1100, ease: 'Back.easeOut' }); }
+      }
+      const dx = fx - img.x, dy = (fy - (img.y - 8)) * 1.5;
+      if (Math.abs(dx) > 120) { st.near = false; continue; }
+      const near = Math.hypot(dx, dy) < 46;
+      if (near && !st.near && moving && st.flat <= 0) { this.leafWalks++; this.crunchPile(img, false); }
+      st.near = near;
+    }
+  }
+
   update(time: number, dt: number) {
     const w = this.w;
+    if (this.leafState.size && theme.id === 'fall') this.tickLeafPiles(dt);
     const cam = w.cameras.main;
     const M = ThemeDresser.MARGIN, wv = cam.worldView;
     this.view.setTo(wv.x - M, wv.y - M, wv.width + 2 * M, wv.height + 2 * M);
