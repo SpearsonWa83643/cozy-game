@@ -111,15 +111,15 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 | 75 | More words to spell: six new big picture words (fox, egg, bug, car, owl, pie) join the Letter Easels' free play | Done, live 2026-11-03 12:43 PM CT (merge fe51e97, bundle index-DEYm3tZB.js, 200) | 2026-11-03 | 0.25 |
 | 76 | Surprise things to count: Counting Board free play counts a different friendly thing each round (shells, stars, strawberries, little fish, apples, stones) | Done, live by 2026-11-03 1:03 PM CT (merge 5f6dc0b, bundle index-CHBtqbxn.js, 200) | 2026-11-03 | 0.25 |
 | 77 | "Over here!": a stolen friend waiting in a cell calls out when you come close (hops, a big "Help! Over here!" bubble, a soft call), so little ones can find it | Done/Live (merge 153c59d, 2026-11-03) | 2026-11-03 | 0.25 |
-| 78 | Seashell Bay hermit crabs: little crabs scuttle sideways along the beach, duck into their shells when you walk up, and wave their claws when tapped | In progress (wip/bay-crabs, tests pass, shipping) | 2026-11-04 | 0.5 |
+| 78 | Seashell Bay hermit crabs: little crabs scuttle sideways along the beach, duck into their shells when you walk up, and wave their claws when tapped | Done/Live 2026-11-04 12:40 PM CT (merge 559531f, bundle index-D1fM8Srv.js, 200) | 2026-11-04 | 0.5 |
 | 79 | Stuck hidden friend fix + "Free my friends" + last-letter glide + harder chase (Walker, Nov 3 ~7:30-8:13 PM CT): clues name the puzzle and area ("the stepping stones in Mistbirch Wood"), a pink heart on the Map/Fly map marks the cell, broken saved hiding places heal on load, a kid-safe "Free my friends" (Yes/No) in the Map tab's settings gear brings every friend home; the Letter Easel's last letter now glides into its slot before the cheer; Thief Chase ramps up (Walker 8:13 PM CT): each net that lands makes the thief +14% faster and a bit dodgier (capped at 1.8x), with a tiny "Faster!" puff. Live: merge e1c7d01, index-c6VLnB4M.js | Done (live) | 2026-11-03 | 0.5 |
 
 ## Self-added polish (2026-11-04; only 38 left, which awaits Walker's style pick; no Walker decision or spending needed)
 
 | Order | Task | Status | ETA live | Estimate (dev days) |
 |---|---|---|---|---|
-| 80 | Sky rings for flying friends: while you ride, a loop of five glowing star rings floats over the glade; fly through one for a chime and sparkles ("2 of 5!"); all five gives a happy cheer and confetti, then they come back | Planned | 2026-11-04 | 0.5 |
-| 81 | Tide-pool starfish in Seashell Bay: tap the starfish one by one and each shows a big number (1, 2, 3 ...) and says it, so little ones count to five; then they all twirl | Planned | 2026-11-04 | 0.25 |
+| 80 | Sky rings for flying friends: while you ride, a loop of five glowing star rings floats over the glade; fly through one for a chime and sparkles ("2 of 5!"); all five gives a happy cheer and confetti, then they come back | Done, shipping 2026-11-04 (merge on main; see log for bundle) | 2026-11-04 | 0.5 |
+| 81 | Tide-pool starfish in Seashell Bay: tap the starfish one by one and each shows a big number (1, 2, 3 ...) and says it, so little ones count to five; then they all twirl | In progress (wip/starfish) | 2026-11-04 | 0.25 |
 | 82 | Fall leaf piles: crunchy leaf piles in the glade in Fall; walk or tap through one and the leaves scatter with a crunch, then gently pile up again | Planned | 2026-11-04 | 0.25 |
 
 ## Recently done
