@@ -8,7 +8,7 @@ export const VERSION = '2026-11-04-leafpiles-82';
 export type WhatsNewItem = { icon: 'wood' | 'fruit' | 'berry' | 'star' | 'heart'; text: string };
 
 export const ITEMS: WhatsNewItem[] = [
-  { icon: 'fruit', text: 'Crunchy leaf piles in Fall! Walk or tap through a leaf pile and the leaves fly up. Crunch! Then they pile up again.' },
+  { icon: 'fruit', text: 'Crunchy leaf piles in Fall! Now you can walk right through a leaf pile. Crunch! The leaves fly up, then they pile up again.' },
   { icon: 'star', text: 'Count the starfish! Five starfish sleep by a tide pool in Seashell Bay. Tap each one: 1, 2, 3, 4, 5!' },
   { icon: 'star', text: 'Star rings in the sky! When you ride a flying friend, golden rings float ahead. Fly through all 5 for a big hooray!' },
   { icon: 'star', text: 'Little hermit crabs live on the Seashell Bay beach! Watch them scuttle sideways. Tap one and it waves hello. Walk too close and it hides in its shell!' },

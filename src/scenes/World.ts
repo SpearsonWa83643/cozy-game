@@ -34,7 +34,6 @@ import { SnowPrints } from '../snowPrints';
 import { Puddles } from '../puddles';
 import { Kite } from '../kite';
 import { Pinwheels } from '../pinwheels';
-import { LeafPiles } from '../leafPiles';
 import { Crabs } from '../crabs';
 import { SkyRings } from '../skyRings';
 import { Starfish } from '../starfish';
@@ -118,8 +117,6 @@ export class WorldScene extends Phaser.Scene {
   kite!: Kite;
   /** 33: garden pinwheels. */
   pinwheels!: Pinwheels;
-  /** 82: Fall leaf piles. */
-  leafPiles!: LeafPiles;
   /** 78: Seashell Bay hermit crabs. */
   crabs!: Crabs;
   /** 80: sky rings while riding. */
@@ -309,7 +306,6 @@ export class WorldScene extends Phaser.Scene {
     this.pinwheels = new Pinwheels(this);
     this.crabs = new Crabs(this);
     this.starfish = new Starfish(this);
-    this.leafPiles = new LeafPiles(this);
     this.dresser = new ThemeDresser(this);
     this.mount = new Mount(this);
     this.skyRings = new SkyRings(this);
@@ -1351,7 +1347,6 @@ export class WorldScene extends Phaser.Scene {
     this.crabs.update(dt);
     this.skyRings.update(dt);
     this.starfish.update(dt);
-    this.leafPiles.update(dt);
     this.village.update(dt, time);
     this.dresser.update(time, dt);
     const view = this.cameras.main.worldView;
@@ -1688,7 +1683,8 @@ export class WorldScene extends Phaser.Scene {
         const tufts = d.tufts ?? [];
         return { theme: theme.id, autumn, petal, soundscape: theme.soundscape.id,
           leafPiles: d.leafPiles.filter((p) => p.visible).map((p) => [r(p.x), r(p.y - 10)]), hay: d.hay.filter((p) => p.visible).map((p) => [r(p.x), r(p.y - 16)]),
-          goldTufts: tufts.filter((t) => t.isTinted).length, tufts: tufts.length, taps: { leaves: d.taps.leaves, hay: d.taps.hay } };
+          goldTufts: tufts.filter((t) => t.isTinted).length, tufts: tufts.length, taps: { leaves: d.taps.leaves, hay: d.taps.hay }, leafWalks: d.leafWalks,
+          leafFlat: d.leafPiles.filter((p) => p.visible && (d.leafState.get(p)?.flat ?? 0) > 0).map((p) => [r(p.x), r(p.y - 10)]) };
       },
       /** Test hook (Christmas): frosted canopies, which particle emitter runs, soundscape. */
       christmas() {
@@ -1787,8 +1783,6 @@ export class WorldScene extends Phaser.Scene {
       starfish() { return self.starfish.stats(); },
       ringsSpawn() { self.skyRings.spawn(); return self.skyRings.stats(); },
       crabTap(i: number) { const c = self.crabs.crabs[i]; if (!c) return false; self.crabs.tap(c); return true; },
-      /** 82: Fall leaf piles. */
-      leafPiles() { return self.leafPiles.stats(); },
       /** 33: garden pinwheels (spin in rad/s). */
       pinwheels() { const p = self.pinwheels; return { taps: p.taps, whooshes: p.whooshes, windy: p.windy, list: p.wheels.map((q) => ({ x: Math.round(q.stick.x), y: Math.round(q.stick.y), hx: Math.round(q.head.x), hy: Math.round(q.head.y), spin: +q.spin.toFixed(2), boost: +q.boost.toFixed(2), visible: q.head.visible })) }; },
       /** 32: windy-day kite (shown 0..1, screen-free world position, loops). */
