@@ -34,6 +34,7 @@ import { SnowPrints } from '../snowPrints';
 import { Puddles } from '../puddles';
 import { Kite } from '../kite';
 import { Pinwheels } from '../pinwheels';
+import { Crabs } from '../crabs';
 import { Mount } from '../mount/mount';
 import { looks } from '../looks/looks';
 import type { ArtStyleId } from '../looks/styleFx';
@@ -114,6 +115,8 @@ export class WorldScene extends Phaser.Scene {
   kite!: Kite;
   /** 33: garden pinwheels. */
   pinwheels!: Pinwheels;
+  /** 78: Seashell Bay hermit crabs. */
+  crabs!: Crabs;
   playerShadow!: Phaser.GameObjects.Image;
   solids!: Phaser.Physics.Arcade.StaticGroup;
   keys!: Record<string, Phaser.Input.Keyboard.Key>;
@@ -295,6 +298,7 @@ export class WorldScene extends Phaser.Scene {
     this.puddles = new Puddles(this);
     this.kite = new Kite(this);
     this.pinwheels = new Pinwheels(this);
+    this.crabs = new Crabs(this);
     this.dresser = new ThemeDresser(this);
     this.mount = new Mount(this);
     this.thief = new Thief(this);
@@ -1332,6 +1336,7 @@ export class WorldScene extends Phaser.Scene {
     this.puddles.update(dt);
     this.kite.update(dt);
     this.pinwheels.update(dt);
+    this.crabs.update(dt);
     this.village.update(dt, time);
     this.dresser.update(time, dt);
     const view = this.cameras.main.worldView;
@@ -1759,6 +1764,9 @@ export class WorldScene extends Phaser.Scene {
       prints() { const p = self.prints; return { made: p.made, visible: p.visible(), snowy: p.snowy, pool: p.pool.length }; },
       dandelions() { const d = self.dandelions; return { blown: d.blown, puffs: d.puffs.map((p) => ({ x: Math.round(p.img.x), y: Math.round(p.img.y), full: p.full, visible: p.img.visible })), seeds: d.seeds.getAliveParticleCount() }; },
       setDandelionRegrowMs(ms: number) { self.dandelions.regrowMs = ms; },
+      /** 78: Seashell Bay hermit crabs. */
+      crabs() { return self.crabs.stats(); },
+      crabTap(i: number) { const c = self.crabs.crabs[i]; if (!c) return false; self.crabs.tap(c); return true; },
       /** 33: garden pinwheels (spin in rad/s). */
       pinwheels() { const p = self.pinwheels; return { taps: p.taps, whooshes: p.whooshes, windy: p.windy, list: p.wheels.map((q) => ({ x: Math.round(q.stick.x), y: Math.round(q.stick.y), hx: Math.round(q.head.x), hy: Math.round(q.head.y), spin: +q.spin.toFixed(2), boost: +q.boost.toFixed(2), visible: q.head.visible })) }; },
       /** 32: windy-day kite (shown 0..1, screen-free world position, loops). */
