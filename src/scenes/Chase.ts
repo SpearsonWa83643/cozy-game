@@ -17,6 +17,7 @@ import { addFruit, save, persist, DEFAULT_LOOK } from '../save';
 import { mountById, type MountDef } from '../mount/defs';
 import { looks } from '../looks/looks';
 import { chaseAudio } from '../chase/chaseAudio';
+import { skyOf } from '../chase/skyView';
 import { attachScreenStyle } from '../looks/screenStyle';
 import { paintTop, topSpec, capeTint, TOP_IDS, BH, WH, WY, CAPE_TH, CAPE_TW, type TopSpec } from '../chase/topArt';
 const CAPE_TW_R = CAPE_TW * 2;
@@ -46,7 +47,7 @@ export const CHASE = {
 
 export type ChaseResult = 'caught' | 'escaped' | 'quit';
 export type ChaseStats = { result: ChaseResult; hits: number; stars: number; berries: number; bumps: number; nets: number; secs: number };
-export type ChaseData = { kind: string; kindName: string; voice: number; taken: string[]; mountId: string; onEnd: (s: ChaseStats) => void };
+export type ChaseData = { kind: string; kindName: string; voice: number; taken: string[]; mountId: string; free?: boolean; onEnd: (s: ChaseStats) => void };
 
 const FONT = 'Nunito, "Trebuchet MS", sans-serif';
 const R = 2; // textures are painted at 2x design px
@@ -212,6 +213,7 @@ export class ChaseScene extends Phaser.Scene {
     this.items = []; this.netsL = []; this.far = []; this.streaks = []; this.carry = []; this.meter = []; this.sparks = []; this.hint = []; this.panel = null; this.floats = []; this.lastPulse = null; this.meterLabel = null;
     this.wingL = this.wingR = this.capeIm = this.propIm = null; this.ghosts = []; this.trail = []; this.wind = []; this.wisps = []; this.puffs = [];
     this.spd = 1; this.boostT = 0; this.boosts = 0; this.puffT = 0; this.thPuffT = 0; this.bank = 0; this.thBank = 0; this.span = 1; this.hudCam = null; this.zoomTw = null; this.sheet = null;
+    this.rollT = 0; this.rolls = 0; this.whooshes = 0; this.lastWhoosh = -9; this.sigT = 0; this.sig = []; this.skyTitle = null;
     this.wobble = 0; this.netPause = 0; this.lastThrow = -9; this.autoT = 0.6; this.spawnT = 1.2; this.invul = 0; this.thSpin = 0; this.autopilot = false;
   }
 
@@ -222,7 +224,7 @@ export class ChaseScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(groundCols().base);
     this.ground = this.add.tileSprite(0, 0, W, H, gk).setOrigin(0).setTileScale(U / R * 1.1).setDepth(0);
     // altitude haze, so the meadow reads as far below
-    this.add.rectangle(0, 0, W, H, 0xcfeaff, 0.3).setOrigin(0).setDepth(1);
+    this.add.rectangle(0, 0, W, H, this.d.free ? skyOf(this.d.mountId).haze : 0xcfeaff, this.d.free ? 0.34 : 0.3).setOrigin(0).setDepth(1);
     for (let i = 0; i < 5; i++) {
       const im = this.add.image(Math.random() * W, Math.random() * H, 'ch_cloud').setDepth(2).setAlpha(0.5);
       im.setScale((U / R) * (0.8 + Math.random() * 0.6)); this.far.push(im);
@@ -257,10 +259,10 @@ export class ChaseScene extends Phaser.Scene {
     if (fly === 'prop') this.propIm = this.add.image(0, 0, this.td.prop).setDepth(20.6);
 
     // the thief, with your friends held up on its back
-    const tk = `thief_${this.d.kind}`;
+    const tk = this.d.free ? 'ch_dot' : `thief_${this.d.kind}`;
     this.thx = W / 2; this.thBaseY = this.thy = H * 0.2;
     this.thShadow = this.add.image(this.thx, this.thy + 80 * U, 'ch_shadow').setDepth(9).setScale(U / R * 1.1);
-    this.thief = this.add.image(this.thx, this.thy, atlasOf(tk), tk).setOrigin(0.5, 0.6).setDepth(30);
+    this.thief = this.d.free ? this.add.image(this.thx, this.thy, tk).setVisible(false) : this.add.image(this.thx, this.thy, atlasOf(tk), tk).setOrigin(0.5, 0.6).setDepth(30);
     this.thief.setScale((140 * U) / 64 / (frameScale[tk] ?? 1));
     this.d.taken.forEach((id) => {
       const m = mountById(id); if (!m) return;
@@ -269,6 +271,7 @@ export class ChaseScene extends Phaser.Scene {
       this.carry.push(im);
     });
 
+    if (this.d.free) { this.thShadow.setVisible(false); this.sky = skyOf(this.def.id); }
     this.buildHud();
     // 74: the HUD gets its own camera, so the shake and zoom punch only move the world.
     if (!rm0) {
@@ -282,11 +285,12 @@ export class ChaseScene extends Phaser.Scene {
     this.input.on('pointerdown', (p: Phaser.Input.Pointer, over: unknown[]) => {
       if (over.length || this.panel || this.phase !== 'play' && this.phase !== 'intro') return;
       this.tx = p.x;
+      if (this.d.free) { if (this.phase === 'play') this.whoosh(); return; }
       if (this.phase === 'play') this.throwNet(true);
     });
     this.input.on('pointermove', (p: Phaser.Input.Pointer) => { if (p.isDown && !this.panel) this.tx = p.x; });
     const kb = this.input.keyboard;
-    kb?.on('keydown-SPACE', () => { if (this.phase === 'play' && !this.paused) this.throwNet(true); });
+    kb?.on('keydown-SPACE', () => { if (this.phase === 'play' && !this.paused) { if (this.d.free) this.whoosh(); else this.throwNet(true); } });
     kb?.on('keydown-ESC', () => { if (this.phase === 'play') this.setPaused(!this.paused); });
     this.keys = kb?.addKeys('LEFT,RIGHT,A,D') as Record<string, Phaser.Input.Keyboard.Key> | undefined;
     document.addEventListener('visibilitychange', this.offVis);
@@ -295,9 +299,9 @@ export class ChaseScene extends Phaser.Scene {
     this.cameras.main.fadeIn(reduceMotion() ? 1 : 450, 255, 255, 255);
     this.hudCam?.fadeIn(450, 255, 255, 255);
     chaseAudio.start();
-    sfx.giggle?.(this.d.voice);
+    if (!this.d.free) sfx.giggle?.(this.d.voice);
     // A short, big "how to play" (also spoken by the pictures: a finger and arrows by the mount).
-    const hint = this.txt(W / 2, H * 0.52, 'Slide your finger to fly!\nThe bubble nets fly by themselves!', 40, '#ffffff', 900).setOrigin(0.5).setDepth(200).setStroke('#2a4a7a', 10 * U / 2).setAlign('center');
+    const hint = this.txt(W / 2, H * 0.52, this.d.free ? 'Slide your finger to fly!\nTap for a whoosh!' : 'Slide your finger to fly!\nThe bubble nets fly by themselves!', 40, '#ffffff', 900).setOrigin(0.5).setDepth(200).setStroke('#2a4a7a', 10 * U / 2).setAlign('center');
     const la = this.txt(this.px - 130 * U, H * 0.8, '◀', 64, '#ffffff', 900).setOrigin(0.5).setDepth(200).setStroke('#2a4a7a', 6 * U);
     const ra = this.txt(this.px + 130 * U, H * 0.8, '▶', 64, '#ffffff', 900).setOrigin(0.5).setDepth(200).setStroke('#2a4a7a', 6 * U);
     this.hint = [hint, la, ra];
@@ -331,6 +335,7 @@ export class ChaseScene extends Phaser.Scene {
     this.pauseBtn = pb;
     // Catch meter: one ring per net needed (fills with a bubble net), with a big "Catch!" word and
     // the thief's little net-count, so it's clear what the rings are for (70).
+    if (this.d.free) this.freeHud(); else {
     const n = CHASE.hits, gap = 92 * U, x0 = W / 2 - ((n - 1) * gap) / 2 + 50 * U;
     const back = this.add.graphics().setDepth(D);
     const bx = x0 - 170 * U, bw = (n - 1) * gap + 240 * U;
@@ -344,6 +349,7 @@ export class ChaseScene extends Phaser.Scene {
       this.meter.push({ ring, fill });
     }
     this.meterBox = { x: bx, w: bw };
+    }
     this.timeBar = this.add.graphics().setDepth(D + 1);
     // Stars and berries collected (top right).
     const sx = W - 190 * U;
@@ -361,6 +367,7 @@ export class ChaseScene extends Phaser.Scene {
     const w = 300 * U, x = W / 2 - w / 2, y = 124 * U, h = 18 * U;
     const k = Phaser.Math.Clamp(1 - this.t / CHASE.timeS, 0, 1);
     g.clear();
+    if (this.d.free) return;
     g.fillStyle(0x000000, 0.18).fillRoundedRect(x, y, w, h, h / 2);
     if (k > 0.02) g.fillStyle(k > 0.3 ? 0x7fd35a : 0xffb347, 1).fillRoundedRect(x, y, Math.max(h, w * k), h, h / 2);
   }
@@ -436,7 +443,11 @@ export class ChaseScene extends Phaser.Scene {
     chaseAudio.pause(on);
     if (on) {
       this.tweens.pauseAll();
-      this.card('Paused', ['Take a little rest!'], [
+      if (this.d.free) this.card(this.sky.title, ['Take a little rest!'], [
+        { id: 'resume', label: 'Keep flying!', primary: true, cb: () => this.setPaused(false) },
+        { id: 'land', label: 'Land', cb: () => { this.closeCard(); this.paused = false; this.tweens.resumeAll(); this.finish('quit'); } },
+      ]);
+      else this.card('Paused', ['Take a little rest!'], [
         { id: 'resume', label: 'Keep flying!', primary: true, cb: () => this.setPaused(false) },
         { id: 'stop', label: 'Stop the chase', cb: () => { this.closeCard(); this.paused = false; this.tweens.resumeAll(); this.escape(true); } },
       ]);
@@ -556,6 +567,7 @@ export class ChaseScene extends Phaser.Scene {
     this.drawMount(dt);
 
     // The thief: a big lazy zigzag (slower with every net), bobbing, friends waving on its back.
+    if (!this.d.free) {
     if (this.phase === 'play' || this.phase === 'intro') {
       const fast = this.speedMul();
       this.thPh += dt * CHASE.thiefSpeed * fast;
@@ -587,13 +599,14 @@ export class ChaseScene extends Phaser.Scene {
       const n = this.carry.length, off = (i - (n - 1) / 2) * 54 * U;
       c.setPosition(this.thx + off - this.thFace * 14 * U, this.thy - 40 * U + bob * 0.6 - Math.abs(off) * 0.15).setRotation(rm ? 0 : Math.sin(this.time.now / 260 + i) * 0.12);
     });
+    }
 
     if (!playing) return;
 
     // Nets: on a gentle beat by themselves (taps add more); paused for a moment after a bump.
     this.netPause = Math.max(0, this.netPause - dt);
     this.autoT = Math.min(this.autoT, CHASE.autoMs / 1000) - dt;
-    if (this.autoT <= 0) this.throwNet(false);
+    if (this.autoT <= 0 && !this.d.free) this.throwNet(false);
     for (const n of this.netsL) {
       if (n.dead) continue;
       n.t += dt;
@@ -634,7 +647,7 @@ export class ChaseScene extends Phaser.Scene {
     }
     this.items = this.items.filter((i) => !i.dead);
     this.drawTime();
-    if (this.t >= CHASE.timeS) this.escape(false);
+    if (this.t >= CHASE.timeS && !this.d.free) this.escape(false);
   }
 
   drawMount(dt: number) {
@@ -644,10 +657,14 @@ export class ChaseScene extends Phaser.Scene {
     // Banking: lean into the turn (and squash a little, like rolling onto one side).
     const bankT = rm ? 0 : Phaser.Math.Clamp(this.pvx / (1300 * U), -1, 1);
     this.bank += (bankT - this.bank) * (1 - Math.exp(-dt * 10));
-    const b = this.bank, rot = b * 0.24 + w, squash = 1 - Math.abs(b) * 0.12;
+    // 38: Sky View: a whoosh is a barrel roll (seen from above the body narrows, flips and widens again).
+    this.rollT = Math.max(0, this.rollT - dt / 0.75);
+    const roll = this.rollT > 0 && !rm ? Math.max(0.12, Math.abs(Math.cos((1 - this.rollT) * Math.PI))) : 1;
+    const b = this.bank, rot = b * 0.24 + w, squash = (1 - Math.abs(b) * 0.12) * roll;
     this.flap += dt * Math.PI * 2 * (sp.beat ?? 1.6) * (0.85 + 0.15 * this.spd);
     const flaps = sp.fly === 'wings' || sp.fly === 'membrane';
-    const x = this.px, y = H * 0.8 + (rm ? 0 : Math.sin(this.time.now / 600) * 6 * U + (flaps ? Math.sin(this.flap) * 4 * U : 0));
+    const sk = this.d.free ? this.sky : null, bm = sk?.bob ?? 1, sw = sk?.sway ?? 0;
+    const x = this.px + (rm ? 0 : Math.sin(this.time.now / 900) * 12 * U * sw), y = H * 0.8 + (rm ? 0 : Math.sin(this.time.now / (600 / Math.max(0.5, bm))) * 6 * U * bm * (sk ? 1.6 : 1) + (flaps ? Math.sin(this.flap) * 4 * U : 0));
     this.shadow.setPosition(x + 30 * U, y + 70 * U).setScale((U / R) * 1.5 * squash, (U / R) * 1.9);
     let key = this.td.body;
     if (sp.fly === 'carpet' && !rm) key = this.td.carpet[Math.floor(this.time.now / 110) % 3];
@@ -681,6 +698,7 @@ export class ChaseScene extends Phaser.Scene {
       const spin = rm ? 0.6 : Math.abs(Math.cos(this.time.now / 18));
       this.propIm.setPosition(qx, qy).setRotation(rot).setScale(s0 * (0.3 + 0.7 * spin), s0).setAlpha(0.7 + 0.3 * spin);
     }
+    if (sk) this.sigTrail(dt, x, y, rm);
     if (rm) return;
     // Motion-blur trail: fading copies of you, lagging behind (stronger when fast or turning).
     this.trail.unshift({ x, y, r: rot }); if (this.trail.length > 10) this.trail.pop();
@@ -736,6 +754,52 @@ export class ChaseScene extends Phaser.Scene {
       box.add(this.txt(ox, (Math.floor(i / cols) + 1) * chh - 4 * this.U, id.replace(/_/g, ' '), 15, '#123322', 900).setOrigin(0.5, 1));
     });
     return TOP_IDS.length;
+  }
+
+  // ---------- 38: Sky View ----------
+  sky = skyOf('eagle'); rollT = 0; rolls = 0; whooshes = 0; lastWhoosh = -9; sigT = 0;
+  sig: { im: Phaser.GameObjects.Image; life: number; max: number; vx: number; vy: number; s: number }[] = [];
+  skyTitle: Phaser.GameObjects.Text | null = null;
+  freeHud() {
+    const U = this.U, W = this.W, D = 100;
+    const name = this.def?.name ?? 'Friend';
+    const t = this.txt(W / 2, 60 * U, `${name}'s ${this.sky.title}`, 36, '#2a4a7a', 900).setOrigin(0.5).setDepth(D + 1);
+    const bw = t.width + 70 * U, g = this.add.graphics().setDepth(D);
+    g.fillStyle(0xfffaf0, 0.92).fillRoundedRect(W / 2 - bw / 2, 18 * U, bw, 84 * U, 40 * U);
+    g.lineStyle(4 * U, 0x2a4a7a, 0.9).strokeRoundedRect(W / 2 - bw / 2, 18 * U, bw, 84 * U, 40 * U);
+    this.skyTitle = t;
+    this.meterBox = { x: W / 2 - bw / 2, w: bw };
+  }
+  /** Tap in Sky View: a burst of speed and a barrel roll, with a puff of the mount's own sparkles. */
+  whoosh() {
+    if (this.t - this.lastWhoosh < 0.5) return;
+    this.lastWhoosh = this.t; this.whooshes++;
+    this.boost(1);
+    if (this.rollT <= 0) { this.rollT = 1; this.rolls++; }
+    const sk = this.sky; for (let i = 0; i < 3; i++) this.spark(this.px, this.H * 0.8, 3, sk.trail[i % sk.trail.length], sk.key === 'ch_dot' ? 'ch_spark' : sk.key, 80, 18);
+    chaseAudio.star();
+  }
+  /** The mount's own signature trail (crumbs, hearts, rainbow stars, bubbles...) streaming behind it. */
+  sigTrail(dt: number, x: number, y: number, rm: boolean) {
+    const U = this.U, sk = this.sky;
+    this.sigT -= dt;
+    if (this.sigT <= 0 && this.phase !== 'done') {
+      this.sigT = rm ? 0.25 : 0.06;
+      let p = this.sig.find((q) => q.life <= 0);
+      if (!p && this.sig.length < 40) { p = { im: this.add.image(0, 0, sk.key).setDepth(16), life: 0, max: 1, vx: 0, vy: 0, s: 1 }; this.sig.push(p); }
+      if (p) {
+        p.life = p.max = 0.7 + Math.random() * 0.5; p.vx = (Math.random() - 0.5) * 80 * U; p.vy = (380 + Math.random() * 260) * U; p.s = (sk.key === 'ch_dot' ? 0.9 : 0.45) * (0.7 + Math.random() * 0.6);
+        p.im.setVisible(true).setPosition(x + (Math.random() - 0.5) * 40 * U, y + 60 * U).setTint(sk.trail[Math.floor(Math.random() * sk.trail.length)]).setAlpha(0.95);
+      }
+    }
+    for (const p of this.sig) {
+      if (p.life <= 0) continue;
+      p.life -= dt;
+      if (p.life <= 0) { p.im.setVisible(false); continue; }
+      const k = p.life / p.max;
+      p.im.x += p.vx * dt; p.im.y += p.vy * this.spd * dt;
+      p.im.setAlpha(0.95 * k).setScale((U / R) * p.s * (0.6 + 0.4 * k)).setRotation(p.im.rotation + dt * 2);
+    }
   }
 
   /** A pooled contrail puff (soft white dot that drifts back, grows and fades). */
@@ -901,6 +965,7 @@ export class ChaseScene extends Phaser.Scene {
       art: looks.art,
       top: { art: 'topdown', tex: this.td?.body, fly: this.spec?.fly, wings: !!this.wingL, cape: !!this.capeIm, prop: !!this.propIm, ids: TOP_IDS.length },
       fx: { boosts: this.boosts, spd: Math.round(this.spd * 100) / 100, streaks: this.streaks.length, wind: this.wind.length, wisps: this.wisps.length, ghosts: this.ghosts.length, puffs: this.puffs.filter((p) => p.life > 0).length, cams: this.cameras.cameras.length, zoom: Math.round((this.cameras.main?.zoom ?? 1) * 1000) / 1000, bank: Math.round(this.bank * 100) / 100 },
+      sky: this.d?.free ? { title: this.sky.title, haze: this.sky.haze, key: this.sky.key, sig: this.sig.filter((p) => p.life > 0).length, rolls: this.rolls, whooshes: this.whooshes, label: this.skyTitle?.text ?? null } : null,
       pause: { x: Math.round(64 * this.U / DPR), y: Math.round(64 * this.U / DPR) },
     };
   }

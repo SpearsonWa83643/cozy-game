@@ -191,6 +191,24 @@ export class WorldScene extends Phaser.Scene {
    * never re-textured: swapping a live emitter's texture made Phaser re-resolve its frame on the
    * other atlas page, so Halloween "leaves" came out as whole spooky-tree canopies (h_tree0). */
   petalBy = new Map<string, Phaser.GameObjects.Particles.ParticleEmitter>();
+  /** 38: Sky View: your mount's own flying view (top-down art from 74, its own sky and trail). The ride resumes after. */
+  skyViewOn = false; skyViews = 0;
+  skyView(mountId?: string) {
+    if (this.skyViewOn || this.scene.isActive('chase')) return false;
+    const id = mountId ?? this.mount.def.id;
+    this.skyViewOn = true; this.skyViews++;
+    const go = () => {
+      this.scene.sleep('ui'); this.scene.sleep('vui'); this.scene.sleep();
+      this.scene.launch('chase', { kind: '', kindName: '', voice: 0, taken: [], mountId: id, free: true, onEnd: () => {
+        this.scene.wake(); this.scene.wake('ui'); this.scene.wake('vui');
+        this.cameras.main.fadeIn(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 1 : 500, 255, 255, 255);
+        this.skyViewOn = false;
+      } });
+    };
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) go();
+    else { this.cameras.main.fadeOut(350, 255, 255, 255); this.cameras.main.once('camerafadeoutcomplete', go); }
+    return true;
+  }
   makePetals(frame: string, tint: number[] | null, frequency: number) {
     let e = this.petalBy.get(frame);
     if (e) return e;
@@ -1516,6 +1534,8 @@ export class WorldScene extends Phaser.Scene {
        *  chase() = the running chase (or the last one); chaseOffer(false) = escapes skip the offer (old tests). */
       startChase: (kind?: string, mountId?: string) => self.thief.startChase(kind, mountId),
       chase: () => (window as any).__chase ?? null,
+      /** 38: Sky View, your mount's own top-down flying view (mountId defaults to the one you ride / last called). */
+      skyView: (mountId?: string) => self.skyView(mountId),
       chaseOffer: (on = true) => { CHASE_OFFER.on = on; return on; },
       chaseTune: (o: Partial<typeof CHASE> = {}) => ({ ...Object.assign(CHASE, o) }),
       chaseAuto: (on = true) => { const c = self.scene.get('chase') as any; if (c) c.autopilot = on; return !!c; },
