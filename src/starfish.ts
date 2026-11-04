@@ -56,10 +56,12 @@ export class Starfish {
   private place() {
     const w = this.w;
     let cx = BAY.x - BAY.rx * 1.25, cy = BAY.y, found = false;
-    for (const a of [Math.PI * 0.97, Math.PI * 0.9, Math.PI * 1.05, Math.PI * 0.82, Math.PI * 0.75, -0.25, 0]) {
-      for (const k of [1.2, 1.25, 1.3, 1.35]) {
+    const busy = [...w.interactables.map((it) => [it.x, it.y]), ...w.tappables.map((t) => [t.x(), t.y()])];
+    const clear = (x: number, y: number) => busy.every(([bx, by]) => Math.hypot(bx - x, by - y) > 240);
+    for (const a of [Math.PI * 0.97, Math.PI * 0.9, Math.PI * 1.05, Math.PI * 0.84, Math.PI * 1.12, Math.PI * 0.76, Math.PI * 0.68, 0.25, 0.1, -0.1]) {
+      for (const k of [1.13, 1.17, 1.21, 1.26, 1.31]) {
         const x = BAY.x + Math.cos(a) * BAY.rx * k, y = BAY.y + Math.sin(a) * BAY.ry * k;
-        const ok = this.sand(x, y) && [0, 1, 2, 3, 4].every((i) => { const t = -Math.PI / 2 + i * Math.PI * 2 / N; return this.sand(x + Math.cos(t) * (STARS.ring + 30), y + Math.sin(t) * (STARS.ring * 0.6 + 30)); });
+        const ok = this.sand(x, y) && clear(x, y) && [0, 1, 2, 3, 4].every((i) => { const t = -Math.PI / 2 + i * Math.PI * 2 / N; return this.sand(x + Math.cos(t) * (STARS.ring + 30), y + Math.sin(t) * (STARS.ring * 0.6 + 30)); });
         if (ok) { cx = x; cy = y; found = true; break; }
       }
       if (found) break;
