@@ -35,6 +35,7 @@ import { Puddles } from '../puddles';
 import { Kite } from '../kite';
 import { Pinwheels } from '../pinwheels';
 import { Crabs } from '../crabs';
+import { SkyRings } from '../skyRings';
 import { Mount } from '../mount/mount';
 import { looks } from '../looks/looks';
 import type { ArtStyleId } from '../looks/styleFx';
@@ -117,6 +118,8 @@ export class WorldScene extends Phaser.Scene {
   pinwheels!: Pinwheels;
   /** 78: Seashell Bay hermit crabs. */
   crabs!: Crabs;
+  /** 80: sky rings while riding. */
+  skyRings!: SkyRings;
   playerShadow!: Phaser.GameObjects.Image;
   solids!: Phaser.Physics.Arcade.StaticGroup;
   keys!: Record<string, Phaser.Input.Keyboard.Key>;
@@ -301,6 +304,7 @@ export class WorldScene extends Phaser.Scene {
     this.crabs = new Crabs(this);
     this.dresser = new ThemeDresser(this);
     this.mount = new Mount(this);
+    this.skyRings = new SkyRings(this);
     this.thief = new Thief(this);
     this.placeStart();
     this.alive = new Ambient(this);
@@ -1337,6 +1341,7 @@ export class WorldScene extends Phaser.Scene {
     this.kite.update(dt);
     this.pinwheels.update(dt);
     this.crabs.update(dt);
+    this.skyRings.update(dt);
     this.village.update(dt, time);
     this.dresser.update(time, dt);
     const view = this.cameras.main.worldView;
@@ -1766,6 +1771,9 @@ export class WorldScene extends Phaser.Scene {
       setDandelionRegrowMs(ms: number) { self.dandelions.regrowMs = ms; },
       /** 78: Seashell Bay hermit crabs. */
       crabs() { return self.crabs.stats(); },
+      /** 80: sky rings. */
+      rings() { return self.skyRings.stats(); },
+      ringsSpawn() { self.skyRings.spawn(); return self.skyRings.stats(); },
       crabTap(i: number) { const c = self.crabs.crabs[i]; if (!c) return false; self.crabs.tap(c); return true; },
       /** 33: garden pinwheels (spin in rad/s). */
       pinwheels() { const p = self.pinwheels; return { taps: p.taps, whooshes: p.whooshes, windy: p.windy, list: p.wheels.map((q) => ({ x: Math.round(q.stick.x), y: Math.round(q.stick.y), hx: Math.round(q.head.x), hy: Math.round(q.head.y), spin: +q.spin.toFixed(2), boost: +q.boost.toFixed(2), visible: q.head.visible })) }; },
