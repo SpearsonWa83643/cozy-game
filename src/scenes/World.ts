@@ -1515,6 +1515,14 @@ export class WorldScene extends Phaser.Scene {
       /** 52: tap a hidden friend's cell (solve=true first marks its puzzle's chest as revealed, like solving it). */
       thiefCell: (pid: string, solve = false) => { if (solve) { const c = self.puzzles.chestById(pid); if (c) c.revealed = true; } return self.thief.tapCell(pid); },
       thiefCellAt: (pid: string) => { const e = self.thief.cells.get(pid); if (!e) return null; const cam = self.cameras.main; return { x: (e.c.x - cam.worldView.x) * cam.zoom / DPR, y: (e.c.y - 60 - cam.worldView.y) * cam.zoom / DPR, wx: e.c.x, wy: e.c.y }; },
+      /** 78: a thief hides mountId behind puzzle pid right now (like an escape: the puzzle mixes itself up again, a cell appears). */
+      stealInto: (pid: string, mountId = 'sushi', kind = 'fox') => {
+        save.stolen = [...(save.stolen ?? []).filter((st) => st.puzzle !== pid && st.mount !== mountId), { mount: mountId, puzzle: pid, kind }];
+        delete save.puzzles[pid]; self.puzzles.resetById(pid); persist(); self.thief.placeMarker();
+        return self.thief.cells.has(pid);
+      },
+      /** 78: the settings gear's "Free my friends" (returns how many came home). */
+      freeFriends: () => self.thief.freeAll(),
       openPuzzleChest: (id: string) => { const c = self.puzzles.chestById(id); if (c) { c.revealed = true; c.open(); } return !!c; },
       critters() {
         const c = self.life.creatures;

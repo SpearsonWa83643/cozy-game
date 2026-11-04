@@ -84,6 +84,18 @@ test('letter easel: spell 3 words with big tiles, gentle hints, chest + ABC Bloc
   await page.screenshot({ path: `${SHOTS}/spell-04-yay.png` });
   await expect.poll(async () => (await lp(page)).word, { timeout: 30_000 }).toBe('sun');
   expect((await cozy(page, 'learn()')).spell1.done).toBe(1);
+  // 78 (Walker, Nov 3): the LAST letter glides all the way into its slot before the cheer, and only then comes the next word.
+  {
+    const q = await lp(page);
+    const lastT = q.landings.find((l: any) => l.word === 0 && l.last);
+    expect(lastT, 'last tile of CAT landed').toBeTruthy();
+    expect(lastT.letter).toBe('T'); expect(lastT.slot).toBe(2);
+    const cheer = q.cheers.find((c: any) => c.word === 0);
+    expect(cheer, 'CAT cheer').toBeTruthy();
+    expect(cheer.landed).toBe(true);
+    expect(cheer.at).toBeGreaterThanOrEqual(lastT.at);
+    expect(q.landings.filter((l: any) => l.word === 0).map((l: any) => l.letter)).toEqual(['C', 'A', 'T']);
+  }
   await expect.poll(async () => (await lp(page)).ready, { timeout: 30_000 }).toBe(true);
 
   // 4. Closing keeps your place: reopen and carry on with SUN.
@@ -97,6 +109,10 @@ test('letter easel: spell 3 words with big tiles, gentle hints, chest + ABC Bloc
   await expect.poll(async () => (await lp(page)).word, { timeout: 30_000 }).toBe('dog');
   await page.waitForTimeout(600);
   await spellRest('DOG', 0);
+  // 78: the final word's last letter lands before the cheer too.
+  await expect.poll(async () => (await lp(page)).cheers.some((c: any) => c.word === 2), { timeout: 20_000 }).toBe(true);
+  { const q = await lp(page); const c = q.cheers.find((c: any) => c.word === 2); const l = q.landings.find((l: any) => l.word === 2 && l.last);
+    expect(c.landed).toBe(true); expect(l.letter).toBe('G'); expect(c.at).toBeGreaterThanOrEqual(l.at); }
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${SHOTS}/spell-05-done.png` });
 

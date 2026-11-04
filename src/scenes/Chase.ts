@@ -30,8 +30,13 @@ export const CHASE = {
   netSpeed: 900,    // px/s up the screen
   netCurve: 230,    // px/s sideways help towards the thief
   hitR: 92,         // how close a net must get to the thief (generous)
-  thiefSpeed: 1.25, // zigzag speed (radians/s); each hit slows it by slowPerHit
-  slowPerHit: 0.14,
+  thiefSpeed: 1.25, // zigzag speed (radians/s) at the start
+  // 79 (Walker, Nov 3 8:13 PM CT: "too easy"): every net that lands makes the thief a bit faster and dodgier,
+  // so the last catches are harder, capped so little ones can still win.
+  rampPerHit: 0.14, // +14% zigzag speed per hit
+  rampMax: 1.8,     // never more than 1.8x the starting speed
+  dodgePerHit: 0.08, // extra side-to-side jink per hit (share of the swing)
+  dodgeMax: 0.3,
   invulnS: 1.1,     // after a hit the thief wriggles free for a moment (nets bounce off)
   scrollPx: 260,    // items/obstacles fall at this speed
   bumpS: 0.9,       // wobble time after bumping a cloud or balloon (nets pause for netPauseS)
@@ -203,7 +208,7 @@ export class ChaseScene extends Phaser.Scene {
   init(d: ChaseData) {
     this.d = d;
     this.phase = 'intro'; this.paused = false;
-    this.t = 0; this.hits = 0; this.stars = 0; this.berries = 0; this.bumps = 0; this.nets = 0;
+    this.t = 0; this.hits = 0; this.stars = 0; this.berries = 0; this.bumps = 0; this.nets = 0; this.fasterN = 0;
     this.items = []; this.netsL = []; this.far = []; this.streaks = []; this.carry = []; this.meter = []; this.sparks = []; this.hint = []; this.panel = null; this.floats = []; this.lastPulse = null; this.meterLabel = null;
     this.wingL = this.wingR = this.capeIm = this.propIm = null; this.ghosts = []; this.trail = []; this.wind = []; this.wisps = []; this.puffs = [];
     this.spd = 1; this.boostT = 0; this.boosts = 0; this.puffT = 0; this.thPuffT = 0; this.bank = 0; this.thBank = 0; this.span = 1; this.hudCam = null; this.zoomTw = null; this.sheet = null;
@@ -552,14 +557,16 @@ export class ChaseScene extends Phaser.Scene {
 
     // The thief: a big lazy zigzag (slower with every net), bobbing, friends waving on its back.
     if (this.phase === 'play' || this.phase === 'intro') {
-      const slow = Math.max(0.35, 1 - CHASE.slowPerHit * this.hits);
-      this.thPh += dt * CHASE.thiefSpeed * slow;
-      this.thPh2 += dt * CHASE.thiefSpeed * 0.53 * slow;
-      const A = Math.min(W * 0.34, 380 * U);
-      const nx = W / 2 + A * Math.sin(this.thPh) + A * 0.3 * Math.sin(this.thPh2 * 1.7 + 1);
+      const fast = this.speedMul();
+      this.thPh += dt * CHASE.thiefSpeed * fast;
+      this.thPh2 += dt * CHASE.thiefSpeed * 0.53 * fast;
+      // 79: the jink grows with each hit; the big swing shrinks to match, so the thief never leaves the screen.
+      const j = 0.3 + this.dodge();
+      const A = Math.min(W * 0.34, 380 * U) * 1.3 / (1 + j);
+      const nx = W / 2 + A * Math.sin(this.thPh) + A * j * Math.sin(this.thPh2 * 1.7 + 1);
       if (Math.abs(nx - this.thx) > 0.5) this.thFace = nx > this.thx ? 1 : -1;
       this.thx = nx;
-      const ty = this.thBaseY + this.hits * 0.035 * H;
+      const ty = this.thBaseY + this.hits * 0.01 * H;
       this.thy += (ty - this.thy) * (1 - Math.exp(-dt * 3));
     }
     const bob = rm ? 0 : Math.sin(this.time.now / 140) * 8 * U;
@@ -751,6 +758,25 @@ export class ChaseScene extends Phaser.Scene {
     for (const s of this.streaks) s.setAlpha(Math.min(0.85, s.alpha + 0.3));
   }
 
+  /** 79: how much faster than at the start the thief zigzags now (1 = start, capped at CHASE.rampMax). */
+  speedMul() { return Math.min(CHASE.rampMax, 1 + CHASE.rampPerHit * this.hits); }
+  dodge() { return Math.min(CHASE.dodgeMax, CHASE.dodgePerHit * this.hits); }
+  fasterN = 0;
+  /** 79: a tiny "Faster!" puff and a few speed streaks off the thief when it speeds up. */
+  private fasterFx() {
+    const U = this.U;
+    this.fasterN++;
+    const x = this.thx, y = this.thy;
+    if (!reduceMotion()) {
+      for (const sg of [-1, 1]) for (let k = 0; k < 3; k++) {
+        const ln = this.add.rectangle(x + sg * (40 + k * 14) * U, y + (k - 1) * 22 * U, 46 * U, 5 * U, 0xffffff, 0.9).setDepth(32);
+        this.tweens.add({ targets: ln, x: ln.x + sg * 90 * U, alpha: 0, scaleX: 0.3, duration: 420, delay: k * 40, ease: 'Cubic.easeOut', onComplete: () => ln.destroy() });
+      }
+      for (let k = 0; k < 6; k++) this.puff(x + (k - 2.5) * 16 * U, y + 40 * U, 0.7, 0.6, 0.9, 40);
+    }
+    this.float(x + 70 * U * (this.thFace || 1), y - 40 * U, 'Faster!', '#ffd2e0');
+  }
+
   netHit(net: Phaser.GameObjects.Image) {
     const U = this.U;
     this.hits++;
@@ -771,7 +797,11 @@ export class ChaseScene extends Phaser.Scene {
         onComplete: () => { st.destroy(); this.setMeter(hi); } });
     } else this.setMeter(hi);
     const left = CHASE.hits - this.hits;
-    if (left > 0) this.float(this.thx, this.thy - 90 * U, left === 1 ? 'One more!' : `Got it! ${left} more!`, '#fff3a8');
+    if (left > 0) {
+      this.float(this.thx, this.thy - 90 * U, left === 1 ? 'One more!' : `Got it! ${left} more!`, '#fff3a8');
+      // 79: it wriggles free a bit faster (once the net lets go).
+      this.time.delayedCall(Math.round(CHASE.invulnS * 600), () => { if (this.phase === 'play') this.fasterFx(); });
+    }
     if (this.hits >= CHASE.hits) this.caught();
   }
 
@@ -863,7 +893,7 @@ export class ChaseScene extends Phaser.Scene {
 
   snapshot() {
     return {
-      on: this.phase !== 'done', phase: this.phase, paused: this.paused, t: Math.round(this.t * 10) / 10, hits: this.hits, need: CHASE.hits,
+      on: this.phase !== 'done', phase: this.phase, paused: this.paused, t: Math.round(this.t * 10) / 10, hits: this.hits, need: CHASE.hits, speed: Math.round(this.speedMul() * 100) / 100, dodge: Math.round(this.dodge() * 100) / 100, faster: this.fasterN,
       stars: this.stars, berries: this.berries, bumps: this.bumps, nets: this.nets, mount: this.d?.mountId, kind: this.d?.kind, taken: this.d?.taken,
       px: Math.round(this.px / DPR), thx: Math.round(this.thx / DPR), thy: Math.round(this.thy / DPR), card: this.cardInfo, consolation: this.consolation,
       floats: this.floats.map((t) => ({ x: Math.round(t.x / DPR), y: Math.round(t.y / DPR), w: Math.round(t.width / DPR), h: Math.round(t.height / DPR), s: t.text })),

@@ -117,11 +117,18 @@ test('thief chase: offer, pick a friend, steer, nets hit, catch frees friends', 
 
     // Nets: back on the gentle beat; follow the thief (autopilot stands in for a child's finger).
     await page.evaluate(() => { (window as any).__cozy.chaseTune({ autoMs: 850 }); (window as any).__cozy.chaseAuto(true); });
+    // 79: the thief starts at its normal speed and gets a bit faster (and dodgier) with every net that lands.
+    expect((await page.evaluate(() => (window as any).__cozy.chaseTune())).rampMax).toBeLessThanOrEqual(1.8);
     await expect.poll(async () => (await chase(page)).hits, { timeout: 240_000 }).toBeGreaterThanOrEqual(2);
+    await expect.poll(async () => (await chase(page)).faster, { timeout: 60_000 }).toBeGreaterThanOrEqual(1);
+    { const m = await chase(page); expect(m.speed).toBeCloseTo(Math.min(1.8, 1 + 0.14 * m.hits), 2); expect(m.dodge).toBeGreaterThan(0);
+      if (m.phase === 'play') expect(m.floats.some((q: any) => q.s === 'Faster!') || m.faster >= 1).toBe(true); }
     await page.screenshot({ path: `${SHOTS}/chase-mid.png`, scale: 'css' });
     await expect.poll(async () => (await chase(page)).phase, { timeout: 480_000 }).toBe('caught');
     c = await chase(page);
     expect(c.hits).toBe(4);
+    expect(c.speed).toBeGreaterThan(1.4); expect(c.speed).toBeLessThanOrEqual(1.8); // harder at the end, but capped
+    expect(c.faster).toBe(3); // one "Faster!" after each of the first three nets
     await expect.poll(async () => (await chase(page)).meter.filled, { timeout: 60_000 }).toBe(4);
     expect(c.t).toBeLessThan(50);
     await page.waitForTimeout(1300);
