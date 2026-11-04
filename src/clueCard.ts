@@ -9,14 +9,8 @@ import { save, type Stolen } from './save';
 import { mountById } from './mount/defs';
 import { looks } from './looks/looks';
 import { stylize } from './looks/styleFx';
+import { hidePlace } from './hidePlaces';
 
-/** Short, simple names for the puzzle spots. */
-export const PLACE: Record<string, string> = {
-  pots: 'the flower pots', bells: 'the bells', tiles: 'the tiles',
-  dig: 'the dig spot', stones: 'the stones', trail: 'the deer tracks',
-  spell1: 'the meadow easel', spell2: 'the seaside easel',
-  num1: 'the grove counting board', num2: 'the hills pebble board',
-};
 const ICON: Record<string, string> = {
   pots: '<svg viewBox="0 0 40 40"><path d="M10 22h20l-3 14H13z" fill="#d9774a" stroke="#7a3a18" stroke-width="2.5" stroke-linejoin="round"/><circle cx="20" cy="12" r="5" fill="#ffd34d"/><g fill="#ff6f91"><circle cx="20" cy="5" r="4"/><circle cx="27" cy="12" r="4"/><circle cx="13" cy="12" r="4"/><circle cx="20" cy="19" r="4"/></g><circle cx="20" cy="12" r="3.4" fill="#ffd34d"/></svg>',
   bells: '<svg viewBox="0 0 40 40"><path d="M20 5c-7 0-10 6-10 13v7l-4 5h28l-4-5v-7c0-7-3-13-10-13z" fill="#ffd34d" stroke="#a5741d" stroke-width="2.5" stroke-linejoin="round"/><circle cx="20" cy="34" r="3.5" fill="#a5741d"/></svg>',
@@ -33,9 +27,9 @@ const ICON: Record<string, string> = {
 /** One very simple clue line for a hidden friend. `here`: you are already at its cell. */
 export function clueLine(st: Stolen, here = false) {
   const name = mountById(st.mount)?.name ?? 'friend';
-  const place = PLACE[st.puzzle] ?? 'a puzzle';
+  const place = hidePlace(st.puzzle);
   return here ? `Your ${name} is in this cell. Solve ${place}. Then tap the cell.`
-    : `Your ${name} is in a cell. Go to ${place}. Solve it. Tap the cell.`;
+    : `Your ${name} is in a cell. Go to ${place}. Solve it. Tap the cell. Look for the pink heart on the map!`;
 }
 
 const CSS = `

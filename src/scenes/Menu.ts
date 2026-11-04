@@ -16,6 +16,7 @@ import { buildWardrobeItems, isNoneItem } from '../wardrobeArt';
 import { LANDMARKS, ensureLandmarkIcons } from '../landmarks';
 import { MOUNTS, isMountUnlocked, isStolen, currentPick, seasonalThemeOf, type MountDef } from '../mount/defs';
 import { THIEVES, thiefById } from '../thief';
+import { hideSpot } from '../hidePlaces';
 import { JAIL_ACTS, jailLine, nickOf, speciesOf, shareFruit, type JailAct } from '../jail';
 import { showClue, clueLine } from '../clueCard';
 import { CAPE_AT, CAPE_FRAMES, CAPE_OX, CAPE_OY, capeFrame } from '../mount/cape';
@@ -85,6 +86,7 @@ export class MenuScene extends Phaser.Scene {
     this.tab = tab;
     this.stableView = 'barn';
     this.gearOpen = false;
+    this.freeAsk = false;
     this.open = true;
     this.registry.set('menuOpen', true);
     this.world.path = [];
@@ -283,6 +285,16 @@ export class MenuScene extends Phaser.Scene {
     mark(BELL_CHEST.x, BELL_CHEST.y, !!save.puzzles.bells, 'orchard');
     mark(TILES.x, TILES.y, !!save.puzzles.tiles, 'forest');
     mark(DIG.x, DIG.y, !!save.puzzles.dig, 'lake');
+    // 78: where a thief hid a friend: a pink heart, shown even in places you have not been yet.
+    for (const st of save.stolen ?? []) {
+      const sp = hideSpot(st.puzzle); if (!sp) continue;
+      const x = mx + sp.x * s, y = my + sp.y * s;
+      const hg = this.add.graphics(); hg.fillStyle(0xff5c93, 1); hg.fillCircle(x, y, 15); hg.lineStyle(3, 0xffffff, 1); hg.strokeCircle(x, y, 15);
+      const ht = this.text(x, y, '\u2764', 16, '#ffffff', 900).setOrigin(0.5);
+      this.content.add([hg, ht]);
+      this.tweens.add({ targets: [hg, ht], alpha: 0.4, duration: 600, yoyo: true, repeat: -1 });
+      this.rects[`friend:${st.puzzle}`] = { x: x - 15, y: y - 15, w: 30, h: 30 };
+    }
     if (save.visited.includes('orchard')) this.content.add(this.text(mx + (WINDMILL.x + 10) * s, my + (WINDMILL.y - 60) * s, '\u2738', 18, '#6b4a33', 800).setOrigin(0.5));
     // Landmarks: wooden pins pushed into the paper, with their big icons. Tap one to hear about it.
     ensureLandmarkIcons(this);
@@ -359,7 +371,7 @@ export class MenuScene extends Phaser.Scene {
     this.rects['gear:open'] = { x: cx - R - 6, y: cy - R - 6, w: R * 2 + 12, h: R * 2 + 12 };
     if (!this.gearOpen) return;
     // The little settings panel pops up above the gear.
-    const pw = 260, ph = 96, px = a.x + 10, py = cy - R - 14 - ph;
+    const pw = 260, ph = this.freeAsk ? 236 : 160, px = a.x + 10, py = cy - R - 14 - ph;
     const pg = this.add.graphics();
     pg.fillStyle(0x2a1a0e, 0.3); pg.fillRoundedRect(px + 3, py + 6, pw, ph, 18);
     pg.fillStyle(0xfff6e0, 1); pg.fillRoundedRect(px, py, pw, ph, 18);
@@ -370,7 +382,34 @@ export class MenuScene extends Phaser.Scene {
     const [bg, bz] = this.btn(bx, by, bw, bh, () => { sfx.sparkle(); this.gearOpen = false; this.tab = 'stable'; this.stableView = 'looks'; this.render(); }, theme.ui.tabOn, theme.ui.accentDark, 20);
     this.rects['looks:open'] = this.lastRect;
     this.content.add([bg, bz, this.text(bx + 28, by + bh / 2, '\u2728', 22, '#fffaf0', 900).setOrigin(0.5), this.text(bx + bw / 2 + 14, by + bh / 2, 'Looks & Moves', 20, '#fffaf0', 900).setOrigin(0.5)]);
+    // 78 (Walker, Nov 3): a grown-up "unstick" button. Every friend a thief took comes straight home (with a simple Yes / No first).
+    const fy = by + bh + 12;
+    const [fg, fz] = this.btn(bx, fy, bw, bh, () => {
+      const n = save.stolen?.length ?? 0;
+      if (!n) { sfx.blip(); this.freeAsk = false; this.game.events.emit('toast', 'All your friends are home already!'); this.render(); return; }
+      sfx.blip(); this.freeAsk = !this.freeAsk; this.render();
+    }, 0xffe3ec, 0xd86a8e, 20);
+    this.rects['gear:free'] = this.lastRect;
+    this.content.add([fg, fz, this.text(bx + 28, fy + bh / 2, '\u2764', 22, '#d84a78', 900).setOrigin(0.5), this.text(bx + bw / 2 + 14, fy + bh / 2, 'Free my friends', 20, '#8a2f50', 900).setOrigin(0.5)]);
+    if (!this.freeAsk) return;
+    const n = save.stolen?.length ?? 0;
+    const qy = fy + bh + 8;
+    this.content.add(this.text(px + pw / 2, qy + 12, n === 1 ? 'Bring your friend home?' : `Bring all ${n} friends home?`, 15, '#6b4a33', 900).setOrigin(0.5));
+    const hw = (bw - 12) / 2, yy = qy + 26;
+    const [yg, yz] = this.btn(bx, yy, hw, 44, () => {
+      const freed = this.world.thief.freeAll();
+      this.freeAsk = false; this.gearOpen = false;
+      sfx.sparkle();
+      this.game.events.emit('toast', freed === 1 ? 'Your friend is back home in the stable!' : `All ${freed} friends are back home in the stable!`);
+      this.render();
+    }, theme.ui.tabOn, theme.ui.accentDark, 16);
+    this.rects['gear:free-yes'] = this.lastRect;
+    const [ng, nz] = this.btn(bx + hw + 12, yy, hw, 44, () => { sfx.blip(); this.freeAsk = false; this.render(); }, 0xfbf1dc, 0xd9b98f, 16);
+    this.rects['gear:free-no'] = this.lastRect;
+    this.content.add([yg, yz, this.text(bx + hw / 2, yy + 22, 'Yes', 20, '#fffaf0', 900).setOrigin(0.5), ng, nz, this.text(bx + hw + 12 + hw / 2, yy + 22, 'No', 20, '#6b4a33', 900).setOrigin(0.5)]);
   }
+  /** 78: the "Free my friends" Yes / No is showing. */
+  freeAsk = false;
 
   mapPins: Record<string, Phaser.GameObjects.Container> = {};
   treasureImgs: Record<string, Phaser.GameObjects.Image> = {};

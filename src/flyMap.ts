@@ -204,7 +204,19 @@ export class FlyMap {
         badge.fillStyle(0x4f9a3a, 1); badge.fillCircle(r * 0.72, -r * 0.72, 13);
         badge.lineStyle(4, 0xffffff, 1); badge.beginPath(); badge.moveTo(r * 0.72 - 6, -r * 0.72); badge.lineTo(r * 0.72 - 1, -r * 0.72 + 5); badge.lineTo(r * 0.72 + 7, -r * 0.72 - 5); badge.strokePath();
       }
-      const c = ui.add.container(q.x, q.y, [bg, ic, label, badge]).setAlpha(locked ? 0.6 : 1);
+      // 78 (Walker, Nov 3): a friend a thief hid here gets a big pink heart and ring, so it is easy to find.
+      const friend = !!(site.puzzle && save.stolen?.some((st) => st.puzzle === site.puzzle));
+      const parts: Phaser.GameObjects.GameObject[] = [bg, ic, label, badge];
+      if (friend) {
+        const hg = ui.add.graphics();
+        hg.lineStyle(5, 0xff5c93, 1); hg.strokeCircle(0, 0, r + 9);
+        hg.fillStyle(0xff5c93, 1); hg.fillCircle(-r * 0.72, -r * 0.72, 14);
+        const ht = ui.text(-r * 0.72, -r * 0.72, '\u2764', 15, '#ffffff', 900).setOrigin(0.5);
+        parts.push(hg, ht);
+        ui.tweens.add({ targets: hg, alpha: 0.35, duration: 600, yoyo: true, repeat: -1 });
+        ui.rects[`friend:${site.puzzle}`] = { x: q.x - r, y: q.y - r, w: r * 2, h: r * 2 };
+      }
+      const c = ui.add.container(q.x, q.y, parts).setAlpha(locked && !friend ? 0.6 : 1);
       // Touch target: at least 64 px across, a bit bigger than the drawn pin.
       const hit = Math.max(32, r + 6);
       const zone = ui.add.zone(q.x, q.y, hit * 2, hit * 2).setOrigin(0.5).setInteractive(new Phaser.Geom.Circle(hit, hit, hit), Phaser.Geom.Circle.Contains);
