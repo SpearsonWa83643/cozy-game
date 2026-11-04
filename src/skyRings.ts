@@ -41,7 +41,7 @@ export class SkyRings {
   rings: Ring[] = [];
   /** Test hooks. */
   got = 0; sets = 0; spawns = 0; total = 0;
-  private wait = 0; private was = false;
+  private wait = 0; private was = false; private tipNext = false;
   constructor(private w: WorldScene) {
     if (!w.textures.exists('skyring_b')) {
       canvasTex(w, 'skyring_b', TW, TH, (c) => ring(c, 'back'), S, true);
@@ -67,6 +67,7 @@ export class SkyRings {
     const ux = Math.cos(h), uy = Math.sin(h) * 0.7, len = Math.hypot(ux, uy) || 1, dx = ux / len, dy = uy / len;
     const side = Math.random() < 0.5 ? 1 : -1;
     this.got = 0; this.spawns++;
+    if (this.spawns === 1 || this.tipNext) { this.tipNext = false; this.w.floatText(m.ex, m.ey - 70, 'Star rings! Fly through them!', '#fff3c2'); }
     this.rings.forEach((r, i) => {
       const d = RINGS.first + i * RINGS.gap, wob = Math.sin(i * 1.2) * 80 * side;
       let x = m.ex + dx * d - dy * wob, y = m.ey + dy * d + dx * wob;
@@ -98,7 +99,7 @@ export class SkyRings {
     const fly = this.flying;
     if (!fly) { if (this.was) { this.hideAll(); this.was = false; } return; }
     const m = this.w.mount;
-    if (!this.was) { this.was = true; this.wait = 1.2; }
+    if (!this.was) { this.was = true; this.wait = 1.2; this.tipNext = true; }
     if (this.wait > 0) { this.wait -= dt; if (this.wait <= 0) this.spawn(); }
     const now = this.w.time.now / 1000, rm = reduceMotion();
     let nearest = Infinity;
