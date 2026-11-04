@@ -13,7 +13,7 @@ const INK = '#3d2c20';
 const TILE_COLORS: [number, number][] = [[0xffb3c1, 0xd9707f], [0xffe08a, 0xd0a23a], [0xa8e6a3, 0x5fa75a], [0x9fd8ff, 0x4f93c4], [0xd9b8ff, 0x9372c8], [0xffc89a, 0xd08550]];
 const DISTRACT = 'ABDEFGHIKLMNOPRSTUW';
 
-type Tile = { c: Phaser.GameObjects.Container; letter: string; hx: number; hy: number; used: boolean; glow: Phaser.GameObjects.Graphics; i: number };
+type Tile = { c: Phaser.GameObjects.Container; letter: string; hx: number; hy: number; used: boolean; glow: Phaser.GameObjects.Graphics; i: number; slot?: number };
 type Slot = { x: number; y: number; w: number; h: number; ghost: Phaser.GameObjects.Text };
 
 const shuffle = <T,>(xs: T[]) => { const a = [...xs]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -27,6 +27,9 @@ export class LearnPanel {
   li = 0;
   wrong = 0;
   busy = false;
+  /** 78 (tests): when each tile finished gliding into its slot, and whether every tile had landed when a word's cheer began. */
+  landings: { word: number; slot: number; letter: string; at: number; last: boolean }[] = [];
+  cheers: { word: number; at: number; landed: boolean }[] = [];
   root?: Phaser.GameObjects.Container;
   tiles: Tile[] = [];
   slots: Slot[] = [];
@@ -53,6 +56,7 @@ export class LearnPanel {
       open: this.open, ready: this.open && !this.busy, shows: this.shows, closes: this.closes, id: this.id, free: this.free, words: this.words, word: this.words[this.wi] ?? '', wordIndex: this.wi, letter: this.li, wrong: this.wrong,
       tiles: this.tiles.map((t) => ({ letter: t.letter, used: t.used, x: t.c.x, y: t.c.y, hint: t.glow.alpha > 0.05 })),
       ghost: this.slots.map((s) => s.ghost.alpha > 0.05),
+      landings: this.landings.map((l) => ({ ...l })), cheers: this.cheers.map((c) => ({ ...c })),
       rects: JSON.parse(JSON.stringify(Object.fromEntries(Object.entries(this.ui.rects).filter(([k]) => k.startsWith('learn:'))))),
     };
   }
@@ -237,13 +241,26 @@ export class LearnPanel {
       ui.tweens.killTweensOf(sl.ghost);
       sl.ghost.setAlpha(0);
       const sc = Math.min(1, (sl.w - 14 * this.k) / t.c.width);
-      ui.tweens.add({ targets: t.c, x: sl.x, y: sl.y + 6 * this.k, scale: sc, angle: 0, duration: 280, ease: 'Back.easeOut' });
+      t.slot = this.li;
+      const last = this.li + 1 >= word.length;
+      // 78 (Walker, Nov 3): the last letter used to be yanked mid-glide by the word's cheer (its "hop" tween took
+      // over y before it landed). Now the word waits: the last tile glides in, lands with a little bounce, and only
+      // then does the cheer play (and after that the next word).
+      if (last) { this.busy = true; this.idle?.remove(); }
+      const gen = this.gen, word0 = this.wi;
+      const tx = sl.x, ty = sl.y + 6 * this.k;
+      ui.tweens.add({ targets: t.c, x: tx, y: ty, scale: sc, angle: 0, duration: 280, ease: 'Back.easeOut', onComplete: () => {
+        t.c.setPosition(tx, ty);
+        this.landings.push({ word: word0, slot: t.slot!, letter: t.letter, at: ui.time.now, last });
+        if (this.landings.length > 40) this.landings.shift();
+        if (!last || gen !== this.gen || !this.open) return;
+        ui.tweens.add({ targets: t.c, scale: { from: sc * 1.18, to: sc }, duration: 220, ease: 'Back.easeOut', onComplete: () => { if (gen === this.gen && this.open) this.wordDone(); } });
+      } });
       this.sparkle(sl.x, sl.y, 6);
       sfx.bellNote(Math.min(3, this.li));
       for (const o of this.tiles) if (!o.used) { ui.tweens.killTweensOf(o.glow); o.glow.setAlpha(0); ui.tweens.killTweensOf(o.c); o.c.setPosition(o.hx, o.hy).setScale(1).setAngle(0); }
       this.li++;
-      if (this.li >= word.length) this.wordDone();
-      else this.armIdle();
+      if (!last) this.armIdle();
       return;
     }
     // A gentle "not that one": wiggle, slide home, then show which one to try.
@@ -297,7 +314,13 @@ export class LearnPanel {
     if (st) { this.drawStar(st, Math.round(24 * this.k), true); ui.tweens.add({ targets: st, scale: { from: 1.8, to: 1 }, angle: { from: -40, to: 0 }, duration: 520, ease: 'Back.easeOut' }); this.sparkle(st.x, st.y, 8); }
     if (this.pic) ui.tweens.add({ targets: this.pic, scale: this.pic.scale * 1.15, duration: 240, yoyo: true, repeat: 1, ease: 'Sine.easeInOut' });
     this.sparkle(this.picBox.x, this.picBox.y, 14);
-    for (const t of this.tiles) if (t.used) ui.tweens.add({ targets: t.c, y: t.c.y - 20 * this.k, duration: 180, yoyo: true, delay: this.slots.findIndex((q) => Math.abs(q.x - t.c.x) < 2) * 120 });
+    // Each letter hops in turn (left to right), from where it sits in its slot.
+    this.cheers.push({ word: this.wi, at: ui.time.now, landed: this.tiles.filter((t) => t.used).every((t) => { const q = this.slots[t.slot ?? 0]; return Math.hypot(t.c.x - q.x, t.c.y - (q.y + 6 * this.k)) < 1.5; }) });
+    if (this.cheers.length > 20) this.cheers.shift();
+    for (const t of this.tiles) if (t.used) {
+      const q = this.slots[t.slot ?? 0], y0 = q.y + 6 * this.k;
+      ui.tweens.add({ targets: t.c, y: y0 - 20 * this.k, duration: 180, yoyo: true, delay: (t.slot ?? 0) * 120, onComplete: () => t.c.setY(y0) });
+    }
     this.hintText?.setText(['Yay!', 'Super!', 'Hooray!'][this.wi % 3]).setFontSize(Math.max(22, Math.round(36 * this.k))).setColor('#e8604c');
     this.wi++;
     if (!this.free) ui.world.learn.setProgress(this.id, Math.min(this.wi, this.words.length));

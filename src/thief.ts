@@ -13,7 +13,9 @@ import { MOUNTS, isMountUnlocked, themeDefaultMount, mountById, type MountDef } 
 import { sfx } from './audio';
 import type { WorldScene } from './scenes/World';
 import { DPR } from './dpr';
-import { showClue, clueLine, PLACE } from './clueCard';
+import { showClue, clueLine } from './clueCard';
+import { HIDE_BASE, hidePlace } from './hidePlaces';
+import { PLAYER_START } from './layout';
 import { nickOf } from './jail';
 import { showChaseOffer } from './chase/chaseOffer';
 import type { ChaseStats } from './scenes/Chase';
@@ -64,13 +66,8 @@ export const THIEVES: Kind[] = [
 export const gigglesOf = (k: Kind) => k.giggles ?? ['Hee hee!', 'Nope!', 'Too slow!', 'Catch me!', 'Whoopsie!'];
 export const thiefById = (id: string) => THIEVES.find((k) => k.id === id);
 
-/** Puzzles a friend can be hidden behind, with a kid-readable place name. */
-export const HIDES: Record<string, string> = {
-  pots: 'the flower pots', bells: 'the singing bells', tiles: 'the turning tiles',
-  dig: 'the digging spot', stones: 'the stepping stones', trail: 'the deer tracks',
-  spell1: 'the meadow letter easel', spell2: 'the seaside letter easel',
-  num1: 'the grove counting board', num2: 'the hills pebble board',
-};
+/** Puzzles a friend can be hidden behind, with a kid-readable place name (78: see hidePlaces.ts for the full name). */
+export const HIDES: Record<string, string> = HIDE_BASE;
 
 // 60: headroom on top (the Bunny's long ears, the Squirrel's tufts) and a little room on each side (the Skunk's
 // big tail, whiskers) so no thief is ever cut off. The side pads are equal, so the sprite stays centred.
@@ -392,8 +389,8 @@ const andList = (xs: string[]) => xs.length <= 1 ? xs.join('') : `${xs.slice(0, 
 export function stolenHint(list: Stolen[] = save.stolen ?? []): string {
   if (!list.length) return '';
   // 57: very simple words (early readers).
-  if (list.length === 1) return `Help your ${nameOf(list[0].mount)} first! It is at ${PLACE[list[0].puzzle]}.`;
-  return `Help your friends first! ${list.map((s) => `The ${nameOf(s.mount)} is at ${PLACE[s.puzzle]}.`).join(' ')}`;
+  if (list.length === 1) return `Help your ${nameOf(list[0].mount)} first! It is at ${hidePlace(list[0].puzzle)}.`;
+  return `Help your friends first! ${list.map((s) => `The ${nameOf(s.mount)} is at ${hidePlace(s.puzzle)}.`).join(' ')}`;
 }
 /** A body image of a friend in the applied art style (59), sized to `w` world px wide. Origin via setOrg. */
 function friendImg(scene: Phaser.Scene, m: MountDef, x: number, y: number, w: number, ox = 0.5, oy = 0.5) {
@@ -471,8 +468,97 @@ export class Thief {
     w.game.events.on('puzzle-chest', this.onChest, this);
     w.events.once('shutdown', () => w.game.events.off('puzzle-chest', this.onChest, this));
     this.settleChase();
+    this.healHides();
     this.placeMarker();
   }
+
+  /** 78: where a friend's cell stands beside a puzzle (null when that puzzle has no chest here). */
+  cellSpot(pid: string) {
+    const ch = this.w.puzzles.chestById(pid);
+    return ch ? { x: ch.x + 78, y: ch.y + 6 } : null;
+  }
+  private reach = new Map<string, boolean>();
+  private reachNav: unknown = null;
+  /**
+   * 78: a friend can only be hidden behind a real puzzle with a cell you can walk up to from home
+   * (not behind the locked north gate before you have opened it, and never somewhere that no longer exists).
+   */
+  validHide(pid: string) {
+    if (!HIDES[pid] || !this.cellSpot(pid)) return false;
+    const nav = (this.w as any).nav;
+    if (!nav?.find) return true;
+    if (this.reachNav !== nav) { this.reach.clear(); this.reachNav = nav; }
+    let ok = this.reach.get(pid);
+    if (ok === undefined) {
+      const c = this.cellSpot(pid)!;
+      ok = !!nav.find(PLAYER_START.x, PLAYER_START.y, c.x, c.y + 30) || !!nav.find(PLAYER_START.x, PLAYER_START.y, c.x - 78, c.y + 40);
+      this.reach.set(pid, ok);
+    }
+    return ok;
+  }
+  /** 78: hiding places a thief may use now (falls back to every real puzzle if, somehow, none can be reached). */
+  hideIds() {
+    const all = Object.keys(HIDES).filter((id) => !!this.cellSpot(id));
+    const ok = all.filter((id) => this.validHide(id));
+    return ok.length ? ok : all;
+  }
+  /** 78: how many friends were moved to a good hiding place on load (tests). */
+  healed: { mount: string; from: string; to: string | null }[] = [];
+  /**
+   * 78 (Walker, Nov 3: "our mount is kidnapped but is not at the puzzle given"): on load, any hidden friend
+   * whose hiding place is gone, unreachable or shared with another friend moves to a good puzzle (which gets
+   * mixed up again), so it always has its own cell you can reach. If there is no free spot it just comes home.
+   */
+  private healHides() {
+    const list = save.stolen ?? [];
+    if (!list.length) return;
+    const keep: Stolen[] = [];
+    const used = new Set<string>();
+    const fix: Stolen[] = [];
+    for (const st of list) {
+      if (!MOUNTS.some((m) => m.id === st.mount)) { this.healed.push({ mount: st.mount, from: st.puzzle, to: null }); continue; }
+      if (st.chase || (this.validHide(st.puzzle) && !used.has(st.puzzle))) { keep.push(st); used.add(st.puzzle); }
+      else fix.push(st);
+    }
+    for (const st of fix) {
+      const ids = this.hideIds().filter((id) => !used.has(id));
+      const to = ids.find((id) => save.puzzles[id]) ?? ids.find((id) => id !== 'dig') ?? ids[0] ?? null;
+      this.healed.push({ mount: st.mount, from: st.puzzle, to });
+      if (!to) continue; // no free puzzle: the friend just comes home
+      used.add(to);
+      keep.push({ ...st, puzzle: to });
+      delete save.puzzles[to]; this.w.puzzles.resetById(to);
+    }
+    if (!this.healed.length) return;
+    if (keep.length) save.stolen = keep; else delete save.stolen;
+    persist();
+    const moved = this.healed.filter((h) => h.to);
+    if (moved.length) this.w.time.delayedCall(1800, () => this.w.game.events.emit('toast', moved.length === 1
+      ? `Your ${nameOf(moved[0].mount)} is waiting at ${hidePlace(moved[0].to!)}. Look for the pink heart on the map!`
+      : `Your friends are waiting at their puzzles. Look for the pink hearts on the map!`));
+  }
+
+  /**
+   * 78 (Walker, Nov 3): "Free my friends" in the settings gear. Every friend a thief took comes straight home,
+   * any thief on screen (or chase offer) goes away, and the puzzles they were behind start fresh.
+   */
+  freeAll() {
+    const list = save.stolen ?? [];
+    const n = list.length;
+    for (const st of list) { delete save.puzzles[st.puzzle]; this.w.puzzles.resetById(st.puzzle); }
+    delete save.stolen;
+    this.chasePending = null;
+    const offer = document.getElementById('chase-offer');
+    if (offer) { offer.remove(); const kb = this.w.game.input?.keyboard as any; if (kb) kb.enabled = true; }
+    if (this.state !== 'off') this.clear();
+    persist();
+    this.placeMarker();
+    this.rescuedN += n;
+    this.freedN += n;
+    this.w.game.events.emit('thief', 'freed');
+    return n;
+  }
+  freedN = 0;
 
   /**
    * 70: the page was reloaded in the middle of a Thief Chase. It counts as a normal escape: each
@@ -486,7 +572,7 @@ export class Thief {
     SETTLED.n += left.length;
     const names = left.map((t) => nameOf(t.mount));
     this.w.time.delayedCall(1500, () => this.w.game.events.emit('toast', left.length === 1
-      ? `The thief hid your ${names[0]} behind ${HIDES[left[0].puzzle]}. Solve it to let your friend out!`
+      ? `The thief hid your ${names[0]} behind ${hidePlace(left[0].puzzle)}. Solve it to let your friend out!`
       : `The thief hid your ${andList(names)} behind their puzzles. Solve them to let your friends out!`));
   }
 
@@ -770,7 +856,7 @@ export class Thief {
     const pick = [...list].sort(() => Math.random() - 0.5).slice(0, n);
     // Solved puzzles first (so it mixes one up), then other puzzles (the digging spot last).
     const shuf = <T,>(xs: T[]) => [...xs].sort(() => Math.random() - 0.5);
-    const ids = Object.keys(HIDES);
+    const ids = this.hideIds();
     const solved = shuf(ids.filter((id) => save.puzzles[id]));
     const rest = shuf(ids.filter((id) => !save.puzzles[id] && id !== 'dig'));
     const spots = [...solved, ...rest, ...(save.puzzles.dig ? [] : ['dig'])].slice(0, n);
@@ -821,11 +907,11 @@ export class Thief {
     const lead = soClose ? 'So close! ' : 'Oh no! ';
     this.w.game.events.emit('dialog', taken.length === 1 ? [
       soClose ? `So close! The sneaky ${kn} got away with your ${names[0]}!` : `Oh no! The sneaky ${kn} ran off with your ${names[0]}!`,
-      `It hid your friend in a little cell behind ${HIDES[taken[0].puzzle]}, and that puzzle got all mixed up again.`,
+      `It hid your friend in a little cell behind ${hidePlace(taken[0].puzzle)}, and that puzzle got all mixed up again.`,
       `Solve it, then tap the cell to let the ${names[0]} out! Look for the cell with the gold padlock.`,
     ] : [
       `${lead}The sneaky ${kn} ${soClose ? 'got away' : 'ran off'} with ${taken.length} friends: the ${andList(names)}!`,
-      `It hid each one in a little cell: ${andList(taken.map((t) => `the ${nameOf(t.mount)} behind ${HIDES[t.puzzle]}`))}. Those puzzles got all mixed up again.`,
+      `It hid each one in a little cell: ${andList(taken.map((t) => `the ${nameOf(t.mount)} behind ${hidePlace(t.puzzle)}`))}. Those puzzles got all mixed up again.`,
       `Solve each puzzle, then tap its cell to let your friend out! Look for the cells with the gold padlocks.`,
     ]);
   }
@@ -895,7 +981,7 @@ export class Thief {
     if (!list.length) return false;
     const kind = THIEVES.find((k) => k.id === kindId) ?? THIEVES[Math.floor(Math.random() * THIEVES.length)];
     const pickM = list[Math.floor(Math.random() * list.length)];
-    const ids = Object.keys(HIDES);
+    const ids = this.hideIds();
     const solved = ids.filter((id) => save.puzzles[id]);
     const spot = (solved.length ? solved : ids)[Math.floor(Math.random() * (solved.length || ids.length))];
     const taken: Stolen[] = [{ mount: pickM.id, puzzle: spot, kind: kind.id, chase: true }];
@@ -1192,7 +1278,7 @@ export class Thief {
     return {
       state: this.state, kind: this.kind.id, taps: this.taps, stolen: save.stolen?.length ? save.stolen.map((x) => ({ ...x })) : null, carrying: [...this.carryIds], carried: [...this.carried], cells: [...this.cells.keys()], callHint: this.lastCallHint, cellCalls: this.cellCalls, lastCellCall: this.lastCellCall, cellCallTimes: [...this.cellCallTimes],
       cellAt: Object.fromEntries([...this.cells].map(([k, e]) => [k, { x: e.c.x, y: e.c.y }])),
-      thanks: this.thanks, paws: this.paws, giggles: this.giggles, lastGiggle: this.lastGiggle, kinds: THIEVES.map((k) => k.id), caught: this.caughtN, stolenN: this.stolenN, rescued: this.rescuedN, marker: this.cells.size > 0,
+      thanks: this.thanks, paws: this.paws, giggles: this.giggles, lastGiggle: this.lastGiggle, kinds: THIEVES.map((k) => k.id), caught: this.caughtN, stolenN: this.stolenN, rescued: this.rescuedN, healed: this.healed.map((h) => ({ ...h })), freed: this.freedN, hides: Object.keys(HIDES).map((id) => ({ id, ok: this.validHide(id), place: hidePlace(id), spot: this.cellSpot(id) })), marker: this.cells.size > 0,
       screen: s ? { x: (s.x - c.worldView.x) * c.zoom / DPR, y: (s.y - 24 * SCALE - c.worldView.y) * c.zoom / DPR } : null,
       blocked: this.blocked(),
       // 62: the lead-in (while lurking) and the last one's log; the catch window and when it began.

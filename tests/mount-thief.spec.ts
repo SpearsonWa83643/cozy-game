@@ -60,7 +60,7 @@ test('mount thief: button, arrest with 3 taps, escape hides a friend, rescue fro
       expect(lead.windowStartedAt - lead.startedAt).toBeGreaterThanOrEqual(lead.leadS * 1000 - 50);
       expect(t.windowMs).toBe(12000);
       expect(t.windowLeft).toBeGreaterThan(0);
-      expect(t.windowLeft).toBeLessThanOrEqual(12000);
+      expect(t.windowLeft).toBeLessThanOrEqual(12000.5); // float jitter
     }
     if (t.windowLeft > 6000) await page.waitForTimeout(1400);
     for (let i = 0; i < 30 && (await thief(page)).state === 'sneak'; i++) {
@@ -195,7 +195,7 @@ test('mount thief: carries two friends, cells, call-mount hint, cell rescue, old
     expect(await page.evaluate(() => (window as any).__cozy.thiefCell('stones'))).toBe(false);
     // 57: a locked cell opens the big clue card.
     await expect(page.locator('#clue h2')).toHaveText('It is locked!', { timeout: 5_000 });
-    await expect(page.locator('#clue li').first()).toContainText('Your Unicorn is in this cell. Solve the stones. Then tap the cell.');
+    await expect(page.locator('#clue li').first()).toContainText('Your Unicorn is in this cell. Solve the stepping stones in Mistbirch Wood. Then tap the cell.');
     await page.locator('#clue').tap({ position: { x: 20, y: 20 } });
     await expect(page.locator('#clue')).toHaveCount(0, { timeout: 5_000 });
     expect((await thief(page)).stolen).not.toBeNull();
@@ -233,7 +233,7 @@ test('mount thief: carries two friends, cells, call-mount hint, cell rescue, old
     // (Taps again if a slow machine dropped the first tap.)
     await expect.poll(async () => { const h = (await thief(page)).callHint; if (!h) await page.touchscreen.tap(mb.x + mb.w / 2, mb.y + mb.h / 2); return h ?? ''; }, { timeout: 90_000, intervals: [1500] }).toContain('is in a cell');
     const hint = (await thief(page)).callHint as string;
-    const HID: Record<string, string> = { pots: 'flower pots', bells: 'the bells', tiles: 'the tiles', dig: 'dig spot', stones: 'the stones', trail: 'deer tracks', spell1: 'meadow easel', spell2: 'seaside easel', num1: 'counting board', num2: 'pebble board' };
+    const HID: Record<string, string> = { pots: 'the flower pots in', bells: 'the singing bells in', tiles: 'the turning tiles in', dig: 'the digging spot in', stones: 'the stepping stones in Mistbirch Wood', trail: 'the deer tracks in', spell1: 'the letter easel in', spell2: 'the letter easel in', num1: 'the counting board in', num2: 'the counting board in' };
     for (const x of tc.stolen) expect(hint).toContain(HID[x.puzzle]);
     // 57: one simple line per friend on the big card.
     await expect(page.locator('#clue li')).toHaveCount(2, { timeout: 5_000 });

@@ -35,7 +35,7 @@ export const FLY_SITES: FlySite[] = [
   { id: 'p:bells', name: 'Bells', x: BELL_SIGN.x, y: BELL_SIGN.y + 70, icon: 'pz_bells', puzzle: 'bells' },
   { id: 'p:tiles', name: 'Tiles', x: TILE_SIGN.x, y: TILE_SIGN.y + 60, icon: 'pz_tiles', puzzle: 'tiles' },
   { id: 'p:dig', name: 'Dig Spot', x: DIG_SIGN.x, y: DIG_SIGN.y + 70, icon: 'pz_dig', puzzle: 'dig' },
-  { id: 'p:stones', name: 'Stones', x: PSTONE_SIGN.x, y: PSTONE_SIGN.y + 60, icon: 'pz_stones', puzzle: 'stones' },
+  { id: 'p:stones', name: 'Stepping Stones', x: PSTONE_SIGN.x, y: PSTONE_SIGN.y + 60, icon: 'pz_stones', puzzle: 'stones' },
   { id: 'p:trail', name: 'Tracks', x: TRACK_SIGN.x, y: TRACK_SIGN.y + 60, icon: 'pz_trail', puzzle: 'trail' },
   // 66: letter easels (spelling). Land just below the easel.
   ...PUZZLE_SITES.filter((p) => p.kind === 'spelling').map((p, i) => ({ id: `p:${p.id}`, name: i ? 'Seaside ABC' : 'Meadow ABC', x: p.x, y: p.y + 120, icon: 'pz_spell', puzzle: p.id })),
