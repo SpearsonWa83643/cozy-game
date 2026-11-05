@@ -38,6 +38,7 @@ import { Crabs } from '../crabs';
 import { SkyRings } from '../skyRings';
 import { Starfish } from '../starfish';
 import { Frogs } from '../frogs';
+import { Bubbles } from '../bubbles';
 import { Mount } from '../mount/mount';
 import { looks } from '../looks/looks';
 import type { ArtStyleId } from '../looks/styleFx';
@@ -126,6 +127,8 @@ export class WorldScene extends Phaser.Scene {
   starfish!: Starfish;
   /** 83: pond frogs on lily pads. */
   frogs!: Frogs;
+  /** 84: village bubble wand. */
+  bubbles!: Bubbles;
   playerShadow!: Phaser.GameObjects.Image;
   solids!: Phaser.Physics.Arcade.StaticGroup;
   keys!: Record<string, Phaser.Input.Keyboard.Key>;
@@ -328,6 +331,7 @@ export class WorldScene extends Phaser.Scene {
     this.crabs = new Crabs(this);
     this.starfish = new Starfish(this);
     this.frogs = new Frogs(this);
+    this.bubbles = new Bubbles(this);
     this.dresser = new ThemeDresser(this);
     this.mount = new Mount(this);
     this.skyRings = new SkyRings(this);
@@ -1094,6 +1098,7 @@ export class WorldScene extends Phaser.Scene {
   tapWorld(wx: number, wy: number) {
     if (this.locked || this.registry.get('dialogOpen') || this.registry.get('menuOpen')) return;
     if (this.thief?.onTap(wx, wy)) return;
+    if (this.bubbles?.tryTap(wx, wy)) return;
     if (this.mount.carrying) { if (this.mount.onTap(wx, wy)) return; }
     if (this.village.building) { this.village.buildTap(wx, wy); return; }
     if (this.fishing.active) { this.fishing.tap(); return; }
@@ -1370,6 +1375,7 @@ export class WorldScene extends Phaser.Scene {
     this.skyRings.update(dt);
     this.starfish.update(dt);
     this.frogs.update(dt);
+    this.bubbles.update(dt);
     this.village.update(dt, time);
     this.dresser.update(time, dt);
     const view = this.cameras.main.worldView;
@@ -1809,6 +1815,10 @@ export class WorldScene extends Phaser.Scene {
       /** 83: pond frogs. */
       frogs() { return self.frogs.stats(); },
       frogTap(i: number) { const f = self.frogs.frogs[i]; if (!f) return false; self.frogs.tap(f); return true; },
+      /** 84: village bubble wand. */
+      bubbles() { return self.bubbles.stats(); },
+      blowBubbles() { self.bubbles.blow(); return self.bubbles.stats(); },
+      popBubble(x?: number, y?: number) { return self.bubbles.popAt(x, y); },
       ringsSpawn() { self.skyRings.spawn(); return self.skyRings.stats(); },
       crabTap(i: number) { const c = self.crabs.crabs[i]; if (!c) return false; self.crabs.tap(c); return true; },
       /** 33: garden pinwheels (spin in rad/s). */
