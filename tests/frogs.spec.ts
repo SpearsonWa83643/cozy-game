@@ -25,10 +25,10 @@ test('pond frogs: idle, tap hop croak, hop pads, hidden in winter', async ({ pag
   expect(f0.shown).toBe(true);
   expect(f0.list.length).toBeGreaterThanOrEqual(3);
   expect(f0.pads.length).toBeGreaterThanOrEqual(3);
-  // Culled while far away.
-  expect(f0.list.every((f: any) => !f.on)).toBe(true);
 
-  // Stand by the pond near frog 0.
+  // Far from the pond they cull; stand near frog 0 and they come back on.
+  await cozy(page, 'teleport(4200, 900)');
+  await expect.poll(async () => (await cozy(page, 'frogs()')).list.every((f) => !f.on), { timeout: 20_000 }).toBe(true);
   const k = f0.list[0];
   await cozy(page, `teleport(${k.x + 90}, ${k.y + 110})`);
   await expect.poll(async () => (await cozy(page, 'frogs()')).list[0].on, { timeout: 20_000 }).toBe(true);
