@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-11-04 1:12 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
+Updated: 2026-11-05 12:34 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -121,6 +121,16 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 | 80 | Sky rings for flying friends: while you ride, a loop of five glowing star rings floats over the glade; fly through one for a chime and sparkles ("2 of 5!"); all five gives a happy cheer and confetti, then they come back | Done/Live 23b114f (2026-11-04, bundle index-BKM2xl4v.js) | 2026-11-04 | 0.5 |
 | 81 | Tide-pool starfish in Seashell Bay: tap the starfish one by one and each shows a big number (1, 2, 3 ...) and says it, so little ones count to five; then they all twirl | Done/Live 9c45b4a (2026-11-04, bundle index-DQQNEbsQ.js) | 2026-11-04 | 0.25 |
 | 82 | Fall leaf piles you can walk through: the existing Fall leaf piles now crunch when you walk (or ride) through them, not only on a tap; a bigger leaf burst, the pile lies flat, then gently heaps back up | Done/Live 7d8f40c (2026-11-04, bundle index-BpA5S73F.js) | 2026-11-04 | 0.25 |
+
+
+## Self-added polish (2026-11-05; backlog empty; no Walker decision or spending needed)
+
+| Order | Task | Status | ETA live | Estimate (dev days) |
+|---|---|---|---|---|
+| 83 | Pond frogs on lily pads: 3–4 cute frogs on the glade pond; idle bob/blink; tap = hop + croak + splash; hop to a nearby pad occasionally; hidden in snowy themes | Open | 2026-11-05 | 0.25–0.5 |
+| 84 | Village bubble wand: a soap-bubble wand by the village path; tap to blow iridescent bubbles; tap/walk into a bubble to pop with chime + sparkles | Open | 2026-11-05 | 0.5 |
+| 85 | Meadow petal swirl: walking or riding through Spring (and Summer) wildflower patches kicks up a short swirl of colored petals that drift and fade | Open | 2026-11-05 | 0.25 |
+| 86 | Beach sandcastle: one Seashell Bay sandcastle; tap to build stages 1→2→3 with a waving flag; tide washes it back down; rebuildable | Open | 2026-11-05 | 0.25–0.5 |
 
 ## Recently done
 

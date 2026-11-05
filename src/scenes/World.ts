@@ -37,6 +37,7 @@ import { Pinwheels } from '../pinwheels';
 import { Crabs } from '../crabs';
 import { SkyRings } from '../skyRings';
 import { Starfish } from '../starfish';
+import { Frogs } from '../frogs';
 import { Mount } from '../mount/mount';
 import { looks } from '../looks/looks';
 import type { ArtStyleId } from '../looks/styleFx';
@@ -123,6 +124,8 @@ export class WorldScene extends Phaser.Scene {
   skyRings!: SkyRings;
   /** 81: tide-pool starfish counting. */
   starfish!: Starfish;
+  /** 83: pond frogs on lily pads. */
+  frogs!: Frogs;
   playerShadow!: Phaser.GameObjects.Image;
   solids!: Phaser.Physics.Arcade.StaticGroup;
   keys!: Record<string, Phaser.Input.Keyboard.Key>;
@@ -324,6 +327,7 @@ export class WorldScene extends Phaser.Scene {
     this.pinwheels = new Pinwheels(this);
     this.crabs = new Crabs(this);
     this.starfish = new Starfish(this);
+    this.frogs = new Frogs(this);
     this.dresser = new ThemeDresser(this);
     this.mount = new Mount(this);
     this.skyRings = new SkyRings(this);
@@ -1365,6 +1369,7 @@ export class WorldScene extends Phaser.Scene {
     this.crabs.update(dt);
     this.skyRings.update(dt);
     this.starfish.update(dt);
+    this.frogs.update(dt);
     this.village.update(dt, time);
     this.dresser.update(time, dt);
     const view = this.cameras.main.worldView;
@@ -1801,6 +1806,9 @@ export class WorldScene extends Phaser.Scene {
       rings() { return self.skyRings.stats(); },
       /** 81: tide-pool starfish. */
       starfish() { return self.starfish.stats(); },
+      /** 83: pond frogs. */
+      frogs() { return self.frogs.stats(); },
+      frogTap(i: number) { const f = self.frogs.frogs[i]; if (!f) return false; self.frogs.tap(f); return true; },
       ringsSpawn() { self.skyRings.spawn(); return self.skyRings.stats(); },
       crabTap(i: number) { const c = self.crabs.crabs[i]; if (!c) return false; self.crabs.tap(c); return true; },
       /** 33: garden pinwheels (spin in rad/s). */
