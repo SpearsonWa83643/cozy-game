@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-11-05 12:52 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
+Updated: 2026-11-05 12:53 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -127,10 +127,10 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 
 | Order | Task | Status | ETA live | Estimate (dev days) |
 |---|---|---|---|---|
-| 83 | Pond frogs on lily pads: 3–4 cute frogs on the glade pond; idle bob/blink; tap = hop + croak + splash; hop to a nearby pad occasionally; hidden in snowy themes | Done/Live d8c2441 (bundle index-D3pAqTc9.js) | 2026-11-05 | 0.25–0.5 |
-| 84 | Village bubble wand: a soap-bubble wand by the village path; tap to blow iridescent bubbles; tap/walk into a bubble to pop with chime + sparkles | Done/Live f13c82f (bundle index-COX0IBN3.js) | 2026-11-05 | 0.5 |
-| 85 | Meadow petal swirl: walking or riding through Spring (and Summer) wildflower patches kicks up a short swirl of colored petals that drift and fade | Done/Live 8b1644c | 2026-11-05 | 0.25 |
-| 86 | Beach sandcastle: one Seashell Bay sandcastle; tap to build stages 1→2→3 with a waving flag; tide washes it back down; rebuildable | Done/Live (pending merge) | 2026-11-05 | 0.25–0.5 |
+| 83 | Pond frogs on lily pads: 3–4 cute frogs on the glade pond; idle bob/blink; tap = hop + croak + splash; hop to a nearby pad occasionally; hidden in snowy themes | Done/Live d8c2441 (final bundle index-DcF6pYyJ.js) | 2026-11-05 | 0.25–0.5 |
+| 84 | Village bubble wand: a soap-bubble wand by the village path; tap to blow iridescent bubbles; tap/walk into a bubble to pop with chime + sparkles | Done/Live f13c82f (final bundle index-DcF6pYyJ.js) | 2026-11-05 | 0.5 |
+| 85 | Meadow petal swirl: walking or riding through Spring (and Summer) wildflower patches kicks up a short swirl of colored petals that drift and fade | Done/Live 8b1644c (final bundle index-DcF6pYyJ.js) | 2026-11-05 | 0.25 |
+| 86 | Beach sandcastle: one Seashell Bay sandcastle; tap to build stages 1→2→3 with a waving flag; tide washes it back down; rebuildable | Done/Live 326cfb3 (bundle index-DcF6pYyJ.js) | 2026-11-05 | 0.25–0.5 |
 
 ## Recently done
 
