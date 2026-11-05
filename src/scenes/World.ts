@@ -40,6 +40,7 @@ import { Starfish } from '../starfish';
 import { Frogs } from '../frogs';
 import { Bubbles } from '../bubbles';
 import { PetalSwirl } from '../petals';
+import { Sandcastle, castleTiming } from '../sandcastle';
 import { Mount } from '../mount/mount';
 import { looks } from '../looks/looks';
 import type { ArtStyleId } from '../looks/styleFx';
@@ -132,6 +133,8 @@ export class WorldScene extends Phaser.Scene {
   bubbles!: Bubbles;
   /** 85: meadow petal swirl. */
   petalSwirl!: PetalSwirl;
+  /** 86: beach sandcastle. */
+  sandcastle!: Sandcastle;
   playerShadow!: Phaser.GameObjects.Image;
   solids!: Phaser.Physics.Arcade.StaticGroup;
   keys!: Record<string, Phaser.Input.Keyboard.Key>;
@@ -336,6 +339,7 @@ export class WorldScene extends Phaser.Scene {
     this.frogs = new Frogs(this);
     this.bubbles = new Bubbles(this);
     this.petalSwirl = new PetalSwirl(this);
+    this.sandcastle = new Sandcastle(this);
     this.dresser = new ThemeDresser(this);
     this.mount = new Mount(this);
     this.skyRings = new SkyRings(this);
@@ -1381,6 +1385,7 @@ export class WorldScene extends Phaser.Scene {
     this.frogs.update(dt);
     this.bubbles.update(dt);
     this.petalSwirl.update(dt);
+    this.sandcastle.update(dt);
     this.village.update(dt, time);
     this.dresser.update(time, dt);
     const view = this.cameras.main.worldView;
@@ -1826,6 +1831,11 @@ export class WorldScene extends Phaser.Scene {
       popBubble(x?: number, y?: number) { return self.bubbles.popAt(x, y); },
       /** 85: meadow petal swirl. */
       petals() { return self.petalSwirl.stats(); },
+      /** 86: beach sandcastle. */
+      sandcastle() { return self.sandcastle.stats(); },
+      sandTap() { self.sandcastle.tap(); return self.sandcastle.stats(); },
+      setCastleTiming(hold: number, wash: number) { castleTiming.hold = hold; castleTiming.wash = wash; if (self.sandcastle.stage === 3 && self.sandcastle.wash <= 0) self.sandcastle.hold = Math.min(self.sandcastle.hold, hold); },
+      startCastleWash() { if (self.sandcastle.stage < 1) return false; self.sandcastle.hold = 0; self.sandcastle.wash = castleTiming.wash; return true; },
       ringsSpawn() { self.skyRings.spawn(); return self.skyRings.stats(); },
       crabTap(i: number) { const c = self.crabs.crabs[i]; if (!c) return false; self.crabs.tap(c); return true; },
       /** 33: garden pinwheels (spin in rad/s). */
