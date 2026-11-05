@@ -44,8 +44,8 @@ test('sandcastle: build to flag, tide washes, rebuild', async ({ page }) => {
   expect((await cozy(page, 'sandcastle()')).stage).toBe(3);
   await cozy(page, 'setCastleTiming(0.5, 1.8)');
   expect(await cozy(page, 'startCastleWash()')).toBe(true);
-  await expect.poll(async () => (await cozy(page, 'sandcastle()')).stage, { timeout: 40_000, intervals: [150] }).toBe(0);
-  expect((await cozy(page, 'sandcastle()')).washes).toBeGreaterThanOrEqual(1);
+  await expect.poll(async () => (await cozy(page, 'sandcastle()')).washes, { timeout: 40_000, intervals: [150] }).toBeGreaterThanOrEqual(1);
+  expect((await cozy(page, 'sandcastle()')).stage).toBe(0);
 
   // Rebuildable.
   await cozy(page, 'sandTap()');
