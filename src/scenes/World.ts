@@ -39,6 +39,7 @@ import { SkyRings } from '../skyRings';
 import { Starfish } from '../starfish';
 import { Frogs } from '../frogs';
 import { Bubbles } from '../bubbles';
+import { PetalSwirl } from '../petals';
 import { Mount } from '../mount/mount';
 import { looks } from '../looks/looks';
 import type { ArtStyleId } from '../looks/styleFx';
@@ -129,6 +130,8 @@ export class WorldScene extends Phaser.Scene {
   frogs!: Frogs;
   /** 84: village bubble wand. */
   bubbles!: Bubbles;
+  /** 85: meadow petal swirl. */
+  petalSwirl!: PetalSwirl;
   playerShadow!: Phaser.GameObjects.Image;
   solids!: Phaser.Physics.Arcade.StaticGroup;
   keys!: Record<string, Phaser.Input.Keyboard.Key>;
@@ -332,6 +335,7 @@ export class WorldScene extends Phaser.Scene {
     this.starfish = new Starfish(this);
     this.frogs = new Frogs(this);
     this.bubbles = new Bubbles(this);
+    this.petalSwirl = new PetalSwirl(this);
     this.dresser = new ThemeDresser(this);
     this.mount = new Mount(this);
     this.skyRings = new SkyRings(this);
@@ -1376,6 +1380,7 @@ export class WorldScene extends Phaser.Scene {
     this.starfish.update(dt);
     this.frogs.update(dt);
     this.bubbles.update(dt);
+    this.petalSwirl.update(dt);
     this.village.update(dt, time);
     this.dresser.update(time, dt);
     const view = this.cameras.main.worldView;
@@ -1819,6 +1824,8 @@ export class WorldScene extends Phaser.Scene {
       bubbles() { return self.bubbles.stats(); },
       blowBubbles() { self.bubbles.blow(); return self.bubbles.stats(); },
       popBubble(x?: number, y?: number) { return self.bubbles.popAt(x, y); },
+      /** 85: meadow petal swirl. */
+      petals() { return self.petalSwirl.stats(); },
       ringsSpawn() { self.skyRings.spawn(); return self.skyRings.stats(); },
       crabTap(i: number) { const c = self.crabs.crabs[i]; if (!c) return false; self.crabs.tap(c); return true; },
       /** 33: garden pinwheels (spin in rad/s). */
