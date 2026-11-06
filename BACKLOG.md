@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-11-06 12:31 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
+Updated: 2026-11-06 12:55 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -138,10 +138,10 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 
 | Order | Task | Status | ETA live | Estimate (dev days) |
 |---|---|---|---|---|
-| 87 | Glowcap fireflies: 5–8 soft glowing fireflies drift and blink in Glowcap Grove; tap one for a bright flash + soft chime + sparkles, then it wanders off; culled off-screen; all themes | In progress | 2026-11-06 | 0.25–0.5 |
-| 88 | Village birdbath: small stone birdbath by the village path (near bubble wand); 2–3 little birds splash and chirp on approach/tap, hop away and return; hidden in snowy themes | In progress | 2026-11-06 | 0.25–0.5 |
-| 89 | Pinecone tumble: 4–6 tappable pinecones on Pinecone Hills slopes; tap = tumble downhill + soft knocks, respawn after a few seconds; culled off-screen; all themes | In progress | 2026-11-06 | 0.25–0.5 |
-| 90 | Meadow dragonflies: 3–4 colorful dragonflies zip along Sunflower Meadow paths; idle hover + dart; tap = loop-de-loop + soft wing chime; culled off-screen; hidden in snowy themes | In progress | 2026-11-06 | 0.25–0.5 |
+| 87 | Glowcap fireflies: 5–8 soft glowing fireflies drift and blink in Glowcap Grove; tap one for a bright flash + soft chime + sparkles, then it wanders off; culled off-screen; all themes | Done/Live a29dab9 (bundle index-mKutOg-b.js) | 2026-11-06 | 0.25–0.5 |
+| 88 | Village birdbath: small stone birdbath by the village path (near bubble wand); 2–3 little birds splash and chirp on approach/tap, hop away and return; hidden in snowy themes | Done/Live a29dab9 (bundle index-mKutOg-b.js) | 2026-11-06 | 0.25–0.5 |
+| 89 | Pinecone tumble: 4–6 tappable pinecones on Pinecone Hills slopes; tap = tumble downhill + soft knocks, respawn after a few seconds; culled off-screen; all themes | Done/Live a29dab9 (bundle index-mKutOg-b.js) | 2026-11-06 | 0.25–0.5 |
+| 90 | Meadow dragonflies: 3–4 colorful dragonflies zip along Sunflower Meadow paths; idle hover + dart; tap = loop-de-loop + soft wing chime; culled off-screen; hidden in snowy themes | Done/Live a29dab9 (bundle index-mKutOg-b.js) | 2026-11-06 | 0.25–0.5 |
 
 ## Recently done
 
