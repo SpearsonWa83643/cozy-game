@@ -115,13 +115,14 @@ export class Birdbath {
   }
 
   tap() {
-    if (!this.shown || this.cool > 0) return;
+    if (!this.shown) return;
     this.taps++;
     this.splashAll(true);
   }
 
   private splashAll(fromTap: boolean) {
-    this.cool = 1.2;
+    // Cool only gates auto-approach so kids can keep tapping the bath.
+    this.cool = fromTap ? 0.35 : 1.4;
     this.splashes++;
     if (!fromTap) this.approaches++;
     sfx.splash(false);

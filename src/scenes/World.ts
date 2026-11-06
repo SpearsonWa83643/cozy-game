@@ -43,7 +43,7 @@ import { PetalSwirl } from '../petals';
 import { Sandcastle, castleTiming } from '../sandcastle';
 import { Fireflies } from '../fireflies';
 import { Birdbath } from '../birdbath';
-import { Pinecones } from '../pinecones';
+import { Pinecones, coneTiming } from '../pinecones';
 import { Dragonflies } from '../dragonflies';
 import { Mount } from '../mount/mount';
 import { looks } from '../looks/looks';
@@ -1865,6 +1865,8 @@ export class WorldScene extends Phaser.Scene {
       /** 89: pinecone tumble. */
       pinecones() { return self.pinecones.stats(); },
       coneTap(i: number) { const c = self.pinecones.cones[i]; if (!c) return false; self.pinecones.tap(c); return true; },
+      setConeRespawn(s: number) { coneTiming.respawn = s; },
+      forceConeRespawn(i: number) { return self.pinecones.forceRespawn(i); },
       /** 90: meadow dragonflies. */
       dragonflies() { return self.dragonflies.stats(); },
       dragonTap(i: number) { const f = self.dragonflies.flies[i]; if (!f) return false; self.dragonflies.tap(f); return true; },

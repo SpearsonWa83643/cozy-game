@@ -8,7 +8,9 @@ import { HUBS, PATH_HILLS } from './layout';
 import type { WorldScene } from './scenes/World';
 
 const TW = 40, TH = 44;
-export const CONE = { size: 1.1, n: 5, tumbleMs: 1100, respawn: 3.2 };
+export const CONE = { size: 1.1, n: 5, tumbleMs: 700, respawn: 2.0 };
+/** Tests may shorten respawn. */
+export const coneTiming = { respawn: CONE.respawn };
 type Cone = {
   img: Phaser.GameObjects.Image; shadow: Phaser.GameObjects.Ellipse;
   x: number; y: number; homeX: number; homeY: number;
@@ -81,9 +83,9 @@ export class Pinecones {
     if (!c.on || c.tumble > 0 || c.wait > 0) return;
     this.taps++;
     this.tumbles++;
-    c.tumble = 1;
-    c.vx = 40 + Math.random() * 50;
-    c.vy = 110 + Math.random() * 70;
+    c.tumble = CONE.tumbleMs / 1000;
+    c.vx = 90 + Math.random() * 60;
+    c.vy = 160 + Math.random() * 80;
     c.rot = 0;
     sfx.tock();
     sfx.rustle();
@@ -121,26 +123,37 @@ export class Pinecones {
         continue;
       }
 
-      // Tumbling downhill.
-      c.tumble -= dt * (1000 / CONE.tumbleMs);
+      // Tumbling downhill (tumble is seconds remaining).
+      c.tumble -= dt;
       c.x += c.vx * dt;
       c.y += c.vy * dt;
-      c.vy += 40 * dt;
-      c.rot += dt * 8;
-      const a = Math.max(0, Math.min(1, c.tumble));
-      c.img.setPosition(c.x, c.y).setRotation(c.rot).setAlpha(0.4 + a * 0.6).setDepth(c.y);
-      c.shadow.setPosition(c.x, c.y + 8).setAlpha(0.1 + a * 0.1);
-      // Occasional knock mid-roll.
+      c.vy += 60 * dt;
+      c.rot += dt * 10;
+      const a = Math.max(0, Math.min(1, c.tumble / (CONE.tumbleMs / 1000)));
+      c.img.setPosition(c.x, c.y).setRotation(c.rot).setAlpha(0.35 + a * 0.65).setDepth(c.y);
+      c.shadow.setPosition(c.x, c.y + 8).setAlpha(0.08 + a * 0.12);
       if (Math.random() < dt * 2.2) sfx.tock();
       if (c.tumble <= 0) {
         c.tumble = 0;
         c.on = false;
         c.img.setVisible(false);
         c.shadow.setVisible(false);
-        c.wait = CONE.respawn;
+        c.wait = coneTiming.respawn;
         sfx.plip();
       }
     }
+  }
+
+  /** Test helper: snap a cone back home right away. */
+  forceRespawn(i: number) {
+    const c = this.cones[i];
+    if (!c) return false;
+    c.tumble = 0; c.wait = 0; c.vx = 0; c.vy = 0;
+    c.x = c.homeX; c.y = c.homeY;
+    c.img.setPosition(c.x, c.y).setRotation(0).setAlpha(1).setVisible(true).setDepth(c.y);
+    c.shadow.setPosition(c.x, c.y + 8).setAlpha(0.2).setVisible(true).setDepth(c.y - 2);
+    c.on = true;
+    return true;
   }
 
   stats() {
@@ -149,6 +162,7 @@ export class Pinecones {
       list: this.cones.map((c) => ({
         x: Math.round(c.x), y: Math.round(c.y), homeX: Math.round(c.homeX), homeY: Math.round(c.homeY),
         on: c.on, tumbling: c.tumble > 0, waiting: c.wait > 0,
+        tumble: +c.tumble.toFixed(3), wait: +c.wait.toFixed(3), vx: Math.round(c.vx), vy: Math.round(c.vy),
         tex: c.img.texture.key, visible: c.img.visible,
       })),
     };

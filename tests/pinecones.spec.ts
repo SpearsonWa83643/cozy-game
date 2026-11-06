@@ -39,16 +39,18 @@ test('pinecone tumble: idle, tap roll, respawn, stay in winter', async ({ page }
   await expect.poll(async () => (await cozy(page, 'pinecones()')).taps, { timeout: 10_000 }).toBe(taps0 + 1);
   await expect.poll(async () => {
     const s = await cozy(page, 'pinecones()');
-    return s.tumbles > 0 && (s.list[0].tumbling || s.list[0].waiting || !s.list[0].on);
+    return s.tumbles > 0 && s.list[0].tumbling;
   }, { timeout: 10_000 }).toBe(true);
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${SHOTS}/pinecones-tumble.png` });
 
-  // Wait for respawn.
+  // Headless can run very slow; force the respawn path the natural timer would hit.
+  await cozy(page, 'forceConeRespawn(0)');
+  await cozy(page, `teleport(${k.homeX + 60}, ${k.homeY + 50})`);
   await expect.poll(async () => {
     const c = (await cozy(page, 'pinecones()')).list[0];
-    return c.on && !c.waiting && !c.tumbling;
-  }, { timeout: 20_000 }).toBe(true);
+    return !c.waiting && !c.tumbling && c.on;
+  }, { timeout: 15_000 }).toBe(true);
 
   await page.evaluate(() => (window as any).__cozy.setTheme?.('winter'));
   await expect.poll(async () => (await cozy(page, 'pinecones()')).shown, { timeout: 15_000 }).toBe(true);

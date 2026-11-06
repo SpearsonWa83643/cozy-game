@@ -27,7 +27,6 @@ test('village birdbath: idle, tap splash, hidden in winter', async ({ page }) =>
   expect(b0.list.length).toBeGreaterThanOrEqual(2);
 
   const { x, y } = b0.bath;
-  // Stand far first so approach can fire.
   await cozy(page, `teleport(${x + 400}, ${y + 400})`);
   await page.waitForTimeout(400);
   await cozy(page, `teleport(${x + 70}, ${y + 50})`);
@@ -36,15 +35,15 @@ test('village birdbath: idle, tap splash, hidden in winter', async ({ page }) =>
   await page.screenshot({ path: `${SHOTS}/birdbath-idle.png` });
 
   const taps0 = (await cozy(page, 'birdbath()')).taps;
+  await cozy(page, 'bathTap()');
+  await expect.poll(async () => (await cozy(page, 'birdbath()')).taps, { timeout: 10_000 }).toBe(taps0 + 1);
+  await page.waitForTimeout(500);
   const sp = await cozy(page, `worldToScreen(${x}, ${y - 20})`);
+  const taps1 = (await cozy(page, 'birdbath()')).taps;
   await page.touchscreen.tap(sp.x, sp.y);
-  await expect.poll(async () => (await cozy(page, 'birdbath()')).taps, { timeout: 20_000, intervals: [50] }).toBeGreaterThanOrEqual(taps0 + 1);
+  await expect.poll(async () => (await cozy(page, 'birdbath()')).taps, { timeout: 20_000, intervals: [50] }).toBeGreaterThanOrEqual(taps1 + 1);
   await page.waitForTimeout(600);
   await page.screenshot({ path: `${SHOTS}/birdbath-splash.png` });
-
-  // Also force via hook.
-  await cozy(page, 'bathTap()');
-  await expect.poll(async () => (await cozy(page, 'birdbath()')).taps, { timeout: 10_000 }).toBeGreaterThan(taps0);
 
   await page.evaluate(() => (window as any).__cozy.setTheme?.('winter'));
   await expect.poll(async () => (await cozy(page, 'birdbath()')).shown, { timeout: 15_000 }).toBe(false);
