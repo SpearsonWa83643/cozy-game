@@ -41,6 +41,10 @@ import { Frogs } from '../frogs';
 import { Bubbles } from '../bubbles';
 import { PetalSwirl } from '../petals';
 import { Sandcastle, castleTiming } from '../sandcastle';
+import { Fireflies } from '../fireflies';
+import { Birdbath } from '../birdbath';
+import { Pinecones, coneTiming } from '../pinecones';
+import { Dragonflies } from '../dragonflies';
 import { Mount } from '../mount/mount';
 import { looks } from '../looks/looks';
 import type { ArtStyleId } from '../looks/styleFx';
@@ -135,6 +139,14 @@ export class WorldScene extends Phaser.Scene {
   petalSwirl!: PetalSwirl;
   /** 86: beach sandcastle. */
   sandcastle!: Sandcastle;
+  /** 87: Glowcap Grove interactive fireflies (ambient particle fireflies stay on `fireflies`). */
+  glowFlies!: Fireflies;
+  /** 88: village birdbath. */
+  birdbath!: Birdbath;
+  /** 89: Pinecone Hills pinecones. */
+  pinecones!: Pinecones;
+  /** 90: meadow dragonflies. */
+  dragonflies!: Dragonflies;
   playerShadow!: Phaser.GameObjects.Image;
   solids!: Phaser.Physics.Arcade.StaticGroup;
   keys!: Record<string, Phaser.Input.Keyboard.Key>;
@@ -340,6 +352,10 @@ export class WorldScene extends Phaser.Scene {
     this.bubbles = new Bubbles(this);
     this.petalSwirl = new PetalSwirl(this);
     this.sandcastle = new Sandcastle(this);
+    this.glowFlies = new Fireflies(this);
+    this.birdbath = new Birdbath(this);
+    this.pinecones = new Pinecones(this);
+    this.dragonflies = new Dragonflies(this);
     this.dresser = new ThemeDresser(this);
     this.mount = new Mount(this);
     this.skyRings = new SkyRings(this);
@@ -1386,6 +1402,10 @@ export class WorldScene extends Phaser.Scene {
     this.bubbles.update(dt);
     this.petalSwirl.update(dt);
     this.sandcastle.update(dt);
+    this.glowFlies.update(dt);
+    this.birdbath.update(dt);
+    this.pinecones.update(dt);
+    this.dragonflies.update(dt);
     this.village.update(dt, time);
     this.dresser.update(time, dt);
     const view = this.cameras.main.worldView;
@@ -1836,6 +1856,20 @@ export class WorldScene extends Phaser.Scene {
       sandTap() { self.sandcastle.tap(); return self.sandcastle.stats(); },
       setCastleTiming(hold: number, wash: number) { castleTiming.hold = hold; castleTiming.wash = wash; if (self.sandcastle.stage === 3 && self.sandcastle.wash <= 0) self.sandcastle.hold = Math.min(self.sandcastle.hold, hold); },
       startCastleWash() { if (self.sandcastle.stage < 1) return false; self.sandcastle.hold = 0; self.sandcastle.wash = castleTiming.wash; return true; },
+      /** 87: Glowcap fireflies. */
+      fireflies() { return self.glowFlies.stats(); },
+      fireflyTap(i: number) { const b = self.glowFlies.bugs[i]; if (!b) return false; self.glowFlies.tap(b); return true; },
+      /** 88: village birdbath. */
+      birdbath() { return self.birdbath.stats(); },
+      bathTap() { self.birdbath.tap(); return self.birdbath.stats(); },
+      /** 89: pinecone tumble. */
+      pinecones() { return self.pinecones.stats(); },
+      coneTap(i: number) { const c = self.pinecones.cones[i]; if (!c) return false; self.pinecones.tap(c); return true; },
+      setConeRespawn(s: number) { coneTiming.respawn = s; },
+      forceConeRespawn(i: number) { return self.pinecones.forceRespawn(i); },
+      /** 90: meadow dragonflies. */
+      dragonflies() { return self.dragonflies.stats(); },
+      dragonTap(i: number) { const f = self.dragonflies.flies[i]; if (!f) return false; self.dragonflies.tap(f); return true; },
       ringsSpawn() { self.skyRings.spawn(); return self.skyRings.stats(); },
       crabTap(i: number) { const c = self.crabs.crabs[i]; if (!c) return false; self.crabs.tap(c); return true; },
       /** 33: garden pinwheels (spin in rad/s). */
