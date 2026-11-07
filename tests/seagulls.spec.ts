@@ -26,13 +26,14 @@ test('bay seagulls: idle, scatter on tap and approach, glide back, hidden in win
   await boot(page, errors, 'bay');
   const g0 = await cozy(page, 'seagulls()');
   expect(g0.shown).toBe(true);
+  console.log('gull flock', JSON.stringify(g0.flock));
   expect(g0.list.length).toBeGreaterThanOrEqual(3);
   const sc = await cozy(page, 'sandcastle()');
   expect(Math.hypot(sc.x - g0.flock.x, sc.y - g0.flock.y)).toBeGreaterThan(200);
   const st = await cozy(page, 'starfish()').catch(() => null);
   if (st?.cx) expect(Math.hypot(st.cx - g0.flock.x, st.cy - g0.flock.y)).toBeGreaterThan(200);
   // View from a distance so they stay calm.
-  await cozy(page, `teleport(${g0.flock.x}, ${g0.flock.y - 330})`);
+  await cozy(page, `teleport(${g0.flock.x}, ${g0.flock.y + 195})`);
   await expect.poll(async () => (await cozy(page, 'seagulls()')).list.every((g: any) => g.on), { timeout: 20_000 }).toBe(true);
   await page.waitForTimeout(600);
   expect((await cozy(page, 'seagulls()')).flights).toBe(0);
