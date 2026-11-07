@@ -55,10 +55,10 @@ export class Chimes {
 
   private place() {
     const w = this.w;
-    // North-east of the sign, between the sign and the notice board (birdbath is west, wand east/south).
+    // Open grass east of the notice board (birdbath is west of the path, the wand by the entry).
     const candidates: [number, number][] = [
-      [VILLAGE_SIGN.x + 60, VILLAGE_SIGN.y - 70],
-      [VILLAGE_BOARD.x + 90, VILLAGE_BOARD.y - 40],
+      [VILLAGE_BOARD.x + 150, VILLAGE_BOARD.y + 80],
+      [VILLAGE_BOARD.x + 120, VILLAGE_BOARD.y + 130],
       [VILLAGE_ENTRY.x + 200, VILLAGE_ENTRY.y - 10],
       [VILLAGE_SIGN.x - 10, VILLAGE_SIGN.y - 110],
       [VILLAGE_BOARD.x + 60, VILLAGE_BOARD.y + 110],
