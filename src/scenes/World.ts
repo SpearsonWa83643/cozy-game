@@ -45,6 +45,10 @@ import { Fireflies } from '../fireflies';
 import { Birdbath } from '../birdbath';
 import { Pinecones, coneTiming } from '../pinecones';
 import { Dragonflies } from '../dragonflies';
+import { Chimes } from '../chimes';
+import { Puffshrooms } from '../puffshrooms';
+import { Seagulls } from '../seagulls';
+import { Bunnies } from '../bunnies';
 import { Mount } from '../mount/mount';
 import { looks } from '../looks/looks';
 import type { ArtStyleId } from '../looks/styleFx';
@@ -147,6 +151,14 @@ export class WorldScene extends Phaser.Scene {
   pinecones!: Pinecones;
   /** 90: meadow dragonflies. */
   dragonflies!: Dragonflies;
+  /** 91: village wind chimes. */
+  chimes!: Chimes;
+  /** 92: Glowcap puff mushrooms. */
+  puffshrooms!: Puffshrooms;
+  /** 93: bay seagulls. */
+  seagulls!: Seagulls;
+  /** 94: meadow bunnies. */
+  bunnies!: Bunnies;
   playerShadow!: Phaser.GameObjects.Image;
   solids!: Phaser.Physics.Arcade.StaticGroup;
   keys!: Record<string, Phaser.Input.Keyboard.Key>;
@@ -356,6 +368,10 @@ export class WorldScene extends Phaser.Scene {
     this.birdbath = new Birdbath(this);
     this.pinecones = new Pinecones(this);
     this.dragonflies = new Dragonflies(this);
+    this.chimes = new Chimes(this);
+    this.puffshrooms = new Puffshrooms(this);
+    this.seagulls = new Seagulls(this);
+    this.bunnies = new Bunnies(this);
     this.dresser = new ThemeDresser(this);
     this.mount = new Mount(this);
     this.skyRings = new SkyRings(this);
@@ -1406,6 +1422,10 @@ export class WorldScene extends Phaser.Scene {
     this.birdbath.update(dt);
     this.pinecones.update(dt);
     this.dragonflies.update(dt);
+    this.chimes.update(dt);
+    this.puffshrooms.update(dt);
+    this.seagulls.update(dt);
+    this.bunnies.update(dt);
     this.village.update(dt, time);
     this.dresser.update(time, dt);
     const view = this.cameras.main.worldView;
@@ -1870,6 +1890,18 @@ export class WorldScene extends Phaser.Scene {
       /** 90: meadow dragonflies. */
       dragonflies() { return self.dragonflies.stats(); },
       dragonTap(i: number) { const f = self.dragonflies.flies[i]; if (!f) return false; self.dragonflies.tap(f); return true; },
+      /** 91: village wind chimes. */
+      chimes() { return self.chimes.stats(); },
+      chimeTap() { self.chimes.tap(); return self.chimes.stats(); },
+      /** 92: Glowcap puff mushrooms. */
+      puffshrooms() { return self.puffshrooms.stats(); },
+      puffTap(i: number) { const s = self.puffshrooms.shrooms[i]; if (!s) return false; self.puffshrooms.tap(s); return true; },
+      /** 93: bay seagulls. */
+      seagulls() { return self.seagulls.stats(); },
+      gullTap(i: number) { const g = self.seagulls.gulls[i]; if (!g) return false; self.seagulls.tap(g); return true; },
+      /** 94: meadow bunnies. */
+      bunnies() { return self.bunnies.stats(); },
+      bunnyTap(i: number) { const b = self.bunnies.buns[i]; if (!b) return false; self.bunnies.tap(b); return true; },
       ringsSpawn() { self.skyRings.spawn(); return self.skyRings.stats(); },
       crabTap(i: number) { const c = self.crabs.crabs[i]; if (!c) return false; self.crabs.tap(c); return true; },
       /** 33: garden pinwheels (spin in rad/s). */

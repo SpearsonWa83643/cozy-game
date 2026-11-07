@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-11-06 12:55 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
+Updated: 2026-11-07 12:35 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -142,6 +142,15 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 | 88 | Village birdbath: small stone birdbath by the village path (near bubble wand); 2–3 little birds splash and chirp on approach/tap, hop away and return; hidden in snowy themes | Done/Live a29dab9 (bundle index-mKutOg-b.js) | 2026-11-06 | 0.25–0.5 |
 | 89 | Pinecone tumble: 4–6 tappable pinecones on Pinecone Hills slopes; tap = tumble downhill + soft knocks, respawn after a few seconds; culled off-screen; all themes | Done/Live a29dab9 (bundle index-mKutOg-b.js) | 2026-11-06 | 0.25–0.5 |
 | 90 | Meadow dragonflies: 3–4 colorful dragonflies zip along Sunflower Meadow paths; idle hover + dart; tap = loop-de-loop + soft wing chime; culled off-screen; hidden in snowy themes | Done/Live a29dab9 (bundle index-mKutOg-b.js) | 2026-11-06 | 0.25–0.5 |
+
+## Self-added polish (2026-11-07; backlog empty; no Walker decision or spending needed)
+
+| Order | Task | Status | ETA live | Estimate (dev days) |
+|---|---|---|---|---|
+| 91 | Village wind chimes: hanging chimes by the village path (clear of birdbath/bubble wand); gentle idle sway; tap = cascade of soft notes + sparkles; culled off-screen; hidden in snowy themes | In progress | 2026-11-07 | 0.25–0.5 |
+| 92 | Glowcap puff mushrooms: 5 bouncy mushrooms around the Glowcap Grove ring (not the fairy-ring centre); tap = squash/bounce + spore puff + soft pop, then settle; all themes | In progress | 2026-11-07 | 0.25–0.5 |
+| 93 | Beach seagulls: 3–4 seagulls on the Seashell Bay shore (clear of crabs/starfish/sandcastle); idle peck/bob; approach or tap = flap away then glide back; hidden in snowy themes | In progress | 2026-11-07 | 0.25–0.5 |
+| 94 | Meadow bunnies: 3–4 soft bunnies along Sunflower Meadow paths (clear of dragonflies); idle nibble/hop; approach = hop away, return when far; hidden in snowy themes | In progress | 2026-11-07 | 0.25–0.5 |
 
 ## Recently done
 
