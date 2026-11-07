@@ -31,7 +31,7 @@ test('meadow bunnies: idle, hop away, come back, hidden in winter', async ({ pag
   const df = await cozy(page, 'dragonflies()');
   for (const b of b0.list) for (const f of df.list) expect(Math.hypot(b.hx - f.x, b.hy - f.y)).toBeGreaterThan(60);
   const k = b0.list[0];
-  await cozy(page, `teleport(${k.hx}, ${k.hy - 280})`);
+  await cozy(page, `teleport(${k.hx}, ${k.hy - 165})`);
   await expect.poll(async () => (await cozy(page, 'bunnies()')).list[0].on, { timeout: 20_000 }).toBe(true);
   await page.waitForTimeout(600);
   await page.screenshot({ path: `${SHOTS}/bunnies-idle.png` });

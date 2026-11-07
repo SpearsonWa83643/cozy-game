@@ -65,10 +65,12 @@ export class Bunnies {
     for (let i = 0; i < path.length - 1 && homes.length < BUN.n; i++) {
       const seg = (i * 3 + 1) % (path.length - 1);
       const [ax, ay] = path[seg], [bx, by] = path[seg + 1];
-      for (const [t, dy] of [[0.5, 80], [0.35, 100], [0.65, 70], [0.5, 120]] as const) {
+      const tries: [number, number][] = [];
+      for (const dy of [80, 100, 120, 60, 150, 180]) for (const t of [0.5, 0.35, 0.65, 0.2, 0.8]) tries.push([t, dy]);
+      for (const [t, dy] of tries) {
         const x = ax + (bx - ax) * t, y = ay + (by - ay) * t + dy;
-        if (!this.free(x, y) || !busy.every(([qx, qy]) => Math.hypot(qx - x, qy - y) > 90)) continue;
-        if (homes.some(([hx, hy]) => Math.hypot(hx - x, hy - y) < 300)) continue;
+        if (!this.free(x, y) || !busy.every(([qx, qy]) => Math.hypot(qx - x, qy - y) > 80)) continue;
+        if (homes.some(([hx, hy]) => Math.hypot(hx - x, hy - y) < 260)) continue;
         homes.push([x, y]); break;
       }
     }
