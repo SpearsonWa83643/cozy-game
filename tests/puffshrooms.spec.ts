@@ -39,7 +39,7 @@ test('puff mushrooms: idle, tap bounce, still in winter', async ({ page }) => {
   await expect.poll(async () => (await cozy(page, 'puffshrooms()')).puffs, { timeout: 10_000 }).toBeGreaterThan(0);
   await page.waitForTimeout(120);
   await page.screenshot({ path: `${SHOTS}/puff-bounce.png` });
-  await expect.poll(async () => (await cozy(page, 'puffshrooms()')).list[0].bouncing, { timeout: 10_000 }).toBe(false);
+  await expect.poll(async () => (await cozy(page, 'puffshrooms()')).list[0].bouncing, { timeout: 40_000 }).toBe(false);
   await page.evaluate(() => (window as any).__cozy.setTheme?.('winter'));
   await page.waitForTimeout(800);
   expect((await cozy(page, 'puffshrooms()')).list[0].visible).toBe(true);

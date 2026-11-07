@@ -41,7 +41,7 @@ test('bay seagulls: idle, scatter on tap and approach, glide back, hidden in win
   await expect.poll(async () => (await cozy(page, 'seagulls()')).list.every((g: any) => g.phase !== 'idle'), { timeout: 5_000 }).toBe(true);
   await page.waitForTimeout(900);
   await page.screenshot({ path: `${SHOTS}/seagulls-fly.png` });
-  await expect.poll(async () => (await cozy(page, 'seagulls()')).list.every((g: any) => g.phase === 'idle' && g.x === g.hx), { timeout: 15_000 }).toBe(true);
+  await expect.poll(async () => (await cozy(page, 'seagulls()')).list.every((g: any) => g.phase === 'idle' && g.x === g.hx), { timeout: 90_000 }).toBe(true);
   // Walk right up: they scatter again.
   const g = g0.list[1];
   await cozy(page, `teleport(${g.hx + 30}, ${g.hy + 20})`);

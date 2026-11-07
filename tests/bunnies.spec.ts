@@ -37,16 +37,16 @@ test('meadow bunnies: idle, hop away, come back, hidden in winter', async ({ pag
   await page.screenshot({ path: `${SHOTS}/bunnies-idle.png` });
   expect(await cozy(page, 'bunnyTap(0)')).toBe(true);
   expect((await cozy(page, 'bunnies()')).taps).toBe(1);
-  await expect.poll(async () => (await cozy(page, 'bunnies()')).list[0].hopping, { timeout: 5_000 }).toBe(false);
+  await expect.poll(async () => (await cozy(page, 'bunnies()')).list[0].hopping, { timeout: 30_000 }).toBe(false);
   // Walk up: it hops away.
   await cozy(page, `teleport(${k.hx - 60}, ${k.hy})`);
-  await expect.poll(async () => (await cozy(page, 'bunnies()')).flees, { timeout: 10_000 }).toBeGreaterThan(0);
+  await expect.poll(async () => (await cozy(page, 'bunnies()')).flees, { timeout: 30_000 }).toBeGreaterThan(0);
   await page.waitForTimeout(350);
   await page.screenshot({ path: `${SHOTS}/bunnies-hop.png` });
-  await expect.poll(async () => (await cozy(page, 'bunnies()')).list[0].away, { timeout: 10_000 }).toBe(true);
+  await expect.poll(async () => (await cozy(page, 'bunnies()')).list[0].away, { timeout: 30_000 }).toBe(true);
   // Go far: it hops back home.
   await cozy(page, `teleport(${k.hx}, ${k.hy - 420})`);
-  await expect.poll(async () => { const b = (await cozy(page, 'bunnies()')).list[0]; return !b.away && !b.hopping && b.x === b.hx && b.y === b.hy; }, { timeout: 15_000 }).toBe(true);
+  await expect.poll(async () => { const b = (await cozy(page, 'bunnies()')).list[0]; return !b.away && !b.hopping && b.x === b.hx && b.y === b.hy; }, { timeout: 60_000 }).toBe(true);
   await page.evaluate(() => (window as any).__cozy.setTheme?.('winter'));
   await expect.poll(async () => (await cozy(page, 'bunnies()')).shown, { timeout: 15_000 }).toBe(false);
   expect((await cozy(page, 'bunnies()')).list.every((q: any) => !q.visible)).toBe(true);

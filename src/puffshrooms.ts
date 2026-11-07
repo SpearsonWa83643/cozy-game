@@ -8,7 +8,7 @@ import { GROVE_RING } from './layout';
 import type { WorldScene } from './scenes/World';
 
 const TW = 56, TH = 56;
-export const PUFF = { size: 1.1, n: 5, bounceS: 0.9 };
+export const PUFF = { size: 1.35, n: 5, bounceS: 0.9 };
 const CAPS = ['#ff7a9a', '#b98cff', '#5cc8ff', '#ffb84d', '#7ad87a'];
 type Shroom = {
   img: Phaser.GameObjects.Image; x: number; y: number; base: number;
@@ -49,15 +49,15 @@ export class Puffshrooms {
     const w = this.w;
     const busy = [...w.interactables.map((it) => [it.x, it.y]), ...w.tappables.map((t) => [t.x(), t.y()])];
     const homes: [number, number][] = [];
-    for (let i = 0; i < 40 && homes.length < PUFF.n; i++) {
-      const a = 0.4 + i * (Math.PI * 2 / PUFF.n) + Math.floor(i / PUFF.n) * 0.35;
-      const k = 1.12 + (i % 2) * 0.12;
+    for (let i = 0; i < 120 && homes.length < PUFF.n; i++) {
+      const a = 0.4 + i * 2.39996;
+      const k = 1.08 + ((i * 7) % 6) * 0.07;
       const x = GROVE_RING.x + Math.cos(a) * GROVE_RING.r * k;
       const y = GROVE_RING.y + Math.sin(a) * GROVE_RING.r * k * 0.75;
       const [c, r] = w.nav.cellOf(x, y);
       if (w.nav.isBlocked(c, r)) continue;
       if (!busy.every(([bx, by]) => Math.hypot(bx - x, by - y) > 70)) continue;
-      if (homes.some(([hx, hy]) => Math.hypot(hx - x, hy - y) < 110)) continue;
+      if (homes.some(([hx, hy]) => Math.hypot(hx - x, hy - y) < 95)) continue;
       homes.push([x, y]);
     }
     homes.forEach(([x, y], i) => {
