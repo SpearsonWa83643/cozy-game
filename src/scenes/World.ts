@@ -49,6 +49,10 @@ import { Chimes } from '../chimes';
 import { Puffshrooms } from '../puffshrooms';
 import { Seagulls } from '../seagulls';
 import { Bunnies } from '../bunnies';
+import { Clothesline } from '../clothesline';
+import { Ducks } from '../ducks';
+import { Squirrels } from '../squirrels';
+import { Minnows } from '../minnows';
 import { Mount } from '../mount/mount';
 import { looks } from '../looks/looks';
 import type { ArtStyleId } from '../looks/styleFx';
@@ -159,6 +163,14 @@ export class WorldScene extends Phaser.Scene {
   seagulls!: Seagulls;
   /** 94: meadow bunnies. */
   bunnies!: Bunnies;
+  /** 95: village clothesline. */
+  clothesline!: Clothesline;
+  /** 96: pond ducks. */
+  ducks!: Ducks;
+  /** 97: hills squirrels. */
+  squirrels!: Squirrels;
+  /** 98: bay minnows. */
+  minnows!: Minnows;
   playerShadow!: Phaser.GameObjects.Image;
   solids!: Phaser.Physics.Arcade.StaticGroup;
   keys!: Record<string, Phaser.Input.Keyboard.Key>;
@@ -372,6 +384,10 @@ export class WorldScene extends Phaser.Scene {
     this.puffshrooms = new Puffshrooms(this);
     this.seagulls = new Seagulls(this);
     this.bunnies = new Bunnies(this);
+    this.clothesline = new Clothesline(this);
+    this.ducks = new Ducks(this);
+    this.squirrels = new Squirrels(this);
+    this.minnows = new Minnows(this);
     this.dresser = new ThemeDresser(this);
     this.mount = new Mount(this);
     this.skyRings = new SkyRings(this);
@@ -1426,6 +1442,10 @@ export class WorldScene extends Phaser.Scene {
     this.puffshrooms.update(dt);
     this.seagulls.update(dt);
     this.bunnies.update(dt);
+    this.clothesline.update(dt);
+    this.ducks.update(dt);
+    this.squirrels.update(dt);
+    this.minnows.update(dt);
     this.village.update(dt, time);
     this.dresser.update(time, dt);
     const view = this.cameras.main.worldView;
@@ -1902,6 +1922,18 @@ export class WorldScene extends Phaser.Scene {
       /** 94: meadow bunnies. */
       bunnies() { return self.bunnies.stats(); },
       bunnyTap(i: number) { const b = self.bunnies.buns[i]; if (!b) return false; self.bunnies.tap(b); return true; },
+      /** 95: village clothesline. */
+      clothesline() { return self.clothesline.stats(); },
+      lineTap() { self.clothesline.tap(); return self.clothesline.stats(); },
+      /** 96: pond ducks. */
+      ducks() { return self.ducks.stats(); },
+      duckTap(i: number) { const d = self.ducks.ducks[i]; if (!d) return false; self.ducks.tap(d); return true; },
+      /** 97: hills squirrels. */
+      squirrels() { return self.squirrels.stats(); },
+      squirrelTap(i: number) { const s = self.squirrels.squad[i]; if (!s) return false; self.squirrels.tap(s); return true; },
+      /** 98: bay minnows. */
+      minnows() { return self.minnows.stats(); },
+      minnowTap() { return self.minnows.tap(); },
       ringsSpawn() { self.skyRings.spawn(); return self.skyRings.stats(); },
       crabTap(i: number) { const c = self.crabs.crabs[i]; if (!c) return false; self.crabs.tap(c); return true; },
       /** 33: garden pinwheels (spin in rad/s). */
