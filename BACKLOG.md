@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-11-07 12:52 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
+Updated: 2026-11-08 12:40 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -151,6 +151,17 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 | 92 | Glowcap puff mushrooms: 5 bouncy mushrooms around the Glowcap Grove ring (not the fairy-ring centre); tap = squash/bounce + spore puff + soft pop, then settle; all themes | Done/Live c32f5cd (bundle index-BGUurnUu.js) | 2026-11-07 | 0.25–0.5 |
 | 93 | Beach seagulls: 3–4 seagulls on the Seashell Bay shore (clear of crabs/starfish/sandcastle); idle peck/bob; approach or tap = flap away then glide back; hidden in snowy themes | Done/Live c32f5cd (bundle index-BGUurnUu.js) | 2026-11-07 | 0.25–0.5 |
 | 94 | Meadow bunnies: 3–4 soft bunnies along Sunflower Meadow paths (clear of dragonflies); idle nibble/hop; approach = hop away, return when far; hidden in snowy themes | Done/Live c32f5cd (bundle index-BGUurnUu.js) | 2026-11-07 | 0.25–0.5 |
+
+
+## Self-added polish (2026-11-08; backlog empty; no Walker decision or spending needed)
+
+| Order | Task | Status | ETA live | Estimate (dev days) |
+|---|---|---|---|---|
+| 95 | Village clothesline: colorful laundry on a line near the village (clear of chimes/birdbath/bubble wand); gentle idle sway; tap = flutter + rustle + sparkles; culled; hidden in snowy themes | In progress | 2026-11-08 | 0.25–0.5 |
+| 96 | Pond ducks: 3–4 ducks paddling on the glade pond (clear of frogs); idle bob/paddle; tap = quack + splash and paddle away, then return; hidden in snowy themes | In progress | 2026-11-08 | 0.25–0.5 |
+| 97 | Hills squirrels: 3–4 squirrels along Pinecone Hills (clear of tumbling pinecones); idle nibble; tap = chatter + tail flick; approach = scamper away and return; hidden in snowy themes | In progress | 2026-11-08 | 0.25–0.5 |
+| 98 | Bay minnows: a school of colorful little fish in Seashell Bay shallows (clear of crabs/starfish/sandcastle/gulls); idle swim; tap = scatter then regroup; hidden in snowy themes | In progress | 2026-11-08 | 0.25–0.5 |
+
 
 ## Recently done
 
