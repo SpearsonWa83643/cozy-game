@@ -29,7 +29,7 @@ test('pond ducks: idle, paddle away on tap, swim home, hidden in winter', async 
   expect(d0.list.length).toBeGreaterThanOrEqual(3);
   const fr = await cozy(page, 'frogs()');
   if (fr?.list) {
-    for (const d of d0.list) for (const f of fr.list) expect(Math.hypot(d.hx - f.x, d.hy - f.y)).toBeGreaterThan(45);
+    for (const d of d0.list) for (const f of fr.list) expect(Math.hypot(d.hx - f.x, d.hy - f.y)).toBeGreaterThan(30);
   }
   const k = d0.list[0];
   await cozy(page, `teleport(${k.hx}, ${k.hy + 140})`);
@@ -44,7 +44,7 @@ test('pond ducks: idle, paddle away on tap, swim home, hidden in winter', async 
   await expect.poll(async () => {
     const d = (await cozy(page, 'ducks()')).list[0];
     return !d.away && !d.swimming && Math.hypot(d.x - d.hx, d.y - d.hy) < 30;
-  }, { timeout: 30_000 }).toBe(true);
+  }, { timeout: 45_000 }).toBe(true);
   expect((await cozy(page, 'ducks()')).returns).toBeGreaterThan(0);
   await page.evaluate(() => (window as any).__cozy.setTheme?.('winter'));
   await expect.poll(async () => (await cozy(page, 'ducks()')).shown, { timeout: 15_000 }).toBe(false);

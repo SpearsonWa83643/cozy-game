@@ -15,7 +15,7 @@ const BODIES = ['#f4e8a0', '#fff6e8', '#e8c070', '#f0d8b0'];
 type Duck = {
   img: Phaser.GameObjects.Image; shadow: Phaser.GameObjects.Ellipse;
   hx: number; hy: number; x: number; y: number; fromX: number; fromY: number; toX: number; toY: number;
-  swim: number; away: boolean; ph: number; base: number; on: boolean; tint: number;
+  swim: number; away: boolean; rest: number; ph: number; base: number; on: boolean; tint: number;
 };
 
 function duckTex(c: Ctx, body: string) {
@@ -53,31 +53,37 @@ export class Ducks {
 
   private onWater(x: number, y: number) {
     const v = pondValue(x, y);
-    return v > 0.18 && v < 0.82;
+    return v > 0.12 && v < 0.88;
   }
 
   private place() {
     const w = this.w;
     const pads = ((w as any).frogs?.pads ?? []) as { x: number; y: number }[];
-    const clear = (x: number, y: number) => pads.every((p) => Math.hypot(p.x - x, p.y - y) > 55);
+    const clear = (x: number, y: number, d = 48) => pads.every((p) => Math.hypot(p.x - x, p.y - y) > d);
     const homes: [number, number][] = [];
-    const angles = [0.5, 1.8, 3.2, 4.6, 5.5, 2.5, 0.9, 4.1];
-    for (const a of angles) {
-      if (homes.length >= DUCK.n) break;
-      for (const k of [0.52, 0.42, 0.62, 0.35]) {
-        const x = POND.x + Math.cos(a) * POND.rx * k;
-        const y = POND.y + Math.sin(a) * POND.ry * k;
-        if (!this.onWater(x, y) || !clear(x, y)) continue;
-        if (homes.some(([hx, hy]) => Math.hypot(hx - x, hy - y) < 70)) continue;
-        homes.push([x, y]); break;
+    const trySpot = (x: number, y: number, gap: number, padD: number) => {
+      if (!this.onWater(x, y) || !clear(x, y, padD)) return false;
+      if (homes.some(([hx, hy]) => Math.hypot(hx - x, hy - y) < gap)) return false;
+      homes.push([x, y]); return true;
+    };
+    // Sweep the pond ellipse, preferring open water away from lily pads.
+    for (let i = 0; i < 36 && homes.length < DUCK.n; i++) {
+      const a = (i * 2.3) + 0.35;
+      for (const k of [0.58, 0.48, 0.68, 0.38, 0.72, 0.3]) {
+        if (trySpot(POND.x + Math.cos(a) * POND.rx * k, POND.y + Math.sin(a) * POND.ry * k, 58, 48)) break;
       }
+    }
+    // Fallback: relax spacing so we always get a little flock.
+    for (let i = 0; i < 24 && homes.length < DUCK.n; i++) {
+      const a = i * 0.28;
+      trySpot(POND.x + Math.cos(a) * POND.rx * 0.5, POND.y + Math.sin(a) * POND.ry * 0.5, 40, 36);
     }
     homes.forEach(([x, y], i) => {
       const key = `duck${i % BODIES.length}`;
       const base = DUCK.size / (frameScale[key] ?? S);
       const shadow = w.add.ellipse(x, y + 6, 28, 8, 0x1a3a50, 0.18).setDepth(-380).setVisible(false);
       const img = w.add.image(x, y, key).setOrigin(0.5, 0.75).setScale(base).setFlipX(i % 2 === 1).setDepth(y).setVisible(false);
-      const d: Duck = { img, shadow, hx: x, hy: y, x, y, fromX: x, fromY: y, toX: x, toY: y, swim: 0, away: false, ph: i * 1.5, base, on: false, tint: i };
+      const d: Duck = { img, shadow, hx: x, hy: y, x, y, fromX: x, fromY: y, toX: x, toY: y, swim: 0, away: false, rest: 0, ph: i * 1.5, base, on: false, tint: i };
       this.ducks.push(d);
       w.tappables.push({ x: () => d.x, y: () => d.y - 8, r: 38, soft: true, enabled: () => d.on && d.swim <= 0, tap: () => this.tap(d) });
     });
@@ -102,6 +108,7 @@ export class Ducks {
 
   private startSwim(d: Duck, tx: number, ty: number, away: boolean) {
     d.fromX = d.x; d.fromY = d.y; d.toX = tx; d.toY = ty; d.swim = 1; d.away = away;
+    d.rest = away ? 0.45 : 0;
     if (Math.abs(tx - d.x) > 2) d.img.setFlipX(tx < d.x);
     if (away) this.swims++;
   }
@@ -129,13 +136,10 @@ export class Ducks {
         d.x = d.fromX + (d.toX - d.fromX) * p;
         d.y = d.fromY + (d.toY - d.fromY) * p;
         bob += Math.sin(p * Math.PI * 3) * 2;
-        if (d.swim <= 0) {
-          d.x = d.toX; d.y = d.toY;
-          if (d.away) {
-            // Pause a beat, then paddle home.
-            w.time.delayedCall(480, () => { if (this.shown && d.away) { this.startSwim(d, d.hx, d.hy, false); this.returns++; } });
-          }
-        }
+        if (d.swim <= 0) { d.x = d.toX; d.y = d.toY; }
+      } else if (d.away) {
+        d.rest -= dt;
+        if (d.rest <= 0) { this.startSwim(d, d.hx, d.hy, false); this.returns++; }
       } else if (!d.away) {
         // Idle paddle: a tiny figure-eight around home, kept on water.
         const ox = Math.sin(now * 0.55 + d.ph) * 14;
