@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-11-08 12:40 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
+Updated: 2026-11-08 12:45 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -157,10 +157,10 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 
 | Order | Task | Status | ETA live | Estimate (dev days) |
 |---|---|---|---|---|
-| 95 | Village clothesline: colorful laundry on a line near the village (clear of chimes/birdbath/bubble wand); gentle idle sway; tap = flutter + rustle + sparkles; culled; hidden in snowy themes | In progress | 2026-11-08 | 0.25–0.5 |
-| 96 | Pond ducks: 3–4 ducks paddling on the glade pond (clear of frogs); idle bob/paddle; tap = quack + splash and paddle away, then return; hidden in snowy themes | In progress | 2026-11-08 | 0.25–0.5 |
-| 97 | Hills squirrels: 3–4 squirrels along Pinecone Hills (clear of tumbling pinecones); idle nibble; tap = chatter + tail flick; approach = scamper away and return; hidden in snowy themes | In progress | 2026-11-08 | 0.25–0.5 |
-| 98 | Bay minnows: a school of colorful little fish in Seashell Bay shallows (clear of crabs/starfish/sandcastle/gulls); idle swim; tap = scatter then regroup; hidden in snowy themes | In progress | 2026-11-08 | 0.25–0.5 |
+| 95 | Village clothesline: colorful laundry on a line near the village (clear of chimes/birdbath/bubble wand); gentle idle sway; tap = flutter + rustle + sparkles; culled; hidden in snowy themes | Done/Live 35a6ff3 (bundle index-CSo7H7aW.js) | 2026-11-08 | 0.25–0.5 |
+| 96 | Pond ducks: 3–4 ducks paddling on the glade pond (clear of frogs); idle bob/paddle; tap = quack + splash and paddle away, then return; hidden in snowy themes | Done/Live 35a6ff3 (bundle index-CSo7H7aW.js) | 2026-11-08 | 0.25–0.5 |
+| 97 | Hills squirrels: 3–4 squirrels along Pinecone Hills (clear of tumbling pinecones); idle nibble; tap = chatter + tail flick; approach = scamper away and return; hidden in snowy themes | Done/Live 35a6ff3 (bundle index-CSo7H7aW.js) | 2026-11-08 | 0.25–0.5 |
+| 98 | Bay minnows: a school of colorful little fish in Seashell Bay shallows (clear of crabs/starfish/sandcastle/gulls); idle swim; tap = scatter then regroup; hidden in snowy themes | Done/Live 35a6ff3 (bundle index-CSo7H7aW.js) | 2026-11-08 | 0.25–0.5 |
 
 
 ## Recently done
