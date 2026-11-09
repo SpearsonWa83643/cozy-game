@@ -38,13 +38,13 @@ test('little life: ladybugs, glow snails, hens, bay turtles react to taps; snowy
     await page.waitForTimeout(500);
     await page.screenshot({ path: `${SHOTS}/${shot}-idle.png` });
     expect(await cozy(page, `life2Tap('${k}', 0)`)).toBe(true);
-    await page.waitForTimeout(k === 'hen' ? 350 : 700);
+    // A second tap mid-reaction is ignored.
+    expect(await cozy(page, `life2Tap('${k}', 0)`)).toBe(false);
     const s1 = await cozy(page, `life2('${k}')`);
     expect(s1.taps).toBe(1);
     expect(s1.list[0].busy).toBe(true);
+    await page.waitForTimeout(k === 'hen' ? 250 : 600);
     await page.screenshot({ path: `${SHOTS}/${shot}-tap.png` });
-    // A second tap mid-reaction is ignored.
-    expect(await cozy(page, `life2Tap('${k}', 0)`)).toBe(false);
     await expect.poll(async () => (await cozy(page, `life2('${k}')`)).list[0].busy, { timeout: 60_000 }).toBe(false);
   }
   await page.evaluate(() => (window as any).__cozy.setTheme?.('winter'));

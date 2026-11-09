@@ -19,10 +19,10 @@ import type { WorldScene } from './scenes/World';
 export type Kind = 'ladybug' | 'snail' | 'hen' | 'turtle';
 const SNOWY = new Set(['christmas', 'winter']);
 export const LIFE: Record<Kind, { n: number; size: number; reactS: number; snowHide: boolean; tw: number; th: number }> = {
-  ladybug: { n: 4, size: 0.9, reactS: 2.2, snowHide: true, tw: 24, th: 20 },
-  snail: { n: 3, size: 1.0, reactS: 2.4, snowHide: false, tw: 40, th: 30 },
-  hen: { n: 3, size: 1.1, reactS: 1.1, snowHide: true, tw: 40, th: 40 },
-  turtle: { n: 2, size: 1.0, reactS: 3.0, snowHide: true, tw: 44, th: 36 },
+  ladybug: { n: 4, size: 1.4, reactS: 2.2, snowHide: true, tw: 24, th: 20 },
+  snail: { n: 3, size: 1.3, reactS: 2.4, snowHide: false, tw: 40, th: 30 },
+  hen: { n: 3, size: 1.25, reactS: 1.1, snowHide: true, tw: 40, th: 40 },
+  turtle: { n: 2, size: 1.3, reactS: 3.0, snowHide: true, tw: 44, th: 36 },
 };
 type Critter = {
   kind: Kind; img: Phaser.GameObjects.Image; shadow: Phaser.GameObjects.Ellipse;
