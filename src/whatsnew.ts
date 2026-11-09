@@ -3,13 +3,13 @@
 // Keep each bullet short and simple: kids read these.
 // icon: 'wood' | 'fruit' | 'berry' | 'star' | 'heart' (a little picture beside the line).
 
-export const VERSION = '2026-11-08-polish-95-98';
+export const VERSION = '2026-11-09-polish-99-102';
 
 export type WhatsNewItem = { icon: 'wood' | 'fruit' | 'berry' | 'star' | 'heart'; text: string };
 
 export const ITEMS: WhatsNewItem[] = [
-  { icon: 'star', text: 'Village clothesline! Colorful laundry sways by the cottages. Tap it — whoosh, flutter, sparkles!' },
-  { icon: 'heart', text: 'Pond ducks! Little ducks paddle on the pond. Tap one — quack! — and it paddles away, then comes back.' },
-  { icon: 'fruit', text: 'Hills squirrels! Squirrels nibble in Pinecone Hills. Come close and they scamper off!' },
-  { icon: 'berry', text: 'Bay minnows! A sparkly school of little fish in Seashell Bay. Tap them and they scatter, then swim back!' },
+  { icon: 'star', text: 'Meadow ladybugs! Tap a ladybug in Sunflower Meadow and it flies a loop, then lands again.' },
+  { icon: 'berry', text: 'Glowcap snails! Glowing snails in Glowcap Grove. Tap one and it hides in its shell, then peeks out.' },
+  { icon: 'heart', text: 'Village hens! Hens peck by the village. Tap one — cluck! — and it flaps and hops.' },
+  { icon: 'fruit', text: 'Bay turtles! Little sea turtles in Seashell Bay. Tap one and it swims a happy lap.' },
 ];

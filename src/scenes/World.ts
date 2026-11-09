@@ -53,6 +53,7 @@ import { Clothesline } from '../clothesline';
 import { Ducks } from '../ducks';
 import { Squirrels } from '../squirrels';
 import { Minnows } from '../minnows';
+import { LittleLife, type Kind as LifeKind } from '../littleLife';
 import { Mount } from '../mount/mount';
 import { looks } from '../looks/looks';
 import type { ArtStyleId } from '../looks/styleFx';
@@ -171,6 +172,8 @@ export class WorldScene extends Phaser.Scene {
   squirrels!: Squirrels;
   /** 98: bay minnows. */
   minnows!: Minnows;
+  /** 99–102: ladybugs, glow snails, hens, bay turtles. */
+  littleLife!: LittleLife;
   playerShadow!: Phaser.GameObjects.Image;
   solids!: Phaser.Physics.Arcade.StaticGroup;
   keys!: Record<string, Phaser.Input.Keyboard.Key>;
@@ -388,6 +391,7 @@ export class WorldScene extends Phaser.Scene {
     this.ducks = new Ducks(this);
     this.squirrels = new Squirrels(this);
     this.minnows = new Minnows(this);
+    this.littleLife = new LittleLife(this);
     this.dresser = new ThemeDresser(this);
     this.mount = new Mount(this);
     this.skyRings = new SkyRings(this);
@@ -1446,6 +1450,7 @@ export class WorldScene extends Phaser.Scene {
     this.ducks.update(dt);
     this.squirrels.update(dt);
     this.minnows.update(dt);
+    this.littleLife.update(dt);
     this.village.update(dt, time);
     this.dresser.update(time, dt);
     const view = this.cameras.main.worldView;
@@ -1934,6 +1939,9 @@ export class WorldScene extends Phaser.Scene {
       /** 98: bay minnows. */
       minnows() { return self.minnows.stats(); },
       minnowTap() { return self.minnows.tap(); },
+      /** 99–102: little life (ladybug | snail | hen | turtle). */
+      life2(k: LifeKind) { return self.littleLife.stats(k); },
+      life2Tap(k: LifeKind, i: number) { const c = self.littleLife.of(k)[i]; if (!c) return false; return self.littleLife.tap(c); },
       ringsSpawn() { self.skyRings.spawn(); return self.skyRings.stats(); },
       crabTap(i: number) { const c = self.crabs.crabs[i]; if (!c) return false; self.crabs.tap(c); return true; },
       /** 33: garden pinwheels (spin in rad/s). */
