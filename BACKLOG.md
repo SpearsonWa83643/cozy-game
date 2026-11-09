@@ -167,10 +167,10 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 
 | Order | Task | Status | ETA live | Estimate (dev days) |
 |---|---|---|---|---|
-| 99 | Meadow ladybugs: 4 ladybugs north of the Sunflower Meadow path (clear of bunnies/dragonflies); idle wiggle; tap = wings open, looping flight, land again + ting; hidden in snowy themes | In progress (wip/polish-99-102) | 2026-11-09 | 0.25 |
-| 100 | Glowcap snails: 3 glowing-shell snails outside the Glowcap fairy ring (clear of puff mushrooms); slow idle creep; tap = tuck into shell, then peek out; all themes | In progress (wip/polish-99-102) | 2026-11-09 | 0.25 |
-| 101 | Village hens: 3 hens peck on the village entry lawn (clear of the sign/board); tap = cluck, flap and hop + feathers; hidden in snowy themes | In progress (wip/polish-99-102) | 2026-11-09 | 0.25 |
-| 102 | Bay turtles: 2 little sea turtles in Seashell Bay's eastern shallows (clear of minnows/gulls/crabs/starfish/sandcastle); idle paddle; tap = swim a lap + splash; hidden in snowy themes | In progress (wip/polish-99-102) | 2026-11-09 | 0.25 |
+| 99 | Meadow ladybugs: 4 ladybugs north of the Sunflower Meadow path (clear of bunnies/dragonflies); idle wiggle; tap = wings open, looping flight, land again + ting; hidden in snowy themes | Done/Live d250a3b (bundle index-CbrzXu3L.js) | 2026-11-09 | 0.25 |
+| 100 | Glowcap snails: 3 glowing-shell snails outside the Glowcap fairy ring (clear of puff mushrooms); slow idle creep; tap = tuck into shell, then peek out; all themes | Done/Live d250a3b (bundle index-CbrzXu3L.js) | 2026-11-09 | 0.25 |
+| 101 | Village hens: 3 hens peck on the village entry lawn (clear of the sign/board); tap = cluck, flap and hop + feathers; hidden in snowy themes | Done/Live d250a3b (bundle index-CbrzXu3L.js) | 2026-11-09 | 0.25 |
+| 102 | Bay turtles: 2 little sea turtles in Seashell Bay's eastern shallows (clear of minnows/gulls/crabs/starfish/sandcastle); idle paddle; tap = swim a lap + splash; hidden in snowy themes | Done/Live d250a3b (bundle index-CbrzXu3L.js) | 2026-11-09 | 0.25 |
 
 ## Recently done
 
