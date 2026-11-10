@@ -223,7 +223,7 @@ export class LittleLife {
     // 103: village lawn, a little way off the notice board (hens sit by the entry).
     const ct: [number, number][] = [];
     for (let i = 0; i < 90; i++) { const a = 1.9 + i * 2.39996, r = 130 + (i % 5) * 30; ct.push([VILLAGE_BOARD.x + Math.cos(a) * r, VILLAGE_BOARD.y + Math.sin(a) * r * 0.6]); }
-    pick('cat', ct, (x, y) => land(x, y) && Math.hypot(x - VILLAGE_SIGN.x, y - VILLAGE_SIGN.y) > 90, 90, 100);
+    pick('cat', ct, (x, y) => land(x, y) && y > VILLAGE_BOARD.y + 40 && Math.hypot(x - VILLAGE_BOARD.x, y - VILLAGE_BOARD.y) > 150 && Math.hypot(x - VILLAGE_SIGN.x, y - VILLAGE_SIGN.y) > 110, 90, 100);
     // 104: south of the Pinecone Hills path (squirrels live on the north side).
     const sh: [number, number][] = [];
     for (let s = 1; s < PATH_HILLS.length - 1; s++) for (const t of [0.5, 0.25, 0.75]) for (const dy of [170, 210, 250, 140]) {
