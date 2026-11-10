@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-11-08 12:45 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
+Updated: 2026-11-10 1:00 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -171,6 +171,15 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 | 100 | Glowcap snails: 3 glowing-shell snails outside the Glowcap fairy ring (clear of puff mushrooms); slow idle creep; tap = tuck into shell, then peek out; all themes | Done/Live d250a3b (bundle index-CbrzXu3L.js) | 2026-11-09 | 0.25 |
 | 101 | Village hens: 3 hens peck on the village entry lawn (clear of the sign/board); tap = cluck, flap and hop + feathers; hidden in snowy themes | Done/Live d250a3b (bundle index-CbrzXu3L.js) | 2026-11-09 | 0.25 |
 | 102 | Bay turtles: 2 little sea turtles in Seashell Bay's eastern shallows (clear of minnows/gulls/crabs/starfish/sandcastle); idle paddle; tap = swim a lap + splash; hidden in snowy themes | Done/Live d250a3b (bundle index-CbrzXu3L.js) | 2026-11-09 | 0.25 |
+
+## Self-added polish (2026-11-10; backlog empty; no Walker decision or spending needed)
+
+| Order | Task | Status | ETA live | Estimate (dev days) |
+|---|---|---|---|---|
+| 103 | Village goats: 2 little goats on the grass along the village's south edge (west of the entry path, clear of hens/board; the existing step cat is untouched); idle head-bob; tap = bleat + hop-and-kick; all themes | In progress (wip/polish-103-106, tests passing) | 2026-11-10 | 0.25 |
+| 104 | Hills sheep: 3 fluffy sheep graze south of the Pinecone Hills path (squirrels are north); tap = soft baa + bounce with wool puffs; all themes | In progress (wip/polish-103-106, tests passing) | 2026-11-10 | 0.25 |
+| 105 | Lake otters: 2 otters float on their backs on Shellwater Lake's west side (clear of pier and rowboat); tap = playful roll + splash + giggle; hidden in snowy themes (lake freezes) | In progress (wip/polish-103-106, tests passing) | 2026-11-10 | 0.25 |
+| 106 | Garden mole: a molehill on the lawn south of the cottage garden with the mole's nose peeking out; tap = mole pops up, looks around, ducks back; hidden in snowy themes | In progress (wip/polish-103-106, tests passing) | 2026-11-10 | 0.25 |
 
 ## Recently done
 

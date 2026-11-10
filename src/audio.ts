@@ -805,6 +805,12 @@ class Synth {
     }
   }
 
+  /** 103/104: a soft little sheep "baa" / goat bleat (wobbly, quiet). */
+  baa(pitch = 1) {
+    if (!this.ready) return;
+    for (let i = 0; i < 6; i++) this.voice((420 - i * 12 + (i % 2) * 26) * pitch, i * 0.055, 0.03, 0.07, 'sawtooth', 0.01);
+  }
+
   blip() {
     if (!this.ready) return;
     this.voice(880, 0, 0.03, 0.12, 'triangle');
