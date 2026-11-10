@@ -234,10 +234,10 @@ export class LittleLife {
     const ot: [number, number][] = [];
     for (const a of [Math.PI, Math.PI - 0.3, Math.PI + 0.3, Math.PI - 0.6, Math.PI + 0.6, -Math.PI / 2, Math.PI / 2]) for (const k of [0.5, 0.4, 0.6, 0.3, 0.7]) ot.push([LAKE.x + Math.cos(a) * LAKE.rx * k, LAKE.y + Math.sin(a) * LAKE.ry * k]);
     pick('otter', ot, (x, y) => lakeValue(x, y) < 0.8 && lakeValue(x + 60, y) < 0.9 && lakeValue(x - 60, y) < 0.9 && Math.hypot(x - PIER.x, y - PIER.y1) > 350, 160, 170);
-    // 106: beside the cottage garden (clear of the flower pots).
+    // 106: on the lawn just south of the cottage garden (clear of the flower pots, their sign and chest).
     const ml: [number, number][] = [];
-    for (let i = 0; i < 60; i++) { const a = 0.5 + i * 2.39996, r = 90 + (i % 5) * 25; ml.push([GARDEN.x + Math.cos(a) * r, GARDEN.y + GARDEN.h / 2 + Math.sin(a) * r * 0.7]); }
-    pick('mole', ml, (x, y) => land(x, y) && POTS.every((q) => Math.hypot(q.x - x, q.y - y) > 70) && Math.hypot(x - COTTAGE.x, y - COTTAGE.y) > 120 && (x < GARDEN.x - GARDEN.w / 2 - 20 || x > GARDEN.x + GARDEN.w / 2 + 20 || y > GARDEN.y + GARDEN.h / 2 + 20), 70, 100);
+    for (let i = 0; i < 120; i++) { const a = 0.5 + i * 2.39996, r = 60 + (i % 8) * 30; ml.push([GARDEN.x + 160 + Math.cos(a) * r, GARDEN.y + 320 + Math.sin(a) * r * 0.7]); }
+    pick('mole', ml, (x, y) => land(x, y) && y > GARDEN.y + GARDEN.h + 20 && POTS.every((q) => Math.hypot(q.x - x, q.y - y) > 70) && Math.hypot(x - COTTAGE.x, y - COTTAGE.y) > 120, 70, 100);
     const onTheme = () => this.retheme();
     themeEvents.on('change', onTheme);
     w.events.once('shutdown', () => themeEvents.off('change', onTheme));
