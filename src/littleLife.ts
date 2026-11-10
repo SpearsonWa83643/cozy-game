@@ -8,7 +8,7 @@
 // 102 Bay turtles: little sea turtles in Seashell Bay shallows (clear of the minnows); tap = a happy
 //     swim lap around home with a splash. Hidden in snow.
 // 103–106: more little life (same engine):
-// 103 Village cat: a cat naps curled up on the village lawn; tap = big stretch, a purr and hearts. All themes.
+// 103 Village cat: a cat naps curled up on the grass by the village's south edge; tap = big stretch, a purr and hearts. All themes.
 // 104 Hills sheep: fluffy sheep graze south of the Pinecone Hills path; tap = baa-bounce with wool puffs. All themes.
 // 105 Lake otters: otters float on their backs on Shellwater Lake (west side, away from the pier and boat);
 //     tap = a playful roll + splash. Hidden in snow (the lake freezes).
@@ -19,7 +19,7 @@ import Phaser from 'phaser';
 import { Ctx, canvasTex, frameScale, S } from './art';
 import { sfx } from './audio';
 import { theme, themeEvents } from './theme';
-import { PATH_MEADOW, GROVE_RING, VILLAGE_ENTRY, VILLAGE_SIGN, VILLAGE_BOARD, BAY, PATH_HILLS, LAKE, PIER, GARDEN, COTTAGE, POTS } from './layout';
+import { PATH_MEADOW, GROVE_RING, VILLAGE, VILLAGE_ENTRY, VILLAGE_SIGN, VILLAGE_BOARD, BAY, PATH_HILLS, LAKE, PIER, GARDEN, COTTAGE, POTS } from './layout';
 import { lakeValue } from './geo';
 import type { WorldScene } from './scenes/World';
 
@@ -220,10 +220,10 @@ export class LittleLife {
     const tu: [number, number][] = [];
     for (const a of [0, 0.3, -0.3, 0.6, -0.6, 0.9, 5.0, 1.2]) for (const k of [0.55, 0.45, 0.65, 0.35, 0.75]) tu.push([BAY.x + Math.cos(a) * BAY.rx * k, BAY.y + Math.sin(a) * BAY.ry * k]);
     pick('turtle', tu, (x, y) => lakeValue(x, y) < 0.8 && lakeValue(x + 60, y) < 0.9 && lakeValue(x - 60, y) < 0.9, 220, 200);
-    // 103: village lawn, a little way off the notice board (hens sit by the entry).
+    // 103: on the grass along the village's south edge, west of the entry path (hens sit by the entry).
     const ct: [number, number][] = [];
-    for (let i = 0; i < 90; i++) { const a = 1.9 + i * 2.39996, r = 130 + (i % 5) * 30; ct.push([VILLAGE_BOARD.x + Math.cos(a) * r, VILLAGE_BOARD.y + Math.sin(a) * r * 0.6]); }
-    pick('cat', ct, (x, y) => land(x, y) && y > VILLAGE_BOARD.y + 40 && Math.hypot(x - VILLAGE_BOARD.x, y - VILLAGE_BOARD.y) > 150 && Math.hypot(x - VILLAGE_SIGN.x, y - VILLAGE_SIGN.y) > 110, 90, 100);
+    for (let i = 0; i < 120; i++) { const a = 1.9 + i * 2.39996, r = 40 + (i % 8) * 28; ct.push([VILLAGE_ENTRY.x - 330 + Math.cos(a) * r, VILLAGE.y + VILLAGE.rows * VILLAGE.cell + 50 + Math.sin(a) * r * 0.5]); }
+    pick('cat', ct, (x, y) => land(x, y) && x < VILLAGE_ENTRY.x - 140 && Math.hypot(x - VILLAGE_BOARD.x, y - VILLAGE_BOARD.y) > 200, 90, 100);
     // 104: south of the Pinecone Hills path (squirrels live on the north side).
     const sh: [number, number][] = [];
     for (let s = 1; s < PATH_HILLS.length - 1; s++) for (const t of [0.5, 0.25, 0.75]) for (const dy of [170, 210, 250, 140]) {
