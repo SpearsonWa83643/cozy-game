@@ -176,7 +176,7 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 
 | Order | Task | Status | ETA live | Estimate (dev days) |
 |---|---|---|---|---|
-| 103 | Village cat: a cat naps curled up on the village lawn in front of the notice board; gentle breathing; tap = big stretch, purr and pink sparkles; all themes | In progress (wip/polish-103-106, tests passing) | 2026-11-10 | 0.25 |
+| 103 | Village goats: 2 little goats on the grass along the village's south edge (west of the entry path, clear of hens/board; the existing step cat is untouched); idle head-bob; tap = bleat + hop-and-kick; all themes | In progress (wip/polish-103-106, tests passing) | 2026-11-10 | 0.25 |
 | 104 | Hills sheep: 3 fluffy sheep graze south of the Pinecone Hills path (squirrels are north); tap = soft baa + bounce with wool puffs; all themes | In progress (wip/polish-103-106, tests passing) | 2026-11-10 | 0.25 |
 | 105 | Lake otters: 2 otters float on their backs on Shellwater Lake's west side (clear of pier and rowboat); tap = playful roll + splash + giggle; hidden in snowy themes (lake freezes) | In progress (wip/polish-103-106, tests passing) | 2026-11-10 | 0.25 |
 | 106 | Garden mole: a molehill on the lawn south of the cottage garden with the mole's nose peeking out; tap = mole pops up, looks around, ducks back; hidden in snowy themes | In progress (wip/polish-103-106, tests passing) | 2026-11-10 | 0.25 |

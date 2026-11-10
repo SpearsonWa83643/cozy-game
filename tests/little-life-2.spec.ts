@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 
-// 103–106: more little life — village cat, hills sheep, lake otters, garden mole.
+// 103–106: more little life — village goats, hills sheep, lake otters, garden mole.
 const FILE = pathToFileURL(resolve('dist-single/index.html')).href;
 const SHOTS = process.env.POLISH_SHOTS ?? 'screenshots';
 const cozy = (page: Page, expr: string) => page.evaluate(`(window.__cozy.${expr})`) as Promise<any>;
@@ -21,10 +21,10 @@ async function boot(page: Page, errors: string[]) {
 }
 
 const KINDS: [string, number, string, boolean][] = [
-  ['cat', 1, 'cat', false], ['sheep', 2, 'sheep', false], ['otter', 1, 'otters', true], ['mole', 1, 'mole', true],
+  ['goat', 2, 'goats', false], ['sheep', 2, 'sheep', false], ['otter', 1, 'otters', true], ['mole', 1, 'mole', true],
 ];
 
-test('more little life: cat, sheep, otters, mole react to taps; snowy hiding', async ({ page }) => {
+test('more little life: goats, sheep, otters, mole react to taps; snowy hiding', async ({ page }) => {
   test.setTimeout(400_000);
   const errors: string[] = [];
   await boot(page, errors);

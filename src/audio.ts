@@ -805,10 +805,10 @@ class Synth {
     }
   }
 
-  /** 104: a soft little sheep "baa" (wobbly, quiet). */
-  baa() {
+  /** 103/104: a soft little sheep "baa" / goat bleat (wobbly, quiet). */
+  baa(pitch = 1) {
     if (!this.ready) return;
-    for (let i = 0; i < 6; i++) this.voice(420 - i * 12 + (i % 2) * 26, i * 0.055, 0.03, 0.07, 'sawtooth', 0.01);
+    for (let i = 0; i < 6; i++) this.voice((420 - i * 12 + (i % 2) * 26) * pitch, i * 0.055, 0.03, 0.07, 'sawtooth', 0.01);
   }
 
   blip() {

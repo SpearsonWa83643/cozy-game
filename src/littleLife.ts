@@ -8,7 +8,8 @@
 // 102 Bay turtles: little sea turtles in Seashell Bay shallows (clear of the minnows); tap = a happy
 //     swim lap around home with a splash. Hidden in snow.
 // 103–106: more little life (same engine):
-// 103 Village cat: a cat naps curled up on the grass by the village's south edge; tap = big stretch, a purr and hearts. All themes.
+// 103 Village goats: two little goats on the grass by the village's south edge; tap = a bleat and a playful
+//     hop-and-kick with a head bob. All themes.
 // 104 Hills sheep: fluffy sheep graze south of the Pinecone Hills path; tap = baa-bounce with wool puffs. All themes.
 // 105 Lake otters: otters float on their backs on Shellwater Lake (west side, away from the pier and boat);
 //     tap = a playful roll + splash. Hidden in snow (the lake freezes).
@@ -23,14 +24,14 @@ import { PATH_MEADOW, GROVE_RING, VILLAGE, VILLAGE_ENTRY, VILLAGE_SIGN, VILLAGE_
 import { lakeValue } from './geo';
 import type { WorldScene } from './scenes/World';
 
-export type Kind = 'ladybug' | 'snail' | 'hen' | 'turtle' | 'cat' | 'sheep' | 'otter' | 'mole';
+export type Kind = 'ladybug' | 'snail' | 'hen' | 'turtle' | 'goat' | 'sheep' | 'otter' | 'mole';
 const SNOWY = new Set(['christmas', 'winter']);
 export const LIFE: Record<Kind, { n: number; size: number; reactS: number; snowHide: boolean; tw: number; th: number }> = {
   ladybug: { n: 4, size: 1.4, reactS: 2.2, snowHide: true, tw: 24, th: 20 },
   snail: { n: 3, size: 1.3, reactS: 2.4, snowHide: false, tw: 40, th: 30 },
   hen: { n: 3, size: 1.25, reactS: 1.1, snowHide: true, tw: 40, th: 40 },
   turtle: { n: 2, size: 1.3, reactS: 3.0, snowHide: true, tw: 44, th: 36 },
-  cat: { n: 1, size: 1.35, reactS: 2.6, snowHide: false, tw: 48, th: 36 },
+  goat: { n: 2, size: 1.35, reactS: 1.6, snowHide: false, tw: 48, th: 40 },
   sheep: { n: 3, size: 1.35, reactS: 1.4, snowHide: false, tw: 48, th: 40 },
   otter: { n: 2, size: 1.3, reactS: 2.2, snowHide: true, tw: 48, th: 30 },
   mole: { n: 1, size: 1.35, reactS: 2.8, snowHide: true, tw: 40, th: 40 },
@@ -99,29 +100,20 @@ function turtle(c: Ctx) {
   for (const [x, y, r] of [[22, 19, 4.5], [15, 14, 3], [29, 14, 3], [15, 24, 3], [29, 24, 3]] as const) { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); }
 }
 
-function cat(c: Ctx, up: boolean) {
-  c.fillStyle = '#f0a050'; c.strokeStyle = '#7a4a20'; c.lineWidth = 1.5;
-  if (!up) {
-    // curled-up nap: round body, tail wrapped around, head tucked, closed eyes
-    c.beginPath(); c.ellipse(24, 26, 17, 9, 0, 0, Math.PI * 2); c.fill(); c.stroke();
-    c.beginPath(); c.moveTo(8, 28); c.quadraticCurveTo(10, 36, 26, 35); c.quadraticCurveTo(36, 35, 40, 30); c.lineWidth = 4; c.stroke(); c.lineWidth = 1.5;
-    c.beginPath(); c.arc(36, 22, 7.5, 0, Math.PI * 2); c.fill(); c.stroke();
-    c.beginPath(); c.moveTo(31, 17); c.lineTo(32, 10); c.lineTo(36, 15); c.moveTo(38, 15); c.lineTo(42, 10); c.lineTo(42, 18); c.fill(); c.stroke();
-    c.strokeStyle = '#3a2a1a'; c.lineWidth = 1.1;
-    c.beginPath(); c.arc(33.5, 22, 1.6, 0.2, Math.PI - 0.2); c.moveTo(40, 22); c.arc(38.5, 22, 1.6, 0.2, Math.PI - 0.2); c.stroke();
-    c.strokeStyle = '#d07a30'; c.lineWidth = 1.4;
-    for (const x of [16, 22, 28]) { c.beginPath(); c.moveTo(x, 18); c.lineTo(x - 1, 23); c.stroke(); }
-  } else {
-    // big stretch: front low, back up, tail high, eyes open
-    c.beginPath(); c.moveTo(6, 30); c.quadraticCurveTo(20, 10, 34, 24); c.lineTo(34, 30); c.closePath(); c.fill(); c.stroke();
-    c.beginPath(); c.moveTo(8, 24); c.quadraticCurveTo(2, 10, 8, 4); c.lineWidth = 4; c.stroke(); c.lineWidth = 1.5;
-    c.beginPath(); c.arc(38, 25, 7, 0, Math.PI * 2); c.fill(); c.stroke();
-    c.beginPath(); c.moveTo(33, 21); c.lineTo(34, 14); c.lineTo(38, 18); c.moveTo(40, 18); c.lineTo(44, 14); c.lineTo(44, 22); c.fill(); c.stroke();
-    c.strokeStyle = '#7a4a20';
-    for (const x of [8, 13, 31, 36]) { c.beginPath(); c.moveTo(x, 29); c.lineTo(x, 34); c.stroke(); }
-    c.fillStyle = '#2a2a1a'; c.beginPath(); c.arc(36, 24, 1.3, 0, Math.PI * 2); c.arc(41, 24, 1.3, 0, Math.PI * 2); c.fill();
-    c.fillStyle = '#ff9aa8'; c.beginPath(); c.arc(38.5, 27.5, 1.2, 0, Math.PI * 2); c.fill();
-  }
+function goat(c: Ctx, hop: boolean) {
+  c.strokeStyle = '#5a4a3a'; c.lineWidth = 2;
+  for (const x of [13, 18, 29, 34]) { c.beginPath(); c.moveTo(x, 28); c.lineTo(x + (hop ? (x < 24 ? -3 : 3) : 0), 38); c.stroke(); }
+  c.fillStyle = '#f4ead8'; c.strokeStyle = '#8a7050'; c.lineWidth = 1.4;
+  c.beginPath(); c.ellipse(23, 23, 14, 8, 0, 0, Math.PI * 2); c.fill(); c.stroke();
+  c.fillStyle = '#c89a68'; c.beginPath(); c.ellipse(20, 21, 6, 4, 0.3, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#f4ead8'; c.beginPath(); c.moveTo(9, 20); c.lineTo(5, 15); c.lineTo(10, 17); c.closePath(); c.fill(); c.stroke();
+  const hy = hop ? 9 : 13;
+  c.beginPath(); c.ellipse(39, hy + 3, 6, 7, 0.4, 0, Math.PI * 2); c.fill(); c.stroke();
+  c.strokeStyle = '#7a6a5a'; c.lineWidth = 2.2; c.beginPath(); c.moveTo(36, hy - 3); c.quadraticCurveTo(33, hy - 9, 30, hy - 8); c.moveTo(39, hy - 3); c.quadraticCurveTo(38, hy - 10, 35, hy - 10); c.stroke();
+  c.fillStyle = '#f4ead8'; c.strokeStyle = '#8a7050'; c.lineWidth = 1.2; c.beginPath(); c.ellipse(33, hy + 1, 4, 1.8, -0.4, 0, Math.PI * 2); c.fill(); c.stroke();
+  c.fillStyle = '#e8dcc4'; c.beginPath(); c.moveTo(40, hy + 9); c.lineTo(42, hy + 15); c.lineTo(44, hy + 8); c.closePath(); c.fill();
+  c.fillStyle = '#1a1a1a'; c.beginPath(); c.arc(41, hy + 1, 1.3, 0, Math.PI * 2); c.fill();
+  c.fillStyle = '#ffb0b8'; c.beginPath(); c.arc(44, hy + 6, 1.2, 0, Math.PI * 2); c.fill();
 }
 function sheep(c: Ctx, happy: boolean) {
   c.strokeStyle = '#3a3a3a'; c.lineWidth = 2;
@@ -171,18 +163,18 @@ const TEX: [string, Kind, (c: Ctx) => void][] = [
   ['ll_snail', 'snail', (c) => snail(c, true)], ['ll_snail_in', 'snail', (c) => snail(c, false)],
   ['ll_hen', 'hen', (c) => hen(c, false)], ['ll_hen_flap', 'hen', (c) => hen(c, true)],
   ['ll_turtle', 'turtle', (c) => turtle(c)],
-  ['ll_cat', 'cat', (c) => cat(c, false)], ['ll_cat_up', 'cat', (c) => cat(c, true)],
+  ['ll_goat', 'goat', (c) => goat(c, false)], ['ll_goat_hop', 'goat', (c) => goat(c, true)],
   ['ll_sheep', 'sheep', (c) => sheep(c, false)], ['ll_sheep_baa', 'sheep', (c) => sheep(c, true)],
   ['ll_otter', 'otter', (c) => otter(c, false)], ['ll_otter_roll', 'otter', (c) => otter(c, true)],
   ['ll_mole', 'mole', (c) => mole(c, false)], ['ll_mole_up', 'mole', (c) => mole(c, true)],
 ];
 const KEY: Record<Kind, [string, string]> = { ladybug: ['ll_lady', 'll_lady_fly'], snail: ['ll_snail', 'll_snail_in'], hen: ['ll_hen', 'll_hen_flap'], turtle: ['ll_turtle', 'll_turtle'],
-  cat: ['ll_cat', 'll_cat_up'], sheep: ['ll_sheep', 'll_sheep_baa'], otter: ['ll_otter', 'll_otter_roll'], mole: ['ll_mole', 'll_mole_up'] };
+  goat: ['ll_goat', 'll_goat_hop'], sheep: ['ll_sheep', 'll_sheep_baa'], otter: ['ll_otter', 'll_otter_roll'], mole: ['ll_mole', 'll_mole_up'] };
 
 export class LittleLife {
   list: Critter[] = [];
   /** Test hooks. */
-  taps: Record<Kind, number> = { ladybug: 0, snail: 0, hen: 0, turtle: 0, cat: 0, sheep: 0, otter: 0, mole: 0 };
+  taps: Record<Kind, number> = { ladybug: 0, snail: 0, hen: 0, turtle: 0, goat: 0, sheep: 0, otter: 0, mole: 0 };
   constructor(private w: WorldScene) {
     for (const [key, kind, draw] of TEX) if (!w.textures.exists(key)) canvasTex(w, key, LIFE[kind].tw, LIFE[kind].th, draw, S, true);
     const busy: number[][] = [...w.interactables.map((it) => [it.x, it.y]), ...w.tappables.map((t) => [t.x(), t.y()])];
@@ -220,10 +212,11 @@ export class LittleLife {
     const tu: [number, number][] = [];
     for (const a of [0, 0.3, -0.3, 0.6, -0.6, 0.9, 5.0, 1.2]) for (const k of [0.55, 0.45, 0.65, 0.35, 0.75]) tu.push([BAY.x + Math.cos(a) * BAY.rx * k, BAY.y + Math.sin(a) * BAY.ry * k]);
     pick('turtle', tu, (x, y) => lakeValue(x, y) < 0.8 && lakeValue(x + 60, y) < 0.9 && lakeValue(x - 60, y) < 0.9, 220, 200);
-    // 103: on the grass along the village's south edge, west of the entry path (hens sit by the entry).
+    // 103: on the grass along the village's south edge, west of the entry path (hens sit by the entry; the
+    //     village cat naps on the cottage step).
     const ct: [number, number][] = [];
     for (let i = 0; i < 120; i++) { const a = 1.9 + i * 2.39996, r = 40 + (i % 8) * 28; ct.push([VILLAGE_ENTRY.x - 330 + Math.cos(a) * r, VILLAGE.y + VILLAGE.rows * VILLAGE.cell + 50 + Math.sin(a) * r * 0.5]); }
-    pick('cat', ct, (x, y) => land(x, y) && x < VILLAGE_ENTRY.x - 140 && Math.hypot(x - VILLAGE_BOARD.x, y - VILLAGE_BOARD.y) > 200, 90, 100);
+    pick('goat', ct, (x, y) => land(x, y) && x < VILLAGE_ENTRY.x - 140 && Math.hypot(x - VILLAGE_BOARD.x, y - VILLAGE_BOARD.y) > 200, 90, 120);
     // 104: south of the Pinecone Hills path (squirrels live on the north side).
     const sh: [number, number][] = [];
     for (let s = 1; s < PATH_HILLS.length - 1; s++) for (const t of [0.5, 0.25, 0.75]) for (const dy of [170, 210, 250, 140]) {
@@ -268,7 +261,7 @@ export class LittleLife {
       case 'snail': sfx.blip(); w.burst(c.x, c.y - 16, 0xc0f0ff, 8, 'spark'); break;
       case 'hen': sfx.chirp(); sfx.rustle(); w.burst(c.x, c.y - 24, 0xfff6e0, 7); break;
       case 'turtle': sfx.splash(false); w.burst(c.x, c.y, 0xb0f0ff, 10, 'spark'); break;
-      case 'cat': sfx.purr(); w.burst(c.x, c.y - 28, 0xff9ab8, 7, 'spark'); break;
+      case 'goat': sfx.baa(1.35); w.burst(c.x, c.y - 20, 0xfff0c0, 7, 'spark'); break;
       case 'sheep': sfx.baa(); w.burst(c.x, c.y - 20, 0xffffff, 8); break;
       case 'otter': sfx.splash(false); sfx.giggleSoft(); w.burst(c.x, c.y, 0xb0f0ff, 10, 'spark'); break;
       case 'mole': sfx.dig(); w.burst(c.x, c.y - 8, 0xa0704a, 7); break;
@@ -310,9 +303,9 @@ export class LittleLife {
           else { dx = Math.sin(now * 0.4 + c.ph) * 8; lift = Math.sin(now * 0.6 + c.ph) * 4; rot = Math.sin(now * 0.4 + c.ph) * 0.2; }
           break;
         }
-        case 'cat':
-          if (c.t > 0) { sx = 1 + Math.sin(p * Math.PI) * 0.12; lift = p > 0.6 && p < 0.8 ? Math.sin((p - 0.6) * 5 * Math.PI) * 12 : 0; if (p > 0.85) c.img.setTexture(KEY.cat[0]); }
-          else { sy = 1 + Math.sin(now * 1.6 + c.ph) * 0.04; sx = 1 - Math.sin(now * 1.6 + c.ph) * 0.02; }
+        case 'goat':
+          if (c.t > 0) { lift = Math.abs(Math.sin(p * Math.PI * 2)) * 22; rot = (c.img.flipX ? 1 : -1) * Math.sin(p * Math.PI * 2) * 0.25; if (p > 0.85) c.img.setTexture(KEY.goat[0]); }
+          else { const bob = Math.max(0, Math.sin(now * 1.1 + c.ph)); rot = (c.img.flipX ? -1 : 1) * bob * bob * 0.18; dx = Math.sin(now * 0.22 + c.ph) * 12; }
           break;
         case 'sheep':
           if (c.t > 0) { lift = Math.abs(Math.sin(p * Math.PI * 2)) * 18; rot = Math.sin(p * Math.PI * 4) * 0.12; }
