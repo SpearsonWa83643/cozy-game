@@ -811,6 +811,12 @@ class Synth {
     for (let i = 0; i < 6; i++) this.voice((420 - i * 12 + (i % 2) * 26) * pitch, i * 0.055, 0.03, 0.07, 'sawtooth', 0.01);
   }
 
+  /** 108: a tiny field-mouse squeak. */
+  squeak() {
+    if (!this.ready) return;
+    this.voice(2100, 0, 0.025, 0.06, 'sine'); this.voice(2500, 0.09, 0.02, 0.05, 'sine');
+  }
+
   blip() {
     if (!this.ready) return;
     this.voice(880, 0, 0.03, 0.12, 'triangle');
