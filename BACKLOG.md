@@ -185,10 +185,10 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 
 | Order | Task | Status | ETA live | Estimate (dev days) |
 |---|---|---|---|---|
-| 107 | Orchard hedgehogs: 2 hedgehogs snuffle beside the southern orchard path; tap = curl into a spiky ball, roll, uncurl; hidden in snowy themes (hibernating) | Shipping (merge to main today) | 2026-11-11 | 0.25 |
-| 108 | Windmill mice: 2 field mice on the grass by the windmill; tap = squeak + happy hop with a crumb; all themes | Shipping (merge to main today) | 2026-11-11 | 0.25 |
-| 109 | Riverside beaver: a beaver on the riverbank by the riverside path; tap = tail slap + splash; hidden in snowy themes | Shipping (merge to main today) | 2026-11-11 | 0.25 |
-| 110 | Forest fawns: 2 spotted fawns south of the forest path; tap = ears flick + springy leap with hearts; all themes | Shipping (merge to main today) | 2026-11-11 | 0.25 |
+| 107 | Orchard hedgehogs: 2 hedgehogs snuffle beside the southern orchard path; tap = curl into a spiky ball, roll, uncurl; hidden in snowy themes (hibernating) | Done/Live e4e5943 (bundle index-Eq3gNdXF.js) | 2026-11-11 | 0.25 |
+| 108 | Windmill mice: 2 field mice on the grass by the windmill; tap = squeak + happy hop with a crumb; all themes | Done/Live e4e5943 (bundle index-Eq3gNdXF.js) | 2026-11-11 | 0.25 |
+| 109 | Riverside beaver: a beaver on the riverbank by the riverside path; tap = tail slap + splash; hidden in snowy themes | Done/Live e4e5943 (bundle index-Eq3gNdXF.js) | 2026-11-11 | 0.25 |
+| 110 | Forest fawns: 2 spotted fawns south of the forest path; tap = ears flick + springy leap with hearts; all themes | Done/Live e4e5943 (bundle index-Eq3gNdXF.js) | 2026-11-11 | 0.25 |
 
 ## Recently done
 
