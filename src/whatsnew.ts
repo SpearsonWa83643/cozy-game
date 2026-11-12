@@ -3,12 +3,12 @@
 // Keep each bullet short and simple: kids read these.
 // icon: 'wood' | 'fruit' | 'berry' | 'star' | 'heart' (a little picture beside the line).
 
-export const VERSION = '2026-11-11-polish-107-110';
+export const VERSION = '2026-11-12-polish-111-114';
 
 export type WhatsNewItem = { icon: 'wood' | 'fruit' | 'berry' | 'star' | 'heart'; text: string };
 export const ITEMS: WhatsNewItem[] = [
-  { icon: 'berry', text: 'Orchard hedgehogs! Tap one and it curls into a spiky ball and rolls.' },
-  { icon: 'star', text: 'Windmill mice! Little mice play by the windmill. Tap one — squeak, hop!' },
-  { icon: 'fruit', text: 'River beaver! Find the beaver by the river. Tap it for a big tail SPLASH.' },
-  { icon: 'heart', text: 'Forest fawns! Baby deer by the forest path. Tap one and it leaps for joy.' },
+  { icon: 'heart', text: 'Lake swans! Swans glide on Shellwater Lake. Tap one and it lifts its wings — honk!' },
+  { icon: 'berry', text: 'Village piglets! Tap a piglet for an oink and a muddy happy wiggle.' },
+  { icon: 'star', text: 'Meadow bumblebees! Fuzzy bees buzz over the meadow flowers. Tap one — loop-the-loop!' },
+  { icon: 'fruit', text: 'River heron! A tall heron waits by the river. Tap it and it catches a little fish.' },
 ];

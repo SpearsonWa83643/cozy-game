@@ -195,7 +195,7 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 | Order | Task | Status | ETA live | Estimate (dev days) |
 |---|---|---|---|---|
 | 111 | Lake swans: 2 white swans glide on Shellwater Lake's south side (clear of the otters, pier and rowboat); tap = wings up + soft honk + ripple; hidden in snowy themes (lake freezes) | In progress | 2026-11-12 | 0.25 |
-| 112 | Village piglets: 2 pink piglets on the grass along the village's south edge, east of the entry path (clear of hens, goats and the board); tap = oink + happy mud wiggle with mud splats; all themes | In progress | 2026-11-12 | 0.25 |
+| 112 | Village piglets: 2 pink piglets on the grass along the village's south-west edge, west of the goats (clear of hens and the board); tap = oink + happy mud wiggle with mud splats; all themes | In progress | 2026-11-12 | 0.25 |
 | 113 | Meadow bumblebees: 3 fuzzy bumblebees hover over flowers south of the Sunflower Meadow path (ladybugs are north); tap = buzzy loop-the-loop + pollen sparkles; hidden in snowy themes | In progress | 2026-11-12 | 0.25 |
 | 114 | River heron: a tall grey heron stands on the river's east bank (well away from the beaver); tap = beak dip, catches a little fish, gulp + sparkle; hidden in snowy themes (flies south) | In progress | 2026-11-12 | 0.25 |
 
