@@ -434,7 +434,8 @@ export class LittleLife {
     for (let s = 1; s < PATH_MEADOW.length - 1; s++) for (const t of [0.5, 0.3, 0.7]) for (const dy of [170, 210, 140, 250]) {
       const [ax, ay] = PATH_MEADOW[s], [bx, by] = PATH_MEADOW[s + 1]; be.push([ax + (bx - ax) * t, ay + (by - ay) * t + dy]);
     }
-    pick('bee', be, land, 90, 380);
+    // Keep clear of tree trunks and bushes: open grass all around the hover spot.
+    pick('bee', be, (x, y) => [[0, 0], [-50, 0], [50, 0], [0, -40], [0, -80], [-40, -60], [40, -60], [0, 40]].every(([ox, oy]) => land(x + ox, y + oy)), 90, 380);
     // 114: the river's east bank, well away from the beaver (west bank) and the bridges.
     const hr: [number, number][] = [];
     for (const d of [45, 65, 85, 110]) for (let y = 1000; y <= 1560; y += 70) hr.push([riverXAt(y) + riverHalfAt(y) + d, y]);
