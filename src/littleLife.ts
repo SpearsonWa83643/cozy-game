@@ -56,7 +56,7 @@ export const LIFE: Record<Kind, { n: number; size: number; reactS: number; snowH
   fawn: { n: 2, size: 1.35, reactS: 1.5, snowHide: false, tw: 44, th: 48 },
   swan: { n: 2, size: 1.35, reactS: 2.0, snowHide: true, tw: 48, th: 44 },
   piglet: { n: 2, size: 1.3, reactS: 1.6, snowHide: false, tw: 40, th: 32 },
-  bee: { n: 3, size: 1.3, reactS: 2.2, snowHide: true, tw: 28, th: 24 },
+  bee: { n: 3, size: 1.6, reactS: 2.2, snowHide: true, tw: 28, th: 24 },
   heron: { n: 1, size: 1.4, reactS: 2.4, snowHide: true, tw: 40, th: 64 },
 };
 type Critter = {
