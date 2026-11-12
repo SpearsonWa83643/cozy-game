@@ -817,6 +817,25 @@ class Synth {
     this.voice(2100, 0, 0.025, 0.06, 'sine'); this.voice(2500, 0.09, 0.02, 0.05, 'sine');
   }
 
+  /** 111: a soft swan honk. */
+  honk() {
+    if (!this.ready) return;
+    this.voice(520, 0, 0.03, 0.12, 'sawtooth', 0.01); this.voice(470, 0.16, 0.026, 0.14, 'sawtooth', 0.01);
+  }
+
+  /** 112: a little piglet oink. */
+  oink() {
+    if (!this.ready) return;
+    [300, 260, 280].forEach((f, i) => this.voice(f, i * 0.045, 0.03, 0.06, 'sawtooth', 0.008));
+    this.voice(320, 0.24, 0.022, 0.07, 'sawtooth', 0.008);
+  }
+
+  /** 113: a fuzzy bumblebee buzz. */
+  bzz() {
+    if (!this.ready) return;
+    for (let i = 0; i < 10; i++) this.voice(i % 2 ? 190 : 172, i * 0.04, 0.016, 0.06, 'sawtooth', 0.01);
+  }
+
   blip() {
     if (!this.ready) return;
     this.voice(880, 0, 0.03, 0.12, 'triangle');
