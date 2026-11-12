@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-11-11 1:00 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
+Updated: 2026-11-12 12:35 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -189,6 +189,15 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 | 108 | Windmill mice: 2 field mice on the grass by the windmill; tap = squeak + happy hop with a crumb; all themes | Done/Live e4e5943 (bundle index-Eq3gNdXF.js) | 2026-11-11 | 0.25 |
 | 109 | Riverside beaver: a beaver on the riverbank by the riverside path; tap = tail slap + splash; hidden in snowy themes | Done/Live e4e5943 (bundle index-Eq3gNdXF.js) | 2026-11-11 | 0.25 |
 | 110 | Forest fawns: 2 spotted fawns south of the forest path; tap = ears flick + springy leap with hearts; all themes | Done/Live e4e5943 (bundle index-Eq3gNdXF.js) | 2026-11-11 | 0.25 |
+
+## Self-added polish (2026-11-12; backlog empty; no Walker decision or spending needed)
+
+| Order | Task | Status | ETA live | Estimate (dev days) |
+|---|---|---|---|---|
+| 111 | Lake swans: 2 white swans glide on Shellwater Lake's south side (clear of the otters, pier and rowboat); tap = wings up + soft honk + ripple; hidden in snowy themes (lake freezes) | In progress | 2026-11-12 | 0.25 |
+| 112 | Village piglets: 2 pink piglets on the grass along the village's south edge, east of the entry path (clear of hens, goats and the board); tap = oink + happy mud wiggle with mud splats; all themes | In progress | 2026-11-12 | 0.25 |
+| 113 | Meadow bumblebees: 3 fuzzy bumblebees hover over flowers south of the Sunflower Meadow path (ladybugs are north); tap = buzzy loop-the-loop + pollen sparkles; hidden in snowy themes | In progress | 2026-11-12 | 0.25 |
+| 114 | River heron: a tall grey heron stands on the river's east bank (well away from the beaver); tap = beak dip, catches a little fish, gulp + sparkle; hidden in snowy themes (flies south) | In progress | 2026-11-12 | 0.25 |
 
 ## Recently done
 
