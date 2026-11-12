@@ -427,8 +427,8 @@ export class LittleLife {
     pick('swan', sw, (x, y) => lakeValue(x, y) < 0.8 && lakeValue(x + 60, y) < 0.9 && lakeValue(x - 60, y) < 0.9 && Math.hypot(x - PIER.x, y - PIER.y1) > 350, 160, 170);
     // 112: on the grass along the village's south-west edge (the goats play a little further east).
     const pg: [number, number][] = [];
-    for (let i = 0; i < 120; i++) { const a = 0.7 + i * 2.39996, r = 30 + (i % 8) * 24; pg.push([VILLAGE.x + 170 + Math.cos(a) * r, VILLAGE.y + VILLAGE.rows * VILLAGE.cell + 60 + Math.sin(a) * r * 0.5]); }
-    pick('piglet', pg, (x, y) => land(x, y) && y > VILLAGE.y + VILLAGE.rows * VILLAGE.cell + 15 && Math.hypot(x - VILLAGE_BOARD.x, y - VILLAGE_BOARD.y) > 200, 100, 80);
+    for (let i = 0; i < 160; i++) { const a = 0.7 + i * 2.39996, r = 30 + (i % 10) * 26; pg.push([VILLAGE.x + 190 + Math.cos(a) * r, VILLAGE.y + VILLAGE.rows * VILLAGE.cell + 60 + Math.sin(a) * r * 0.5]); }
+    pick('piglet', pg, (x, y) => land(x, y) && y > VILLAGE.y + VILLAGE.rows * VILLAGE.cell + 15 && Math.hypot(x - VILLAGE_BOARD.x, y - VILLAGE_BOARD.y) > 200, 90, 70);
     // 113: over the flowers south of the meadow path (ladybugs rest on the north side).
     const be: [number, number][] = [];
     for (let s = 1; s < PATH_MEADOW.length - 1; s++) for (const t of [0.5, 0.3, 0.7]) for (const dy of [170, 210, 140, 250]) {
