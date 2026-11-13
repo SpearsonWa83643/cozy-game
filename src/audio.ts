@@ -836,6 +836,25 @@ class Synth {
     for (let i = 0; i < 10; i++) this.voice(i % 2 ? 190 : 172, i * 0.04, 0.016, 0.06, 'sawtooth', 0.01);
   }
 
+  /** 115: a tiny fox-kit yip. */
+  yip() {
+    if (!this.ready) return;
+    this.voice(900, 0, 0.03, 0.07, 'triangle'); this.voice(1250, 0.03, 0.028, 0.08, 'triangle'); this.voice(1100, 0.16, 0.022, 0.07, 'triangle');
+  }
+
+  /** 116: a soft, happy pony neigh (a quick wobbly whinny). */
+  neigh() {
+    if (!this.ready) return;
+    for (let i = 0; i < 9; i++) this.voice(760 - i * 38 + (i % 2) * 70, i * 0.045, 0.024, 0.07, 'sawtooth', 0.01);
+    this.voice(380, 0.45, 0.02, 0.12, 'triangle', 0.01);
+  }
+
+  /** 117: a little kitten meow. */
+  meow() {
+    if (!this.ready) return;
+    [820, 980, 1040, 900, 720].forEach((f, i) => this.voice(f, i * 0.05, 0.026, 0.08, 'triangle', 0.01));
+  }
+
   blip() {
     if (!this.ready) return;
     this.voice(880, 0, 0.03, 0.12, 'triangle');
