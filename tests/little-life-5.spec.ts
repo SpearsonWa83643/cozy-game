@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 
-// 111–114: little life 4 — lake swans, village piglets, meadow bumblebees, river heron.
+// 115–118: little life 5 — grove fox kits, hillside ponies, shore kittens, bay path robins.
 const FILE = pathToFileURL(resolve('dist-single/index.html')).href;
 const SHOTS = process.env.POLISH_SHOTS ?? 'screenshots';
 const cozy = (page: Page, expr: string) => page.evaluate(`(window.__cozy.${expr})`) as Promise<any>;

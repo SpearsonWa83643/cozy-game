@@ -561,11 +561,11 @@ export class LittleLife {
     // 115: beside the Fairy Grove path, on its south side.
     pick('fox', along(PATH_GROVE, [[0, 160], [0, 200], [0, 130], [0, 240]]), open, 100, 300);
     // 116: beside the Meadow-to-Hills path, east side.
-    pick('pony', along(PATH_MEADOW_HILLS, [[170, 0], [210, 0], [140, 0], [250, 0]], 0), open, 110, 220);
+    pick('pony', along(PATH_MEADOW_HILLS, [[170, 0], [170, -80], [170, 80], [170, -160], [170, 160], [210, 0], [210, -80], [210, 80], [210, -160], [210, 160], [140, 0], [140, -80], [140, 80], [140, -160], [140, 160], [250, 0], [250, -80], [250, 80], [250, -160], [250, 160], [300, 0], [300, -80], [300, 80], [300, -160], [300, 160], [-170, 0], [-170, -80], [-170, 80], [-170, -160], [-170, 160], [-210, 0], [-210, -80], [-210, 80], [-210, -160], [-210, 160], [-140, 0], [-140, -80], [-140, 80], [-140, -160], [-140, 160], [-250, 0], [-250, -80], [-250, 80], [-250, -160], [-250, 160], [-300, 0], [-300, -80], [-300, 80], [-300, -160], [-300, 160]], 0), (x, y) => land(x, y) && land(x - 30, y) && land(x + 30, y), 90, 220);
     // 117: beside the south shore path, east side (the lake is to the north-west).
-    pick('kitten', along(PATH_SHORE_S, [[150, 0], [190, 0], [120, 0], [230, 0]], 0), (x, y) => open(x, y) && lakeValue(x, y) > 1.3, 100, 240);
+    pick('kitten', along(PATH_SHORE_S, [[150, 0], [190, 0], [120, 0], [230, 0], [-150, 0], [-190, 0], [280, 0]], 0), (x, y) => open(x, y) && lakeValue(x, y) > 1.3, 100, 240);
     // 118: north of the Seashell Bay path.
-    pick('robin', along(PATH_BAY, [[0, -150], [0, -190], [0, -120], [0, -230]]), open, 90, 380);
+    pick('robin', along(PATH_BAY, [[0, -150], [0, -190], [0, -120], [0, -230], [0, -280]]), (x, y) => land(x, y) && land(x - 30, y) && land(x + 30, y), 90, 380);
     const onTheme = () => this.retheme();
     themeEvents.on('change', onTheme);
     w.events.once('shutdown', () => themeEvents.off('change', onTheme));
