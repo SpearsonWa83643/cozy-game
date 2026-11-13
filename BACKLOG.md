@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-11-12 12:47 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
+Updated: 2026-11-13 12:35 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -198,6 +198,10 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 | 112 | Village piglets: 2 pink piglets on the grass along the village's south-west edge, west of the goats (clear of hens and the board); tap = oink + happy mud wiggle with mud splats; all themes | Done/Live 12c640b (bundle index-BIgLI6cW.js) | 2026-11-12 | 0.25 |
 | 113 | Meadow bumblebees: 3 fuzzy bumblebees hover over flowers south of the Sunflower Meadow path (ladybugs are north); tap = buzzy loop-the-loop + pollen sparkles; hidden in snowy themes | Done/Live 12c640b (bundle index-BIgLI6cW.js) | 2026-11-12 | 0.25 |
 | 114 | River heron: a tall grey heron stands on the river's east bank (well away from the beaver); tap = beak dip, catches a little fish, gulp + sparkle; hidden in snowy themes (flies south) | Done/Live 12c640b (bundle index-BIgLI6cW.js) | 2026-11-12 | 0.25 |
+| 115 | Grove fox kits: 2 orange fox kits on the grass beside the Fairy Grove path; tap = a playful pounce + tail swish + a little yip; all themes (they look cozy in snow) | In progress (wip/polish-115-118) | 2026-11-13 | 0.25 |
+| 116 | Hillside ponies: 2 small ponies grazing beside the Meadow-to-Hills path; tap = a happy neigh + a little prance with hearts; all themes | In progress (wip/polish-115-118) | 2026-11-13 | 0.25 |
+| 117 | Shore kittens: 2 kittens beside the south shore path, each with a yarn ball; tap = meow + pounce on the yarn ball; all themes | In progress (wip/polish-115-118) | 2026-11-13 | 0.25 |
+| 118 | Bay path robins: 3 robins hop on the grass north of the Seashell Bay path; tap = a hop-hop + chirp song with music notes; hidden in snowy themes (they fly south) | In progress (wip/polish-115-118) | 2026-11-13 | 0.25 |
 
 ## Recently done
 
