@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-11-13 1:25 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
+Updated: 2026-11-14 12:45 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -202,6 +202,15 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 | 116 | Hillside ponies: 2 small ponies grazing beside the Meadow-to-Hills path; tap = a happy neigh + a little prance with hearts; all themes | Done/Live 2465a1d (bundle index-aDjTJDq9.js) | 2026-11-13 | 0.25 |
 | 117 | Shore kittens: 2 kittens beside the south shore path, each with a yarn ball; tap = meow + pounce on the yarn ball; all themes | Done/Live 2465a1d (bundle index-aDjTJDq9.js) | 2026-11-13 | 0.25 |
 | 118 | Bay path robins: 3 robins hop on the grass north of the Seashell Bay path; tap = a hop-hop + chirp song with music notes; hidden in snowy themes (they fly south) | Done/Live 2465a1d (bundle index-aDjTJDq9.js) | 2026-11-13 | 0.25 |
+
+## Self-added polish (2026-11-14; backlog empty; no Walker decision or spending needed)
+
+| Order | Task | Status | ETA live | Estimate (dev days) |
+|---|---|---|---|---|
+| 119 | Lighthouse puffins: 2 puffins on the grass by the lighthouse; tap = wing flap + happy waddle + chirp; all themes | In progress (wip/polish-119-122) | 2026-11-14 | 0.25 |
+| 120 | Orchard puppies: 2 puppies beside the orchard path; tap = woof + a happy spin with hearts; all themes | In progress (wip/polish-119-122) | 2026-11-14 | 0.25 |
+| 121 | Lake path chipmunks: 2 chipmunks beside the Shellwater Lake path; tap = cheeks puff up with an acorn + squeak; hidden in snowy themes | In progress (wip/polish-119-122) | 2026-11-14 | 0.25 |
+| 122 | Forest bear cub: a bear cub north of the forest path (fawns are south); tap = rolls onto its back, feet up, giggly rawr; hidden in snowy themes (hibernates) | In progress (wip/polish-119-122) | 2026-11-14 | 0.25 |
 
 ## Recently done
 
