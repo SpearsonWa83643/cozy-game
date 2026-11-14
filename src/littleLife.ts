@@ -39,13 +39,13 @@
 // 119 Lighthouse puffins: puffins on the grass by the lighthouse; tap = wing flap + a happy waddle + chirp. All themes.
 // 120 Orchard puppies: puppies beside the orchard path; tap = woof + a happy spin with hearts. All themes.
 // 121 Lake path chipmunks: chipmunks beside the Shellwater Lake path; tap = cheeks puff up with an acorn + squeak. Hidden in snow.
-// 122 Forest bear cub: a bear cub north of the forest path; tap = rolls onto its back, feet up, giggly rawr. Hidden in snow.
+// 122 Hills bear cub: a bear cub beside the Hills-to-Bay path; tap = rolls onto its back, feet up, giggly rawr. Hidden in snow.
 // Culled off-screen.
 import Phaser from 'phaser';
 import { Ctx, canvasTex, frameScale, S } from './art';
 import { sfx } from './audio';
 import { theme, themeEvents } from './theme';
-import { PATH_MEADOW, GROVE_RING, VILLAGE, VILLAGE_ENTRY, VILLAGE_SIGN, VILLAGE_BOARD, BAY, PATH_HILLS, LAKE, PIER, GARDEN, COTTAGE, POTS, PATH_ORCHARD_S, WINDMILL, PATH_RIVERSIDE, PATH_FOREST, RIVER_PTS, RIVER_HALF, PATH_GROVE, PATH_MEADOW_HILLS, PATH_SHORE_S, PATH_BAY, PATH_ORCHARD, PATH_LAKE, LIGHTHOUSE } from './layout';
+import { PATH_MEADOW, GROVE_RING, VILLAGE, VILLAGE_ENTRY, VILLAGE_SIGN, VILLAGE_BOARD, BAY, PATH_HILLS, LAKE, PIER, GARDEN, COTTAGE, POTS, PATH_ORCHARD_S, WINDMILL, PATH_RIVERSIDE, PATH_FOREST, RIVER_PTS, RIVER_HALF, PATH_GROVE, PATH_MEADOW_HILLS, PATH_SHORE_S, PATH_BAY, PATH_ORCHARD, PATH_LAKE, LIGHTHOUSE, PATH_HILLS_BAY } from './layout';
 import { lakeValue, riverXAt, riverHalfAt, onBridge } from './geo';
 import type { WorldScene } from './scenes/World';
 
@@ -687,8 +687,8 @@ export class LittleLife {
     pick('puppy', along(PATH_ORCHARD, [[0, -150], [0, -190], [0, -120], [0, -230], [0, 150], [0, 190], [0, 230]], 0), open, 100, 320);
     // 121: beside the Shellwater Lake path, on the land side.
     pick('chipmunk', along(PATH_LAKE, [[0, -140], [0, -180], [0, -110], [0, -220], [-150, 0], [150, 0], [-190, 0], [190, 0]], 0), (x, y) => open(x, y) && lakeValue(x, y) > 1.3, 100, 300);
-    // 122: beside the forest path (north side first; the fawns are south).
-    pick('bearcub', along(PATH_FOREST, [[0, -150], [0, -190], [0, -230], [0, -120], [0, -270], [0, -100], [0, 260], [0, 300]], 1), (x, y) => land(x, y) && land(x - 30, y) && land(x + 30, y) && land(x, y - 40), 110, 300);
+    // 122: beside the Hills-to-Bay path (the woods are too thick for a cosy spot clear of the puzzles).
+    pick('bearcub', along(PATH_HILLS_BAY, [[170, 0], [-170, 0], [210, 0], [-210, 0], [250, 0], [-250, 0], [140, 0], [-140, 0], [170, -80], [-170, -80], [170, 80], [-170, 80]], 0), (x, y) => land(x, y) && land(x - 30, y) && land(x + 30, y) && land(x, y - 40), 110, 300);
     const onTheme = () => this.retheme();
     themeEvents.on('change', onTheme);
     w.events.once('shutdown', () => themeEvents.off('change', onTheme));

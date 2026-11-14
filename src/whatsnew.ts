@@ -10,5 +10,5 @@ export const ITEMS: WhatsNewItem[] = [
   { icon: 'star', text: 'Puffins! Little puffins live by the lighthouse. Tap one — flap, waddle!' },
   { icon: 'heart', text: 'Orchard puppies! Puppies play by the orchard path. Tap one — woof, spin!' },
   { icon: 'berry', text: 'Chipmunks! They hide by the lake path. Tap one — puffy cheeks and an acorn!' },
-  { icon: 'fruit', text: 'A bear cub! It sits by the forest path. Tap it — it rolls over and giggles.' },
+  { icon: 'fruit', text: 'A bear cub! It sits by the path from the hills to the bay. Tap it — it rolls over and giggles.' },
 ];

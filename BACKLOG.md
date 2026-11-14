@@ -210,7 +210,7 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 | 119 | Lighthouse puffins: 2 puffins on the grass by the lighthouse; tap = wing flap + happy waddle + chirp; all themes | In progress (wip/polish-119-122) | 2026-11-14 | 0.25 |
 | 120 | Orchard puppies: 2 puppies beside the orchard path; tap = woof + a happy spin with hearts; all themes | In progress (wip/polish-119-122) | 2026-11-14 | 0.25 |
 | 121 | Lake path chipmunks: 2 chipmunks beside the Shellwater Lake path; tap = cheeks puff up with an acorn + squeak; hidden in snowy themes | In progress (wip/polish-119-122) | 2026-11-14 | 0.25 |
-| 122 | Forest bear cub: a bear cub north of the forest path (fawns are south); tap = rolls onto its back, feet up, giggly rawr; hidden in snowy themes (hibernates) | In progress (wip/polish-119-122) | 2026-11-14 | 0.25 |
+| 122 | Hills bear cub: a bear cub beside the Hills-to-Bay path (Mistbirch Wood is too thick to fit one clear of its puzzles); tap = rolls onto its back, feet up, giggly rawr; hidden in snowy themes (hibernates) | In progress (wip/polish-119-122) | 2026-11-14 | 0.25 |
 
 ## Recently done
 
