@@ -687,8 +687,8 @@ export class LittleLife {
     pick('puppy', along(PATH_ORCHARD, [[0, -150], [0, -190], [0, -120], [0, -230], [0, 150], [0, 190], [0, 230]], 0), open, 100, 320);
     // 121: beside the Shellwater Lake path, on the land side.
     pick('chipmunk', along(PATH_LAKE, [[0, -140], [0, -180], [0, -110], [0, -220], [-150, 0], [150, 0], [-190, 0], [190, 0]], 0), (x, y) => open(x, y) && lakeValue(x, y) > 1.3, 100, 300);
-    // 122: north of the forest path (the fawns are south).
-    pick('bearcub', along(PATH_FOREST, [[0, -150], [0, -190], [0, -230], [0, -120], [0, -270]], 1), (x, y) => open(x, y) && land(x, y - 60), 110, 300);
+    // 122: beside the forest path (north side first; the fawns are south).
+    pick('bearcub', along(PATH_FOREST, [[0, -150], [0, -190], [0, -230], [0, -120], [0, -270], [0, -100], [0, 260], [0, 300]], 1), (x, y) => land(x, y) && land(x - 30, y) && land(x + 30, y) && land(x, y - 40), 110, 300);
     const onTheme = () => this.retheme();
     themeEvents.on('change', onTheme);
     w.events.once('shutdown', () => themeEvents.off('change', onTheme));
