@@ -855,6 +855,19 @@ class Synth {
     [820, 980, 1040, 900, 720].forEach((f, i) => this.voice(f, i * 0.05, 0.026, 0.08, 'triangle', 0.01));
   }
 
+  /** 120: a happy little puppy woof-woof. */
+  woof() {
+    if (!this.ready) return;
+    for (const w of [0, 0.22]) { this.voice(430, w, 0.03, 0.07, 'sawtooth', 0.008); this.voice(300, w + 0.04, 0.03, 0.09, 'triangle', 0.008); }
+  }
+
+  /** 122: a soft, giggly bear-cub rawr. */
+  rawr() {
+    if (!this.ready) return;
+    for (let i = 0; i < 6; i++) this.voice(250 - i * 12 + (i % 2) * 30, i * 0.05, 0.022, 0.08, 'sawtooth', 0.01);
+    [700, 820, 760].forEach((f, i) => this.voice(f, 0.36 + i * 0.08, 0.02, 0.06, 'triangle'));
+  }
+
   blip() {
     if (!this.ready) return;
     this.voice(880, 0, 0.03, 0.12, 'triangle');
