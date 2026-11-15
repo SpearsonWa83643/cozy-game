@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-11-14 1:05 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
+Updated: 2026-11-15 12:40 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -211,6 +211,15 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 | 120 | Orchard puppies: 2 puppies beside the orchard path; tap = woof + a happy spin with hearts; all themes | Done/Live 15dba11 (bundle index-Drl8-Ky5.js) | 2026-11-14 | 0.25 |
 | 121 | Lake path chipmunks: 2 chipmunks beside the Shellwater Lake path; tap = cheeks puff up with an acorn + squeak; hidden in snowy themes | Done/Live 15dba11 (bundle index-Drl8-Ky5.js) | 2026-11-14 | 0.25 |
 | 122 | Hills bear cub: a bear cub beside the Hills-to-Bay path (Mistbirch Wood is too thick to fit one clear of its puzzles); tap = rolls onto its back, feet up, giggly rawr; hidden in snowy themes (hibernates) | Done/Live 15dba11 (bundle index-Drl8-Ky5.js) | 2026-11-14 | 0.25 |
+
+## Self-added polish (2026-11-15; backlog empty; no Walker decision or spending needed)
+
+| Order | Task | Status | ETA live | Estimate (dev days) |
+|---|---|---|---|---|
+| 123 | River raccoon kits: 2 raccoon kits beside the west river path; tap = peekaboo (paws over the mask) + a little chitter; hidden in snowy themes | In progress (wip/polish-123-126) | 2026-11-15 | 0.25 |
+| 124 | Bay seal pups: 2 seal pups bobbing in the Seashell Bay shallows; tap = flipper clap + happy arf + splash; all themes | In progress (wip/polish-123-126) | 2026-11-15 | 0.25 |
+| 125 | Hills calves: 2 spotted calves beside the Pinecone Hills path; tap = a soft moo + a happy hop with hearts; all themes | In progress (wip/polish-123-126) | 2026-11-15 | 0.25 |
+| 126 | Garden hummingbirds: 2 hummingbirds hovering by the cottage garden; tap = zip loop + a tiny hum; hidden in snowy themes (they fly south) | In progress (wip/polish-123-126) | 2026-11-15 | 0.25 |
 
 ## Recently done
 
