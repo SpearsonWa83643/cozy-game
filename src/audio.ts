@@ -868,6 +868,31 @@ class Synth {
     [700, 820, 760].forEach((f, i) => this.voice(f, 0.36 + i * 0.08, 0.02, 0.06, 'triangle'));
   }
 
+  /** 123: a little raccoon-kit chitter. */
+  chitter() {
+    if (!this.ready) return;
+    for (let i = 0; i < 7; i++) this.voice(1500 + (i % 2) * 260 - i * 30, i * 0.04, 0.018, 0.04, 'triangle');
+  }
+
+  /** 124: a happy seal-pup arf-arf. */
+  arf() {
+    if (!this.ready) return;
+    for (const w of [0, 0.2]) { this.voice(620, w, 0.03, 0.06, 'sawtooth', 0.008); this.voice(480, w + 0.03, 0.028, 0.08, 'triangle', 0.008); }
+  }
+
+  /** 125: a soft, gentle calf moo. */
+  moo() {
+    if (!this.ready) return;
+    for (let i = 0; i < 8; i++) this.voice(240 + Math.sin(i * 0.8) * 30 + i * 6, i * 0.06, 0.026, 0.09, 'sawtooth', 0.012);
+  }
+
+  /** 126: a tiny hummingbird hum + tweet. */
+  hum() {
+    if (!this.ready) return;
+    for (let i = 0; i < 12; i++) this.voice(i % 2 ? 340 : 320, i * 0.03, 0.012, 0.05, 'triangle', 0.008);
+    this.voice(2800, 0.4, 0.02, 0.05, 'sine'); this.voice(3200, 0.46, 0.018, 0.05, 'sine');
+  }
+
   blip() {
     if (!this.ready) return;
     this.voice(880, 0, 0.03, 0.12, 'triangle');
