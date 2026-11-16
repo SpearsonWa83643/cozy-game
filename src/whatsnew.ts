@@ -10,5 +10,5 @@ export const ITEMS: WhatsNewItem[] = [
   { icon: 'heart', text: 'Lambs! Little lambs play by the path to the hills. Tap one — baa and boing!' },
   { icon: 'berry', text: 'Geckos! They sit on warm rocks by the south shore path. Tap one — blep! It changes color.' },
   { icon: 'star', text: 'A llama! It stands by the path from the hills to the bay. Tap it — hmm-hmm, a happy hum.' },
-  { icon: 'fruit', text: 'A turkey! It walks by the forest path, near the river bridge. Tap it — gobble gobble, big tail!' },
+  { icon: 'fruit', text: 'A turkey! It walks by the south shore path, near Glowcap Grove. Tap it — gobble gobble, big tail!' },
 ];

@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 
-// 131–134: little life 9 — hillside lambs, shore geckos, hills-to-bay llama, forest edge turkey.
+// 131–134: little life 9 — hillside lambs, shore geckos, hills-to-bay llama, shore path turkey.
 const FILE = pathToFileURL(resolve('dist-single/index.html')).href;
 const SHOTS = process.env.POLISH_SHOTS ?? 'screenshots';
 const cozy = (page: Page, expr: string) => page.evaluate(`(window.__cozy.${expr})`) as Promise<any>;

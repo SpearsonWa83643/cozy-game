@@ -54,7 +54,7 @@
 // 131 Hillside lambs: lambs beside the lower Meadow-to-Hills path (between ponies and sheep); tap = tiny baa + springy pronk with hearts. All themes.
 // 132 Shore geckos: geckos sunning on rocks beside the south shore path (west side); tap = tongue blep + color shimmer + chirp. Hidden in snow.
 // 133 Hills-to-Bay llama: a fluffy llama west of the Hills-to-Bay path; tap = happy hum + fluffy head bob. All themes.
-// 134 Forest edge turkey: a turkey by the start of the forest path, near the river bridge; tap = gobble-gobble + tail fan opens. All themes.
+// 134 Shore path turkey: a turkey beside the south shore path near the Fairy Grove end (the forest entry is too cramped by the bridge); tap = gobble-gobble + tail fan opens. All themes.
 // Culled off-screen.
 import Phaser from 'phaser';
 import { Ctx, canvasTex, frameScale, S } from './art';
@@ -1032,8 +1032,9 @@ export class LittleLife {
     pick('gecko', along(PATH_SHORE_S, [[-200, 0], [-160, 0], [-240, 0], [-200, -60], [-200, 60], [0, -150], [-150, 0]], 0), (x, y) => open(x, y) && lakeValue(x, y) > 1.3 && noPuzzle(x, y) && roomy(x, y), 100, 300);
     // 133: west of the Hills-to-Bay path (the bear cub and caterpillars are on the east side).
     pick('llama', along(PATH_HILLS_BAY, [[-200, 0], [-170, 0], [-240, 0], [-200, -70], [-200, 70], [-280, 0]], 1), (x, y) => open(x, y) && land(x, y - 50) && noPuzzle(x, y) && roomy(x, y, 250), 110, 300);
-    // 134: by the start of the forest path near the river bridge (deeper in, the forest is packed with tappables).
-    pick('turkey', [...along(PATH_FOREST, [[-150, 0], [-130, 0], [-180, 0], [-60, -150], [-60, 150]], 0).slice(0, 15), ...along(PATH_SHORE_S, [[0, -150], [-150, 0]], 2)], (x, y) => open(x, y) && rv(x, y) > RIVER_HALF + 40 && noPuzzle(x, y) && roomy(x, y), 100, 300);
+    // 134: beside the south shore path near the Fairy Grove end (the forest entry by the bridge is too cramped,
+    //      and deeper in the forest is packed with tappables).
+    pick('turkey', along(PATH_SHORE_S, [[0, -150], [-150, 0], [0, -190], [-190, 0]], 2), (x, y) => open(x, y) && lakeValue(x, y) > 1.3 && noPuzzle(x, y) && roomy(x, y), 100, 300);
     const onTheme = () => this.retheme();
     themeEvents.on('change', onTheme);
     w.events.once('shutdown', () => themeEvents.off('change', onTheme));
