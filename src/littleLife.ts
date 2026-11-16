@@ -1121,7 +1121,7 @@ export class LittleLife {
             // one big arcing leap out of the water and back in, then a happy bob
             const q = Math.min(1, p / 0.7);
             lift = Math.sin(q * Math.PI) * 62 + (q >= 1 ? Math.sin((p - 0.7) * Math.PI * 6) * 4 : 0); dx = Math.sin(now * 0.25 + c.ph) * 30;
-            rot = (c.img.flipX ? 1 : -1) * Math.cos(q * Math.PI) * 0.5 * (q < 1 ? 1 : 0);
+            rot = (c.img.flipX ? 1 : -1) * Math.cos(q * Math.PI) * 0.3 * (q < 1 ? 1 : 0);
             c.img.setTexture(q < 1 ? KEY.dolphin[1] : KEY.dolphin[0]);
             if (p > 0.72 && !c.spl) { c.spl = true; this.w.burst(c.hx + dx, c.hy, 0xb0f0ff, 10, 'spark'); sfx.splash(false); }
           } else { lift = Math.sin(now * 1.1 + c.ph) * 3; dx = Math.sin(now * 0.25 + c.ph) * 30; rot = Math.sin(now * 1.1 + c.ph + 1) * 0.06; c.img.setFlipX(Math.cos(now * 0.25 + c.ph) < 0); }
