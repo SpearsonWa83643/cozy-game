@@ -230,6 +230,15 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 | 129 | Bay path tortoises: 2 tortoises south of the Seashell Bay path (robins are north); tap = tucks into the shell, then peeks out with a smile + boop; hidden in snowy themes (they hibernate) | Done/Live fc9604b (bundle index-QHyR99vH.js) | 2026-11-16 | 0.25 |
 | 130 | Hills-to-Bay caterpillars: 2 fuzzy caterpillars on leaves beside the lower Hills-to-Bay path (the forest path is packed with tappables); tap = a happy inch-wiggle + giggle + rainbow sparkles; hidden in snowy themes | Done/Live fc9604b (bundle index-QHyR99vH.js) | 2026-11-16 | 0.25 |
 
+## Self-added polish, batch 2 (2026-11-16; backlog empty; no Walker decision or spending needed)
+
+| Order | Task | Status | ETA live | Estimate (dev days) |
+|---|---|---|---|---|
+| 131 | Hillside lambs: 2 lambs beside the lower Meadow-to-Hills path (between the ponies and the sheep); tap = a tiny baa + springy pronk bounce with hearts; all themes | In progress (wip/polish-131-134) | 2026-11-16 | 0.25 |
+| 132 | Shore geckos: 2 little geckos sunning on rocks beside the south shore path (west side; kittens are east); tap = tongue blep + color shimmer + tiny chirp; hidden in snowy themes | In progress (wip/polish-131-134) | 2026-11-16 | 0.25 |
+| 133 | Hills-to-Bay llama: a fluffy llama beside the Hills-to-Bay path (west side; the bear cub and caterpillars are east); tap = a happy hum + fluffy head bob; all themes | In progress (wip/polish-131-134) | 2026-11-16 | 0.25 |
+| 134 | Forest edge turkey: a turkey by the start of the forest path (near the river bridge); tap = gobble-gobble + tail fans open; all themes | In progress (wip/polish-131-134) | 2026-11-16 | 0.25 |
+
 ## Recently done
 
 - 21: Real-iPad FPS check and tuning. Done 2026-10-27, Walker said the playtest went OK.
