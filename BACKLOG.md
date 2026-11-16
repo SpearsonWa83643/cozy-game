@@ -221,6 +221,15 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 | 125 | Hills calves: 2 spotted calves beside the Pinecone Hills path; tap = a soft moo + a happy hop with hearts; all themes | Done/Live 200e661 (bundle index-CglWECD9.js) | 2026-11-15 | 0.25 |
 | 126 | Garden hummingbirds: 2 hummingbirds hovering by the cottage garden; tap = zip loop + a tiny hum; hidden in snowy themes (they fly south) | Done/Live 200e661 (bundle index-CglWECD9.js) | 2026-11-15 | 0.25 |
 
+## Self-added polish (2026-11-16; backlog empty; no Walker decision or spending needed)
+
+| Order | Task | Status | ETA live | Estimate (dev days) |
+|---|---|---|---|---|
+| 127 | Bay dolphins: 2 dolphins swimming out in Seashell Bay (north side, clear of the turtles and seal pups); tap = a big leap + splash + happy whistle; all themes | In progress (wip/polish-127-130) | 2026-11-16 | 0.25 |
+| 128 | Grove path donkey: a donkey beside the Fairy Grove path (north side; fox kits are south); tap = hee-haw + ear wiggle + a little kick-hop; all themes | In progress (wip/polish-127-130) | 2026-11-16 | 0.25 |
+| 129 | Bay path tortoises: 2 tortoises south of the Seashell Bay path (robins are north); tap = tucks into the shell, then peeks out with a smile + boop; hidden in snowy themes (they hibernate) | In progress (wip/polish-127-130) | 2026-11-16 | 0.25 |
+| 130 | Forest path caterpillars: 2 fuzzy caterpillars north of the forest path (fawns are south); tap = a happy inch-wiggle + giggle + rainbow sparkles; hidden in snowy themes | In progress (wip/polish-127-130) | 2026-11-16 | 0.25 |
+
 ## Recently done
 
 - 21: Real-iPad FPS check and tuning. Done 2026-10-27, Walker said the playtest went OK.
