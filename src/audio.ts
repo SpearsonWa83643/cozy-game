@@ -893,6 +893,25 @@ class Synth {
     this.voice(2800, 0.4, 0.02, 0.05, 'sine'); this.voice(3200, 0.46, 0.018, 0.05, 'sine');
   }
 
+  /** 127: a happy dolphin click-and-whistle. */
+  dolphinCall() {
+    if (!this.ready) return;
+    for (let i = 0; i < 4; i++) this.voice(2400 + i * 120, i * 0.035, 0.012, 0.025, 'square');
+    for (let i = 0; i < 10; i++) this.voice(1300 + Math.sin(i / 9 * Math.PI) * 900 + i * 40, 0.18 + i * 0.03, 0.02, 0.05, 'sine', 0.006);
+  }
+
+  /** 128: a gentle donkey hee-haw. */
+  heehaw() {
+    if (!this.ready) return;
+    for (let k = 0; k < 2; k++) { const w = k * 0.42; this.voice(560, w, 0.026, 0.16, 'sawtooth', 0.02); this.voice(330, w + 0.18, 0.028, 0.2, 'sawtooth', 0.02); }
+  }
+
+  /** 129: a soft tortoise peekaboo boop. */
+  boop() {
+    if (!this.ready) return;
+    this.voice(320, 0, 0.03, 0.08, 'sine'); this.voice(520, 0.5, 0.03, 0.07, 'sine'); this.voice(780, 0.58, 0.025, 0.09, 'sine');
+  }
+
   blip() {
     if (!this.ready) return;
     this.voice(880, 0, 0.03, 0.12, 'triangle');
