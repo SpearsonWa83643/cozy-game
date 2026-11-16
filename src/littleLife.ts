@@ -49,13 +49,13 @@
 // 127 Bay dolphins: dolphins swim out in Seashell Bay (north side, clear of turtles and seal pups); tap = a big leap + splash + whistle. All themes.
 // 128 Grove path donkey: a donkey beside the Fairy Grove path (north side; fox kits are south); tap = hee-haw + ear wiggle + kick-hop. All themes.
 // 129 Bay path tortoises: tortoises south of the Seashell Bay path (robins are north); tap = tuck into the shell, then peek out smiling + boop. Hidden in snow.
-// 130 Forest path caterpillars: fuzzy caterpillars on leaves north of the forest path (fawns are south); tap = inch-wiggle + giggle + rainbow sparkles. Hidden in snow.
+// 130 Hills-to-Bay caterpillars: fuzzy caterpillars on leaves beside the lower Hills-to-Bay path (the forest path is full of tappables); tap = inch-wiggle + giggle + rainbow sparkles. Hidden in snow.
 // Culled off-screen.
 import Phaser from 'phaser';
 import { Ctx, canvasTex, frameScale, S } from './art';
 import { sfx } from './audio';
 import { theme, themeEvents } from './theme';
-import { PATH_MEADOW, GROVE_RING, VILLAGE, VILLAGE_ENTRY, VILLAGE_SIGN, VILLAGE_BOARD, BAY, PATH_HILLS, LAKE, PIER, GARDEN, COTTAGE, POTS, PATH_ORCHARD_S, WINDMILL, PATH_RIVERSIDE, PATH_FOREST, RIVER_PTS, RIVER_HALF, PATH_GROVE, PATH_MEADOW_HILLS, PATH_SHORE_S, PATH_BAY, PATH_ORCHARD, PATH_LAKE, LIGHTHOUSE, PATH_HILLS_BAY, PATH_RIVER_W, PUZZLE_SITES, PUZZLE_SITE_R, OWL } from './layout';
+import { PATH_MEADOW, GROVE_RING, VILLAGE, VILLAGE_ENTRY, VILLAGE_SIGN, VILLAGE_BOARD, BAY, PATH_HILLS, LAKE, PIER, GARDEN, COTTAGE, POTS, PATH_ORCHARD_S, WINDMILL, PATH_RIVERSIDE, PATH_FOREST, RIVER_PTS, RIVER_HALF, PATH_GROVE, PATH_MEADOW_HILLS, PATH_SHORE_S, PATH_BAY, PATH_ORCHARD, PATH_LAKE, LIGHTHOUSE, PATH_HILLS_BAY, PATH_RIVER_W, PUZZLE_SITES, PUZZLE_SITE_R } from './layout';
 import { lakeValue, riverXAt, riverHalfAt, onBridge } from './geo';
 import type { WorldScene } from './scenes/World';
 
@@ -920,8 +920,9 @@ export class LittleLife {
     pick('donkey', along(PATH_GROVE, [[0, -170], [0, -210], [0, -140], [0, -250], [0, -290]]), (x, y) => open(x, y) && land(x - 40, y - 40) && land(x + 40, y - 40) && noPuzzle(x, y), 110, 300);
     // 129: south of the Seashell Bay path, on dry land (robins are on the north side).
     pick('tortoise', along(PATH_BAY, [[0, 150], [0, 190], [0, 120], [0, 230], [0, 270]]), (x, y) => open(x, y) && lakeValue(x, y) > 1.3 && noPuzzle(x, y), 100, 420);
-    // 130: north of the forest path, clear of the owl (fawns are on the south side).
-    pick('caterpillar', along(PATH_FOREST, [[0, -150], [0, -190], [0, -120], [0, -230]]), (x, y) => open(x, y) && noPuzzle(x, y) && Math.hypot(x - OWL.x, y - OWL.y) > 220, 100, 380);
+    // 130: east side of the lower Hills-to-Bay path, near the bay end (the forest path is packed with tappables;
+    //      the bear cub sits further up this path).
+    pick('caterpillar', along(PATH_HILLS_BAY, [[150, 0], [180, 0], [210, 0], [150, -60], [150, 60], [-200, 0]], 2), (x, y) => open(x, y) && noPuzzle(x, y), 100, 100);
     const onTheme = () => this.retheme();
     themeEvents.on('change', onTheme);
     w.events.once('shutdown', () => themeEvents.off('change', onTheme));

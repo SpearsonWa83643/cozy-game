@@ -2,7 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import { pathToFileURL } from 'node:url';
 import { resolve } from 'node:path';
 
-// 127–130: little life 8 — bay dolphins, grove path donkey, bay path tortoises, forest path caterpillars.
+// 127–130: little life 8 — bay dolphins, grove path donkey, bay path tortoises, hills-to-bay caterpillars.
 const FILE = pathToFileURL(resolve('dist-single/index.html')).href;
 const SHOTS = process.env.POLISH_SHOTS ?? 'screenshots';
 const cozy = (page: Page, expr: string) => page.evaluate(`(window.__cozy.${expr})`) as Promise<any>;

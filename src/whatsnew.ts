@@ -10,5 +10,5 @@ export const ITEMS: WhatsNewItem[] = [
   { icon: 'star', text: 'Dolphins! They swim out in Seashell Bay. Tap one — a big leap and a splash!' },
   { icon: 'heart', text: 'A donkey! It stands by the Fairy Grove path. Tap it — hee-haw and a happy kick!' },
   { icon: 'berry', text: 'Tortoises! They walk slowly by the bay path. Tap one — it hides, then peeks out to smile.' },
-  { icon: 'fruit', text: 'Caterpillars! They sit on leaves by the forest path. Tap one — wiggle, giggle, rainbow sparkles!' },
+  { icon: 'fruit', text: 'Caterpillars! They sit on leaves by the path from the hills to the bay. Tap one — wiggle, giggle, rainbow sparkles!' },
 ];
