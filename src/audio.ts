@@ -912,6 +912,31 @@ class Synth {
     this.voice(320, 0, 0.03, 0.08, 'sine'); this.voice(520, 0.5, 0.03, 0.07, 'sine'); this.voice(780, 0.58, 0.025, 0.09, 'sine');
   }
 
+  /** 131: a tiny lamb baa + springy boing. */
+  pronk() {
+    if (!this.ready) return;
+    for (let i = 0; i < 5; i++) this.voice(520 + Math.sin(i * 1.3) * 40, i * 0.05, 0.022, 0.07, 'sawtooth', 0.008);
+    for (let i = 0; i < 6; i++) this.voice(300 + i * 90, 0.32 + i * 0.025, 0.02, 0.04, 'sine');
+  }
+
+  /** 132: a teeny gecko chirp. */
+  blep() {
+    if (!this.ready) return;
+    for (const [f, w] of [[2600, 0], [3100, 0.07], [2800, 0.14]]) this.voice(f, w, 0.016, 0.04, 'triangle');
+  }
+
+  /** 133: a soft, happy llama hum. */
+  llamaHum() {
+    if (!this.ready) return;
+    for (let i = 0; i < 9; i++) this.voice(380 + Math.sin(i * 0.9) * 50, i * 0.06, 0.022, 0.09, 'sine', 0.02);
+  }
+
+  /** 134: a friendly turkey gobble-gobble. */
+  gobble() {
+    if (!this.ready) return;
+    for (const w of [0, 0.38]) for (let i = 0; i < 6; i++) this.voice(700 - i * 40 + (i % 2) * 120, w + i * 0.035, 0.02, 0.04, 'triangle', 0.004);
+  }
+
   blip() {
     if (!this.ready) return;
     this.voice(880, 0, 0.03, 0.12, 'triangle');
