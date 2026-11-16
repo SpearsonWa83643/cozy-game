@@ -225,10 +225,10 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 
 | Order | Task | Status | ETA live | Estimate (dev days) |
 |---|---|---|---|---|
-| 127 | Bay dolphins: 2 dolphins swimming out in Seashell Bay (north side, clear of the turtles and seal pups); tap = a big leap + splash + happy whistle; all themes | In progress (wip/polish-127-130) | 2026-11-16 | 0.25 |
-| 128 | Grove path donkey: a donkey beside the Fairy Grove path (north side; fox kits are south); tap = hee-haw + ear wiggle + a little kick-hop; all themes | In progress (wip/polish-127-130) | 2026-11-16 | 0.25 |
-| 129 | Bay path tortoises: 2 tortoises south of the Seashell Bay path (robins are north); tap = tucks into the shell, then peeks out with a smile + boop; hidden in snowy themes (they hibernate) | In progress (wip/polish-127-130) | 2026-11-16 | 0.25 |
-| 130 | Hills-to-Bay caterpillars: 2 fuzzy caterpillars on leaves beside the lower Hills-to-Bay path (the forest path is packed with tappables); tap = a happy inch-wiggle + giggle + rainbow sparkles; hidden in snowy themes | In progress (wip/polish-127-130) | 2026-11-16 | 0.25 |
+| 127 | Bay dolphins: 2 dolphins swimming out in Seashell Bay (north side, clear of the turtles and seal pups); tap = a big leap + splash + happy whistle; all themes | Done/Live fc9604b (bundle index-QHyR99vH.js) | 2026-11-16 | 0.25 |
+| 128 | Grove path donkey: a donkey beside the Fairy Grove path (north side; fox kits are south); tap = hee-haw + ear wiggle + a little kick-hop; all themes | Done/Live fc9604b (bundle index-QHyR99vH.js) | 2026-11-16 | 0.25 |
+| 129 | Bay path tortoises: 2 tortoises south of the Seashell Bay path (robins are north); tap = tucks into the shell, then peeks out with a smile + boop; hidden in snowy themes (they hibernate) | Done/Live fc9604b (bundle index-QHyR99vH.js) | 2026-11-16 | 0.25 |
+| 130 | Hills-to-Bay caterpillars: 2 fuzzy caterpillars on leaves beside the lower Hills-to-Bay path (the forest path is packed with tappables); tap = a happy inch-wiggle + giggle + rainbow sparkles; hidden in snowy themes | Done/Live fc9604b (bundle index-QHyR99vH.js) | 2026-11-16 | 0.25 |
 
 ## Recently done
 
