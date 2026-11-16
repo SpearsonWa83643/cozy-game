@@ -234,10 +234,10 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 
 | Order | Task | Status | ETA live | Estimate (dev days) |
 |---|---|---|---|---|
-| 131 | Hillside lambs: 2 lambs beside the lower Meadow-to-Hills path (between the ponies and the sheep); tap = a tiny baa + springy pronk bounce with hearts; all themes | In progress (wip/polish-131-134) | 2026-11-16 | 0.25 |
-| 132 | Shore geckos: 2 little geckos sunning on rocks beside the south shore path (west side; kittens are east); tap = tongue blep + color shimmer + tiny chirp; hidden in snowy themes | In progress (wip/polish-131-134) | 2026-11-16 | 0.25 |
-| 133 | Hills-to-Bay llama: a fluffy llama beside the Hills-to-Bay path (west side; the bear cub and caterpillars are east); tap = a happy hum + fluffy head bob; all themes | In progress (wip/polish-131-134) | 2026-11-16 | 0.25 |
-| 134 | Shore path turkey: a turkey beside the south shore path near the Fairy Grove end (the forest entry by the bridge is too cramped); tap = gobble-gobble + tail fans open; all themes | In progress (wip/polish-131-134) | 2026-11-16 | 0.25 |
+| 131 | Hillside lambs: 2 lambs beside the lower Meadow-to-Hills path (between the ponies and the sheep); tap = a tiny baa + springy pronk bounce with hearts; all themes | Done/Live 162e5d9 (bundle index-CwkqjyRp.js) | 2026-11-16 | 0.25 |
+| 132 | Shore geckos: 2 little geckos sunning on rocks beside the south shore path (west side; kittens are east); tap = tongue blep + color shimmer + tiny chirp; hidden in snowy themes | Done/Live 162e5d9 (bundle index-CwkqjyRp.js) | 2026-11-16 | 0.25 |
+| 133 | Hills-to-Bay llama: a fluffy llama beside the Hills-to-Bay path (west side; the bear cub and caterpillars are east); tap = a happy hum + fluffy head bob; all themes | Done/Live 162e5d9 (bundle index-CwkqjyRp.js) | 2026-11-16 | 0.25 |
+| 134 | Shore path turkey: a turkey beside the south shore path near the Fairy Grove end (the forest entry by the bridge is too cramped); tap = gobble-gobble + tail fans open; all themes | Done/Live 162e5d9 (bundle index-CwkqjyRp.js) | 2026-11-16 | 0.25 |
 
 ## Recently done
 
