@@ -55,6 +55,11 @@
 // 132 Shore geckos: geckos sunning on rocks beside the south shore path (west side); tap = tongue blep + color shimmer + chirp. Hidden in snow.
 // 133 Hills-to-Bay llama: a fluffy llama west of the Hills-to-Bay path; tap = happy hum + fluffy head bob. All themes.
 // 134 Shore path turkey: a turkey beside the south shore path near the Fairy Grove end (the forest entry is too cramped by the bridge); tap = gobble-gobble + tail fan opens. All themes.
+// 135–138: little life 10 (same engine):
+// 135 Orchard peacock: a peacock beside the southern orchard path; tap = tail fans open with eye spots + a happy call. All themes.
+// 136 Meadow quail: quail with bobbing topknots beside the Sunflower Meadow path; tap = chi-ca-go + topknot bob + tiny scurry. Hidden in snow.
+// 137 Hills path chicks: fluffy chicks south of the Hills path (calves are north); tap = peep-peep + hop + feather puff. Hidden in snow.
+// 138 Riverside porcupine: a round porcupine on the dry side of the riverside path; tap = soft quills puff out + snuffle + sparkles. All themes.
 // Culled off-screen.
 import Phaser from 'phaser';
 import { Ctx, canvasTex, frameScale, S } from './art';
@@ -64,7 +69,7 @@ import { PATH_MEADOW, GROVE_RING, VILLAGE, VILLAGE_ENTRY, VILLAGE_SIGN, VILLAGE_
 import { lakeValue, riverXAt, riverHalfAt, onBridge } from './geo';
 import type { WorldScene } from './scenes/World';
 
-export type Kind = 'ladybug' | 'snail' | 'hen' | 'turtle' | 'goat' | 'sheep' | 'otter' | 'mole' | 'hedgehog' | 'mouse' | 'beaver' | 'fawn' | 'swan' | 'piglet' | 'bee' | 'heron' | 'fox' | 'pony' | 'kitten' | 'robin' | 'puffin' | 'puppy' | 'chipmunk' | 'bearcub' | 'raccoon' | 'seal' | 'calf' | 'hummer' | 'dolphin' | 'donkey' | 'tortoise' | 'caterpillar' | 'lamb' | 'gecko' | 'llama' | 'turkey';
+export type Kind = 'ladybug' | 'snail' | 'hen' | 'turtle' | 'goat' | 'sheep' | 'otter' | 'mole' | 'hedgehog' | 'mouse' | 'beaver' | 'fawn' | 'swan' | 'piglet' | 'bee' | 'heron' | 'fox' | 'pony' | 'kitten' | 'robin' | 'puffin' | 'puppy' | 'chipmunk' | 'bearcub' | 'raccoon' | 'seal' | 'calf' | 'hummer' | 'dolphin' | 'donkey' | 'tortoise' | 'caterpillar' | 'lamb' | 'gecko' | 'llama' | 'turkey' | 'peacock' | 'quail' | 'chick' | 'porcupine';
 const SNOWY = new Set(['christmas', 'winter']);
 export const LIFE: Record<Kind, { n: number; size: number; reactS: number; snowHide: boolean; tw: number; th: number }> = {
   ladybug: { n: 4, size: 1.4, reactS: 2.2, snowHide: true, tw: 24, th: 20 },
@@ -103,6 +108,10 @@ export const LIFE: Record<Kind, { n: number; size: number; reactS: number; snowH
   gecko: { n: 2, size: 1.35, reactS: 1.8, snowHide: true, tw: 40, th: 26 },
   llama: { n: 1, size: 1.45, reactS: 2.0, snowHide: false, tw: 44, th: 58 },
   turkey: { n: 1, size: 1.45, reactS: 2.0, snowHide: false, tw: 50, th: 46 },
+  peacock: { n: 1, size: 1.5, reactS: 2.4, snowHide: false, tw: 64, th: 60 },
+  quail: { n: 2, size: 1.35, reactS: 1.8, snowHide: true, tw: 36, th: 32 },
+  chick: { n: 3, size: 1.3, reactS: 1.6, snowHide: true, tw: 26, th: 26 },
+  porcupine: { n: 1, size: 1.4, reactS: 2.2, snowHide: false, tw: 48, th: 38 },
 };
 type Critter = {
   kind: Kind; img: Phaser.GameObjects.Image; shadow: Phaser.GameObjects.Ellipse;
@@ -396,6 +405,10 @@ const TEX: [string, Kind, (c: Ctx) => void][] = [
   ['ll_gecko', 'gecko', (c) => gecko(c, false)], ['ll_gecko_blep', 'gecko', (c) => gecko(c, true)],
   ['ll_llama', 'llama', (c) => llama(c, false)], ['ll_llama_hum', 'llama', (c) => llama(c, true)],
   ['ll_turkey', 'turkey', (c) => turkey(c, false)], ['ll_turkey_fan', 'turkey', (c) => turkey(c, true)],
+  ['ll_peacock', 'peacock', (c) => peacock(c, false)], ['ll_peacock_fan', 'peacock', (c) => peacock(c, true)],
+  ['ll_quail', 'quail', (c) => quail(c, false)], ['ll_quail_run', 'quail', (c) => quail(c, true)],
+  ['ll_chick', 'chick', (c) => chick(c, false)], ['ll_chick_peep', 'chick', (c) => chick(c, true)],
+  ['ll_porc', 'porcupine', (c) => porcupine(c, false)], ['ll_porc_puff', 'porcupine', (c) => porcupine(c, true)],
 ];
 const KEY: Record<Kind, [string, string]> = { ladybug: ['ll_lady', 'll_lady_fly'], snail: ['ll_snail', 'll_snail_in'], hen: ['ll_hen', 'll_hen_flap'], turtle: ['ll_turtle', 'll_turtle'],
   goat: ['ll_goat', 'll_goat_hop'], sheep: ['ll_sheep', 'll_sheep_baa'], otter: ['ll_otter', 'll_otter_roll'], mole: ['ll_mole', 'll_mole_up'],
@@ -405,7 +418,8 @@ const KEY: Record<Kind, [string, string]> = { ladybug: ['ll_lady', 'll_lady_fly'
   puffin: ['ll_puffin', 'll_puffin_flap'], puppy: ['ll_puppy', 'll_puppy_happy'], chipmunk: ['ll_chip', 'll_chip_puff'], bearcub: ['ll_bear', 'll_bear_roll'],
   raccoon: ['ll_coon', 'll_coon_peek'], seal: ['ll_seal', 'll_seal_clap'], calf: ['ll_calf', 'll_calf_moo'], hummer: ['ll_hum', 'll_hum_zip'],
   dolphin: ['ll_dolphin', 'll_dolphin_leap'], donkey: ['ll_donkey', 'll_donkey_haw'], tortoise: ['ll_tort', 'll_tort_in'], caterpillar: ['ll_cater', 'll_cater_inch'],
-  lamb: ['ll_lamb', 'll_lamb_pronk'], gecko: ['ll_gecko', 'll_gecko_blep'], llama: ['ll_llama', 'll_llama_hum'], turkey: ['ll_turkey', 'll_turkey_fan'] };
+  lamb: ['ll_lamb', 'll_lamb_pronk'], gecko: ['ll_gecko', 'll_gecko_blep'], llama: ['ll_llama', 'll_llama_hum'], turkey: ['ll_turkey', 'll_turkey_fan'],
+  peacock: ['ll_peacock', 'll_peacock_fan'], quail: ['ll_quail', 'll_quail_run'], chick: ['ll_chick', 'll_chick_peep'], porcupine: ['ll_porc', 'll_porc_puff'] };
 
 function fox(c: Ctx, pounce: boolean) {
   // bushy tail (up when pouncing)
@@ -864,10 +878,119 @@ function turkey(c: Ctx, fan: boolean) {
   else { c.fillStyle = '#1a1a1a'; c.beginPath(); c.arc(hx + 1, hy - 1, 1.2, 0, TAU); c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.arc(hx + 1.4, hy - 1.4, 0.4, 0, TAU); c.fill(); }
 }
 
+function peacock(c: Ctx, fan: boolean) {
+  const eye = (x: number, y: number, r: number) => {
+    c.fillStyle = '#2a9a5a'; c.beginPath(); c.ellipse(x, y, r * 1.25, r, 0, 0, TAU); c.fill();
+    c.fillStyle = '#f0c040'; c.beginPath(); c.arc(x, y, r * 0.75, 0, TAU); c.fill();
+    c.fillStyle = '#1a3aa0'; c.beginPath(); c.arc(x, y, r * 0.45, 0, TAU); c.fill();
+  };
+  if (fan) {
+    // big fan of feathers behind the body
+    const cx = 30, cy = 40;
+    for (let k = 0; k < 13; k++) {
+      const a = Math.PI * (1.05 + k * (0.9 / 12));
+      c.strokeStyle = '#5aa040'; c.lineWidth = 3; c.beginPath(); c.moveTo(cx, cy); c.lineTo(cx + Math.cos(a) * 26, cy + Math.sin(a) * 30); c.stroke();
+    }
+    c.fillStyle = 'rgba(60,170,90,0.55)'; c.beginPath(); c.ellipse(cx, cy, 29, 33, 0, Math.PI, TAU); c.fill();
+    for (let k = 0; k < 9; k++) { const a = Math.PI * (1.08 + k * (0.84 / 8)); eye(cx + Math.cos(a) * 24, cy + Math.sin(a) * 28, 3.2); }
+    for (let k = 0; k < 6; k++) { const a = Math.PI * (1.15 + k * (0.7 / 5)); eye(cx + Math.cos(a) * 14, cy + Math.sin(a) * 16, 2.4); }
+  } else {
+    // long trailing tail behind (to the left)
+    c.fillStyle = '#3a9a50'; c.strokeStyle = '#1f6a38'; c.lineWidth = 1.2;
+    c.beginPath(); c.moveTo(26, 40); c.quadraticCurveTo(10, 44, 2, 50); c.lineTo(4, 54); c.quadraticCurveTo(14, 50, 28, 46); c.closePath(); c.fill(); c.stroke();
+    eye(7, 51, 2.4); eye(15, 47, 2.2);
+  }
+  // legs
+  c.fillStyle = '#8a7a6a'; for (const x of [28, 34]) { c.fillRect(x - 1, 46, 2, 8); c.fillRect(x - 2.5, 53, 5, 1.5); }
+  // body
+  c.fillStyle = '#1e5ac8'; c.strokeStyle = '#0e2e78'; c.lineWidth = 1.3;
+  c.beginPath(); c.ellipse(31, 41, 9, 7.5, -0.2, 0, TAU); c.fill(); c.stroke();
+  c.fillStyle = '#6a8a50'; c.beginPath(); c.ellipse(27, 42, 5, 4.5, -0.3, 0, TAU); c.fill();
+  // neck + head
+  c.fillStyle = '#1e5ac8'; c.beginPath(); c.moveTo(34, 38); c.quadraticCurveTo(39, 30, 38, 22); c.lineTo(42, 22); c.quadraticCurveTo(43, 32, 39, 40); c.closePath(); c.fill(); c.stroke();
+  const hx = 40, hy = fan ? 19 : 20;
+  c.beginPath(); c.arc(hx, hy, 3.8, 0, TAU); c.fill(); c.stroke();
+  c.fillStyle = '#fff'; c.beginPath(); c.ellipse(hx + 1, hy, 1.6, 0.9, 0, 0, TAU); c.fill();
+  c.fillStyle = '#1a1a1a';
+  if (fan) { c.strokeStyle = '#1a1a1a'; c.lineWidth = 1; c.beginPath(); c.arc(hx + 1, hy - 0.2, 1.1, Math.PI * 1.1, Math.PI * 1.9); c.stroke(); }
+  else { c.beginPath(); c.arc(hx + 1.2, hy - 0.2, 0.9, 0, TAU); c.fill(); }
+  c.fillStyle = '#d0b070'; c.beginPath(); c.moveTo(hx + 3.4, hy - 0.5); c.lineTo(hx + 6.5, hy + 0.6); c.lineTo(hx + 3.4, hy + 1.4); c.closePath(); c.fill();
+  // crest
+  c.strokeStyle = '#1e5ac8'; c.lineWidth = 0.9;
+  for (const dx of [-2, 0, 2]) { c.beginPath(); c.moveTo(hx, hy - 3.5); c.lineTo(hx + dx, hy - 8); c.stroke(); c.fillStyle = '#3ac0a0'; c.beginPath(); c.arc(hx + dx, hy - 8.5, 1.1, 0, TAU); c.fill(); }
+}
+
+function quail(c: Ctx, run: boolean) {
+  c.strokeStyle = '#6a5040'; c.lineWidth = 1.4;
+  if (run) { c.beginPath(); c.moveTo(15, 24); c.lineTo(11, 29); c.moveTo(20, 24); c.lineTo(24, 29); c.stroke(); }
+  else { c.beginPath(); c.moveTo(15, 24); c.lineTo(15, 29); c.moveTo(20, 24); c.lineTo(20, 29); c.stroke(); }
+  c.fillStyle = '#8a7a90'; c.strokeStyle = '#4a3e50'; c.lineWidth = 1.2;
+  c.beginPath(); c.ellipse(17, 20, 10, 7, 0, 0, TAU); c.fill(); c.stroke();
+  c.fillStyle = '#c8a070'; c.beginPath(); c.ellipse(19, 23, 6, 3.4, 0, 0, TAU); c.fill();
+  c.fillStyle = '#fff'; for (const [x, y] of [[12, 19], [15, 22], [18, 21], [21, 24], [10, 22]]) { c.beginPath(); c.arc(x, y, 0.7, 0, TAU); c.fill(); }
+  c.fillStyle = '#6a5a70'; c.beginPath(); c.ellipse(12, 18, 5, 3.5, -0.3, 0, TAU); c.fill();
+  const hx = 26, hy = run ? 12 : 13;
+  c.fillStyle = '#8a7a90'; c.strokeStyle = '#4a3e50'; c.beginPath(); c.arc(hx, hy, 4.4, 0, TAU); c.fill(); c.stroke();
+  c.fillStyle = '#1a1a1a'; c.beginPath(); c.moveTo(hx - 1, hy + 1.5); c.quadraticCurveTo(hx + 2, hy + 4.5, hx + 4, hy + 1.5); c.lineTo(hx + 3, hy + 3); c.fill();
+  c.strokeStyle = '#fff'; c.lineWidth = 0.8; c.beginPath(); c.moveTo(hx - 2.5, hy - 0.5); c.lineTo(hx + 3.5, hy - 1.5); c.stroke();
+  c.fillStyle = '#1a1a1a'; c.beginPath(); c.arc(hx + 1.2, hy - 0.4, 1, 0, TAU); c.fill();
+  c.fillStyle = '#5a4030'; c.beginPath(); c.moveTo(hx + 4, hy - 0.5); c.lineTo(hx + 6.5, hy + 0.5); c.lineTo(hx + 4, hy + 1.2); c.closePath(); c.fill();
+  // curly topknot plume
+  c.strokeStyle = '#2a2230'; c.lineWidth = 1.6; c.beginPath(); c.moveTo(hx - 0.5, hy - 4);
+  if (run) c.quadraticCurveTo(hx - 1, hy - 11, hx + 4, hy - 10); else c.quadraticCurveTo(hx, hy - 9, hx + 4.5, hy - 7.5);
+  c.stroke(); c.fillStyle = '#2a2230'; c.beginPath(); c.arc(run ? hx + 4 : hx + 4.5, run ? hy - 10 : hy - 7.5, 1.6, 0, TAU); c.fill();
+}
+
+function chick(c: Ctx, peep: boolean) {
+  c.strokeStyle = '#e09020'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(11, 19); c.lineTo(11, 23); c.moveTo(15, 19); c.lineTo(15, 23); c.stroke();
+  c.fillStyle = '#ffe050'; c.strokeStyle = '#c8a020'; c.lineWidth = 1.1;
+  c.beginPath(); c.ellipse(13, 15, 7.5, 6.5, 0, 0, TAU); c.fill(); c.stroke();
+  c.beginPath(); c.arc(16, 9, 4.6, 0, TAU); c.fill(); c.stroke();
+  // fluff tuft
+  c.strokeStyle = '#f0c030'; c.beginPath(); c.moveTo(15, 4.5); c.lineTo(14.5, 2); c.moveTo(16.5, 4.5); c.lineTo(17.5, 2.2); c.stroke();
+  // wing
+  c.fillStyle = '#ffd030'; c.strokeStyle = '#c8a020';
+  if (peep) { c.beginPath(); c.ellipse(9, 10, 2.6, 4.6, -0.8, 0, TAU); c.fill(); c.stroke(); }
+  else { c.beginPath(); c.ellipse(11, 15, 4, 3, 0.2, 0, TAU); c.fill(); c.stroke(); }
+  c.fillStyle = '#f08a20';
+  if (peep) { c.beginPath(); c.moveTo(19.5, 8); c.lineTo(23, 7); c.lineTo(20, 9.3); c.closePath(); c.fill(); c.beginPath(); c.moveTo(19.5, 10); c.lineTo(22.5, 11.5); c.lineTo(19.8, 10.8); c.closePath(); c.fill(); }
+  else { c.beginPath(); c.moveTo(19.8, 8.6); c.lineTo(23, 9.6); c.lineTo(19.8, 10.6); c.closePath(); c.fill(); }
+  c.fillStyle = '#1a1a1a'; c.beginPath(); c.arc(17.5, 8, 1, 0, TAU); c.fill();
+  c.fillStyle = '#fff'; c.beginPath(); c.arc(17.8, 7.6, 0.35, 0, TAU); c.fill();
+  c.fillStyle = 'rgba(255,130,150,0.5)'; c.beginPath(); c.arc(17, 10.8, 1.1, 0, TAU); c.fill();
+}
+
+function porcupine(c: Ctx, puff: boolean) {
+  const cx = 22, cy = 24, L = puff ? 13 : 8;
+  // soft quills
+  c.strokeStyle = '#d8c8a8'; c.lineWidth = 1.4; c.lineCap = 'round';
+  for (let k = 0; k < 17; k++) {
+    const a = Math.PI * (0.95 + k * (1.1 / 16));
+    const r0 = 9;
+    c.beginPath(); c.moveTo(cx + Math.cos(a) * r0, cy + Math.sin(a) * r0 * 0.85); c.lineTo(cx + Math.cos(a) * (r0 + L), cy + Math.sin(a) * (r0 + L) * 0.85); c.stroke();
+  }
+  c.strokeStyle = '#6a5040'; c.lineWidth = 1;
+  for (let k = 0; k < 9; k++) {
+    const a = Math.PI * (1.0 + k * (1.0 / 8));
+    c.beginPath(); c.moveTo(cx + Math.cos(a) * 8, cy + Math.sin(a) * 7); c.lineTo(cx + Math.cos(a) * (8 + L * 0.8), cy + Math.sin(a) * (8 + L * 0.8) * 0.85); c.stroke();
+  }
+  c.lineCap = 'butt';
+  c.fillStyle = '#6a5040'; for (const x of [16, 27]) c.fillRect(x - 1.5, 30, 3, 4);
+  c.fillStyle = '#7a5a48'; c.strokeStyle = '#4a3428'; c.lineWidth = 1.2;
+  c.beginPath(); c.ellipse(cx, cy + 2, 12, 9, 0, 0, TAU); c.fill(); c.stroke();
+  // face
+  const hx = 33, hy = 26;
+  c.fillStyle = '#c8a088'; c.beginPath(); c.ellipse(hx, hy, 5.5, 4.6, 0, 0, TAU); c.fill(); c.stroke();
+  c.fillStyle = '#3a2a22'; c.beginPath(); c.arc(hx + 5, hy + 0.5, 1.5, 0, TAU); c.fill();
+  if (puff) { c.strokeStyle = '#1a1a1a'; c.lineWidth = 1; c.beginPath(); c.arc(hx + 1, hy - 1, 1.2, Math.PI * 1.1, Math.PI * 1.9); c.stroke(); }
+  else { c.fillStyle = '#1a1a1a'; c.beginPath(); c.arc(hx + 1.2, hy - 1.2, 1.1, 0, TAU); c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.arc(hx + 1.5, hy - 1.5, 0.4, 0, TAU); c.fill(); }
+  c.fillStyle = 'rgba(255,130,150,0.55)'; c.beginPath(); c.arc(hx + 0.5, hy + 2, 1.3, 0, TAU); c.fill();
+}
+
 export class LittleLife {
   list: Critter[] = [];
   /** Test hooks. */
-  taps: Record<Kind, number> = { ladybug: 0, snail: 0, hen: 0, turtle: 0, goat: 0, sheep: 0, otter: 0, mole: 0, hedgehog: 0, mouse: 0, beaver: 0, fawn: 0, swan: 0, piglet: 0, bee: 0, heron: 0, fox: 0, pony: 0, kitten: 0, robin: 0, puffin: 0, puppy: 0, chipmunk: 0, bearcub: 0, raccoon: 0, seal: 0, calf: 0, hummer: 0, dolphin: 0, donkey: 0, tortoise: 0, caterpillar: 0, lamb: 0, gecko: 0, llama: 0, turkey: 0 };
+  taps: Record<Kind, number> = { ladybug: 0, snail: 0, hen: 0, turtle: 0, goat: 0, sheep: 0, otter: 0, mole: 0, hedgehog: 0, mouse: 0, beaver: 0, fawn: 0, swan: 0, piglet: 0, bee: 0, heron: 0, fox: 0, pony: 0, kitten: 0, robin: 0, puffin: 0, puppy: 0, chipmunk: 0, bearcub: 0, raccoon: 0, seal: 0, calf: 0, hummer: 0, dolphin: 0, donkey: 0, tortoise: 0, caterpillar: 0, lamb: 0, gecko: 0, llama: 0, turkey: 0, peacock: 0, quail: 0, chick: 0, porcupine: 0 };
   constructor(private w: WorldScene) {
     for (const [key, kind, draw] of TEX) if (!w.textures.exists(key)) canvasTex(w, key, LIFE[kind].tw, LIFE[kind].th, draw, S, true);
     const busy: number[][] = [...w.interactables.map((it) => [it.x, it.y]), ...w.tappables.map((t) => [t.x(), t.y()])];
@@ -1035,6 +1158,14 @@ export class LittleLife {
     // 134: beside the south shore path near the Fairy Grove end (the forest entry by the bridge is too cramped,
     //      and deeper in the forest is packed with tappables).
     pick('turkey', along(PATH_SHORE_S, [[0, -150], [-150, 0], [0, -190], [-190, 0]], 2), (x, y) => open(x, y) && lakeValue(x, y) > 1.3 && noPuzzle(x, y) && roomy(x, y), 100, 300);
+    // 135: beside the southern orchard path (nothing else lives there yet).
+    pick('peacock', [...along(PATH_ORCHARD_S, sides([220, 260, 300, 340, 380]), 0), ...along(PATH_ORCHARD_S, [[0, -200], [0, 200], [0, -260], [0, 260]], 0)], (x, y) => open(x, y) && noPuzzle(x, y) && roomy(x, y), 100, 300);
+    // 136: beside the Sunflower Meadow path, further out than the ladybugs and bees.
+    pick('quail', along(PATH_MEADOW, [[0, 260], [0, -270], [0, 300], [0, -310], [60, 260], [-60, -270], [0, 220]], 1), (x, y) => open(x, y) && noPuzzle(x, y) && roomy(x, y), 100, 140);
+    // 137: a little cluster south of the Hills path (the calves are north).
+    pick('chick', along(PATH_HILLS, [[0, 160], [40, 175], [-40, 175], [0, 200], [40, 215], [-40, 215], [0, 240], [80, 190], [-80, 190]], 1), (x, y) => open(x, y) && noPuzzle(x, y) && roomy(x, y), 70, 45);
+    // 138: the dry side of the riverside path, well away from the river, the beaver and the raccoons.
+    pick('porcupine', along(PATH_RIVERSIDE, sides([200, 240, 280, 320, 360, 400]), 0), (x, y) => open(x, y) && rv(x, y) > RIVER_HALF + 60 && noPuzzle(x, y) && roomy(x, y), 100, 300);
     const onTheme = () => this.retheme();
     themeEvents.on('change', onTheme);
     w.events.once('shutdown', () => themeEvents.off('change', onTheme));
@@ -1096,6 +1227,10 @@ export class LittleLife {
       case 'lamb': sfx.pronk(); w.burst(c.x, c.y - 30, 0xff9ab0, 6, 'heart'); break;
       case 'gecko': sfx.blep(); w.burst(c.x + 10, c.y - 12, 0x80ffd0, 7, 'spark'); break;
       case 'llama': sfx.llamaHum(); w.burst(c.x + 10, c.y - 60, 0xffd080, 5, 'note'); break;
+      case 'peacock': sfx.peacockCall(); for (const col of [0x40c0a0, 0x3060e0, 0xf0c040]) w.burst(c.x, c.y - 40, col, 4, 'spark'); break;
+      case 'quail': sfx.quailCall(); w.burst(c.x + 6, c.y - 28, 0xffd080, 4, 'note'); break;
+      case 'chick': sfx.peep(); w.burst(c.x, c.y - 16, 0xfff0a0, 6); break;
+      case 'porcupine': sfx.snuffle(); w.burst(c.x, c.y - 30, 0xfff0d0, 8, 'spark'); break;
       case 'turkey': sfx.gobble(); w.burst(c.x - 6, c.y - 34, 0xf0a030, 8, 'spark'); break;
       case 'caterpillar': sfx.giggleSoft(1250); for (const col of [0xff8080, 0xffc040, 0x80d0ff, 0xc080ff]) w.burst(c.x, c.y - 16, col, 3, 'spark'); break;
     }
@@ -1261,6 +1396,22 @@ export class LittleLife {
         case 'llama':
           if (c.t > 0) { rot = Math.sin(p * Math.PI * 4) * 0.08 * (1 - p); sy = 1 + Math.sin(p * Math.PI * 8) * 0.025 * (1 - p); if (p > 0.88) c.img.setTexture(KEY.llama[0]); }
           else { dx = Math.sin(now * 0.15 + c.ph) * 10; rot = Math.sin(now * 0.7 + c.ph) * 0.03; sy = 1 + Math.sin(now * 1.1 + c.ph) * 0.012; c.img.setFlipX(Math.cos(now * 0.15 + c.ph) < 0); }
+          break;
+        case 'peacock':
+          if (c.t > 0) { sx = 1 + Math.sin(p * Math.PI * 12) * 0.025 * (1 - p); sy = 1 + Math.sin(p * Math.PI) * 0.04; if (p > 0.88) c.img.setTexture(KEY.peacock[0]); }
+          else { const peck = Math.max(0, Math.sin(now * 0.9 + c.ph)) ** 8; rot = (c.img.flipX ? -1 : 1) * peck * 0.1; dx = Math.sin(now * 0.12 + c.ph) * 14; c.img.setFlipX(Math.cos(now * 0.12 + c.ph) < 0); }
+          break;
+        case 'quail':
+          if (c.t > 0) { dx = Math.sin(p * Math.PI) * 26 * (c.img.flipX ? -1 : 1); sy = 1 + Math.sin(p * Math.PI * 10) * 0.05 * (1 - p); lift = Math.abs(Math.sin(p * Math.PI * 10)) * 2; if (p > 0.85) c.img.setTexture(KEY.quail[0]); }
+          else { dx = Math.sin(now * 0.3 + c.ph) * 10; sy = 1 + Math.sin(now * 3 + c.ph) * 0.02; c.img.setFlipX(Math.cos(now * 0.3 + c.ph) < 0); }
+          break;
+        case 'chick':
+          if (c.t > 0) { lift = Math.abs(Math.sin(p * Math.PI * 2)) * 12 * (1 - p * 0.4); sy = 1 + Math.sin(p * Math.PI * 4) * 0.06; if (p > 0.85) c.img.setTexture(KEY.chick[0]); }
+          else { const hop = Math.max(0, Math.sin(now * 1.6 + c.ph)) ** 10; lift = hop * 3; dx = Math.sin(now * 0.35 + c.ph) * 8; c.img.setFlipX(Math.cos(now * 0.35 + c.ph) < 0); }
+          break;
+        case 'porcupine':
+          if (c.t > 0) { const e = Math.sin(Math.min(1, p / 0.25) * Math.PI / 2); sx = 1 + e * 0.08 * (1 - Math.max(0, p - 0.7) / 0.3); sy = sx; rot = Math.sin(p * Math.PI * 6) * 0.03; if (p > 0.85) c.img.setTexture(KEY.porcupine[0]); }
+          else { dx = Math.sin(now * 0.14 + c.ph) * 10; sy = 1 + Math.sin(now * 1.3 + c.ph) * 0.02; rot = Math.sin(now * 0.9 + c.ph) * 0.02; c.img.setFlipX(Math.cos(now * 0.14 + c.ph) < 0); }
           break;
         case 'turkey':
           if (c.t > 0) { sx = 1 + Math.sin(p * Math.PI * 10) * 0.03 * (1 - p); lift = p < 0.2 ? Math.sin((p / 0.2) * Math.PI) * 6 : 0; if (p > 0.88) c.img.setTexture(KEY.turkey[0]); }
