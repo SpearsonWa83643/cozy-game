@@ -931,6 +931,31 @@ class Synth {
     for (let i = 0; i < 9; i++) this.voice(380 + Math.sin(i * 0.9) * 50, i * 0.06, 0.022, 0.09, 'sine', 0.02);
   }
 
+  /** 135: a soft, happy peacock call (may-awe, may-awe). */
+  peacockCall() {
+    if (!this.ready) return;
+    for (const w of [0, 0.42]) { for (let i = 0; i < 4; i++) this.voice(620 + i * 90, w + i * 0.03, 0.022, 0.06, 'triangle', 0.004); this.voice(980, w + 0.13, 0.026, 0.18, 'sine', 0.02); }
+  }
+
+  /** 136: a chi-ca-go quail call. */
+  quailCall() {
+    if (!this.ready) return;
+    for (const [f, w, d] of [[1500, 0, 0.06], [1900, 0.12, 0.07], [1650, 0.26, 0.14]]) this.voice(f, w, 0.028, d, 'sine', 0.008);
+  }
+
+  /** 137: peep-peep. */
+  peep() {
+    if (!this.ready) return;
+    for (const w of [0, 0.16]) { this.voice(2700, w, 0.022, 0.05, 'sine'); this.voice(2300, w + 0.04, 0.018, 0.04, 'sine'); }
+  }
+
+  /** 138: a sniffly porcupine snuffle. */
+  snuffle() {
+    if (!this.ready) return;
+    for (let i = 0; i < 5; i++) this.voice(220 + (i % 2) * 60, i * 0.07, 0.03, 0.05, 'sawtooth', 0.01);
+    this.voice(880, 0.42, 0.02, 0.1, 'sine');
+  }
+
   /** 134: a friendly turkey gobble-gobble. */
   gobble() {
     if (!this.ready) return;

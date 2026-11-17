@@ -3,12 +3,12 @@
 // Keep each bullet short and simple: kids read these.
 // icon: 'wood' | 'fruit' | 'berry' | 'star' | 'heart' (a little picture beside the line).
 
-export const VERSION = '2026-11-16-polish-131-134';
+export const VERSION = '2026-11-17-polish-135-138';
 
 export type WhatsNewItem = { icon: 'wood' | 'fruit' | 'berry' | 'star' | 'heart'; text: string };
 export const ITEMS: WhatsNewItem[] = [
-  { icon: 'heart', text: 'Lambs! Little lambs play by the path to the hills. Tap one — baa and boing!' },
-  { icon: 'berry', text: 'Geckos! They sit on warm rocks by the south shore path. Tap one — blep! It changes color.' },
-  { icon: 'star', text: 'A llama! It stands by the path from the hills to the bay. Tap it — hmm-hmm, a happy hum.' },
-  { icon: 'fruit', text: 'A turkey! It walks by the south shore path, near Glowcap Grove. Tap it — gobble gobble, big tail!' },
+  { icon: 'star', text: 'A peacock! It walks by the orchard path. Tap it — its big tail opens wide!' },
+  { icon: 'berry', text: 'Quail! They scurry by the Sunflower Meadow path. Tap one — chi-ca-go!' },
+  { icon: 'heart', text: 'Baby chicks! They hop by the path to the hills. Tap one — peep peep!' },
+  { icon: 'fruit', text: 'A porcupine! It waddles by the river path. Tap it — its soft quills puff out!' },
 ];
