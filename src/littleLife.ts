@@ -1159,13 +1159,13 @@ export class LittleLife {
     //      and deeper in the forest is packed with tappables).
     pick('turkey', along(PATH_SHORE_S, [[0, -150], [-150, 0], [0, -190], [-190, 0]], 2), (x, y) => open(x, y) && lakeValue(x, y) > 1.3 && noPuzzle(x, y) && roomy(x, y), 100, 300);
     // 135: beside the southern orchard path (nothing else lives there yet).
-    pick('peacock', along(PATH_ORCHARD_S, sides([160, 200, 240, 280]), 0), (x, y) => open(x, y) && land(x, y - 50) && noPuzzle(x, y) && roomy(x, y, 250), 110, 300);
+    pick('peacock', [...along(PATH_ORCHARD_S, sides([220, 260, 300, 340, 380]), 0), ...along(PATH_ORCHARD_S, [[0, -200], [0, 200], [0, -260], [0, 260]], 0)], (x, y) => open(x, y) && noPuzzle(x, y) && roomy(x, y), 100, 300);
     // 136: beside the Sunflower Meadow path, further out than the ladybugs and bees.
     pick('quail', along(PATH_MEADOW, [[0, 260], [0, -270], [0, 300], [0, -310], [60, 260], [-60, -270], [0, 220]], 1), (x, y) => open(x, y) && noPuzzle(x, y) && roomy(x, y), 100, 140);
     // 137: a little cluster south of the Hills path (the calves are north).
     pick('chick', along(PATH_HILLS, [[0, 160], [40, 175], [-40, 175], [0, 200], [40, 215], [-40, 215], [0, 240], [80, 190], [-80, 190]], 1), (x, y) => open(x, y) && noPuzzle(x, y) && roomy(x, y), 70, 45);
     // 138: the dry side of the riverside path, well away from the river, the beaver and the raccoons.
-    pick('porcupine', along(PATH_RIVERSIDE, [[240, 0], [-240, 0], [280, 0], [-280, 0], [320, 0], [-320, 0], [240, -70], [240, 70], [-240, -70], [-240, 70]], 1), (x, y) => open(x, y) && rv(x, y) > RIVER_HALF + 90 && noPuzzle(x, y) && roomy(x, y, 250), 100, 300);
+    pick('porcupine', along(PATH_RIVERSIDE, sides([200, 240, 280, 320, 360, 400]), 0), (x, y) => open(x, y) && rv(x, y) > RIVER_HALF + 60 && noPuzzle(x, y) && roomy(x, y), 100, 300);
     const onTheme = () => this.retheme();
     themeEvents.on('change', onTheme);
     w.events.once('shutdown', () => themeEvents.off('change', onTheme));
