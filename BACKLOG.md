@@ -239,6 +239,15 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 | 133 | Hills-to-Bay llama: a fluffy llama beside the Hills-to-Bay path (west side; the bear cub and caterpillars are east); tap = a happy hum + fluffy head bob; all themes | Done/Live 162e5d9 (bundle index-CwkqjyRp.js) | 2026-11-16 | 0.25 |
 | 134 | Shore path turkey: a turkey beside the south shore path near the Fairy Grove end (the forest entry by the bridge is too cramped); tap = gobble-gobble + tail fans open; all themes | Done/Live 162e5d9 (bundle index-CwkqjyRp.js) | 2026-11-16 | 0.25 |
 
+## Self-added polish (2026-11-17; backlog empty; no Walker decision or spending needed)
+
+| Order | Task | Status | ETA live | Estimate (dev days) |
+|---|---|---|---|---|
+| 135 | Orchard peacock: a peacock beside the southern orchard path; tap = its big tail fans open with shimmering eye spots + a happy call; all themes | In progress | 2026-11-17 | 0.25 |
+| 136 | Meadow quail: 2 plump quail with bobbing topknots beside the Sunflower Meadow path; tap = a chi-ca-go call + topknot bob + a tiny scurry; hidden in snowy themes | In progress | 2026-11-17 | 0.25 |
+| 137 | Hills path chicks: 3 fluffy yellow chicks on the south side of the Hills path (the calves are north); tap = peep-peep + a tiny hop + a feather puff; hidden in snowy themes | In progress | 2026-11-17 | 0.25 |
+| 138 | Riverside porcupine: a round porcupine on the dry side of the riverside path (away from the beaver and raccoons); tap = soft quills puff out + a sniffly snuffle + sparkles; all themes | In progress | 2026-11-17 | 0.25 |
+
 ## Recently done
 
 - 21: Real-iPad FPS check and tuning. Done 2026-10-27, Walker said the playtest went OK.
