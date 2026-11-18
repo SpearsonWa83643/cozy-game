@@ -1298,8 +1298,8 @@ export class LittleLife {
     pick('chick', along(PATH_HILLS, [[0, 160], [40, 175], [-40, 175], [0, 200], [40, 215], [-40, 215], [0, 240], [80, 190], [-80, 190]], 1), (x, y) => open(x, y) && noPuzzle(x, y) && roomy(x, y), 70, 45);
     // 138: the dry side of the riverside path, well away from the river, the beaver and the raccoons.
     pick('porcupine', along(PATH_RIVERSIDE, sides([200, 240, 280, 320, 360, 400]), 0), (x, y) => open(x, y) && rv(x, y) > RIVER_HALF + 60 && noPuzzle(x, y) && roomy(x, y), 100, 300);
-    // 139: Shellwater Lake path, on the land side (only out in snowy themes).
-    pick('penguin', [...along(PATH_LAKE, [[0, -160], [0, -200], [0, -240], [-180, 0], [180, 0], [0, 170], [0, 210]], 0), ...along(PATH_LAKE, sides([200, 240, 280]), 0)], (x, y) => open(x, y) && noPuzzle(x, y) && roomy(x, y), 100, 110);
+    // 139: Shellwater Lake path, on dry land clear of the river reeds (only out in snowy themes).
+    pick('penguin', [...along(PATH_LAKE, [[0, -160], [0, -200], [0, -240], [-180, 0], [180, 0], [0, 170], [0, 210]], 1), ...along(PATH_LAKE, sides([200, 240, 280]), 1)], (x, y) => open(x, y) && lakeValue(x, y) > 1.3 && rv(x, y) > RIVER_HALF + 120 && noPuzzle(x, y) && roomy(x, y), 100, 110);
     // 140: beside the Fairy Grove path, further out than the fox kits and the donkey.
     pick('armadillo', [...along(PATH_GROVE, [[0, 260], [0, 300], [0, -330], [0, 340], [0, -370], ...sides([220, 260, 300])], 0), ...along(PATH_BAY, [[0, 320], [0, 360]], 0)], (x, y) => open(x, y) && noPuzzle(x, y) && roomy(x, y), 100, 300);
     // 141: beside the Pinecone Hills path, between the calves, sheep and chicks.
@@ -1554,7 +1554,7 @@ export class LittleLife {
           else { const hop = Math.max(0, Math.sin(now * 1.6 + c.ph)) ** 10; lift = hop * 3; dx = Math.sin(now * 0.35 + c.ph) * 8; c.img.setFlipX(Math.cos(now * 0.35 + c.ph) < 0); }
           break;
         case 'penguin':
-          if (c.t > 0) { const d = c.img.flipX ? -1 : 1; if (p < 0.12) { lift = Math.sin(p / 0.12 * Math.PI) * 8; c.img.setTexture(KEY.penguin[0]); } else if (p < 0.8) { c.img.setTexture(KEY.penguin[1]); dx = Math.sin((p - 0.12) / 0.68 * Math.PI) * 46 * d; } else { c.img.setTexture(KEY.penguin[0]); lift = Math.abs(Math.sin((p - 0.8) * 5 * Math.PI * 2)) * 5; } }
+          if (c.t > 0) { const d = c.img.flipX ? -1 : 1; if (p < 0.8) { c.img.setTexture(KEY.penguin[1]); dx = Math.sin(p / 0.8 * Math.PI) * 46 * d; lift = p < 0.1 ? Math.sin(p / 0.1 * Math.PI) * 6 : 0; } else { c.img.setTexture(KEY.penguin[0]); lift = Math.abs(Math.sin((p - 0.8) * 5 * Math.PI * 2)) * 5; } }
           else { const wd = Math.sin(now * 3 + c.ph); rot = wd * 0.08; dx = Math.sin(now * 0.25 + c.ph) * 12; c.img.setFlipX(Math.cos(now * 0.25 + c.ph) < 0); }
           break;
         case 'armadillo':
