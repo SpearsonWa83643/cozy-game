@@ -252,10 +252,10 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 
 | Order | Task | Status | ETA live | Estimate (dev days) |
 |---|---|---|---|---|
-| 139 | Snowy penguins: 2 penguins by the Shellwater Lake path that only come out in the snowy themes (winter, Christmas); tap = a belly slide + happy squawk + snow sparkles | In progress (wip/polish-139-142) | 2026-11-18 | 0.25 |
-| 140 | Fairy Grove armadillo: a little armadillo beside the Fairy Grove path; tap = curls into a ball, rolls a bit, pops back out + boop; all themes | In progress (wip/polish-139-142) | 2026-11-18 | 0.25 |
-| 141 | Hills kangaroo: a kangaroo beside the Pinecone Hills path; tap = a big boing hop and a joey peeks out of the pouch to wave; all themes | In progress (wip/polish-139-142) | 2026-11-18 | 0.25 |
-| 142 | Bamboo panda: a panda munching bamboo beside the orchard path; tap = a roly-poly tumble + giggle + hearts; all themes | In progress (wip/polish-139-142) | 2026-11-18 | 0.25 |
+| 139 | Snowy penguins: 2 penguins by the Shellwater Lake path that only come out in the snowy themes (winter, Christmas); tap = a belly slide + happy squawk + snow sparkles | Done/Live 5fa7dcb (bundle index-CYXTKYP0.js) | 2026-11-18 | 0.25 |
+| 140 | Fairy Grove armadillo: a little armadillo beside the Fairy Grove path; tap = curls into a ball, rolls a bit, pops back out + boop; all themes | Done/Live 5fa7dcb (bundle index-CYXTKYP0.js) | 2026-11-18 | 0.25 |
+| 141 | Hills kangaroo: a kangaroo by the start of the Pinecone Hills path (near Windmill Orchard); tap = a big boing hop and a joey peeks out of the pouch to wave; all themes | Done/Live 5fa7dcb (bundle index-CYXTKYP0.js) | 2026-11-18 | 0.25 |
+| 142 | Bamboo panda: a panda munching bamboo beside the orchard path; tap = a roly-poly tumble + giggle + hearts; all themes | Done/Live 5fa7dcb (bundle index-CYXTKYP0.js) | 2026-11-18 | 0.25 |
 
 ## Recently done
 
