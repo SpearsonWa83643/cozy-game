@@ -956,6 +956,12 @@ class Synth {
     this.voice(880, 0.42, 0.02, 0.1, 'sine');
   }
 
+  /** 139: a happy little penguin squawk. */
+  squawk() {
+    if (!this.ready) return;
+    for (const [f, w] of [[1100, 0], [1350, 0.1], [1200, 0.2]]) { this.voice(f, w, 0.024, 0.07, 'square', 0.004); this.voice(f * 1.5, w + 0.01, 0.01, 0.05, 'sine'); }
+  }
+
   /** 134: a friendly turkey gobble-gobble. */
   gobble() {
     if (!this.ready) return;
