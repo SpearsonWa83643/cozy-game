@@ -248,6 +248,15 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 | 137 | Hills path chicks: 3 fluffy yellow chicks on the south side of the Hills path (the calves are north); tap = peep-peep + a tiny hop + a feather puff; hidden in snowy themes | Done/Live fbed10d (bundle index-LWcQQndW.js) | 2026-11-17 | 0.25 |
 | 138 | Riverside porcupine: a round porcupine on the dry west side of the riverside path (away from the beaver and raccoons); tap = soft quills puff out + a sniffly snuffle + sparkles; all themes | Done/Live fbed10d (bundle index-LWcQQndW.js) | 2026-11-17 | 0.25 |
 
+## Self-added polish (2026-11-18; backlog empty; no Walker decision or spending needed)
+
+| Order | Task | Status | ETA live | Estimate (dev days) |
+|---|---|---|---|---|
+| 139 | Snowy penguins: 2 penguins by the Shellwater Lake path that only come out in the snowy themes (winter, Christmas); tap = a belly slide + happy squawk + snow sparkles | In progress (wip/polish-139-142) | 2026-11-18 | 0.25 |
+| 140 | Fairy Grove armadillo: a little armadillo beside the Fairy Grove path; tap = curls into a ball, rolls a bit, pops back out + boop; all themes | In progress (wip/polish-139-142) | 2026-11-18 | 0.25 |
+| 141 | Hills kangaroo: a kangaroo beside the Pinecone Hills path; tap = a big boing hop and a joey peeks out of the pouch to wave; all themes | In progress (wip/polish-139-142) | 2026-11-18 | 0.25 |
+| 142 | Bamboo panda: a panda munching bamboo beside the orchard path; tap = a roly-poly tumble + giggle + hearts; all themes | In progress (wip/polish-139-142) | 2026-11-18 | 0.25 |
+
 ## Recently done
 
 - 21: Real-iPad FPS check and tuning. Done 2026-10-27, Walker said the playtest went OK.
