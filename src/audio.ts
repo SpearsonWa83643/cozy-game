@@ -956,6 +956,33 @@ class Synth {
     this.voice(880, 0.42, 0.02, 0.1, 'sine');
   }
 
+  /** 143: a soft, sleepy koala grunt-snore. */
+  koalaGrunt() {
+    if (!this.ready) return;
+    for (const [f, w] of [[120, 0], [140, 0.16], [110, 0.34]]) { this.voice(f, w, 0.035, 0.12, 'sawtooth', 0.02); this.voice(f * 2, w, 0.012, 0.1, 'sine', 0.02); }
+    this.voice(660, 0.55, 0.012, 0.18, 'sine', 0.03);
+  }
+
+  /** 144: a long, slow sloth yawn. */
+  yawn() {
+    if (!this.ready) return;
+    [520, 480, 440, 400, 360, 330].forEach((f, i) => this.voice(f, i * 0.12, 0.02, 0.18, 'triangle', 0.04));
+    this.voice(990, 0.85, 0.01, 0.2, 'sine', 0.02);
+  }
+
+  /** 145: a calm, bubbly capybara hum. */
+  capyHum() {
+    if (!this.ready) return;
+    [330, 392, 330, 440].forEach((f, i) => this.voice(f, i * 0.1, 0.022, 0.12, 'sine', 0.02));
+    [1400, 1700, 1550].forEach((f, i) => this.voice(f, 0.45 + i * 0.07, 0.012, 0.05, 'sine', 0.003));
+  }
+
+  /** 146: a deep, friendly walrus honk-honk. */
+  walrusHonk() {
+    if (!this.ready) return;
+    for (const w of [0, 0.24]) { this.voice(170, w, 0.03, 0.16, 'square', 0.01); this.voice(255, w, 0.014, 0.14, 'sine', 0.01); }
+  }
+
   /** 139: a happy little penguin squawk. */
   squawk() {
     if (!this.ready) return;
