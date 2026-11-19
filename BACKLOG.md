@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-11-19 12:35 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
+Updated: 2026-11-19 12:43 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -261,10 +261,10 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 
 | Order | Task | Status | ETA live | Estimate (dev days) |
 |---|---|---|---|---|
-| 143 | Cuddly koala: a koala hugging a little gum tree beside the Seashell Bay path; tap = a big sleepy hug-squeeze + a soft koala snore-grunt + hearts; all themes | In progress (wip/polish-143-146) | 2026-11-19 | 0.25 |
-| 144 | Swinging sloth: a sloth hanging from a little branch beside the Fairy Grove path; tap = a slow-motion swing and a big friendly wave + a sleepy yawn sound; hidden in snowy themes | In progress (wip/polish-143-146) | 2026-11-19 | 0.25 |
-| 145 | Lakeside capybara: a calm capybara with an orange on its head by the Shellwater Lake shore; tap = the orange bounces up and lands back + a happy bubbly hum + sparkles; all themes | In progress (wip/polish-143-146) | 2026-11-19 | 0.25 |
-| 146 | Snowy walrus: a walrus with a wooly hat by Seashell Bay that only comes out in the snowy themes (winter, Christmas); tap = a belly wiggle + a deep honk-honk + snow sparkles | In progress (wip/polish-143-146) | 2026-11-19 | 0.25 |
+| 143 | Cuddly koala: a koala hugging a little gum tree beside the Seashell Bay path (its Glowcap Grove end); tap = a big sleepy hug-squeeze + a soft koala snore-grunt + hearts; all themes | Done/Live 8d36ce1 (bundle index-CC56twCH.js) | 2026-11-19 | 0.25 |
+| 144 | Swinging sloth: a sloth hanging from a little branch beside the Fairy Grove path; tap = a slow-motion swing and a big friendly wave + a sleepy yawn sound; hidden in snowy themes | Done/Live 8d36ce1 (bundle index-CC56twCH.js) | 2026-11-19 | 0.25 |
+| 145 | Lakeside capybara: a calm capybara with an orange on its head by the Shellwater Lake shore; tap = the orange bounces up and lands back + a happy bubbly hum + sparkles; all themes | Done/Live 8d36ce1 (bundle index-CC56twCH.js) | 2026-11-19 | 0.25 |
+| 146 | Snowy walrus: a walrus with a wooly hat by Seashell Bay that only comes out in the snowy themes (winter, Christmas); tap = a belly wiggle + a deep honk-honk + snow sparkles | Done/Live 8d36ce1 (bundle index-CC56twCH.js) | 2026-11-19 | 0.25 |
 
 ## Recently done
 
