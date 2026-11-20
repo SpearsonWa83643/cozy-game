@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-11-19 12:43 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
+Updated: 2026-11-20 12:35 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -265,6 +265,15 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 | 144 | Swinging sloth: a sloth hanging from a little branch beside the Fairy Grove path; tap = a slow-motion swing and a big friendly wave + a sleepy yawn sound; hidden in snowy themes | Done/Live 8d36ce1 (bundle index-CC56twCH.js) | 2026-11-19 | 0.25 |
 | 145 | Lakeside capybara: a calm capybara with an orange on its head by the Shellwater Lake shore; tap = the orange bounces up and lands back + a happy bubbly hum + sparkles; all themes | Done/Live 8d36ce1 (bundle index-CC56twCH.js) | 2026-11-19 | 0.25 |
 | 146 | Snowy walrus: a walrus with a wooly hat by Seashell Bay that only comes out in the snowy themes (winter, Christmas); tap = a belly wiggle + a deep honk-honk + snow sparkles | Done/Live 8d36ce1 (bundle index-CC56twCH.js) | 2026-11-19 | 0.25 |
+
+## Self-added polish (2026-11-20; backlog empty; no Walker decision or spending needed)
+
+| Order | Task | Status | ETA live | Estimate (dev days) |
+|---|---|---|---|---|
+| 147 | Baby elephant: a little elephant beside the Sunflower Meadow path; tap = trunk up for a happy toot + a sprinkle of water drops; all themes | In progress (wip/polish-147-150) | 2026-11-20 | 0.25 |
+| 148 | Gentle giraffe: a giraffe by the Pinecone Hills path; tap = its long neck bends down to say hi + a soft hum + hearts; hidden in snowy themes | In progress (wip/polish-147-150) | 2026-11-20 | 0.25 |
+| 149 | Lookout meerkats: 2 meerkats near the Seashell Bay path; tap = they pop up tall on lookout + a chirpy chatter; hidden in snowy themes | In progress (wip/polish-147-150) | 2026-11-20 | 0.25 |
+| 150 | Snowy moose: a moose in a cozy scarf that only comes out in the snowy themes (winter, Christmas); tap = an antler shake + a deep friendly bellow + snow sparkles | In progress (wip/polish-147-150) | 2026-11-20 | 0.25 |
 
 ## Recently done
 
