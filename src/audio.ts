@@ -956,6 +956,32 @@ class Synth {
     this.voice(880, 0.42, 0.02, 0.1, 'sine');
   }
 
+  /** 147: a happy little elephant toot. */
+  elephantToot() {
+    if (!this.ready) return;
+    [[392, 0], [523, 0.14], [659, 0.26]].forEach(([f, w]) => { this.voice(f, w, 0.03, 0.16, 'sawtooth', 0.02); this.voice(f * 2, w, 0.012, 0.14, 'triangle', 0.02); });
+    [1500, 1800, 1650, 1950].forEach((f, i) => this.voice(f, 0.5 + i * 0.06, 0.012, 0.05, 'sine', 0.003));
+  }
+
+  /** 148: a soft, low giraffe hum. */
+  giraffeHum() {
+    if (!this.ready) return;
+    [196, 220, 247, 220].forEach((f, i) => this.voice(f, i * 0.16, 0.03, 0.2, 'sine', 0.04));
+    this.voice(880, 0.7, 0.012, 0.18, 'sine', 0.02);
+  }
+
+  /** 149: quick, chirpy meerkat chatter. */
+  meerkatChirp() {
+    if (!this.ready) return;
+    [1700, 2100, 1800, 2300, 1900].forEach((f, i) => this.voice(f, i * 0.07, 0.018, 0.045, 'triangle', 0.003));
+  }
+
+  /** 150: a deep, friendly moose bellow. */
+  mooseBellow() {
+    if (!this.ready) return;
+    [150, 140, 125, 110].forEach((f, i) => { this.voice(f, i * 0.12, 0.03, 0.16, 'sawtooth', 0.03); this.voice(f * 1.5, i * 0.12, 0.01, 0.14, 'sine', 0.03); });
+  }
+
   /** 143: a soft, sleepy koala grunt-snore. */
   koalaGrunt() {
     if (!this.ready) return;
