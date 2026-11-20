@@ -74,13 +74,13 @@
 // 147 Baby elephant: beside the Sunflower Meadow path; tap = trunk up, happy toot + a sprinkle of water drops. All themes.
 // 148 Gentle giraffe: by the Pinecone Hills path; tap = long neck bends down to say hi + soft hum + hearts. Hidden in snow.
 // 149 Lookout meerkats: 2 near the Seashell Bay path; tap = they pop up tall on lookout + chirpy chatter. Hidden in snow.
-// 150 Snowy moose: in a cozy scarf, only out in snowy themes; tap = antler shake + deep friendly bellow + snow sparkles.
+// 150 Snowy moose: in a cozy scarf by the glade pond, only out in snowy themes; tap = antler shake + deep friendly bellow + snow sparkles.
 // Culled off-screen.
 import Phaser from 'phaser';
 import { Ctx, canvasTex, frameScale, S } from './art';
 import { sfx } from './audio';
 import { theme, themeEvents } from './theme';
-import { PATH_MEADOW, GROVE_RING, VILLAGE, VILLAGE_ENTRY, VILLAGE_SIGN, VILLAGE_BOARD, BAY, PATH_HILLS, LAKE, PIER, GARDEN, COTTAGE, POTS, PATH_ORCHARD_S, WINDMILL, PATH_RIVERSIDE, PATH_FOREST, RIVER_PTS, RIVER_HALF, PATH_GROVE, PATH_MEADOW_HILLS, PATH_SHORE_S, PATH_BAY, PATH_ORCHARD, PATH_LAKE, LIGHTHOUSE, PATH_HILLS_BAY, PATH_RIVER_W, PUZZLE_SITES, PUZZLE_SITE_R } from './layout';
+import { PATH_MEADOW, GROVE_RING, VILLAGE, VILLAGE_ENTRY, VILLAGE_SIGN, VILLAGE_BOARD, BAY, PATH_HILLS, LAKE, PIER, GARDEN, COTTAGE, POTS, PATH_ORCHARD_S, WINDMILL, PATH_RIVERSIDE, PATH_FOREST, RIVER_PTS, RIVER_HALF, PATH_GROVE, PATH_MEADOW_HILLS, PATH_SHORE_S, PATH_BAY, PATH_ORCHARD, PATH_LAKE, LIGHTHOUSE, PATH_HILLS_BAY, PATH_RIVER_W, PUZZLE_SITES, PUZZLE_SITE_R, POND } from './layout';
 import { lakeValue, riverXAt, riverHalfAt, onBridge } from './geo';
 import type { WorldScene } from './scenes/World';
 
@@ -1613,8 +1613,10 @@ export class LittleLife {
     pick('giraffe', [...along(PATH_HILLS, [[0, -450], [0, 440], [0, -490], [0, 480], [0, -530], [0, 520], ...sides([420, 460])], 0), ...along(PATH_MEADOW_HILLS, sides([420, 460, 500]), 0)], (x, y) => open(x, y) && land(x, y - 60) && land(x, y - 110) && noPuzzle(x, y) && roomy(x, y, 250), 110, 300);
     // 149: a pair beside the Seashell Bay path, further out than the robins, tortoises and koala.
     pick('meerkat', [...along(PATH_BAY, [[0, 380], [40, 390], [0, -390], [40, -400], [0, 420], [40, 430], [0, -430], [40, -440], [0, 460], [40, 470]], 0), ...along(PATH_HILLS_BAY, [[0, 300], [40, 310], [0, -300], [40, -310]], 0)], (x, y) => open(x, y) && lakeValue(x, y) > 1.3 && noPuzzle(x, y) && roomy(x, y, 220), 90, 36);
-    // 150: beside the forest path (only out in snowy themes), clear of the fawns.
-    pick('moose', [...along(PATH_FOREST, [[0, -300], [0, 320], [0, -340], [0, 360], [0, -380], [0, 400], ...sides([300, 340])], 0), ...along(PATH_RIVER_W, [[0, -300], [0, 300], [0, -340], [0, 340]], 0)], (x, y) => open(x, y) && land(x, y - 50) && land(x + 50, y - 30) && rv(x, y) > RIVER_HALF + 80 && noPuzzle(x, y) && roomy(x, y, 250), 110, 300);
+    // 150: by the glade pond, on its dry north side (only out in snowy themes; the forest path is full of other critters).
+    const ms: [number, number][] = [];
+    for (const k of [1.25, 1.4, 1.6, 1.8]) for (let i = 0; i < 24; i++) { const a = -Math.PI / 2 + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * Math.PI / 12; ms.push([POND.x + Math.cos(a) * POND.rx * k, POND.y + Math.sin(a) * POND.ry * k]); }
+    pick('moose', [...ms, ...along(PATH_RIVER_W, [[-300, 0], [-340, 0], [-260, 0]], 0)], (x, y) => open(x, y) && land(x, y - 50) && land(x + 50, y - 30) && rv(x, y) > RIVER_HALF + 80 && noPuzzle(x, y) && roomy(x, y, 250), 110, 300);
     const onTheme = () => this.retheme();
     themeEvents.on('change', onTheme);
     w.events.once('shutdown', () => themeEvents.off('change', onTheme));
