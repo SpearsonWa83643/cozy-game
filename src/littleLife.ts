@@ -1608,7 +1608,7 @@ export class LittleLife {
     for (const k of [1.12, 1.2, 1.3, 1.4]) for (let i = 0; i < 24; i++) { const a = i * Math.PI / 12; wr.push([BAY.x + Math.cos(a) * BAY.rx * k, BAY.y + Math.sin(a) * BAY.ry * k]); }
     pick('walrus', wr, (x, y) => open(x, y) && lakeValue(x, y) > 1.08 && noPuzzle(x, y) && roomy(x, y, 250), 110, 300);
     // 147: beside the Sunflower Meadow path, further out than the ladybugs, bees and quail.
-    pick('elephant', [...along(PATH_MEADOW, [[0, 360], [0, -380], [0, 400], [0, -420], [0, 440], [0, -460], ...sides([340, 380])], 1), ...along(PATH_MEADOW, [[0, 360], [0, -380], [0, 420]], 0)], (x, y) => open(x, y) && land(x, y - 50) && land(x + 40, y - 40) && land(x - 40, y - 70) && land(x + 40, y - 70) && land(x, y - 90) && lakeValue(x, y) > 1.3 && noPuzzle(x, y) && roomy(x, y, 250), 110, 300);
+    pick('elephant', [...along(PATH_MEADOW, [[0, 360], [0, -380], [0, 400], [0, -420], [0, 440], [0, -460], ...sides([340, 380])], 1), ...along(PATH_MEADOW, [[0, 360], [0, -380], [0, 420]], 0)], (x, y) => open(x, y) && land(x, y - 50) && land(x + 40, y - 40) && land(x - 40, y - 70) && land(x + 40, y - 70) && land(x, y - 90) && lakeValue(x, y) > 1.3 && noPuzzle(x, y) && roomy(x, y, 250), 160, 300);
     // 148: by the Pinecone Hills path, further out than the calves, chicks and kangaroo (tall, so it needs open sky above).
     pick('giraffe', [...along(PATH_HILLS, [[0, -450], [0, 440], [0, -490], [0, 480], [0, -530], [0, 520], ...sides([420, 460])], 0), ...along(PATH_MEADOW_HILLS, sides([420, 460, 500]), 0)], (x, y) => open(x, y) && land(x, y - 60) && land(x, y - 110) && noPuzzle(x, y) && roomy(x, y, 250), 110, 300);
     // 149: a pair beside the Seashell Bay path, further out than the robins, tortoises and koala.
