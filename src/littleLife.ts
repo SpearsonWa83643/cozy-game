@@ -1790,10 +1790,12 @@ export class LittleLife {
     const offPath = (x: number, y: number) => [[0, 0], [-35, 0], [35, 0]].every(([ox, oy]) => pathDist(x + ox, y + oy) > 90);
     // 151: on the riverbank by the riverside and west river paths, close to the water, clear of the beaver, heron and porcupine.
     const hp: [number, number][] = [];
-    for (const path of [PATH_RIVERSIDE, PATH_RIVER_W]) for (let s = 0; s < path.length - 1; s++) for (const t of [0.5, 0.3, 0.7]) for (const d of [-260, 260, -300, 300, -220, 220, -340, 340]) {
+    for (const path of [PATH_RIVERSIDE, PATH_RIVER_W]) for (let s = 0; s < path.length - 1; s++) for (const t of [0.5, 0.3, 0.7]) for (const d of [-260, 260, -300, 300, -220, 220, -340, 340, -380, 380, -420, 420]) {
       const [ax, ay] = path[s], [bx, by] = path[s + 1]; hp.push([ax + (bx - ax) * t + d, ay + (by - ay) * t]); hp.push([ax + (bx - ax) * t, ay + (by - ay) * t + d]);
     }
     hp.sort((a, b) => rv(a[0], a[1]) - rv(b[0], b[1]));
+    // ...or, if the banks are full, on the grass around the glade pond (the river runs just past it).
+    for (const k of [1.3, 1.5, 1.7, 1.9]) for (let i = 0; i < 24; i++) { const a = i * Math.PI / 12; hp.push([POND.x + Math.cos(a) * POND.rx * k, POND.y + Math.sin(a) * POND.ry * k]); }
     pick('hippo', hp, (x, y) => offPath(x, y) && open(x, y) && land(x + 40, y - 30) && rv(x, y) > RIVER_HALF + 70 && !onBridge(x, y) && noPuzzle(x, y) && roomy(x, y, 250), 110, 300);
     // 152: beside the Meadow-to-Hills path, further out than the ponies and lambs.
     pick('zebra', [...along(PATH_MEADOW_HILLS, sides([340, 380, 420, 460, 500]), 0), ...along(PATH_HILLS_BAY, sides([300, 340, 380]), 0)], (x, y) => offPath(x, y) && open(x, y) && land(x, y - 50) && land(x + 40, y - 40) && noPuzzle(x, y) && roomy(x, y, 250), 110, 300);
