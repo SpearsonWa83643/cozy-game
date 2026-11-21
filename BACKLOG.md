@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-11-20 12:53 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
+Updated: 2026-11-21 12:40 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -274,6 +274,15 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 | 148 | Gentle giraffe: a giraffe by the Pinecone Hills path; tap = its long neck bends down to say hi + a soft hum + hearts; hidden in snowy themes | Done/Live 0f9c7b6 (bundle index-BZSWz8zA.js) | 2026-11-20 | 0.25 |
 | 149 | Lookout meerkats: 2 meerkats near the Seashell Bay path; tap = they pop up tall on lookout + a chirpy chatter; hidden in snowy themes | Done/Live 0f9c7b6 (bundle index-BZSWz8zA.js) | 2026-11-20 | 0.25 |
 | 150 | Snowy moose: a moose in a cozy scarf by the glade pond that only comes out in the snowy themes (winter, Christmas); tap = an antler shake + a deep friendly bellow + snow sparkles | Done/Live 0f9c7b6 (bundle index-BZSWz8zA.js) | 2026-11-20 | 0.25 |
+
+## Self-added polish (2026-11-21; backlog empty; no Walker decision or spending needed)
+
+| Order | Task | Status | ETA live | Estimate (dev days) |
+|---|---|---|---|---|
+| 151 | Happy hippo: a little hippo on the riverbank; tap = a giant yawn-smile + a bubbly rumble + water sparkles; hidden in snowy themes | In progress (wip/polish-151-154) | 2026-11-21 | 0.25 |
+| 152 | Prancing zebra: a striped zebra beside the Meadow-to-Hills path; tap = a happy kick-up and a whinny + sparkles; all themes | In progress (wip/polish-151-154) | 2026-11-21 | 0.25 |
+| 153 | Ring-tailed lemur: a lemur near the orchard; tap = it hops and twirls its striped tail + a chirpy hoot + leaf sparkles; all themes | In progress (wip/polish-151-154) | 2026-11-21 | 0.25 |
+| 154 | Snowy polar bear cub: a polar bear cub in a Christmas hat that only comes out in the snowy themes (winter, Christmas); tap = it rolls onto its back and waves its paws + a soft giggle-growl + snow sparkles | In progress (wip/polish-151-154) | 2026-11-21 | 0.25 |
 
 ## Recently done
 
