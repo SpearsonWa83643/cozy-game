@@ -82,7 +82,7 @@
 // 154 Snowy polar bear cub: in a Christmas hat, only out in snowy themes; tap = rolls onto its back, waves its paws + giggle-growl + snow sparkles.
 // Culled off-screen.
 import Phaser from 'phaser';
-import { Ctx, canvasTex, frameScale, S } from './art';
+import { Ctx, canvasTex, frameScale, S, pathDist } from './art';
 import { sfx } from './audio';
 import { theme, themeEvents } from './theme';
 import { PATH_MEADOW, GROVE_RING, VILLAGE, VILLAGE_ENTRY, VILLAGE_SIGN, VILLAGE_BOARD, BAY, PATH_HILLS, LAKE, PIER, GARDEN, COTTAGE, POTS, PATH_ORCHARD_S, WINDMILL, PATH_RIVERSIDE, PATH_FOREST, RIVER_PTS, RIVER_HALF, PATH_GROVE, PATH_MEADOW_HILLS, PATH_SHORE_S, PATH_BAY, PATH_ORCHARD, PATH_LAKE, LIGHTHOUSE, PATH_HILLS_BAY, PATH_RIVER_W, PUZZLE_SITES, PUZZLE_SITE_R, POND } from './layout';
@@ -1536,8 +1536,9 @@ function polarbear(c: Ctx, roll: boolean) {
     c.fillStyle = sh; c.beginPath(); c.ellipse(26, 33, 11, 4.5, 0, 0, TAU); c.fill();
     for (const [x, a] of [[14, -0.5], [22, -0.15], [31, 0.15], [38, 0.5]] as [number, number][]) {
       c.save(); c.translate(x, 30); c.rotate(a);
-      c.fillStyle = w0; c.strokeStyle = o; c.beginPath(); c.roundRect(-3.2, -12, 6.4, 13, 3); c.fill(); c.stroke();
-      c.fillStyle = '#4a4a58'; c.beginPath(); c.ellipse(0, -11, 2.2, 1.4, 0, 0, TAU); c.fill();
+      c.fillStyle = w0; c.strokeStyle = o; c.beginPath(); c.ellipse(0, -5, 4, 6.5, 0, 0, TAU); c.fill(); c.stroke();
+      c.fillStyle = '#4a4a58'; c.beginPath(); c.ellipse(0, -9.5, 2.4, 1.6, 0, 0, TAU); c.fill();
+      c.fillStyle = '#ffb0c0'; for (const tx of [-2.2, 0, 2.2]) { c.beginPath(); c.arc(tx, -11.6, 0.8, 0, TAU); c.fill(); }
       c.restore();
     }
     const hx = 45, hy = 36;
@@ -1785,19 +1786,21 @@ export class LittleLife {
     const ms: [number, number][] = [];
     for (const k of [1.25, 1.4, 1.6, 1.8]) for (let i = 0; i < 24; i++) { const a = -Math.PI / 2 + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * Math.PI / 12; ms.push([POND.x + Math.cos(a) * POND.rx * k, POND.y + Math.sin(a) * POND.ry * k]); }
     pick('moose', [...ms, ...along(PATH_RIVER_W, [[-300, 0], [-340, 0], [-260, 0]], 0)], (x, y) => open(x, y) && Math.hypot(x - POND.x - 190, y - POND.y + 150) > 230 && land(x, y - 50) && land(x + 50, y - 30) && rv(x, y) > RIVER_HALF + 80 && noPuzzle(x, y) && roomy(x, y, 250), 110, 300);
+    // 151–154: also keep the bigger critters off the dirt paths themselves.
+    const offPath = (x: number, y: number) => [[0, 0], [-35, 0], [35, 0]].every(([ox, oy]) => pathDist(x + ox, y + oy) > 90);
     // 151: on the riverbank by the riverside and west river paths, close to the water, clear of the beaver, heron and porcupine.
     const hp: [number, number][] = [];
     for (const path of [PATH_RIVERSIDE, PATH_RIVER_W]) for (let s = 0; s < path.length - 1; s++) for (const t of [0.5, 0.3, 0.7]) for (const d of [-260, 260, -300, 300, -220, 220, -340, 340]) {
       const [ax, ay] = path[s], [bx, by] = path[s + 1]; hp.push([ax + (bx - ax) * t + d, ay + (by - ay) * t]); hp.push([ax + (bx - ax) * t, ay + (by - ay) * t + d]);
     }
     hp.sort((a, b) => rv(a[0], a[1]) - rv(b[0], b[1]));
-    pick('hippo', hp, (x, y) => open(x, y) && land(x + 40, y - 30) && rv(x, y) > RIVER_HALF + 70 && !onBridge(x, y) && noPuzzle(x, y) && roomy(x, y, 250), 110, 300);
+    pick('hippo', hp, (x, y) => offPath(x, y) && open(x, y) && land(x + 40, y - 30) && rv(x, y) > RIVER_HALF + 70 && !onBridge(x, y) && noPuzzle(x, y) && roomy(x, y, 250), 110, 300);
     // 152: beside the Meadow-to-Hills path, further out than the ponies and lambs.
-    pick('zebra', [...along(PATH_MEADOW_HILLS, sides([340, 380, 420, 460, 500]), 0), ...along(PATH_HILLS_BAY, sides([300, 340, 380]), 0)], (x, y) => open(x, y) && land(x, y - 50) && land(x + 40, y - 40) && noPuzzle(x, y) && roomy(x, y, 250), 110, 300);
+    pick('zebra', [...along(PATH_MEADOW_HILLS, sides([340, 380, 420, 460, 500]), 0), ...along(PATH_HILLS_BAY, sides([300, 340, 380]), 0)], (x, y) => offPath(x, y) && open(x, y) && land(x, y - 50) && land(x + 40, y - 40) && noPuzzle(x, y) && roomy(x, y, 250), 110, 300);
     // 153: near the orchard, further out than the puppies, hedgehogs, peacock and panda.
-    pick('lemur', [...along(PATH_ORCHARD_S, sides([300, 340, 380, 500, 540]), 0), ...along(PATH_ORCHARD, [[0, 390], [0, -390], [0, 430], [0, -430], [0, 470], [0, -470]], 0), ...along(PATH_RIVERSIDE, sides([380, 420]), 0)], (x, y) => open(x, y) && land(x, y - 50) && noPuzzle(x, y) && roomy(x, y, 250), 100, 300);
+    pick('lemur', [...along(PATH_ORCHARD_S, sides([300, 340, 380, 500, 540]), 0), ...along(PATH_ORCHARD, [[0, 390], [0, -390], [0, 430], [0, -430], [0, 470], [0, -470]], 0), ...along(PATH_RIVERSIDE, sides([380, 420]), 0)], (x, y) => offPath(x, y) && open(x, y) && land(x, y - 50) && noPuzzle(x, y) && roomy(x, y, 250), 100, 300);
     // 154: north of the Shellwater Lake path / village edge, clear of the penguins and moose (only out in snowy themes).
-    pick('polarbear', [...along(PATH_LAKE, [[0, -300], [0, -340], [0, 300], [0, 340], ...sides([320, 360])], 0), ...along(PATH_FOREST, [[0, -300], [0, -340], [0, 300], [0, 340]], 0), ...along(PATH_SHORE_S, sides([340, 380]), 0)], (x, y) => open(x, y) && land(x + 30, y - 30) && lakeValue(x, y) > 1.2 && rv(x, y) > RIVER_HALF + 80 && noPuzzle(x, y) && roomy(x, y, 250), 110, 300);
+    pick('polarbear', [...along(PATH_LAKE, [[0, -300], [0, -340], [0, 300], [0, 340], ...sides([320, 360])], 0), ...along(PATH_FOREST, [[0, -300], [0, -340], [0, 300], [0, 340]], 0), ...along(PATH_SHORE_S, sides([340, 380]), 0)], (x, y) => offPath(x, y) && open(x, y) && land(x + 30, y - 30) && lakeValue(x, y) > 1.2 && rv(x, y) > RIVER_HALF + 80 && noPuzzle(x, y) && roomy(x, y, 250), 110, 300);
     const onTheme = () => this.retheme();
     themeEvents.on('change', onTheme);
     w.events.once('shutdown', () => themeEvents.off('change', onTheme));
