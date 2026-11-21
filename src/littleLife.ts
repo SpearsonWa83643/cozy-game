@@ -76,10 +76,10 @@
 // 149 Lookout meerkats: 2 near the Seashell Bay path; tap = they pop up tall on lookout + chirpy chatter. Hidden in snow.
 // 150 Snowy moose: in a cozy scarf by the glade pond, only out in snowy themes; tap = antler shake + deep friendly bellow + snow sparkles.
 // 151–154: little life 14 (same engine):
-// 151 Happy hippo: on the riverbank; tap = giant yawn-smile + bubbly rumble + water sparkles. Hidden in snow.
-// 152 Prancing zebra: beside the Meadow-to-Hills path; tap = a happy kick-up + whinny + sparkles. All themes.
+// 151 Happy hippo: by the glade pond (river-side lawn); tap = giant yawn-smile + bubbly rumble + water sparkles. Hidden in snow.
+// 152 Prancing zebra: beside the Hills-to-Bay path (Seashell Bay end); tap = a happy kick-up + whinny + sparkles. All themes.
 // 153 Ring-tailed lemur: near the orchard; tap = hop + striped-tail twirl + chirpy hoot + leaf sparkles. All themes.
-// 154 Snowy polar bear cub: in a Christmas hat, only out in snowy themes; tap = rolls onto its back, waves its paws + giggle-growl + snow sparkles.
+// 154 Snowy polar bear cub: in a Christmas hat by Willow Village, only out in snowy themes; tap = rolls onto its back, waves its paws + giggle-growl + snow sparkles.
 // Culled off-screen.
 import Phaser from 'phaser';
 import { Ctx, canvasTex, frameScale, S, pathDist } from './art';
@@ -1797,11 +1797,11 @@ export class LittleLife {
     // ...or, if the banks are full, on the grass around the glade pond (the river runs just past it).
     for (const k of [1.3, 1.5, 1.7, 1.9]) for (let i = 0; i < 24; i++) { const a = i * Math.PI / 12; hp.push([POND.x + Math.cos(a) * POND.rx * k, POND.y + Math.sin(a) * POND.ry * k]); }
     pick('hippo', hp, (x, y) => offPath(x, y) && open(x, y) && land(x + 40, y - 30) && rv(x, y) > RIVER_HALF + 70 && !onBridge(x, y) && noPuzzle(x, y) && roomy(x, y, 250), 110, 300);
-    // 152: beside the Meadow-to-Hills path, further out than the ponies and lambs.
+    // 152: beside the Meadow-to-Hills path, further out than the ponies and lambs (lands by the Hills-to-Bay path when that's full).
     pick('zebra', [...along(PATH_MEADOW_HILLS, sides([340, 380, 420, 460, 500]), 0), ...along(PATH_HILLS_BAY, sides([300, 340, 380]), 0)], (x, y) => offPath(x, y) && open(x, y) && land(x, y - 50) && land(x + 40, y - 40) && noPuzzle(x, y) && roomy(x, y, 250), 110, 300);
     // 153: near the orchard, further out than the puppies, hedgehogs, peacock and panda.
     pick('lemur', [...along(PATH_ORCHARD_S, sides([300, 340, 380, 500, 540]), 0), ...along(PATH_ORCHARD, [[0, 390], [0, -390], [0, 430], [0, -430], [0, 470], [0, -470]], 0), ...along(PATH_RIVERSIDE, sides([380, 420]), 0)], (x, y) => offPath(x, y) && open(x, y) && land(x, y - 50) && noPuzzle(x, y) && roomy(x, y, 250), 100, 300);
-    // 154: north of the Shellwater Lake path / village edge, clear of the penguins and moose (only out in snowy themes).
+    // 154: beside the lake, forest or south shore paths (lands by Willow Village), clear of the penguins and moose (only out in snowy themes).
     pick('polarbear', [...along(PATH_LAKE, [[0, -300], [0, -340], [0, 300], [0, 340], ...sides([320, 360])], 0), ...along(PATH_FOREST, [[0, -300], [0, -340], [0, 300], [0, 340]], 0), ...along(PATH_SHORE_S, sides([340, 380]), 0)], (x, y) => offPath(x, y) && open(x, y) && land(x + 30, y - 30) && lakeValue(x, y) > 1.2 && rv(x, y) > RIVER_HALF + 80 && noPuzzle(x, y) && roomy(x, y, 250), 110, 300);
     const onTheme = () => this.retheme();
     themeEvents.on('change', onTheme);

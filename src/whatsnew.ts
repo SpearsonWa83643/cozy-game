@@ -7,8 +7,8 @@ export const VERSION = '2026-11-21-polish-151-154';
 
 export type WhatsNewItem = { icon: 'wood' | 'fruit' | 'berry' | 'star' | 'heart'; text: string };
 export const ITEMS: WhatsNewItem[] = [
-  { icon: 'heart', text: 'A hippo! It rests by the river. Tap it — a giant yawn and a big smile!' },
-  { icon: 'star', text: 'A zebra! It lives by the meadow path to the hills. Tap it — a happy kick!' },
+  { icon: 'heart', text: 'A hippo! It rests by the glade pond. Tap it — a giant yawn and a big smile!' },
+  { icon: 'star', text: 'A zebra! It lives by the path to Seashell Bay. Tap it — a happy kick!' },
   { icon: 'fruit', text: 'A lemur! It sits near the orchard. Tap it — hop hop, twirly tail!' },
-  { icon: 'berry', text: 'A polar bear cub in a Christmas hat! It comes out when it snows. Tap it — roly-poly!' },
+  { icon: 'berry', text: 'A polar bear cub in a Christmas hat! It comes out by the village when it snows. Tap it — roly-poly!' },
 ];
