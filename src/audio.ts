@@ -956,6 +956,34 @@ class Synth {
     this.voice(880, 0.42, 0.02, 0.1, 'sine');
   }
 
+  /** 151: a bubbly, happy hippo rumble. */
+  hippoRumble() {
+    if (!this.ready) return;
+    [[110, 0], [98, 0.14], [123, 0.3]].forEach(([f, w]) => { this.voice(f, w, 0.035, 0.16, 'sawtooth', 0.03); this.voice(f * 2, w, 0.012, 0.14, 'sine', 0.03); });
+    [700, 900, 800, 1050, 950].forEach((f, i) => this.voice(f, 0.45 + i * 0.06, 0.012, 0.04, 'sine', 0.003));
+  }
+
+  /** 152: a cheerful little zebra whinny. */
+  zebraWhinny() {
+    if (!this.ready) return;
+    [880, 1040, 920, 1100, 960, 820].forEach((f, i) => this.voice(f, i * 0.06, 0.022, 0.07, 'triangle', 0.005));
+    this.voice(330, 0.42, 0.02, 0.12, 'sine', 0.01);
+  }
+
+  /** 153: a chirpy lemur hoot. */
+  lemurHoot() {
+    if (!this.ready) return;
+    [[620, 0], [820, 0.12], [620, 0.24], [940, 0.36]].forEach(([f, w]) => this.voice(f, w, 0.025, 0.1, 'sine', 0.015));
+    this.voice(1500, 0.5, 0.01, 0.06, 'triangle', 0.003);
+  }
+
+  /** 154: a soft polar bear cub giggle-growl. */
+  bearGiggle() {
+    if (!this.ready) return;
+    [160, 150, 170].forEach((f, i) => this.voice(f, i * 0.1, 0.03, 0.1, 'sawtooth', 0.02));
+    [900, 1100, 1000, 1250].forEach((f, i) => this.voice(f, 0.36 + i * 0.07, 0.016, 0.06, 'sine', 0.005));
+  }
+
   /** 147: a happy little elephant toot. */
   elephantToot() {
     if (!this.ready) return;

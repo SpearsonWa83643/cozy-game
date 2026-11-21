@@ -3,12 +3,12 @@
 // Keep each bullet short and simple: kids read these.
 // icon: 'wood' | 'fruit' | 'berry' | 'star' | 'heart' (a little picture beside the line).
 
-export const VERSION = '2026-11-20-polish-147-150';
+export const VERSION = '2026-11-21-polish-151-154';
 
 export type WhatsNewItem = { icon: 'wood' | 'fruit' | 'berry' | 'star' | 'heart'; text: string };
 export const ITEMS: WhatsNewItem[] = [
-  { icon: 'star', text: 'A baby elephant! It lives by the meadow path. Tap it — toot toot, splish!' },
-  { icon: 'heart', text: 'A giraffe! It stands tall by the hills path. Tap it — it bends down to say hi!' },
-  { icon: 'wood', text: 'Meerkats! Two live by the bay path. Tap one — it pops up to look around!' },
-  { icon: 'berry', text: 'A moose in a scarf! It comes out by the pond when it snows. Tap it — a big friendly hello!' },
+  { icon: 'heart', text: 'A hippo! It rests by the glade pond. Tap it — a giant yawn and a big smile!' },
+  { icon: 'star', text: 'A zebra! It lives by the path to Seashell Bay. Tap it — a happy kick!' },
+  { icon: 'fruit', text: 'A lemur! It sits near the orchard. Tap it — hop hop, twirly tail!' },
+  { icon: 'berry', text: 'A polar bear cub in a Christmas hat! It comes out by the village when it snows. Tap it — roly-poly!' },
 ];
