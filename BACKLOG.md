@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-11-21 12:40 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
+Updated: 2026-11-21 12:54 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -279,10 +279,10 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 
 | Order | Task | Status | ETA live | Estimate (dev days) |
 |---|---|---|---|---|
-| 151 | Happy hippo: a little hippo on the lawn by the glade pond; tap = a giant yawn-smile + a bubbly rumble + water sparkles; hidden in snowy themes | In progress (wip/polish-151-154) | 2026-11-21 | 0.25 |
-| 152 | Prancing zebra: a striped zebra by the path to Seashell Bay; tap = a happy kick-up and a whinny + sparkles; all themes | In progress (wip/polish-151-154) | 2026-11-21 | 0.25 |
-| 153 | Ring-tailed lemur: a lemur near the orchard; tap = it hops and twirls its striped tail + a chirpy hoot + leaf sparkles; all themes | In progress (wip/polish-151-154) | 2026-11-21 | 0.25 |
-| 154 | Snowy polar bear cub: a polar bear cub in a Christmas hat by Willow Village that only comes out in the snowy themes (winter, Christmas); tap = it rolls onto its back and waves its paws + a soft giggle-growl + snow sparkles | In progress (wip/polish-151-154) | 2026-11-21 | 0.25 |
+| 151 | Happy hippo: a little hippo on the lawn by the glade pond; tap = a giant yawn-smile + a bubbly rumble + water sparkles; hidden in snowy themes | Done/Live c55de8f (bundle index-CaVylwd1.js) | 2026-11-21 | 0.25 |
+| 152 | Prancing zebra: a striped zebra by the path to Seashell Bay; tap = a happy kick-up and a whinny + sparkles; all themes | Done/Live c55de8f (bundle index-CaVylwd1.js) | 2026-11-21 | 0.25 |
+| 153 | Ring-tailed lemur: a lemur near the orchard; tap = it hops and twirls its striped tail + a chirpy hoot + leaf sparkles; all themes | Done/Live c55de8f (bundle index-CaVylwd1.js) | 2026-11-21 | 0.25 |
+| 154 | Snowy polar bear cub: a polar bear cub in a Christmas hat by Willow Village that only comes out in the snowy themes (winter, Christmas); tap = it rolls onto its back and waves its paws + a soft giggle-growl + snow sparkles | Done/Live c55de8f (bundle index-CaVylwd1.js) | 2026-11-21 | 0.25 |
 
 ## Recently done
 
