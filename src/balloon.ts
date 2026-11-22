@@ -40,8 +40,8 @@ function balloonTex(c: Ctx, cols: string[], wave: boolean, flame: boolean) {
   c.strokeStyle = '#6a5040'; c.lineWidth = 1;
   c.beginPath(); c.moveTo(cx - 7, by); c.lineTo(cx - 9, ky); c.moveTo(cx + 7, by); c.lineTo(cx + 9, ky); c.moveTo(cx - 2, by); c.lineTo(cx - 3, ky); c.moveTo(cx + 2, by); c.lineTo(cx + 3, ky); c.stroke();
   if (flame) {
-    c.fillStyle = 'rgba(255,170,40,0.95)'; c.beginPath(); c.moveTo(cx - 4, ky - 1); c.quadraticCurveTo(cx, by - 14, cx + 4, ky - 1); c.closePath(); c.fill();
-    c.fillStyle = 'rgba(255,240,140,0.95)'; c.beginPath(); c.moveTo(cx - 2, ky - 1); c.quadraticCurveTo(cx, by - 6, cx + 2, ky - 1); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,150,40,0.95)'; c.beginPath(); c.moveTo(cx - 5, ky - 1); c.quadraticCurveTo(cx - 4, by + 2, cx, by - 8); c.quadraticCurveTo(cx + 4, by + 2, cx + 5, ky - 1); c.closePath(); c.fill();
+    c.fillStyle = 'rgba(255,240,140,0.95)'; c.beginPath(); c.moveTo(cx - 2.5, ky - 1); c.quadraticCurveTo(cx, by - 10, cx + 2.5, ky - 1); c.closePath(); c.fill();
   }
   // bunny pilot peeking over the basket
   const hx = cx + 1, hy = ky - 3;

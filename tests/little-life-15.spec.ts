@@ -99,7 +99,8 @@ test('little life 15: music stones, hot-air balloon, flower skunk, snowy arctic 
     const s1 = await cozy(page, `life2('${k}')`);
     expect(s1.taps).toBe(1);
     expect(s1.list[0].busy).toBe(true);
-    await page.waitForTimeout(k === 'arcticfox' ? 1100 : 700);
+    if (k === 'arcticfox') await expect.poll(async () => (await cozy(page, `life2('${k}')`)).list[0].tex, { timeout: 30_000 }).toBe('ll_afox_dive');
+    await page.waitForTimeout(k === 'arcticfox' ? 200 : 500);
     await page.screenshot({ path: `${SHOTS}/${shot}-tap.png` });
     await expect.poll(async () => (await cozy(page, `life2('${k}')`)).list[0].busy, { timeout: 60_000 }).toBe(false);
   };
