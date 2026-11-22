@@ -956,6 +956,36 @@ class Synth {
     this.voice(880, 0.42, 0.02, 0.1, 'sine');
   }
 
+  /** 157: a giggly little skunk sniff (sniff-sniff, then a tiny giggle). */
+  skunkSniff() {
+    if (!this.ready) return;
+    [0, 0.13].forEach((w) => this.noiseBurst(0.08, 2600, 1.6, 0.035, 'bandpass', w, 1.4));
+    [1180, 1320, 1240, 1480].forEach((f, i) => this.voice(f, 0.32 + i * 0.07, 0.018, 0.07, 'sine', 0.004));
+  }
+
+  /** 158: a bright, happy arctic fox yip, then a soft snow "fwump". */
+  arcticYip() {
+    if (!this.ready) return;
+    [[1250, 0], [1500, 0.09]].forEach(([f, w]) => { this.voice(f, w, 0.03, 0.08, 'triangle', 0.003); this.voice(f * 1.5, w, 0.008, 0.06, 'sine', 0.003); });
+    this.noiseBurst(0.28, 700, 0.8, 0.06, 'lowpass', 0.32, 0.5);
+  }
+
+  /** 155: one music stone: a round, woody marimba note. */
+  stoneNote(freq: number, when = 0) {
+    if (!this.ready) return;
+    this.voice(freq, when, 0.12, 0.55, 'sine', 0.003);
+    this.voice(freq * 4, when, 0.025, 0.12, 'sine', 0.002);
+    this.voice(freq * 2, when, 0.03, 0.3, 'triangle', 0.003);
+  }
+
+  /** 156: the hot-air balloon burner: a soft whoosh of flame with a cheerful toot on top. */
+  balloonWhoosh() {
+    if (!this.ready) return;
+    this.noiseBurst(0.7, 500, 0.6, 0.09, 'lowpass', 0, 2.2);
+    this.noiseBurst(0.5, 1800, 0.9, 0.025, 'bandpass', 0.05, 1.3);
+    [784, 988, 1175].forEach((f, i) => this.voice(f, 0.55 + i * 0.1, 0.03, 0.18, 'triangle', 0.006));
+  }
+
   /** 151: a bubbly, happy hippo rumble. */
   hippoRumble() {
     if (!this.ready) return;
