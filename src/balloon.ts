@@ -145,7 +145,7 @@ export class Balloon {
 
   stats() {
     return {
-      taps: this.taps, passes: this.passes, flying: this.flying, puffing: this.puff > 0, pal: this.pal,
+      taps: this.taps, passes: this.passes, next: +this.wait.toFixed(2), flying: this.flying, puffing: this.puff > 0, pal: this.pal,
       x: Math.round(this.x), y: Math.round(this.y - 70 * BALLOON.size - this.rise), visible: this.img.visible, key: this.img.texture.key,
     };
   }
