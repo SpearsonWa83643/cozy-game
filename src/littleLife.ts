@@ -1569,19 +1569,21 @@ function arcticfox(c: Ctx, dive: boolean) {
   const w0 = '#fbfbf8', o = '#98a4b4', sh = '#e6ecf2';
   c.fillStyle = 'rgba(255,255,255,0.92)'; c.beginPath(); c.ellipse(28, 41, 22, 4, 0, 0, TAU); c.fill();
   if (dive) {
-    // nose-first in a snow mound, back legs and tail up in the air
-    c.save(); c.translate(28, 34); c.rotate(0.75);
-    c.fillStyle = w0; c.strokeStyle = o; c.lineWidth = 1.2;
-    for (const x of [-12, -7]) { c.beginPath(); c.roundRect(x - 2.5, 3, 5, 9, 2); c.fill(); c.stroke(); }
-    c.lineWidth = 1.3; c.beginPath(); c.ellipse(0, 0, 13, 7.5, 0, 0, TAU); c.fill(); c.stroke();
-    c.fillStyle = sh; c.beginPath(); c.ellipse(1, 3.5, 8, 2.5, 0, 0, TAU); c.fill();
-    c.fillStyle = w0; c.strokeStyle = o; c.beginPath(); c.ellipse(-17, -6, 9, 5, -0.8, 0, TAU); c.fill(); c.stroke();
-    c.fillStyle = '#ffffff'; c.beginPath(); c.ellipse(-21, -10, 3.5, 2.5, -0.8, 0, TAU); c.fill();
+    // nose-first in a snow mound (right), rear up, back legs planted, bushy tail waving high
+    c.fillStyle = w0; c.strokeStyle = o; c.lineWidth = 1.1;
+    for (const [x0, x1] of [[17, 14], [22, 20]] as [number, number][]) { c.beginPath(); c.moveTo(x0 - 2.4, 24); c.lineTo(x1 - 2.2, 40); c.lineTo(x1 + 2.2, 40); c.lineTo(x0 + 2.4, 24); c.closePath(); c.fill(); c.stroke(); }
+    c.save(); c.translate(10, 15); c.rotate(-0.9);
+    c.lineWidth = 1.2; c.beginPath(); c.ellipse(0, 0, 10, 5.5, 0, 0, TAU); c.fill(); c.stroke();
+    c.fillStyle = '#ffffff'; c.beginPath(); c.ellipse(-6.5, 0, 3.5, 3.2, 0, 0, TAU); c.fill();
     c.restore();
-    // snow mound over the head
+    c.save(); c.translate(28, 28); c.rotate(0.55);
+    c.fillStyle = w0; c.strokeStyle = o; c.lineWidth = 1.3; c.beginPath(); c.ellipse(0, 0, 13, 7, 0, 0, TAU); c.fill(); c.stroke();
+    c.fillStyle = sh; c.beginPath(); c.ellipse(1, 3.5, 8, 2.2, 0, 0, TAU); c.fill();
+    c.restore();
+    // the snow mound hides the head
     c.fillStyle = '#ffffff'; c.strokeStyle = '#c4d2e2'; c.lineWidth = 1.2;
-    c.beginPath(); c.ellipse(41, 38, 11, 7, 0, Math.PI, TAU); c.fill(); c.stroke();
-    c.fillStyle = '#e8f0f8'; for (const [x, y] of [[33, 30], [46, 29], [50, 33], [37, 27]] as [number, number][]) { c.beginPath(); c.arc(x, y, 1.6, 0, TAU); c.fill(); }
+    c.beginPath(); c.moveTo(29, 41); c.quadraticCurveTo(31, 29, 41, 28); c.quadraticCurveTo(52, 29, 54, 41); c.closePath(); c.fill(); c.stroke();
+    c.fillStyle = '#e4eef8'; for (const [x, y] of [[33, 25], [47, 23], [52, 27], [39, 21], [44, 18]] as [number, number][]) { c.beginPath(); c.arc(x, y, 1.6, 0, TAU); c.fill(); }
     return;
   }
   // bushy tail curled round the back
