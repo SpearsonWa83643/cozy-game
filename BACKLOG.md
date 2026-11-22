@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-11-21 12:54 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
+Updated: 2026-11-22 12:40 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -283,6 +283,17 @@ Walker: "lets bring in the style picker to the game, give me a clean interface w
 | 152 | Prancing zebra: a striped zebra by the path to Seashell Bay; tap = a happy kick-up and a whinny + sparkles; all themes | Done/Live c55de8f (bundle index-CaVylwd1.js) | 2026-11-21 | 0.25 |
 | 153 | Ring-tailed lemur: a lemur near the orchard; tap = it hops and twirls its striped tail + a chirpy hoot + leaf sparkles; all themes | Done/Live c55de8f (bundle index-CaVylwd1.js) | 2026-11-21 | 0.25 |
 | 154 | Snowy polar bear cub: a polar bear cub in a Christmas hat by Willow Village that only comes out in the snowy themes (winter, Christmas); tap = it rolls onto its back and waves its paws + a soft giggle-growl + snow sparkles | Done/Live c55de8f (bundle index-CaVylwd1.js) | 2026-11-21 | 0.25 |
+
+## Self-added polish (2026-11-22; backlog empty; no Walker decision or spending needed)
+
+A little variety from the animal batches: two small alive-world touches plus two critters.
+
+| Order | Task | Status | ETA live | Estimate (dev days) |
+|---|---|---|---|---|
+| 155 | Glade music stones: 5 rainbow stones on the grass near the start of the glade; tap one = it bounces and plays its own happy note (pentatonic, so any order sounds nice) + a music note floats up; tap all 5 colors in a row = the stones light up in turn and play a little tune with rainbow sparkles; snow caps in snowy themes | In progress (wip/polish-155-158) | 2026-11-22 | 0.5 |
+| 156 | Drifting hot-air balloon: now and then a striped hot-air balloon with a little bunny pilot drifts slowly across the sky over you; tap = a burner whoosh, it puffs up and bobs higher, the bunny waves + hearts; red-and-green stripes in snowy themes | In progress (wip/polish-155-158) | 2026-11-22 | 0.5 |
+| 157 | Flower skunk: a friendly skunk with a flower behind its ear beside a glade-side path; tap = tail fluffs up and puffs out a cloud of flower petals (no stink!) + a giggly sniff; hidden in snowy themes | In progress (wip/polish-155-158) | 2026-11-22 | 0.25 |
+| 158 | Snowy arctic fox: a white fox that only comes out in the snowy themes (winter, Christmas); tap = a pounce nose-first into the snow, tail wiggling + a happy yip + snow puff | In progress (wip/polish-155-158) | 2026-11-22 | 0.25 |
 
 ## Recently done
 
