@@ -10,7 +10,7 @@ import type { WorldScene } from './scenes/World';
 
 const BW = 64, BH = 104;
 export const BALLOON = {
-  size: 1.5, speed: 38, first: 14, every: [40, 75] as [number, number], tapR: 70,
+  size: 1.5, speed: 38, first: 14, every: [40, 75] as [number, number], tapR: 84,
   puffS: 1.6, shadowDy: 210,
 };
 const PALETTES: Record<string, string[]> = {

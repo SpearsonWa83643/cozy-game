@@ -75,9 +75,14 @@ test('little life 15: music stones, hot-air balloon, flower skunk, snowy arctic 
   expect(bb.flying).toBe(true);
   expect(bb.visible).toBe(true);
   await page.screenshot({ path: `${SHOTS}/balloon-idle.png` });
-  const bs = await page.evaluate(([x, y]) => (window as any).__cozy.worldToScreen(x, y), [bb.x, bb.y]);
-  await page.touchscreen.tap(bs.x, bs.y);
-  await expect.poll(async () => (await cozy(page, 'balloon()')).taps, { timeout: 15_000 }).toBe(1);
+  // Real touch on the envelope (one retry: at ~3 fps under swiftshader a quick tap can land between frames).
+  for (let k = 0; k < 2 && (await cozy(page, 'balloon()')).taps === 0; k++) {
+    const b = await cozy(page, 'balloon()');
+    const bs = await page.evaluate(([x, y]) => (window as any).__cozy.worldToScreen(x, y), [b.x, b.y]);
+    await page.touchscreen.tap(bs.x, bs.y);
+    await expect.poll(async () => (await cozy(page, 'balloon()')).taps, { timeout: 15_000 }).toBe(1).catch(() => console.log('balloon tap retry', JSON.stringify(b), JSON.stringify(bs)));
+  }
+  expect((await cozy(page, 'balloon()')).taps).toBe(1);
   expect((await cozy(page, 'balloon()')).puffing).toBe(true);
   expect(await cozy(page, 'balloonTap()')).toBe(false); // one whoosh at a time
   await expect.poll(async () => (await cozy(page, 'balloon()')).key, { timeout: 15_000 }).toContain('_whoosh');
@@ -99,8 +104,8 @@ test('little life 15: music stones, hot-air balloon, flower skunk, snowy arctic 
     const s1 = await cozy(page, `life2('${k}')`);
     expect(s1.taps).toBe(1);
     expect(s1.list[0].busy).toBe(true);
-    if (k === 'arcticfox') await expect.poll(async () => (await cozy(page, `life2('${k}')`)).list[0].tex, { timeout: 30_000 }).toBe('ll_afox_dive');
-    await page.waitForTimeout(k === 'arcticfox' ? 200 : 500);
+    if (k === 'arcticfox') await expect.poll(async () => { const q = (await cozy(page, `life2('${k}')`)).list[0]; return q.tex === 'll_afox_dive' && q.y === q.hy && Math.abs(q.x - q.hx) === 14; }, { timeout: 120_000 }).toBe(true); // nose in the snow
+    if (k !== 'arcticfox') await page.waitForTimeout(500);
     await page.screenshot({ path: `${SHOTS}/${shot}-tap.png` });
     await expect.poll(async () => (await cozy(page, `life2('${k}')`)).list[0].busy, { timeout: 60_000 }).toBe(false);
   };

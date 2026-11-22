@@ -1963,7 +1963,7 @@ export class LittleLife {
       case 'lemur': sfx.lemurHoot(); w.burst(c.x, c.y - 50, 0xc0f080, 7, 'spark'); break;
       case 'polarbear': sfx.bearGiggle(); w.burst(c.x, c.y - 30, 0xe8f4ff, 10, 'spark'); break;
       case 'skunk': sfx.skunkSniff(); for (const col of [0xff8ac0, 0xffd060, 0xc8a0ff, 0xffffff]) w.burst(c.x + (c.img.flipX ? 18 : -18), c.y - 40, col, 4, 'petal'); break;
-      case 'arcticfox': sfx.arcticYip(); break;
+      case 'arcticfox': sfx.arcticYip(); c.img.setTexture(KEY.arcticfox[0]); break; // jumps first, dives on landing
       case 'moose': sfx.mooseBellow(); w.burst(c.x + (c.img.flipX ? -20 : 20), c.y - 70, 0xe8f4ff, 10, 'spark'); break;
       case 'porcupine': sfx.snuffle(); w.burst(c.x, c.y - 30, 0xfff0d0, 8, 'spark'); break;
       case 'turkey': sfx.gobble(); w.burst(c.x - 6, c.y - 34, 0xf0a030, 8, 'spark'); break;
