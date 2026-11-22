@@ -1963,7 +1963,7 @@ export class LittleLife {
       case 'lemur': sfx.lemurHoot(); w.burst(c.x, c.y - 50, 0xc0f080, 7, 'spark'); break;
       case 'polarbear': sfx.bearGiggle(); w.burst(c.x, c.y - 30, 0xe8f4ff, 10, 'spark'); break;
       case 'skunk': sfx.skunkSniff(); for (const col of [0xff8ac0, 0xffd060, 0xc8a0ff, 0xffffff]) w.burst(c.x + (c.img.flipX ? 18 : -18), c.y - 40, col, 4, 'petal'); break;
-      case 'arcticfox': sfx.arcticYip(); w.time.delayedCall(320, () => { if (c.on) w.burst(c.x + (c.img.flipX ? -14 : 14), c.y - 6, 0xf4f8ff, 12, 'spark'); }); break;
+      case 'arcticfox': sfx.arcticYip(); break;
       case 'moose': sfx.mooseBellow(); w.burst(c.x + (c.img.flipX ? -20 : 20), c.y - 70, 0xe8f4ff, 10, 'spark'); break;
       case 'porcupine': sfx.snuffle(); w.burst(c.x, c.y - 30, 0xfff0d0, 8, 'spark'); break;
       case 'turkey': sfx.gobble(); w.burst(c.x - 6, c.y - 34, 0xf0a030, 8, 'spark'); break;
@@ -2216,7 +2216,7 @@ export class LittleLife {
           if (c.t > 0) {
             const q = Math.min(1, p / 0.3);
             if (p < 0.3) { c.img.setTexture(KEY.arcticfox[0]); lift = Math.sin(q * Math.PI) * 22; dx = q * 14 * (c.img.flipX ? -1 : 1); rot = (c.img.flipX ? -1 : 1) * (q - 0.3) * 0.5; }
-            else if (p < 0.82) { c.img.setTexture(KEY.arcticfox[1]); dx = 14 * (c.img.flipX ? -1 : 1); rot = Math.sin(p * Math.PI * 10) * 0.05; }
+            else if (p < 0.82) { if (!c.spl) { c.spl = true; this.w.burst(c.hx + (c.img.flipX ? -24 : 24), c.hy - 8, 0xf4f8ff, 12, 'spark'); } c.img.setTexture(KEY.arcticfox[1]); dx = 14 * (c.img.flipX ? -1 : 1); rot = Math.sin(p * Math.PI * 10) * 0.05; }
             else { c.img.setTexture(KEY.arcticfox[0]); const b = (p - 0.82) / 0.18; dx = 14 * (1 - b) * (c.img.flipX ? -1 : 1); lift = Math.sin(b * Math.PI) * 6; }
           } else { dx = Math.sin(now * 0.2 + c.ph) * 12; sy = 1 + Math.sin(now * 1.6 + c.ph) * 0.02; const listen = Math.max(0, Math.sin(now * 0.7 + c.ph)) ** 6; rot = (c.img.flipX ? -1 : 1) * listen * 0.08; c.img.setFlipX(Math.cos(now * 0.2 + c.ph) < 0); }
           break;

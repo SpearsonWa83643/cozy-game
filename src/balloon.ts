@@ -111,7 +111,7 @@ export class Balloon {
     sfx.balloonWhoosh();
     const top = this.y - 70 * BALLOON.size - this.rise;
     this.w.burst(this.x, this.y - 22 * BALLOON.size - this.rise, 0xffc040, 6, 'spark');
-    this.w.time.delayedCall(450, () => { if (this.flying) this.w.burst(this.x + 10, top + 40, 0xff9ab0, 6, 'heart'); });
+    this.w.burst(this.x + 10, top + 30, 0xff9ab0, 6, 'heart');
     if (this.w.life) this.w.life.reactions++;
     return true;
   }

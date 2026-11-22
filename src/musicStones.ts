@@ -14,7 +14,7 @@ const TW = 40, TH = 30;
 export const STONES = {
   size: 1.25, gap: 46, tapR: 30,
   /** Seconds the five colors may take to count as a song. */
-  songWindow: 6, songS: 2.6, bounceS: 0.4,
+  songWindow: 12, songS: 2.6, bounceS: 0.4,
 };
 const COLORS = ['#ff6b6b', '#ffa94d', '#ffd84d', '#69db7c', '#5c9dff'];
 const TINTS = [0xff6b6b, 0xffa94d, 0xffd84d, 0x69db7c, 0x5c9dff];
@@ -54,6 +54,9 @@ export class MusicStones {
   taps = 0; songs = 0; on = false; snow = false;
   private recent: { i: number; t: number }[] = [];
   private song = 0;
+  /** Countdown to the song after the fifth color, and the song's next step (driven by update, culling-safe). */
+  private cue = 0;
+  private step = 0; private stepT = 0;
   constructor(private w: WorldScene) {
     if (!w.textures.exists('mstone0')) {
       COLORS.forEach((col, i) => canvasTex(w, `mstone${i}`, TW, TH, (c) => stoneTex(c, col), S, true));
@@ -117,7 +120,7 @@ export class MusicStones {
     const now = this.w.time.now / 1000;
     this.recent = this.recent.filter((r) => now - r.t < STONES.songWindow && r.i !== i);
     this.recent.push({ i, t: now });
-    if (this.recent.length >= 5) { this.recent = []; this.w.time.delayedCall(420, () => this.playSong()); }
+    if (this.recent.length >= 5) { this.recent = []; this.cue = 0.42; }
     if (this.w.life) this.w.life.reactions++;
     return true;
   }
@@ -126,19 +129,25 @@ export class MusicStones {
     if (this.song > 0) return;
     this.songs++;
     this.song = STONES.songS;
-    const step = (STONES.songS - 0.5) / SONG.length;
-    SONG.forEach((n, k) => {
-      sfx.stoneNote(NOTES[n], k * step);
-      this.w.time.delayedCall(k * step * 1000, () => {
-        const s = this.stones[n]; s.b = STONES.bounceS; s.lit = 0.6;
+    this.step = 0; this.stepT = 0;
+  }
+
+  /** Advance the song: one stone per step, then a happy rainbow finish. */
+  private songTick(dt: number) {
+    const stepS = (STONES.songS - 0.5) / SONG.length;
+    this.stepT -= dt;
+    while (this.stepT <= 0 && this.step <= SONG.length) {
+      if (this.step < SONG.length) {
+        const n = SONG[this.step], s = this.stones[n];
+        sfx.stoneNote(NOTES[n]);
+        s.b = STONES.bounceS; s.lit = 0.6;
         if (this.on) this.w.burst(s.x, s.y - 34, TINTS[n], 3, 'spark');
-      });
-    });
-    this.w.time.delayedCall(SONG.length * step * 1000, () => {
-      if (!this.on) return;
-      sfx.stoneNote(NOTES[0] * 2, 0); sfx.stoneNote(NOTES[2] * 2, 0.02);
-      TINTS.forEach((t, i) => this.w.burst(this.x + (i - 2) * STONES.gap, this.y - 60, t, 4, 'spark'));
-    });
+      } else {
+        sfx.stoneNote(NOTES[0] * 2); sfx.stoneNote(NOTES[2] * 2, 0.02);
+        if (this.on) TINTS.forEach((t, i) => this.w.burst(this.x + (i - 2) * STONES.gap, this.y - 60, t, 4, 'spark'));
+      }
+      this.step++; this.stepT += stepS;
+    }
   }
 
   private retheme() {
@@ -152,10 +161,12 @@ export class MusicStones {
     const vis = this.x > v.x - g2 && this.x < v.right + g2 && this.y > v.y - 40 && this.y - 80 < v.bottom;
     if (!vis) {
       if (this.on) { this.on = false; for (const s of this.stones) { s.img.setVisible(false); s.cap.setVisible(false); s.glow.setVisible(false); } }
+      this.cue = 0; this.song = 0;
       return;
     }
     if (!this.on) { this.on = true; for (const s of this.stones) { s.img.setVisible(true); s.cap.setVisible(this.snow); } }
-    if (this.song > 0) this.song = Math.max(0, this.song - dt);
+    if (this.cue > 0) { this.cue -= dt; if (this.cue <= 0) { this.cue = 0; this.playSong(); } }
+    if (this.song > 0) { this.song = Math.max(0, this.song - dt); this.songTick(dt); }
     for (const s of this.stones) {
       let sx = 1, sy = 1, lift = 0;
       if (s.b > 0) {
