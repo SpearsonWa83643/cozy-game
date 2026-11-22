@@ -54,6 +54,8 @@ import { Ducks } from '../ducks';
 import { Squirrels } from '../squirrels';
 import { Minnows } from '../minnows';
 import { LittleLife, type Kind as LifeKind } from '../littleLife';
+import { MusicStones } from '../musicStones';
+import { Balloon } from '../balloon';
 import { Mount } from '../mount/mount';
 import { looks } from '../looks/looks';
 import type { ArtStyleId } from '../looks/styleFx';
@@ -174,6 +176,10 @@ export class WorldScene extends Phaser.Scene {
   minnows!: Minnows;
   /** 99–102: ladybugs, glow snails, hens, bay turtles. */
   littleLife!: LittleLife;
+  /** 155: glade music stones. */
+  musicStones!: MusicStones;
+  /** 156: drifting hot-air balloon. */
+  balloon!: Balloon;
   playerShadow!: Phaser.GameObjects.Image;
   solids!: Phaser.Physics.Arcade.StaticGroup;
   keys!: Record<string, Phaser.Input.Keyboard.Key>;
@@ -392,6 +398,8 @@ export class WorldScene extends Phaser.Scene {
     this.squirrels = new Squirrels(this);
     this.minnows = new Minnows(this);
     this.littleLife = new LittleLife(this);
+    this.musicStones = new MusicStones(this);
+    this.balloon = new Balloon(this);
     this.dresser = new ThemeDresser(this);
     this.mount = new Mount(this);
     this.skyRings = new SkyRings(this);
@@ -1451,6 +1459,8 @@ export class WorldScene extends Phaser.Scene {
     this.squirrels.update(dt);
     this.minnows.update(dt);
     this.littleLife.update(dt);
+    this.musicStones.update(dt);
+    this.balloon.update(dt);
     this.village.update(dt, time);
     this.dresser.update(time, dt);
     const view = this.cameras.main.worldView;
@@ -1940,6 +1950,14 @@ export class WorldScene extends Phaser.Scene {
       minnows() { return self.minnows.stats(); },
       minnowTap() { return self.minnows.tap(); },
       /** 99–102: little life (ladybug | snail | hen | turtle). */
+      /** 155: glade music stones. */
+      stones() { return self.musicStones.stats(); },
+      stoneTap(i: number) { return self.musicStones.tap(i); },
+      /** 156: drifting hot-air balloon. */
+      balloon() { return self.balloon.stats(); },
+      balloonAt(x: number, y: number) { return self.balloon.showAt(x, y); },
+      balloonLaunch(fromLeft: boolean) { return self.balloon.launch(fromLeft); },
+      balloonTap() { return self.balloon.tap(); },
       life2(k: LifeKind) { return self.littleLife.stats(k); },
       life2Tap(k: LifeKind, i: number) { const c = self.littleLife.of(k)[i]; if (!c) return false; return self.littleLife.tap(c); },
       ringsSpawn() { self.skyRings.spawn(); return self.skyRings.stats(); },
