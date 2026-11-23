@@ -1721,8 +1721,7 @@ function cardinal(c: Ctx, sing: boolean) {
   c.beginPath(); c.ellipse(bx, by + 1, 7, 5.5, 0, 0, TAU); c.fill(); c.stroke();
   if (sing) { for (const [x, a] of [[bx - 3, -0.9], [bx + 2, 0.7]] as [number, number][]) { c.save(); c.translate(x, by - 1); c.rotate(a); c.beginPath(); c.ellipse(0, -4, 2.4, 5.5, 0, 0, TAU); c.fill(); c.stroke(); c.restore(); } }
   else { c.fillStyle = '#b81e1e'; c.beginPath(); c.ellipse(bx - 2, by + 1.5, 4, 2.8, 0.2, 0, TAU); c.fill(); }
-  if (!sing) c.strokeStyle = '#3a1a10';
-  c.strokeStyle = '#3a1a10'; c.lineWidth = 1.2; for (const x of [bx - 1, bx + 2]) { c.beginPath(); c.moveTo(x, by + 6); c.lineTo(x, by + 8 + lift); c.stroke(); }
+  c.strokeStyle = '#3a1a10'; c.lineWidth = 1.2; for (const x of [bx - 1, bx + 2]) { c.beginPath(); c.moveTo(x, by + 6); c.lineTo(x + (sing ? 0.8 : 0), by + (sing ? 7.5 : 8)); c.stroke(); }
   // head with crest, black mask, orange beak
   const hx = bx + 5, hy = by - 4;
   c.fillStyle = '#d42a2a'; c.strokeStyle = '#7a1010'; c.lineWidth = 1;
@@ -2381,7 +2380,7 @@ export class LittleLife {
           else { dx = Math.sin(now * 0.12 + c.ph) * 10; const graze = Math.max(0, Math.sin(now * 0.8 + c.ph)) ** 6; rot = (c.img.flipX ? -1 : 1) * graze * 0.05; sy = 1 + Math.sin(now * 0.9 + c.ph) * 0.015; c.img.setFlipX(Math.cos(now * 0.12 + c.ph) < 0); }
           break;
         case 'toucan':
-          if (c.t > 0) { lift = p < 0.4 ? Math.sin(p / 0.4 * Math.PI) * 6 : 0; sy = 1 + (p > 0.4 && p < 0.5 ? -0.06 : 0); c.img.setTexture(p < 0.8 && Math.floor(p * 10) % 2 === 0 ? KEY.toucan[1] : KEY.toucan[0]); }
+          if (c.t > 0) { lift = p < 0.4 ? Math.sin(p / 0.4 * Math.PI) * 6 : 0; sy = 1 + (p > 0.4 && p < 0.5 ? -0.06 : 0); rot = p < 0.8 ? Math.sin(p * Math.PI * 5) * 0.05 : 0; if (p > 0.8) c.img.setTexture(KEY.toucan[0]); }
           else { const bob = Math.max(0, Math.sin(now * 1.2 + c.ph)) ** 6; rot = bob * 0.06; sy = 1 + Math.sin(now * 1.6 + c.ph) * 0.015; if (Math.sin(now * 0.2 + c.ph) > 0.97) c.img.setFlipX(!c.img.flipX); }
           break;
         case 'platypus':
