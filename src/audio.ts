@@ -970,6 +970,34 @@ class Synth {
     this.noiseBurst(0.28, 700, 0.8, 0.06, 'lowpass', 0.32, 0.5);
   }
 
+  /** 159: a baby rhino's happy snorty toot (two little snorts, then a round toot). */
+  rhinoSnort() {
+    if (!this.ready) return;
+    [0, 0.16].forEach((w) => this.noiseBurst(0.1, 900, 1.2, 0.05, 'bandpass', w, 0.7));
+    this.voice(330, 0.34, 0.05, 0.22, 'triangle', 0.01);
+    this.voice(440, 0.4, 0.03, 0.16, 'sine', 0.01);
+  }
+
+  /** 160: a woody toucan "tok-tok", then a bright little croak. */
+  toucanTok() {
+    if (!this.ready) return;
+    [0, 0.14].forEach((w) => { this.voice(1400, w, 0.05, 0.04, 'square', 0.001); this.voice(700, w, 0.03, 0.05, 'triangle', 0.001); });
+    [620, 820].forEach((f, i) => this.voice(f, 0.32 + i * 0.08, 0.025, 0.1, 'sawtooth', 0.01));
+  }
+
+  /** 161: a soft, happy platypus chitter (quick rising purr-chirps). */
+  platypusChitter() {
+    if (!this.ready) return;
+    for (let i = 0; i < 6; i++) this.voice(520 + i * 70 + (i % 2) * 40, i * 0.055, 0.022, 0.05, 'triangle', 0.004);
+  }
+
+  /** 162: a sweet cardinal whistle (cheer-cheer-cheer, slightly different for each bird). */
+  cardinalWhistle(i = 0) {
+    if (!this.ready) return;
+    const f0 = i % 2 ? 2300 : 2100;
+    for (let k = 0; k < 3; k++) { this.voice(f0 + 400, k * 0.16, 0.03, 0.05, 'sine', 0.004); this.voice(f0, k * 0.16 + 0.05, 0.028, 0.08, 'sine', 0.004); }
+  }
+
   /** 155: one music stone: a round, woody marimba note. */
   stoneNote(freq: number, when = 0) {
     if (!this.ready) return;
