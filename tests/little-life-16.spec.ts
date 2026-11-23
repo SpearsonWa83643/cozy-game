@@ -63,6 +63,10 @@ test('little life 16: rhino, toucan, platypus react to taps; cardinals only in s
     expect((await cozy(page, `life2('${k}')`)).shown, k).toBe(false);
     expect((await cozy(page, `life2('${k}')`)).list.every((q: any) => !q.visible), k).toBe(true);
   }
+  // The two cardinals sit side by side.
+  const cl = (await cozy(page, "life2('cardinal')")).list;
+  expect(Math.hypot(cl[0].hx - cl[1].hx, cl[0].hy - cl[1].hy)).toBeLessThan(80);
+  expect(Math.hypot(cl[0].hx - cl[1].hx, cl[0].hy - cl[1].hy)).toBeGreaterThan(40);
   await check('cardinal', 2, 'cardinal');
   await page.evaluate(() => (window as any).__cozy.setTheme?.('spring'));
   await expect.poll(async () => (await cozy(page, "life2('cardinal')")).shown, { timeout: 15_000 }).toBe(false);

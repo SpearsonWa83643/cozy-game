@@ -2032,8 +2032,20 @@ export class LittleLife {
     }
     pl.sort((a, b) => rv(a[0], a[1]) - rv(b[0], b[1]));
     pick('platypus', pl, (x, y) => offPath(x, y) && open(x, y) && rv(x, y) > RIVER_HALF + 40 && !onBridge(x, y) && noPuzzle(x, y) && roomy(x, y, 230), 95, 300);
-    // 162: a pair beside the Shellwater Lake, forest or village paths, clear of the other snow friends (only out in snowy themes).
-    pick('cardinal', [...along(PATH_LAKE, [[0, 240], [44, 250], [0, -240], [44, -250], [0, 280], [44, 290], [0, -280], [44, -290]], 0), ...along(PATH_FOREST, [[0, 230], [44, 240], [0, -230], [44, -240], [0, 270], [44, 280]], 0), ...along(PATH_SHORE_S, [[260, 0], [260, 44], [-260, 0], [-260, 44]], 0)], (x, y) => offPath(x, y) && open(x, y) && lakeValue(x, y) > 1.2 && rv(x, y) > RIVER_HALF + 60 && noPuzzle(x, y) && roomy(x, y, 220), 90, 44);
+    // 162: a pair side by side beside the Shellwater Lake, forest or village paths, clear of the other snow friends (only out in snowy themes).
+    {
+      const cd: [number, number][] = [...along(PATH_LAKE, [[0, 240], [44, 250], [0, -240], [44, -250], [0, 280], [44, 290], [0, -280], [44, -290]], 0), ...along(PATH_FOREST, [[0, 230], [44, 240], [0, -230], [44, -240], [0, 270], [44, 280]], 0), ...along(PATH_SHORE_S, [[260, 0], [260, 44], [-260, 0], [-260, 44]], 0)];
+      const okC = (x: number, y: number) => offPath(x, y) && open(x, y) && lakeValue(x, y) > 1.2 && rv(x, y) > RIVER_HALF + 60 && noPuzzle(x, y) && roomy(x, y, 220) && busy.every(([bx, by]) => Math.hypot(bx - x, by - y) > 90);
+      pair: for (const [x, y] of cd) {
+        if (!okC(x, y)) continue;
+        for (const [ox, oy] of [[52, 10], [-52, 10], [52, -10], [-52, -10], [46, 26], [-46, 26]] as [number, number][]) {
+          const px = x + ox, py = y + oy;
+          if (!land(px, py) || !land(px + Math.sign(ox) * 30, py) || pathDist(px, py) < 80 || !busy.every(([bx, by]) => Math.hypot(bx - px, by - py) > 90)) continue;
+          this.add('cardinal', x, y); this.add('cardinal', px, py); busy.push([x, y], [px, py]);
+          break pair;
+        }
+      }
+    }
     const onTheme = () => this.retheme();
     themeEvents.on('change', onTheme);
     w.events.once('shutdown', () => themeEvents.off('change', onTheme));
