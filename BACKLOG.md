@@ -295,6 +295,15 @@ A little variety from the animal batches: two small alive-world touches plus two
 | 157 | Flower skunk: a friendly skunk with a flower behind its ear beside a glade-side path; tap = tail fluffs up and puffs out a cloud of flower petals (no stink!) + a giggly sniff; hidden in snowy themes | Done/Live 4af1934 (bundle index-_keTFRla.js) | 2026-11-22 | 0.25 |
 | 158 | Snowy arctic fox: a white fox that only comes out in the snowy themes (winter, Christmas); tap = a pounce nose-first into the snow, tail wiggling + a happy yip + snow puff | Done/Live 4af1934 (bundle index-_keTFRla.js) | 2026-11-22 | 0.25 |
 
+## Self-added polish (2026-11-23; backlog empty; no Walker decision or spending needed)
+
+| Order | Task | Status | ETA live | Estimate (dev days) |
+|---|---|---|---|---|
+| 159 | Baby rhino: a little rhino on the grass beside a Pinecone Hills or meadow path; tap = a happy stomp-trot and a snorty toot + a dust puff; hidden in snowy themes | In progress (wip/polish-159-162) | 2026-11-23 | 0.25 |
+| 160 | Toucan: a toucan with a big rainbow beak on a little perch near Fairy Grove or the orchard; tap = it flaps, tosses its beak up and calls "tok-tok" + colorful feathers; all themes | In progress (wip/polish-159-162) | 2026-11-23 | 0.25 |
+| 161 | Playful platypus: a platypus on the riverbank; tap = a tail-slap splash and a happy chitter + water sparkles; hidden in snowy themes | In progress (wip/polish-159-162) | 2026-11-23 | 0.25 |
+| 162 | Snowy cardinals: 2 red cardinals on a little snowy holly bush that only come out in the snowy themes (winter, Christmas); tap = they hop up and sing a sweet whistle + red and white sparkles | In progress (wip/polish-159-162) | 2026-11-23 | 0.25 |
+
 ## Recently done
 
 - 21: Real-iPad FPS check and tuning. Done 2026-10-27, Walker said the playtest went OK.
