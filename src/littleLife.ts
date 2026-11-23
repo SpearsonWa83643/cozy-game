@@ -2026,10 +2026,15 @@ export class LittleLife {
     for (const path of [PATH_RIVERSIDE, PATH_RIVER_W]) for (let s = 0; s < path.length - 1; s++) for (const t of [0.5, 0.3, 0.7, 0.15, 0.85]) for (const d of [-120, 120, -160, 160, -200, 200, -240, 240, -280, 280]) {
       const [ax, ay] = path[s], [bx, by] = path[s + 1]; pl.push([ax + (bx - ax) * t + d, ay + (by - ay) * t]); pl.push([ax + (bx - ax) * t, ay + (by - ay) * t + d]);
     }
+    // ...plus spots right along the whole river's banks.
+    for (let k = 0; k < RIVER_PTS.length - 1; k++) for (const t of [0.5, 0.25, 0.75, 0.1, 0.9]) for (const d of [70, 100, 130, 170]) for (const sd of [1, -1]) {
+      const [ax, ay] = RIVER_PTS[k], [bx, by] = RIVER_PTS[k + 1], L = Math.hypot(bx - ax, by - ay) || 1;
+      pl.push([ax + (bx - ax) * t + sd * (-(by - ay) / L) * (RIVER_HALF + d), ay + (by - ay) * t + sd * ((bx - ax) / L) * (RIVER_HALF + d)]);
+    }
     pl.sort((a, b) => rv(a[0], a[1]) - rv(b[0], b[1]));
     pick('platypus', pl, (x, y) => offPath(x, y) && open(x, y) && rv(x, y) > RIVER_HALF + 40 && !onBridge(x, y) && noPuzzle(x, y) && roomy(x, y, 230), 95, 300);
     // 162: a pair beside the Shellwater Lake, forest or village paths, clear of the other snow friends (only out in snowy themes).
-    pick('cardinal', [...along(PATH_LAKE, [[0, 240], [44, 250], [0, -240], [44, -250], [0, 280], [44, 290], [0, -280], [44, -290]], 0), ...along(PATH_FOREST, [[0, 230], [44, 240], [0, -230], [44, -240], [0, 270], [44, 280]], 0), ...along(PATH_SHORE_S, [[260, 0], [260, 44], [-260, 0], [-260, 44]], 0)], (x, y) => offPath(x, y) && open(x, y) && lakeValue(x, y) > 1.2 && rv(x, y) > RIVER_HALF + 60 && noPuzzle(x, y) && roomy(x, y, 220), 90, 40);
+    pick('cardinal', [...along(PATH_LAKE, [[0, 240], [44, 250], [0, -240], [44, -250], [0, 280], [44, 290], [0, -280], [44, -290]], 0), ...along(PATH_FOREST, [[0, 230], [44, 240], [0, -230], [44, -240], [0, 270], [44, 280]], 0), ...along(PATH_SHORE_S, [[260, 0], [260, 44], [-260, 0], [-260, 44]], 0)], (x, y) => offPath(x, y) && open(x, y) && lakeValue(x, y) > 1.2 && rv(x, y) > RIVER_HALF + 60 && noPuzzle(x, y) && roomy(x, y, 220), 90, 44);
     const onTheme = () => this.retheme();
     themeEvents.on('change', onTheme);
     w.events.once('shutdown', () => themeEvents.off('change', onTheme));

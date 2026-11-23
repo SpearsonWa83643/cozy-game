@@ -1960,6 +1960,7 @@ export class WorldScene extends Phaser.Scene {
       balloonTap() { return self.balloon.tap(); },
       life2(k: LifeKind) { return self.littleLife.stats(k); },
       life2Tap(k: LifeKind, i: number) { const c = self.littleLife.of(k)[i]; if (!c) return false; return self.littleLife.tap(c); },
+      lifeAll() { return self.littleLife.list.map((c) => ({ kind: c.kind, hx: Math.round(c.hx), hy: Math.round(c.hy) })); },
       ringsSpawn() { self.skyRings.spawn(); return self.skyRings.stats(); },
       crabTap(i: number) { const c = self.crabs.crabs[i]; if (!c) return false; self.crabs.tap(c); return true; },
       /** 33: garden pinwheels (spin in rad/s). */
