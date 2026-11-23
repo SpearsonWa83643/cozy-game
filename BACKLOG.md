@@ -299,10 +299,10 @@ A little variety from the animal batches: two small alive-world touches plus two
 
 | Order | Task | Status | ETA live | Estimate (dev days) |
 |---|---|---|---|---|
-| 159 | Baby rhino: a little rhino on the grass beside a Pinecone Hills or meadow path; tap = a happy stomp-trot and a snorty toot + a dust puff; hidden in snowy themes | In progress (wip/polish-159-162) | 2026-11-23 | 0.25 |
-| 160 | Toucan: a toucan with a big rainbow beak on a little perch near Fairy Grove or the orchard; tap = it flaps, tosses its beak up and calls "tok-tok" + colorful feathers; all themes | In progress (wip/polish-159-162) | 2026-11-23 | 0.25 |
-| 161 | Playful platypus: a platypus on the riverbank; tap = a tail-slap splash and a happy chitter + water sparkles; hidden in snowy themes | In progress (wip/polish-159-162) | 2026-11-23 | 0.25 |
-| 162 | Snowy cardinals: 2 red cardinals on a little snowy holly bush that only come out in the snowy themes (winter, Christmas); tap = they hop up and sing a sweet whistle + red and white sparkles | In progress (wip/polish-159-162) | 2026-11-23 | 0.25 |
+| 159 | Baby rhino: a little rhino on the grass beside a Pinecone Hills or meadow path; tap = a happy stomp-trot and a snorty toot + a dust puff; hidden in snowy themes | Done/Live 60bf2bf (bundle index-BDXsSPDz.js) | 2026-11-23 | 0.25 |
+| 160 | Toucan: a toucan with a big rainbow beak on a little perch near Fairy Grove or the orchard; tap = it flaps, tosses its beak up and calls "tok-tok" + colorful feathers; all themes | Done/Live 60bf2bf (bundle index-BDXsSPDz.js) | 2026-11-23 | 0.25 |
+| 161 | Playful platypus: a platypus on the riverbank; tap = a tail-slap splash and a happy chitter + water sparkles; hidden in snowy themes | Done/Live 60bf2bf (bundle index-BDXsSPDz.js) | 2026-11-23 | 0.25 |
+| 162 | Snowy cardinals: 2 red cardinals on a little snowy holly bush that only come out in the snowy themes (winter, Christmas); tap = they hop up and sing a sweet whistle + red and white sparkles | Done/Live 60bf2bf (bundle index-BDXsSPDz.js) | 2026-11-23 | 0.25 |
 
 ## Recently done
 
