@@ -47,7 +47,10 @@ test('little life 17: red panda, pelican, wombat react to taps; ermine only in s
     const s1 = await cozy(page, `life2('${k}')`);
     expect(s1.taps).toBe(1);
     expect(s1.list[0].busy).toBe(true);
-    await page.waitForTimeout(600);
+    // Wait for the big pose (stand up / gulp / dig / pop up) before the photo.
+    const pose: Record<string, string> = { redpanda: 'll_rpanda_up', pelican: 'll_pelican_gulp', wombat: 'll_wombat_dig', ermine: 'll_ermine_up' };
+    await expect.poll(async () => (await cozy(page, `life2('${k}')`)).list[0].tex, { timeout: 30_000 }).toBe(pose[k]);
+    await page.waitForTimeout(300);
     await page.screenshot({ path: `${SHOTS}/${shot}-tap.png` });
     await expect.poll(async () => (await cozy(page, `life2('${k}')`)).list[0].busy, { timeout: 60_000 }).toBe(false);
   };
