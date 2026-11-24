@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-11-24 12:35 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
+Updated: 2026-11-24 1:05 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -308,10 +308,10 @@ A little variety from the animal batches: two small alive-world touches plus two
 
 | Order | Task | Status | ETA live | Estimate (dev days) |
 |---|---|---|---|---|
-| 163 | Red panda: a fluffy red panda by a Mistbirch Wood or Fairy Grove path; tap = it stands up tall on its back legs with its arms up (a big "surprise!") + a squeaky chirp + leaf sparkles; all themes | In progress (wip/polish-163-166) | 2026-11-24 | 0.25 |
-| 164 | Pelican: a pelican on the Seashell Bay shore; tap = it dips its big beak, scoops up a fish, gulps + a happy honk + water sparkles; hidden in snowy themes | In progress (wip/polish-163-166) | 2026-11-24 | 0.25 |
-| 165 | Wombat: a round wombat on the Pinecone Hills grass; tap = a happy little dig with dirt flying + a snuffly grunt; all themes | In progress (wip/polish-163-166) | 2026-11-24 | 0.25 |
-| 166 | Snowy ermine: a tiny white ermine that only comes out in the snowy themes (winter, Christmas); tap = it pops up tall out of a snow mound, looks around, dives back in + a squeaky peep + snow puff | In progress (wip/polish-163-166) | 2026-11-24 | 0.25 |
+| 163 | Red panda: a fluffy red panda by a Mistbirch Wood or Fairy Grove path; tap = it stands up tall on its back legs with its arms up (a big "surprise!") + a squeaky chirp + leaf sparkles; all themes | Done/Live 06ebf88 (bundle index-BWC1dCQd.js) | 2026-11-24 | 0.25 |
+| 164 | Pelican: a pelican on the Seashell Bay shore; tap = it dips its big beak, scoops up a fish, gulps + a happy honk + water sparkles; hidden in snowy themes | Done/Live 06ebf88 (bundle index-BWC1dCQd.js) | 2026-11-24 | 0.25 |
+| 165 | Wombat: a round wombat on the Pinecone Hills grass; tap = a happy little dig with dirt flying + a snuffly grunt; all themes | Done/Live 06ebf88 (bundle index-BWC1dCQd.js) | 2026-11-24 | 0.25 |
+| 166 | Snowy ermine: a tiny white ermine that only comes out in the snowy themes (winter, Christmas); tap = it pops up tall out of a snow mound, looks around, dives back in + a squeaky peep + snow puff | Done/Live 06ebf88 (bundle index-BWC1dCQd.js) | 2026-11-24 | 0.25 |
 | 167 | Woodpecker: a red-capped woodpecker on a tree trunk in Mistbirch Wood or by the orchard; tap = rat-a-tat-tat pecking + little wood chips + a happy call; all themes | In progress (wip/polish-167-170) | 2026-11-24 | 0.25 |
 | 168 | Lion cub: a fluffy lion cub in Sunflower Meadow; tap = a tiny "mew-roar" with its little mane fluffed up + sun sparkles; hidden in snowy themes | In progress (wip/polish-167-170) | 2026-11-24 | 0.25 |
 | 169 | Friendly octopus: a pink octopus in the Seashell Bay shallows; tap = it waves all its arms hello + bubbles + a bubbly giggle; hidden in snowy themes | In progress (wip/polish-167-170) | 2026-11-24 | 0.25 |

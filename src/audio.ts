@@ -1027,6 +1027,34 @@ class Synth {
     this.noiseBurst(0.24, 700, 0.8, 0.05, 'lowpass', 0.9, 0.5);
   }
 
+  /** 167: a woodpecker's rat-a-tat-tat on wood, then a bright little "kee-kee". */
+  woodpeckerTap() {
+    if (!this.ready) return;
+    for (let i = 0; i < 7; i++) this.noiseBurst(0.025, 1800, 3, 0.05, 'bandpass', i * 0.055, 0);
+    [0.5, 0.64].forEach((w) => this.voice(1900, w, 0.022, 0.07, 'triangle', 0.004));
+  }
+
+  /** 168: a lion cub's tiny "mew-roar" (a rising mew into a soft little growl). */
+  cubRoar() {
+    if (!this.ready) return;
+    this.voice(520, 0, 0.03, 0.14, 'triangle', 0.01); this.voice(680, 0.08, 0.025, 0.12, 'triangle', 0.01);
+    this.voice(230, 0.2, 0.035, 0.3, 'sawtooth', 0.04); this.noiseBurst(0.3, 400, 0.8, 0.03, 'lowpass', 0.2, 0.2);
+  }
+
+  /** 169: an octopus's bubbly giggle (popping bubbles that rise in pitch). */
+  octoBubbles() {
+    if (!this.ready) return;
+    for (let i = 0; i < 7; i++) this.voice(700 + i * 120 + (i % 2) * 90, i * 0.07, 0.022, 0.05, 'sine', 0.003);
+    this.noiseBurst(0.2, 1500, 1.2, 0.025, 'bandpass', 0.05, 0.8);
+  }
+
+  /** 170: a snow leopard cub's little mew, then a soft snow "fwump" as it pounces. */
+  leopardMew() {
+    if (!this.ready) return;
+    this.voice(880, 0, 0.026, 0.12, 'triangle', 0.01); this.voice(1040, 0.06, 0.02, 0.14, 'sine', 0.01);
+    this.noiseBurst(0.26, 700, 0.8, 0.055, 'lowpass', 0.38, 0.5);
+  }
+
   /** 155: one music stone: a round, woody marimba note. */
   stoneNote(freq: number, when = 0) {
     if (!this.ready) return;
