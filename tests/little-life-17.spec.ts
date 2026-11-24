@@ -47,11 +47,13 @@ test('little life 17: red panda, pelican, wombat react to taps; ermine only in s
     const s1 = await cozy(page, `life2('${k}')`);
     expect(s1.taps).toBe(1);
     expect(s1.list[0].busy).toBe(true);
-    // Wait for the big pose (stand up / gulp / dig / pop up) before the photo.
-    const pose: Record<string, string> = { redpanda: 'll_rpanda_up', pelican: 'll_pelican_gulp', wombat: 'll_wombat_dig', ermine: 'll_ermine_up' };
-    await expect.poll(async () => (await cozy(page, `life2('${k}')`)).list[0].tex, { timeout: 30_000 }).toBe(pose[k]);
-    await page.waitForTimeout(300);
+    // Hold the big pose (stand up / gulp / dig / pop up) for the photo, then let it finish.
+    const pose: Record<string, [string, number]> = { redpanda: ['ll_rpanda_up', 0.5], pelican: ['ll_pelican_gulp', 0.6], wombat: ['ll_wombat_dig', 0.4], ermine: ['ll_ermine_up', 0.45] };
+    expect(await cozy(page, `life2Hold('${k}', 0, ${pose[k][1]})`)).toBe(true);
+    await expect.poll(async () => (await cozy(page, `life2('${k}')`)).list[0].tex, { timeout: 30_000 }).toBe(pose[k][0]);
+    await page.waitForTimeout(2500);
     await page.screenshot({ path: `${SHOTS}/${shot}-tap.png` });
+    expect(await cozy(page, `life2Hold('${k}', 0)`)).toBe(true);
     await expect.poll(async () => (await cozy(page, `life2('${k}')`)).list[0].busy, { timeout: 60_000 }).toBe(false);
   };
   // The ermine stays hidden outside the snowy themes.

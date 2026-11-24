@@ -177,6 +177,8 @@ type Critter = {
   kind: Kind; img: Phaser.GameObjects.Image; shadow: Phaser.GameObjects.Ellipse;
   hx: number; hy: number; x: number; y: number; base: number; ph: number;
   t: number; on: boolean; i: number; spl?: boolean;
+  /** Test hook: hold a reaction at this progress (0..1) for screenshots. */
+  hold?: number;
 };
 
 // ---------------------------------------------------------------- art
@@ -2324,7 +2326,7 @@ export class LittleLife {
       if (!vis) { if (c.on) { c.on = false; c.img.setVisible(false); c.shadow.setVisible(false); } if (c.t > 0) { c.t = 0; c.x = c.hx; c.y = c.hy; c.img.setTexture(KEY[c.kind][0]).clearTint(); } continue; }
       if (!c.on) { c.on = true; c.img.setVisible(true); c.shadow.setVisible(true); }
       const R = LIFE[c.kind].reactS;
-      if (c.t > 0) c.t = Math.max(0, c.t - dt);
+      if (c.t > 0) c.t = c.hold !== undefined ? R * (1 - c.hold) : Math.max(0, c.t - dt);
       const p = c.t > 0 ? 1 - c.t / R : 0; // reaction progress 0..1
       let dx = 0, lift = 0, sx = 1, sy = 1, rot = 0;
       switch (c.kind) {
@@ -2617,6 +2619,14 @@ export class LittleLife {
       c.img.setPosition(c.x, c.y).setScale(c.base * sx, c.base * sy).setRotation(rot).setDepth((c.kind === 'ladybug' || c.kind === 'bee' || c.kind === 'hummer') && lift > 5 ? c.hy + 200 : c.hy);
       c.shadow.setPosition(c.hx + dx, c.hy).setScale(1 - Math.min(0.6, Math.max(0, lift) / 120));
     }
+  }
+
+  /** Test hook: freeze critter i of a kind mid-reaction (p in 0..1), or release it (p undefined). */
+  hold(kind: Kind, i: number, p?: number) {
+    const c = this.of(kind)[i]; if (!c) return false;
+    if (p === undefined) { delete c.hold; return true; }
+    if (c.t <= 0) return false;
+    c.hold = p; c.t = LIFE[kind].reactS * (1 - p); return true;
   }
 
   stats(kind: Kind) {
