@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-11-22 12:40 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
+Updated: 2026-11-24 12:35 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -303,6 +303,15 @@ A little variety from the animal batches: two small alive-world touches plus two
 | 160 | Toucan: a toucan with a big rainbow beak on a little perch near Fairy Grove or the orchard; tap = it flaps, tosses its beak up and calls "tok-tok" + colorful feathers; all themes | Done/Live 60bf2bf (bundle index-BDXsSPDz.js) | 2026-11-23 | 0.25 |
 | 161 | Playful platypus: a platypus on the riverbank; tap = a tail-slap splash and a happy chitter + water sparkles; hidden in snowy themes | Done/Live 60bf2bf (bundle index-BDXsSPDz.js) | 2026-11-23 | 0.25 |
 | 162 | Snowy cardinals: 2 red cardinals on a little snowy holly bush that only come out in the snowy themes (winter, Christmas); tap = they hop up and sing a sweet whistle + red and white sparkles | Done/Live 60bf2bf (bundle index-BDXsSPDz.js) | 2026-11-23 | 0.25 |
+
+## Self-added polish (2026-11-24; backlog empty; no Walker decision or spending needed)
+
+| Order | Task | Status | ETA live | Estimate (dev days) |
+|---|---|---|---|---|
+| 163 | Red panda: a fluffy red panda by a Mistbirch Wood or Fairy Grove path; tap = it stands up tall on its back legs with its arms up (a big "surprise!") + a squeaky chirp + leaf sparkles; all themes | In progress (wip/polish-163-166) | 2026-11-24 | 0.25 |
+| 164 | Pelican: a pelican on the Seashell Bay shore; tap = it dips its big beak, scoops up a fish, gulps + a happy honk + water sparkles; hidden in snowy themes | In progress (wip/polish-163-166) | 2026-11-24 | 0.25 |
+| 165 | Wombat: a round wombat on the Pinecone Hills grass; tap = a happy little dig with dirt flying + a snuffly grunt; all themes | In progress (wip/polish-163-166) | 2026-11-24 | 0.25 |
+| 166 | Snowy ermine: a tiny white ermine that only comes out in the snowy themes (winter, Christmas); tap = it pops up tall out of a snow mound, looks around, dives back in + a squeaky peep + snow puff | In progress (wip/polish-163-166) | 2026-11-24 | 0.25 |
 
 ## Recently done
 
