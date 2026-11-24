@@ -26,6 +26,7 @@ test('little life 18: woodpecker, lion cub, octopus react to taps; snow leopard 
   test.setTimeout(400_000);
   const errors: string[] = [];
   await boot(page, errors);
+  for (const k of ['woodpecker', 'lioncub', 'octopus', 'snowleopard']) console.log(k, 'homes', (await cozy(page, `life2('${k}')`)).list.length);
   const check = async (k: string, min: number, shot: string) => {
     const s0 = await cozy(page, `life2('${k}')`);
     expect(s0.shown, k).toBe(true);
