@@ -998,6 +998,35 @@ class Synth {
     for (let k = 0; k < 3; k++) { this.voice(f0 + 400, k * 0.16, 0.03, 0.05, 'sine', 0.004); this.voice(f0, k * 0.16 + 0.05, 0.028, 0.08, 'sine', 0.004); }
   }
 
+  /** 163: a red panda's squeaky "surprise!" chirp (a quick rising twitter). */
+  redPandaSqueak() {
+    if (!this.ready) return;
+    [1300, 1550, 1800, 2100].forEach((f, i) => this.voice(f, i * 0.06, 0.022, 0.06, 'triangle', 0.003));
+    this.voice(2400, 0.3, 0.02, 0.12, 'sine', 0.006);
+  }
+
+  /** 164: a pelican scoop-and-gulp (a watery slurp, a low gulp, then a happy honk). */
+  pelicanGulp() {
+    if (!this.ready) return;
+    this.noiseBurst(0.18, 1200, 0.9, 0.04, 'bandpass', 0, -0.6);
+    this.voice(260, 0.3, 0.04, 0.12, 'sine', 0.01); this.voice(180, 0.38, 0.035, 0.14, 'sine', 0.01);
+    this.voice(420, 0.62, 0.025, 0.16, 'sawtooth', 0.02); this.voice(520, 0.62, 0.012, 0.14, 'square', 0.02);
+  }
+
+  /** 165: a snuffly wombat grunt with little digging scrapes. */
+  wombatGrunt() {
+    if (!this.ready) return;
+    [0, 0.1, 0.2, 0.3].forEach((w) => this.noiseBurst(0.06, 500, 1.0, 0.04, 'lowpass', w, 0.3));
+    this.voice(150, 0.42, 0.04, 0.12, 'triangle', 0.01); this.voice(190, 0.56, 0.03, 0.1, 'triangle', 0.01);
+  }
+
+  /** 166: an ermine's tiny squeaky peep-peep, then a soft snow "fwump". */
+  erminePeep() {
+    if (!this.ready) return;
+    [0, 0.12, 0.24].forEach((w, i) => this.voice(2600 + i * 200, w, 0.02, 0.05, 'sine', 0.003));
+    this.noiseBurst(0.24, 700, 0.8, 0.05, 'lowpass', 0.9, 0.5);
+  }
+
   /** 155: one music stone: a round, woody marimba note. */
   stoneNote(freq: number, when = 0) {
     if (!this.ready) return;
