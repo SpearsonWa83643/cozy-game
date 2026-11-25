@@ -1055,6 +1055,35 @@ class Synth {
     this.noiseBurst(0.26, 700, 0.8, 0.055, 'lowpass', 0.38, 0.5);
   }
 
+  /** 175: a seahorse's tinkly bubble chime (a rising little arpeggio). */
+  seahorseChime() {
+    if (!this.ready) return;
+    [1320, 1568, 1760, 2093].forEach((f, i) => this.voice(f, i * 0.09, 0.022, 0.22, 'sine', 0.004));
+    for (let i = 0; i < 4; i++) this.voice(600 + i * 140, 0.05 + i * 0.08, 0.014, 0.05, 'sine', 0.003);
+  }
+
+  /** 176: an ostrich chick's boingy "peep-peep" + quick little footsteps. */
+  ostrichPeep() {
+    if (!this.ready) return;
+    for (const t of [0, 0.16]) { this.voice(900, t, 0.026, 0.09, 'triangle', 0.004); this.voice(1400, t + 0.03, 0.018, 0.07, 'sine', 0.004); }
+    for (let i = 0; i < 6; i++) this.noiseBurst(0.03, 500, 1, 0.04, 'lowpass', 0.35 + i * 0.13, 0);
+  }
+
+  /** 177: a baby gorilla's soft chest drum "bum-bum-bum" + a happy "ooh". */
+  gorillaDrum() {
+    if (!this.ready) return;
+    for (let i = 0; i < 4; i++) { this.voice(110 - i * 4, i * 0.14, 0.05, 0.12, 'sine', 0.003); this.noiseBurst(0.06, 220, 0.8, 0.035, 'lowpass', i * 0.14, 0); }
+    this.voice(380, 0.62, 0.025, 0.25, 'triangle', 0.04);
+  }
+
+  /** 178: a yak calf's jingle bell as it shakes off the snow + a soft "mmuh". */
+  yakJingle() {
+    if (!this.ready) return;
+    for (let i = 0; i < 6; i++) { this.voice(2350 + (i % 2) * 280, i * 0.07, 0.018, 0.14, 'sine', 0.002); this.voice(3520, i * 0.07 + 0.01, 0.008, 0.08, 'sine', 0.002); }
+    this.noiseBurst(0.3, 3000, 0.6, 0.02, 'highpass', 0, 0);
+    this.voice(170, 0.5, 0.03, 0.3, 'sawtooth', 0.04);
+  }
+
   /** 171: a baby alligator's bubbly little grumble (low gurgle + popping bubbles) after a big chomp-yawn. */
   gatorGrumble() {
     if (!this.ready) return;
