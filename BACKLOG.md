@@ -320,6 +320,10 @@ A little variety from the animal batches: two small alive-world touches plus two
 | 172 | Baby camel: a fluffy camel calf by the Hills-to-Bay path; tap = wiggles its two humps and kicks up a sand puff + a funny "hrrumph"; hidden in snowy themes | In progress (wip/polish-171-174) | 2026-11-25 | 0.25 |
 | 173 | Parrot: a rainbow macaw on a little perch in Windmill Orchard; tap = flaps its wings and says "hel-lo!" (a two-note squawk) + colorful feathers; all themes | In progress (wip/polish-171-174) | 2026-11-25 | 0.25 |
 | 174 | Husky puppy: a fluffy husky puppy that only comes out in snowy themes (winter, Christmas); tap = sits up and does a tiny "awoo" howl, tail wagging + snow puff | In progress (wip/polish-171-174) | 2026-11-25 | 0.25 |
+| 175 | Seahorse: a little yellow seahorse bobbing in the Seashell Bay shallows; tap = it twirls up in a spiral + bubbles + a tinkly bubble chime; hidden in snowy themes | In progress (wip/polish-175-178) | 2026-11-25 | 0.25 |
+| 176 | Ostrich chick: a fluffy, leggy ostrich chick by the meadow/hills paths; tap = it zooms around in a quick little circle + a boingy "peep-peep" + dust puffs; hidden in snowy themes | In progress (wip/polish-175-178) | 2026-11-25 | 0.25 |
+| 177 | Baby gorilla: a cuddly baby gorilla in Glowcap Grove / Fairy Grove; tap = gentle "bum-bum-bum" chest drum with a big smile + leaf sparkles; all themes | In progress (wip/polish-175-178) | 2026-11-25 | 0.25 |
+| 178 | Yak calf in a red sweater: a shaggy yak calf that only comes out in snowy themes (winter, Christmas); tap = shakes the snow off its fluffy coat + a jingle bell + snow puff | In progress (wip/polish-175-178) | 2026-11-25 | 0.25 |
 
 ## Recently done
 
