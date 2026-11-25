@@ -1,6 +1,6 @@
 # Willowmere Glade backlog (single source of truth)
 
-Updated: 2026-11-24 1:08 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
+Updated: 2026-11-25 12:45 PM (CT). Live: https://willowmere-glade.pages.dev (see the latest Done row for merge and bundle).
 Rules: each open task has Status, ETA live and Estimate (dev days). Walker's real-device iPad tests never block work (he gives play feedback voluntarily).
 
 ## Open tasks
@@ -316,6 +316,10 @@ A little variety from the animal batches: two small alive-world touches plus two
 | 168 | Lion cub: a fluffy lion cub in Sunflower Meadow; tap = a tiny "mew-roar" with its little mane fluffed up + sun sparkles; hidden in snowy themes | Done/Live 5275414 (bundle index-BwwRLEzv.js) | 2026-11-24 | 0.25 |
 | 169 | Friendly octopus: a pink octopus in the Seashell Bay shallows; tap = it waves all its arms hello + bubbles + a bubbly giggle; hidden in snowy themes | Done/Live 5275414 (bundle index-BwwRLEzv.js) | 2026-11-24 | 0.25 |
 | 170 | Snow leopard cub: a spotted snow leopard cub that only comes out in the snowy themes (winter, Christmas); tap = it pounces on its own long fluffy tail + a little mew + snow puff | Done/Live 5275414 (bundle index-BwwRLEzv.js) | 2026-11-24 | 0.25 |
+| 171 | Baby alligator: a smiley little green alligator on the riverbank; tap = a big gentle "chomp" yawn, tail wiggle + a bubbly little grumble + water sparkles; hidden in snowy themes | In progress (wip/polish-171-174) | 2026-11-25 | 0.25 |
+| 172 | Baby camel: a fluffy camel calf by the Hills-to-Bay path; tap = wiggles its two humps and kicks up a sand puff + a funny "hrrumph"; hidden in snowy themes | In progress (wip/polish-171-174) | 2026-11-25 | 0.25 |
+| 173 | Parrot: a rainbow macaw on a little perch in Windmill Orchard; tap = flaps its wings and says "hel-lo!" (a two-note squawk) + colorful feathers; all themes | In progress (wip/polish-171-174) | 2026-11-25 | 0.25 |
+| 174 | Husky puppy: a fluffy husky puppy that only comes out in snowy themes (winter, Christmas); tap = sits up and does a tiny "awoo" howl, tail wagging + snow puff | In progress (wip/polish-171-174) | 2026-11-25 | 0.25 |
 
 ## Recently done
 
