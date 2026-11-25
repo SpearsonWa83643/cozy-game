@@ -1055,6 +1055,37 @@ class Synth {
     this.noiseBurst(0.26, 700, 0.8, 0.055, 'lowpass', 0.38, 0.5);
   }
 
+  /** 171: a baby alligator's bubbly little grumble (low gurgle + popping bubbles) after a big chomp-yawn. */
+  gatorGrumble() {
+    if (!this.ready) return;
+    this.voice(150, 0, 0.04, 0.35, 'sawtooth', 0.05); this.voice(190, 0.12, 0.03, 0.25, 'triangle', 0.03);
+    for (let i = 0; i < 5; i++) this.voice(500 + i * 90, 0.3 + i * 0.06, 0.02, 0.05, 'sine', 0.003);
+    this.noiseBurst(0.04, 900, 1, 0.05, 'lowpass', 0.6, 0);
+  }
+
+  /** 172: a baby camel's funny "hrrumph" (a wobbly low honk) + a sandy puff. */
+  camelHrumph() {
+    if (!this.ready) return;
+    this.voice(260, 0, 0.035, 0.18, 'sawtooth', 0.02); this.voice(200, 0.16, 0.035, 0.24, 'sawtooth', 0.03);
+    this.voice(320, 0.02, 0.012, 0.3, 'triangle', 0.02);
+    this.noiseBurst(0.22, 1200, 0.7, 0.04, 'bandpass', 0.35, 0.6);
+  }
+
+  /** 173: a parrot's two-note "hel-lo!" squawk, then a flutter of wings. */
+  parrotHello() {
+    if (!this.ready) return;
+    this.voice(980, 0, 0.03, 0.12, 'square', 0.01); this.voice(1180, 0.02, 0.012, 0.1, 'sawtooth', 0.01);
+    this.voice(760, 0.17, 0.03, 0.18, 'square', 0.015); this.voice(900, 0.19, 0.012, 0.14, 'sawtooth', 0.015);
+    for (let i = 0; i < 4; i++) this.noiseBurst(0.05, 1600, 1.2, 0.03, 'bandpass', 0.42 + i * 0.07, 0);
+  }
+
+  /** 174: a husky puppy's tiny rising "awoo" howl, then a happy yip. */
+  huskyAwoo() {
+    if (!this.ready) return;
+    this.voice(520, 0, 0.03, 0.5, 'triangle', 0.08); this.voice(700, 0.15, 0.025, 0.45, 'sine', 0.06);
+    this.voice(1150, 0.75, 0.025, 0.08, 'triangle', 0.005);
+  }
+
   /** 155: one music stone: a round, woody marimba note. */
   stoneNote(freq: number, when = 0) {
     if (!this.ready) return;

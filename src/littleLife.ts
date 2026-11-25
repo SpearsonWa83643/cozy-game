@@ -99,6 +99,11 @@
 // 168 Lion cub: in Sunflower Meadow; tap = a tiny "mew-roar", mane fluffed up + sun sparkles. Hidden in snow.
 // 169 Friendly octopus: in the Seashell Bay shallows; tap = waves all its arms hello + bubbles + a bubbly giggle. Hidden in snow.
 // 170 Snow leopard cub: only out in snowy themes; tap = pounces on its own long fluffy tail + mew + snow puff.
+// 171–174 (2026-11-25): little life 19 (same engine):
+// 171 Baby alligator: on the riverbank; tap = a big gentle "chomp" yawn + tail wiggle + bubbly grumble + water sparkles. Hidden in snow.
+// 172 Baby camel: by the Hills-to-Bay path; tap = wiggles its two humps, kicks up a sand puff + a funny "hrrumph". Hidden in snow.
+// 173 Parrot: a rainbow macaw on a little perch in Windmill Orchard; tap = flaps its wings and squawks "hel-lo!" + colorful feathers. All themes.
+// 174 Husky puppy: only out in snowy themes; tap = sits up for a tiny "awoo" howl, tail wagging + snow puff.
 // Culled off-screen.
 import Phaser from 'phaser';
 import { Ctx, canvasTex, frameScale, S, pathDist } from './art';
@@ -108,7 +113,7 @@ import { PATH_MEADOW, GROVE_RING, VILLAGE, VILLAGE_ENTRY, VILLAGE_SIGN, VILLAGE_
 import { lakeValue, riverXAt, riverHalfAt, onBridge } from './geo';
 import type { WorldScene } from './scenes/World';
 
-export type Kind = 'ladybug' | 'snail' | 'hen' | 'turtle' | 'goat' | 'sheep' | 'otter' | 'mole' | 'hedgehog' | 'mouse' | 'beaver' | 'fawn' | 'swan' | 'piglet' | 'bee' | 'heron' | 'fox' | 'pony' | 'kitten' | 'robin' | 'puffin' | 'puppy' | 'chipmunk' | 'bearcub' | 'raccoon' | 'seal' | 'calf' | 'hummer' | 'dolphin' | 'donkey' | 'tortoise' | 'caterpillar' | 'lamb' | 'gecko' | 'llama' | 'turkey' | 'peacock' | 'quail' | 'chick' | 'porcupine' | 'penguin' | 'armadillo' | 'kangaroo' | 'panda' | 'koala' | 'sloth' | 'capybara' | 'walrus' | 'elephant' | 'giraffe' | 'meerkat' | 'moose' | 'hippo' | 'zebra' | 'lemur' | 'polarbear' | 'skunk' | 'arcticfox' | 'rhino' | 'toucan' | 'platypus' | 'cardinal' | 'redpanda' | 'pelican' | 'wombat' | 'ermine' | 'woodpecker' | 'lioncub' | 'octopus' | 'snowleopard';
+export type Kind = 'ladybug' | 'snail' | 'hen' | 'turtle' | 'goat' | 'sheep' | 'otter' | 'mole' | 'hedgehog' | 'mouse' | 'beaver' | 'fawn' | 'swan' | 'piglet' | 'bee' | 'heron' | 'fox' | 'pony' | 'kitten' | 'robin' | 'puffin' | 'puppy' | 'chipmunk' | 'bearcub' | 'raccoon' | 'seal' | 'calf' | 'hummer' | 'dolphin' | 'donkey' | 'tortoise' | 'caterpillar' | 'lamb' | 'gecko' | 'llama' | 'turkey' | 'peacock' | 'quail' | 'chick' | 'porcupine' | 'penguin' | 'armadillo' | 'kangaroo' | 'panda' | 'koala' | 'sloth' | 'capybara' | 'walrus' | 'elephant' | 'giraffe' | 'meerkat' | 'moose' | 'hippo' | 'zebra' | 'lemur' | 'polarbear' | 'skunk' | 'arcticfox' | 'rhino' | 'toucan' | 'platypus' | 'cardinal' | 'redpanda' | 'pelican' | 'wombat' | 'ermine' | 'woodpecker' | 'lioncub' | 'octopus' | 'snowleopard' | 'gator' | 'camel' | 'parrot' | 'husky';
 const SNOWY = new Set(['christmas', 'winter']);
 export const LIFE: Record<Kind, { n: number; size: number; reactS: number; snowHide: boolean; tw: number; th: number; snowOnly?: boolean }> = {
   ladybug: { n: 4, size: 1.4, reactS: 2.2, snowHide: true, tw: 24, th: 20 },
@@ -181,6 +186,10 @@ export const LIFE: Record<Kind, { n: number; size: number; reactS: number; snowH
   lioncub: { n: 1, size: 1.4, reactS: 2.0, snowHide: true, tw: 50, th: 44 },
   octopus: { n: 1, size: 1.45, reactS: 2.2, snowHide: true, tw: 52, th: 44 },
   snowleopard: { n: 1, size: 1.4, reactS: 2.4, snowHide: false, snowOnly: true, tw: 60, th: 46 },
+  gator: { n: 1, size: 1.45, reactS: 2.2, snowHide: true, tw: 66, th: 36 },
+  camel: { n: 1, size: 1.5, reactS: 2.2, snowHide: true, tw: 58, th: 62 },
+  parrot: { n: 1, size: 1.4, reactS: 2.0, snowHide: false, tw: 40, th: 64 },
+  husky: { n: 1, size: 1.4, reactS: 2.4, snowHide: false, snowOnly: true, tw: 52, th: 50 },
 };
 type Critter = {
   kind: Kind; img: Phaser.GameObjects.Image; shadow: Phaser.GameObjects.Ellipse;
@@ -510,6 +519,10 @@ const TEX: [string, Kind, (c: Ctx) => void][] = [
   ['ll_lion', 'lioncub', (c) => lioncub(c, false)], ['ll_lion_roar', 'lioncub', (c) => lioncub(c, true)],
   ['ll_octo', 'octopus', (c) => octopus(c, false)], ['ll_octo_wave', 'octopus', (c) => octopus(c, true)],
   ['ll_sleo', 'snowleopard', (c) => snowleopard(c, false)], ['ll_sleo_pounce', 'snowleopard', (c) => snowleopard(c, true)],
+  ['ll_gator', 'gator', (c) => gator(c, false)], ['ll_gator_chomp', 'gator', (c) => gator(c, true)],
+  ['ll_camel', 'camel', (c) => camel(c, false)], ['ll_camel_hump', 'camel', (c) => camel(c, true)],
+  ['ll_parrot', 'parrot', (c) => parrot(c, false)], ['ll_parrot_hello', 'parrot', (c) => parrot(c, true)],
+  ['ll_husky', 'husky', (c) => husky(c, false)], ['ll_husky_awoo', 'husky', (c) => husky(c, true)],
 ];
 const KEY: Record<Kind, [string, string]> = { ladybug: ['ll_lady', 'll_lady_fly'], snail: ['ll_snail', 'll_snail_in'], hen: ['ll_hen', 'll_hen_flap'], turtle: ['ll_turtle', 'll_turtle'],
   goat: ['ll_goat', 'll_goat_hop'], sheep: ['ll_sheep', 'll_sheep_baa'], otter: ['ll_otter', 'll_otter_roll'], mole: ['ll_mole', 'll_mole_up'],
@@ -528,7 +541,8 @@ const KEY: Record<Kind, [string, string]> = { ladybug: ['ll_lady', 'll_lady_fly'
   skunk: ['ll_skunk', 'll_skunk_puff'], arcticfox: ['ll_afox', 'll_afox_dive'],
   rhino: ['ll_rhino', 'll_rhino_stomp'], toucan: ['ll_toucan', 'll_toucan_tok'], platypus: ['ll_platy', 'll_platy_slap'], cardinal: ['ll_cardinal', 'll_cardinal_sing'],
   redpanda: ['ll_rpanda', 'll_rpanda_up'], pelican: ['ll_pelican', 'll_pelican_gulp'], wombat: ['ll_wombat', 'll_wombat_dig'], ermine: ['ll_ermine', 'll_ermine_up'],
-  woodpecker: ['ll_wpeck', 'll_wpeck_peck'], lioncub: ['ll_lion', 'll_lion_roar'], octopus: ['ll_octo', 'll_octo_wave'], snowleopard: ['ll_sleo', 'll_sleo_pounce'] };
+  woodpecker: ['ll_wpeck', 'll_wpeck_peck'], lioncub: ['ll_lion', 'll_lion_roar'], octopus: ['ll_octo', 'll_octo_wave'], snowleopard: ['ll_sleo', 'll_sleo_pounce'],
+  gator: ['ll_gator', 'll_gator_chomp'], camel: ['ll_camel', 'll_camel_hump'], parrot: ['ll_parrot', 'll_parrot_hello'], husky: ['ll_husky', 'll_husky_awoo'] };
 
 function fox(c: Ctx, pounce: boolean) {
   // bushy tail (up when pouncing)
@@ -1908,6 +1922,176 @@ function ermine(c: Ctx, up: boolean) {
   if (!up) mound();
   else { c.save(); c.globalCompositeOperation = 'destination-over'; mound(); c.restore(); }
 }
+function gator(c: Ctx, chomp: boolean) {
+  const g = '#5cb85c', o = '#2a6a2a', lt = '#a8e080', bl = '#f4f0c0';
+  // water ripple at the bank edge
+  c.strokeStyle = 'rgba(255,255,255,0.7)'; c.lineWidth = 1.3; c.beginPath(); c.ellipse(33, 31, 28, 4, 0, 0, TAU); c.stroke();
+  c.fillStyle = 'rgba(40,50,30,0.18)'; c.beginPath(); c.ellipse(33, 32, 26, 3, 0, 0, TAU); c.fill();
+  // tail curling back
+  c.fillStyle = g; c.strokeStyle = o; c.lineWidth = 1.1;
+  c.beginPath(); c.moveTo(20, 22); c.quadraticCurveTo(6, 22, 3, 14); c.quadraticCurveTo(9, 25, 20, 29); c.closePath(); c.fill(); c.stroke();
+  // stubby legs
+  for (const x of [20, 27, 38, 45]) { c.beginPath(); c.roundRect(x - 2.6, 25, 5.2, 6, 2); c.fill(); c.stroke(); }
+  // long low body with bumpy back
+  c.lineWidth = 1.2; c.beginPath(); c.ellipse(32, 23, 14, 6.5, 0, 0, TAU); c.fill(); c.stroke();
+  c.fillStyle = lt; c.beginPath(); c.ellipse(32, 26.5, 10, 2.4, 0, 0, TAU); c.fill();
+  c.fillStyle = '#3e9a3e'; for (const x of [22, 27, 32, 37, 42]) { c.beginPath(); c.arc(x, 17.5, 1.5, Math.PI, TAU); c.fill(); }
+  // head + snout (mouth wide open on a chomp yawn)
+  const hx = 48, hy = 20;
+  c.fillStyle = g; c.strokeStyle = o; c.lineWidth = 1.1;
+  if (chomp) {
+    c.save(); c.translate(hx, hy); c.rotate(-0.45);
+    c.beginPath(); c.roundRect(0, -6, 16, 6, 3); c.fill(); c.stroke(); // top jaw up
+    c.fillStyle = bl; for (const x of [3, 7, 11]) { c.beginPath(); c.moveTo(x, 0); c.lineTo(x + 1.5, 2); c.lineTo(x + 3, 0); c.fill(); }
+    c.restore();
+    c.fillStyle = '#ff8aa0'; c.beginPath(); c.moveTo(hx, hy); c.lineTo(hx + 14, hy - 6); c.lineTo(hx + 15, hy + 3); c.closePath(); c.fill();
+    c.fillStyle = g; c.beginPath(); c.roundRect(hx, hy + 1, 16, 5, 2.5); c.fill(); c.stroke(); // bottom jaw
+    c.fillStyle = bl; for (const x of [4, 8, 12]) { c.beginPath(); c.moveTo(hx + x, hy + 1); c.lineTo(hx + x + 1.5, hy - 1); c.lineTo(hx + x + 3, hy + 1); c.fill(); }
+  } else {
+    c.beginPath(); c.roundRect(hx - 2, hy - 2, 18, 7, 3.5); c.fill(); c.stroke();
+    c.strokeStyle = o; c.lineWidth = 0.9; c.beginPath(); c.moveTo(hx, hy + 2); c.quadraticCurveTo(hx + 8, hy + 4.5, hx + 15, hy + 1.5); c.stroke(); // big smile
+    c.fillStyle = bl; for (const x of [5, 10]) { c.beginPath(); c.moveTo(hx + x, hy + 3); c.lineTo(hx + x + 1, hy + 4.6); c.lineTo(hx + x + 2, hy + 3); c.fill(); }
+    c.fillStyle = o; for (const x of [13, 15]) { c.beginPath(); c.arc(hx + x, hy - 0.6, 0.5, 0, TAU); c.fill(); }
+  }
+  // big googly eyes on top
+  for (const ex of [hx - 1, hx + 4]) {
+    c.fillStyle = g; c.strokeStyle = o; c.lineWidth = 1; c.beginPath(); c.arc(ex, hy - 4, 3, 0, TAU); c.fill(); c.stroke();
+    c.fillStyle = '#fff'; c.beginPath(); c.arc(ex, hy - 4.4, 2.2, 0, TAU); c.fill();
+    if (chomp) { c.strokeStyle = '#1a1a1a'; c.lineWidth = 0.9; c.beginPath(); c.arc(ex, hy - 3.6, 1.3, Math.PI + 0.3, TAU - 0.3); c.stroke(); }
+    else { c.fillStyle = '#1a1a1a'; c.beginPath(); c.arc(ex + 0.6, hy - 4.2, 1.1, 0, TAU); c.fill(); c.fillStyle = '#fff'; c.beginPath(); c.arc(ex + 1, hy - 4.6, 0.4, 0, TAU); c.fill(); }
+  }
+  c.fillStyle = 'rgba(255,140,170,0.45)'; c.beginPath(); c.arc(hx + 6, hy + 1, 1.3, 0, TAU); c.fill();
+}
+function camel(c: Ctx, wiggle: boolean) {
+  const f = '#e2b878', o = '#9a6a30', lt = '#f4dcb0';
+  c.fillStyle = 'rgba(40,50,30,0.2)'; c.beginPath(); c.ellipse(28, 59, 19, 3, 0, 0, TAU); c.fill();
+  // thin tail with a tuft
+  c.strokeStyle = f; c.lineWidth = 2; c.lineCap = 'round'; c.beginPath(); c.moveTo(12, 33); c.quadraticCurveTo(8, 38, 9, 44); c.stroke(); c.lineCap = 'butt';
+  c.fillStyle = o; c.beginPath(); c.ellipse(9, 45, 1.8, 2.6, 0, 0, TAU); c.fill();
+  // long knobbly legs (one kicking on the wiggle)
+  c.fillStyle = f; c.strokeStyle = o; c.lineWidth = 1;
+  for (const [x, k] of [[15, 0], [20, 0], [32, wiggle ? 1 : 0], [37, 0]] as [number, number][]) {
+    c.save(); c.translate(x, 38); c.rotate(k ? -0.4 : 0); c.beginPath(); c.roundRect(-2.2, 0, 4.4, 19, 2); c.fill(); c.stroke();
+    c.fillStyle = '#b8884a'; c.beginPath(); c.ellipse(0, 19, 2.8, 1.4, 0, 0, TAU); c.fill(); c.fillStyle = f; c.restore();
+  }
+  // body + two fluffy humps (puffed up and tilted on the wiggle)
+  c.lineWidth = 1.2; c.beginPath(); c.ellipse(26, 36, 15, 8, 0, 0, TAU); c.fill(); c.stroke();
+  const hh = wiggle ? 10 : 8;
+  for (const [x, t] of [[19, wiggle ? -0.25 : 0], [30, wiggle ? 0.25 : 0]] as [number, number][]) {
+    c.save(); c.translate(x, 31); c.rotate(t); c.fillStyle = f; c.beginPath(); c.ellipse(0, -2, 5.5, hh, 0, Math.PI, TAU); c.fill(); c.stroke();
+    c.fillStyle = lt; c.beginPath(); c.ellipse(-1, -hh + 1, 2.2, 1.6, 0, 0, TAU); c.fill(); c.restore();
+  }
+  c.fillStyle = lt; c.beginPath(); c.ellipse(27, 41, 9, 2.4, 0, 0, TAU); c.fill();
+  // curvy neck + head
+  c.fillStyle = f; c.strokeStyle = o; c.lineWidth = 1.2;
+  c.beginPath(); c.moveTo(36, 32); c.quadraticCurveTo(46, 30, 44, 18); c.lineTo(50, 17); c.quadraticCurveTo(52, 32, 40, 40); c.closePath(); c.fill(); c.stroke();
+  const hx = 48, hy = 15;
+  for (const s of [-1, 1]) { c.beginPath(); c.ellipse(hx + s * 3.6 - 1, hy - 5, 1.4, 2.6, s * 0.4, 0, TAU); c.fill(); c.stroke(); }
+  c.beginPath(); c.ellipse(hx, hy, 5.5, 5, 0, 0, TAU); c.fill(); c.stroke();
+  c.fillStyle = lt; c.beginPath(); c.ellipse(hx + 4, hy + 2, 4, 3.2, 0, 0, TAU); c.fill(); c.strokeStyle = o; c.lineWidth = 0.8; c.stroke();
+  c.fillStyle = '#7a4a1a'; for (const s of [-1, 1]) { c.beginPath(); c.ellipse(hx + 5.6, hy + 0.8 + s * 1.3, 0.5, 0.8, 0, 0, TAU); c.fill(); }
+  // fluffy forelock
+  c.fillStyle = '#c89858'; for (const x of [-2, 0, 2]) { c.beginPath(); c.arc(hx + x, hy - 4.6, 1.5, 0, TAU); c.fill(); }
+  if (wiggle) {
+    c.strokeStyle = '#3a2a1a'; c.lineWidth = 1; c.beginPath(); c.arc(hx - 1, hy - 0.6, 1.3, Math.PI + 0.3, TAU - 0.3); c.stroke(); // happy squint
+    c.fillStyle = '#8a3a3a'; c.beginPath(); c.ellipse(hx + 4.6, hy + 4.4, 1.6, 1.2, 0, 0, TAU); c.fill(); // "hrrumph" mouth
+  } else {
+    c.fillStyle = '#1a1a1a'; c.beginPath(); c.arc(hx - 1, hy - 0.8, 1.1, 0, TAU); c.fill();
+    c.fillStyle = '#fff'; c.beginPath(); c.arc(hx - 0.6, hy - 1.2, 0.4, 0, TAU); c.fill();
+    c.strokeStyle = '#3a2a1a'; c.lineWidth = 0.6; for (const a of [-0.5, 0, 0.5]) { c.beginPath(); c.moveTo(hx - 1 + Math.cos(-Math.PI / 2 + a) * 1.3, hy - 0.8 + Math.sin(-Math.PI / 2 + a) * 1.3); c.lineTo(hx - 1 + Math.cos(-Math.PI / 2 + a) * 2.4, hy - 0.8 + Math.sin(-Math.PI / 2 + a) * 2.4); c.stroke(); } // long lashes
+    c.strokeStyle = '#7a4a1a'; c.lineWidth = 0.8; c.beginPath(); c.arc(hx + 4.6, hy + 3.6, 1.4, 0.3, Math.PI - 0.3); c.stroke();
+  }
+  c.fillStyle = 'rgba(255,130,150,0.45)'; c.beginPath(); c.arc(hx - 2, hy + 2, 1.2, 0, TAU); c.fill();
+}
+function parrot(c: Ctx, hello: boolean) {
+  // a little wooden T-perch
+  c.fillStyle = 'rgba(40,50,30,0.2)'; c.beginPath(); c.ellipse(20, 61, 11, 2.5, 0, 0, TAU); c.fill();
+  c.fillStyle = '#a07040'; c.strokeStyle = '#5a3a1a'; c.lineWidth = 1.1;
+  c.beginPath(); c.roundRect(18, 38, 4, 23, 1.5); c.fill(); c.stroke();
+  c.beginPath(); c.roundRect(8, 36, 24, 3.6, 1.8); c.fill(); c.stroke();
+  c.fillStyle = '#7a5030'; c.beginPath(); c.ellipse(20, 60.5, 7, 2, 0, 0, TAU); c.fill();
+  // long tail feathers
+  c.fillStyle = '#e03131'; c.strokeStyle = '#8a1a1a'; c.lineWidth = 0.9;
+  c.beginPath(); c.moveTo(18, 36); c.lineTo(14, 56); c.lineTo(18, 54); c.lineTo(20, 58); c.lineTo(22, 36); c.closePath(); c.fill(); c.stroke();
+  c.fillStyle = '#4c8cff'; c.beginPath(); c.moveTo(19, 40); c.lineTo(17, 53); c.lineTo(20, 50); c.closePath(); c.fill();
+  // wings: folded, or spread wide (blue, yellow, green) for "hello!"
+  const wing = (s: number) => {
+    c.save(); c.translate(20 + s * 4, 26);
+    if (hello) c.rotate(s * -1.1);
+    for (const [col, len, wd] of [['#4c8cff', 16, 5], ['#ffd43b', 12, 4], ['#40c057', 8, 3.4]] as [string, number, number][]) {
+      c.fillStyle = col; c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 0.8; c.beginPath(); c.ellipse(0, len / 2, wd, len / 2, 0, 0, TAU); c.fill(); c.stroke();
+    }
+    c.restore();
+  };
+  wing(-1); wing(1);
+  // red body + head
+  c.fillStyle = '#e8432f'; c.strokeStyle = '#8a1a1a'; c.lineWidth = 1.1;
+  c.beginPath(); c.ellipse(20, 28, 6.5, 9, 0, 0, TAU); c.fill(); c.stroke();
+  c.fillStyle = '#ff7a5a'; c.beginPath(); c.ellipse(20.5, 30, 3.5, 6, 0, 0, TAU); c.fill();
+  // feet gripping the perch
+  c.fillStyle = '#5a5a60'; for (const x of [17.5, 22.5]) { c.beginPath(); c.ellipse(x, 36.5, 1.6, 1.2, 0, 0, TAU); c.fill(); }
+  const hx = 21, hy = 16;
+  c.fillStyle = '#e8432f'; c.strokeStyle = '#8a1a1a'; c.beginPath(); c.arc(hx, hy, 6, 0, TAU); c.fill(); c.stroke();
+  // white face patch + big eye
+  c.fillStyle = '#ffffff'; c.beginPath(); c.ellipse(hx + 2.2, hy, 3.4, 3, 0, 0, TAU); c.fill();
+  c.strokeStyle = 'rgba(120,120,140,0.6)'; c.lineWidth = 0.5; for (const y of [-1, 0.6, 2]) { c.beginPath(); c.moveTo(hx + 0.6, hy + y); c.lineTo(hx + 2.4, hy + y + 0.3); c.stroke(); }
+  c.fillStyle = '#ffd43b'; c.beginPath(); c.arc(hx + 2.4, hy - 1, 1.6, 0, TAU); c.fill();
+  c.fillStyle = '#1a1a1a'; c.beginPath(); c.arc(hx + 2.6, hy - 1, hello ? 1.1 : 0.9, 0, TAU); c.fill();
+  c.fillStyle = '#fff'; c.beginPath(); c.arc(hx + 3, hy - 1.4, 0.35, 0, TAU); c.fill();
+  // curved hooked beak (open for "hello!")
+  c.fillStyle = '#3a3a40'; c.strokeStyle = '#111'; c.lineWidth = 0.8;
+  c.beginPath(); c.moveTo(hx + 4.6, hy - 2); c.quadraticCurveTo(hx + 10, hy - 2, hx + 9, hy + (hello ? 1.5 : 3)); c.quadraticCurveTo(hx + 7, hy + 1, hx + 5, hy + 1.5); c.closePath(); c.fill(); c.stroke();
+  if (hello) { c.fillStyle = '#ff8aa0'; c.beginPath(); c.ellipse(hx + 6.4, hy + 2.6, 1.6, 1.1, 0, 0, TAU); c.fill(); c.fillStyle = '#3a3a40'; c.beginPath(); c.moveTo(hx + 5, hy + 3); c.quadraticCurveTo(hx + 7.5, hy + 5.5, hx + 8, hy + 3.6); c.closePath(); c.fill(); }
+  else { c.beginPath(); c.moveTo(hx + 5, hy + 1.5); c.quadraticCurveTo(hx + 7, hy + 4, hx + 7.6, hy + 2.4); c.closePath(); c.fill(); }
+}
+function husky(c: Ctx, awoo: boolean) {
+  const g = '#7a8494', o = '#3a4250', w0 = '#fbfcfe';
+  c.fillStyle = 'rgba(255,255,255,0.92)'; c.beginPath(); c.ellipse(26, 47, 20, 3.5, 0, 0, TAU); c.fill();
+  // fluffy curled tail (up and wagging on the awoo)
+  c.fillStyle = g; c.strokeStyle = o; c.lineWidth = 1.1;
+  c.save(); c.translate(12, awoo ? 38 : 32); c.rotate(awoo ? -0.5 : 0);
+  c.beginPath(); c.ellipse(-3, -6, 4.5, 8, -0.4, 0, TAU); c.fill(); c.stroke();
+  c.fillStyle = w0; c.beginPath(); c.ellipse(-4.5, -11, 2.6, 3, -0.4, 0, TAU); c.fill(); c.restore();
+  if (awoo) {
+    // sitting up tall, nose to the sky
+    c.fillStyle = g; c.strokeStyle = o; c.lineWidth = 1.2;
+    c.beginPath(); c.ellipse(22, 38, 10, 8.5, 0, 0, TAU); c.fill(); c.stroke();
+    c.beginPath(); c.ellipse(27, 28, 7, 11, 0.25, 0, TAU); c.fill(); c.stroke();
+    c.fillStyle = w0; c.beginPath(); c.ellipse(29, 30, 4.4, 8.5, 0.25, 0, TAU); c.fill();
+    for (const x of [26, 32]) { c.fillStyle = w0; c.strokeStyle = o; c.lineWidth = 1; c.beginPath(); c.roundRect(x - 2.4, 36, 4.8, 10, 2.2); c.fill(); c.stroke(); }
+    c.fillStyle = w0; c.beginPath(); c.ellipse(16, 45.5, 4, 2.2, 0, 0, TAU); c.fill(); c.stroke();
+    huskyHead(31, 14, true);
+    return;
+  }
+  // standing puppy
+  c.fillStyle = w0; c.strokeStyle = o; c.lineWidth = 1;
+  for (const x of [16, 21, 31, 36]) { c.beginPath(); c.roundRect(x - 2.5, 35, 5, 11, 2.4); c.fill(); c.stroke(); }
+  c.fillStyle = g; c.lineWidth = 1.2; c.beginPath(); c.ellipse(26, 33, 13, 7.5, 0, 0, TAU); c.fill(); c.stroke();
+  c.fillStyle = w0; c.beginPath(); c.ellipse(27, 37, 9, 3, 0, 0, TAU); c.fill();
+  huskyHead(39, 22, false);
+  function huskyHead(hx: number, hy: number, howl: boolean) {
+    c.save(); c.translate(hx, hy); if (howl) c.rotate(-0.55);
+    c.fillStyle = g; c.strokeStyle = o; c.lineWidth = 1.1;
+    for (const s of [-1, 1]) { c.beginPath(); c.moveTo(s * 2, -5); c.lineTo(s * 6.2, -11.5); c.lineTo(s * 6.8, -3.5); c.closePath(); c.fill(); c.stroke(); }
+    c.fillStyle = '#ffc8d4'; for (const s of [-1, 1]) { c.beginPath(); c.moveTo(s * 3.4, -5.4); c.lineTo(s * 5.9, -9.6); c.lineTo(s * 6.1, -4.8); c.closePath(); c.fill(); }
+    c.fillStyle = g; c.beginPath(); c.ellipse(0, 0, 7, 6.4, 0, 0, TAU); c.fill(); c.stroke();
+    // white husky mask + muzzle
+    c.fillStyle = w0; c.beginPath(); c.moveTo(0, -3.6); c.quadraticCurveTo(-6.4, -2, -5.4, 3); c.quadraticCurveTo(0, 7, 5.4, 3); c.quadraticCurveTo(6.4, -2, 0, -3.6); c.fill();
+    c.beginPath(); c.ellipse(0, 2.8, 3.8, 3, 0, 0, TAU); c.fill(); c.strokeStyle = 'rgba(58,66,80,0.5)'; c.lineWidth = 0.7; c.stroke();
+    c.fillStyle = '#1a1a1a'; c.beginPath(); c.ellipse(0, 1.2, 1.5, 1.1, 0, 0, TAU); c.fill();
+    if (howl) {
+      c.strokeStyle = '#1a1a1a'; c.lineWidth = 0.9; for (const s of [-1, 1]) { c.beginPath(); c.arc(s * 2.8, -1.2, 1.2, Math.PI + 0.3, TAU - 0.3); c.stroke(); }
+      c.fillStyle = '#8a2a3a'; c.beginPath(); c.ellipse(0, 4.4, 1.5, 1.8, 0, 0, TAU); c.fill(); // round "awoo" mouth
+    } else {
+      c.fillStyle = '#5ab0e8'; for (const s of [-1, 1]) { c.beginPath(); c.arc(s * 2.8, -1.2, 1.3, 0, TAU); c.fill(); } // blue husky eyes
+      c.fillStyle = '#1a1a1a'; for (const s of [-1, 1]) { c.beginPath(); c.arc(s * 2.8, -1.2, 0.65, 0, TAU); c.fill(); }
+      c.fillStyle = '#fff'; for (const s of [-1, 1]) { c.beginPath(); c.arc(s * 2.8 + 0.4, -1.6, 0.35, 0, TAU); c.fill(); }
+      c.fillStyle = '#ff8aa0'; c.beginPath(); c.ellipse(0.6, 5, 1.1, 1.4, 0, 0, TAU); c.fill(); // little tongue
+    }
+    c.fillStyle = 'rgba(255,140,170,0.45)'; for (const s of [-1, 1]) { c.beginPath(); c.arc(s * 4.4, 2, 1.1, 0, TAU); c.fill(); }
+    c.restore();
+  }
+}
 function woodpecker(c: Ctx, peck: boolean) {
   // a little birch post with the woodpecker clinging to its side
   c.fillStyle = 'rgba(40,50,30,0.2)'; c.beginPath(); c.ellipse(14, 57, 10, 2.5, 0, 0, TAU); c.fill();
@@ -2083,7 +2267,7 @@ function polarbear(c: Ctx, roll: boolean) {
 export class LittleLife {
   list: Critter[] = [];
   /** Test hooks. */
-  taps: Record<Kind, number> = { ladybug: 0, snail: 0, hen: 0, turtle: 0, goat: 0, sheep: 0, otter: 0, mole: 0, hedgehog: 0, mouse: 0, beaver: 0, fawn: 0, swan: 0, piglet: 0, bee: 0, heron: 0, fox: 0, pony: 0, kitten: 0, robin: 0, puffin: 0, puppy: 0, chipmunk: 0, bearcub: 0, raccoon: 0, seal: 0, calf: 0, hummer: 0, dolphin: 0, donkey: 0, tortoise: 0, caterpillar: 0, lamb: 0, gecko: 0, llama: 0, turkey: 0, peacock: 0, quail: 0, chick: 0, porcupine: 0, penguin: 0, armadillo: 0, kangaroo: 0, panda: 0, koala: 0, sloth: 0, capybara: 0, walrus: 0, elephant: 0, giraffe: 0, meerkat: 0, moose: 0, hippo: 0, zebra: 0, lemur: 0, polarbear: 0, skunk: 0, arcticfox: 0, rhino: 0, toucan: 0, platypus: 0, cardinal: 0, redpanda: 0, pelican: 0, wombat: 0, ermine: 0, woodpecker: 0, lioncub: 0, octopus: 0, snowleopard: 0 };
+  taps: Record<Kind, number> = { ladybug: 0, snail: 0, hen: 0, turtle: 0, goat: 0, sheep: 0, otter: 0, mole: 0, hedgehog: 0, mouse: 0, beaver: 0, fawn: 0, swan: 0, piglet: 0, bee: 0, heron: 0, fox: 0, pony: 0, kitten: 0, robin: 0, puffin: 0, puppy: 0, chipmunk: 0, bearcub: 0, raccoon: 0, seal: 0, calf: 0, hummer: 0, dolphin: 0, donkey: 0, tortoise: 0, caterpillar: 0, lamb: 0, gecko: 0, llama: 0, turkey: 0, peacock: 0, quail: 0, chick: 0, porcupine: 0, penguin: 0, armadillo: 0, kangaroo: 0, panda: 0, koala: 0, sloth: 0, capybara: 0, walrus: 0, elephant: 0, giraffe: 0, meerkat: 0, moose: 0, hippo: 0, zebra: 0, lemur: 0, polarbear: 0, skunk: 0, arcticfox: 0, rhino: 0, toucan: 0, platypus: 0, cardinal: 0, redpanda: 0, pelican: 0, wombat: 0, ermine: 0, woodpecker: 0, lioncub: 0, octopus: 0, snowleopard: 0, gator: 0, camel: 0, parrot: 0, husky: 0 };
   constructor(private w: WorldScene) {
     for (const [key, kind, draw] of TEX) if (!w.textures.exists(key)) canvasTex(w, key, LIFE[kind].tw, LIFE[kind].th, draw, S, true);
     const busy: number[][] = [...w.interactables.map((it) => [it.x, it.y]), ...w.tappables.map((t) => [t.x(), t.y()])];
@@ -2361,6 +2545,14 @@ export class LittleLife {
     pick('octopus', oc, (x, y) => lakeValue(x, y) < 0.8 && lakeValue(x + 60, y) < 0.9 && lakeValue(x - 60, y) < 0.9 && wet2.every((t) => Math.hypot(t.hx - x, t.hy - y) > 260) && noPuzzle(x, y) && roomy(x, y, 230), 200, 300);
     // 170: by the Hills, Meadow-to-Hills or Hills-to-Bay paths, clear of the other snow friends (only out in snowy themes).
     pick('snowleopard', [...along(PATH_HILLS_BAY, sides([240, 280, 320, 360, 540]), 0), ...along(PATH_MEADOW_HILLS, sides([240, 280, 320, 640]), 0), ...along(PATH_HILLS, sides([240, 280, 320, 760]), 0), ...along(PATH_BAY, sides([500, 540]), 0), ...along(PATH_MEADOW, sides([440, 760]), 0)], (x, y) => offPath(x, y) && open(x, y) && land(x + 40, y - 30) && lakeValue(x, y) > 1.2 && rv(x, y) > RIVER_HALF + 80 && noPuzzle(x, y) && roomy(x, y, 250), 100, 300);
+    // 171: on the riverbank, further along than the platypus, beaver and heron.
+    pick('gator', pl, (x, y) => offPath(x, y) && open(x, y) && rv(x, y) > RIVER_HALF + 40 && !onBridge(x, y) && noPuzzle(x, y) && roomy(x, y, 250), 95, 300);
+    // 172: by the Hills-to-Bay (or Bay) paths, clear of the llama, zebra and snow leopard spot.
+    pick('camel', [...along(PATH_HILLS_BAY, sides([260, 300, 340, 420, 460, 600]), 0), ...along(PATH_BAY, sides([300, 340, 380, 600]), 0), ...along(PATH_HILLS, sides([360, 400, 800]), 0)], (x, y) => offPath(x, y) && open(x, y) && land(x, y - 60) && land(x + 30, y - 30) && lakeValue(x, y) > 1.2 && rv(x, y) > RIVER_HALF + 80 && noPuzzle(x, y) && roomy(x, y, 250), 100, 300);
+    // 173: on a little perch in Windmill Orchard (orchard paths), clear of the peacock, puppies and woodpecker.
+    pick('parrot', [...along(PATH_ORCHARD, sides([300, 340, 380, 500, 540, 640]), 0), ...along(PATH_ORCHARD_S, sides([300, 340, 380, 520, 660]), 0), ...along(PATH_RIVER_W, sides([480, 520]), 0), ...along(PATH_GROVE, sides([300, 600]), 0)], (x, y) => offPath(x, y) && open(x, y) && land(x, y - 60) && lakeValue(x, y) > 1.2 && rv(x, y) > RIVER_HALF + 60 && noPuzzle(x, y) && roomy(x, y, 230), 90, 300);
+    // 174: by the village, lake or glade-side paths, clear of the other snow friends (only out in snowy themes).
+    pick('husky', [...along(PATH_LAKE, sides([280, 320, 500, 540]), 0), ...along(PATH_RIVERSIDE, sides([280, 320, 360]), 0), ...along(PATH_SHORE_S, sides([300, 340, 560]), 0), ...along(PATH_FOREST, sides([600, 640]), 0), ...along(PATH_MEADOW, sides([480, 520, 800]), 0), ...along(PATH_ORCHARD_S, sides([620, 740]), 0)], (x, y) => offPath(x, y) && open(x, y) && lakeValue(x, y) > 1.2 && rv(x, y) > RIVER_HALF + 80 && noPuzzle(x, y) && roomy(x, y, 230), 90, 300);
     const onTheme = () => this.retheme();
     themeEvents.on('change', onTheme);
     w.events.once('shutdown', () => themeEvents.off('change', onTheme));
@@ -2370,7 +2562,7 @@ export class LittleLife {
   private add(kind: Kind, x: number, y: number) {
     const w = this.w, key = KEY[kind][0], i = this.list.filter((c) => c.kind === kind).length;
     const base = LIFE[kind].size / (frameScale[key] ?? S);
-    const shadow = w.add.ellipse(x, y, LIFE[kind].tw * 0.8, 7, 0x2a3a1a, kind === 'turtle' || kind === 'otter' || kind === 'swan' || kind === 'seal' || kind === 'dolphin' || kind === 'octopus' ? 0 : 0.16).setDepth(y - 2).setVisible(false);
+    const shadow = w.add.ellipse(x, y, LIFE[kind].tw * 0.8, 7, 0x2a3a1a, kind === 'turtle' || kind === 'otter' || kind === 'swan' || kind === 'seal' || kind === 'dolphin' || kind === 'octopus' || kind === 'gator' ? 0 : 0.16).setDepth(y - 2).setVisible(false);
     const img = w.add.image(x, y, key).setOrigin(0.5, 0.9).setScale(base).setFlipX(i % 2 === 1).setDepth(y).setVisible(false);
     const c: Critter = { kind, img, shadow, hx: x, hy: y, x, y, base, ph: i * 1.7 + x * 0.001, t: 0, on: false, i };
     this.list.push(c);
@@ -2452,6 +2644,10 @@ export class LittleLife {
       case 'woodpecker': sfx.woodpeckerTap(); w.burst(c.x - 8, c.y - 40, 0xc8a070, 6); break;
       case 'lioncub': sfx.cubRoar(); w.burst(c.x + (c.img.flipX ? -18 : 18), c.y - 40, 0xffd84d, 8, 'spark'); break;
       case 'octopus': sfx.octoBubbles(); w.burst(c.x, c.y - 30, 0xb0f0ff, 10, 'spark'); w.burst(c.x, c.y - 40, 0xff8ab8, 4, 'heart'); break;
+      case 'gator': sfx.gatorGrumble(); w.burst(c.x + (c.img.flipX ? -30 : 30), c.y - 20, 0xb0f0ff, 9, 'spark'); break;
+      case 'camel': sfx.camelHrumph(); w.burst(c.x + (c.img.flipX ? 10 : -10), c.y - 4, 0xe8d0a0, 10); break;
+      case 'parrot': sfx.parrotHello(); for (const col of [0xe8432f, 0x4c8cff, 0xffd43b, 0x40c057]) w.burst(c.x, c.y - 44, col, 3, 'spark'); break;
+      case 'husky': sfx.huskyAwoo(); w.burst(c.x, c.y - 10, 0xf4f8ff, 10, 'spark'); w.burst(c.x + (c.img.flipX ? -10 : 10), c.y - 50, 0xffd080, 3, 'note'); break;
       case 'snowleopard': sfx.leopardMew(); w.burst(c.x, c.y - 10, 0xf4f8ff, 10, 'spark'); break;
       case 'arcticfox': sfx.arcticYip(); c.img.setTexture(KEY.arcticfox[0]); break; // jumps first, dives on landing
       case 'moose': sfx.mooseBellow(); w.burst(c.x + (c.img.flipX ? -20 : 20), c.y - 70, 0xe8f4ff, 10, 'spark'); break;
@@ -2761,6 +2957,22 @@ export class LittleLife {
         case 'octopus':
           if (c.t > 0) { if (p < 0.8) { c.img.setTexture(KEY.octopus[1]); lift = Math.sin(Math.min(1, p / 0.8) * Math.PI) * 6; rot = Math.sin(p * Math.PI * 8) * 0.06; } else c.img.setTexture(KEY.octopus[0]); }
           else { lift = Math.sin(now * 1.1 + c.ph) * 2; sx = 1 + Math.sin(now * 2.0 + c.ph) * 0.03; rot = Math.sin(now * 0.7 + c.ph) * 0.03; }
+          break;
+        case 'gator':
+          if (c.t > 0) { if (p < 0.6) { c.img.setTexture(KEY.gator[1]); const e = Math.sin(Math.min(1, p / 0.6) * Math.PI); sy = 1 + e * 0.05; rot = (c.img.flipX ? 1 : -1) * e * 0.04; } else { c.img.setTexture(KEY.gator[0]); rot = Math.sin((p - 0.6) / 0.4 * Math.PI * 6) * 0.04 * (1 - p); } }
+          else { dx = Math.sin(now * 0.12 + c.ph) * 10; sx = 1 + Math.sin(now * 1.4 + c.ph) * 0.015; c.img.setFlipX(Math.cos(now * 0.12 + c.ph) < 0); }
+          break;
+        case 'camel':
+          if (c.t > 0) { if (p < 0.75) { c.img.setTexture(Math.floor(p * 10) % 2 === 0 ? KEY.camel[1] : KEY.camel[0]); rot = Math.sin(p * Math.PI * 10) * 0.035; lift = Math.abs(Math.sin(p * Math.PI * 5)) * 3; } else c.img.setTexture(KEY.camel[0]); }
+          else { dx = Math.sin(now * 0.13 + c.ph) * 12; sy = 1 + Math.sin(now * 1.1 + c.ph) * 0.015; rot = Math.sin(now * 0.9 + c.ph) * 0.015; c.img.setFlipX(Math.cos(now * 0.13 + c.ph) < 0); }
+          break;
+        case 'parrot':
+          if (c.t > 0) { if (p < 0.7) { c.img.setTexture(KEY.parrot[1]); lift = Math.abs(Math.sin(p / 0.7 * Math.PI * 3)) * 4; sx = 1 + Math.sin(p * Math.PI * 12) * 0.03; } else { c.img.setTexture(KEY.parrot[0]); rot = Math.sin((p - 0.7) / 0.3 * Math.PI * 2) * 0.05; } }
+          else { const bob = Math.max(0, Math.sin(now * 1.0 + c.ph)) ** 6; rot = (c.img.flipX ? -1 : 1) * bob * 0.08; sy = 1 + Math.sin(now * 1.5 + c.ph) * 0.015; if (Math.sin(now * 0.18 + c.ph) > 0.97) c.img.setFlipX(!c.img.flipX); }
+          break;
+        case 'husky':
+          if (c.t > 0) { if (p < 0.8) { c.img.setTexture(KEY.husky[1]); const e = Math.sin(Math.min(1, p / 0.15) * Math.PI / 2); sy = 1 + e * 0.04 + Math.sin(p * Math.PI * 14) * 0.012; } else c.img.setTexture(KEY.husky[0]); }
+          else { dx = Math.sin(now * 0.2 + c.ph) * 14; lift = Math.abs(Math.sin(now * 2.4 + c.ph)) * 1.5; c.img.setFlipX(Math.cos(now * 0.2 + c.ph) < 0); }
           break;
         case 'snowleopard':
           if (c.t > 0) {
