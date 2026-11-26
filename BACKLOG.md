@@ -329,14 +329,14 @@ A little variety from the animal batches: two small alive-world touches plus two
 
 | Order | Task | Status | ETA live | Estimate (dev days) |
 |---|---|---|---|---|
-| 179 | Baby bison with a harvest-leaf garland (Thanksgiving touch): a fluffy bison calf on the Pinecone Hills grass; tap = a happy bouncy "pronk" hop + a low "mrrumph" + autumn leaves; all themes | In progress | 2026-11-26 | 0.25 |
-| 180 | Tiger cub: a stripy tiger cub in Glowcap Grove / Fairy Grove; tap = peekaboo (paws over its eyes, then pops out with a big grin) + a purry giggle + sparkles; all themes | In progress | 2026-11-26 | 0.25 |
-| 181 | Kiwi bird: a round fuzzy kiwi by the orchard or riverside paths; tap = pokes its long beak into the ground and pops up with a red berry + a "kee-wee" call + dirt puff; hidden in snowy themes | In progress | 2026-11-26 | 0.25 |
-| 182 | Snow monkey in a warm spring: a snow monkey soaking in a tiny steaming pool, only out in snowy themes (winter, Christmas); tap = a happy splash and wave + "ook-ook" + steam puffs | In progress | 2026-11-26 | 0.25 |
-| 183 | Chameleon: a little chameleon on a branch in Fairy Grove or the orchard; tap = it changes to rainbow colors + a tongue flick + a "bloop"; hidden in snowy themes | To do | 2026-11-26 | 0.25 |
-| 184 | Guinea pig: a round guinea pig on a lawn by the village or glade; tap = happy "popcorn" hops + "wheek-wheek" + hearts; all themes | To do | 2026-11-26 | 0.25 |
-| 185 | Pufferfish: a little pufferfish in the Seashell Bay shallows; tap = it puffs up round and spiky-soft, then shrinks back + a "pwoomp" + bubbles; hidden in snowy themes | To do | 2026-11-26 | 0.25 |
-| 186 | Pika in a tiny scarf: a round little pika that only comes out in snowy themes (winter, Christmas); tap = an "eep!" squeak, holds up a little hay bundle + snow puff | To do | 2026-11-26 | 0.25 |
+| 179 | Baby bison with a harvest-leaf garland (Thanksgiving touch): a fluffy bison calf on the Pinecone Hills grass; tap = a happy bouncy "pronk" hop + a low "mrrumph" + autumn leaves; all themes | Done/Live 8f8cbbb (bundle index-C-uX1LMp.js) | 2026-11-26 | 0.25 |
+| 180 | Tiger cub: a stripy tiger cub in Glowcap Grove / Fairy Grove; tap = peekaboo (paws over its eyes, then pops out with a big grin) + a purry giggle + sparkles; all themes | Done/Live 8f8cbbb (bundle index-C-uX1LMp.js) | 2026-11-26 | 0.25 |
+| 181 | Kiwi bird: a round fuzzy kiwi by the orchard or riverside paths; tap = pokes its long beak into the ground and pops up with a red berry + a "kee-wee" call + dirt puff; hidden in snowy themes | Done/Live 8f8cbbb (bundle index-C-uX1LMp.js) | 2026-11-26 | 0.25 |
+| 182 | Snow monkey in a warm spring: a snow monkey soaking in a tiny steaming pool, only out in snowy themes (winter, Christmas); tap = a happy splash and wave + "ook-ook" + steam puffs | Done/Live 8f8cbbb (bundle index-C-uX1LMp.js) | 2026-11-26 | 0.25 |
+| 183 | Chameleon: a little chameleon on a branch in Fairy Grove or the orchard; tap = it changes to rainbow colors + a tongue flick + a "bloop"; hidden in snowy themes | Done/Live afb2830 (bundle index-WGa-NEHY.js) | 2026-11-26 | 0.25 |
+| 184 | Guinea pig: a round guinea pig on a lawn by the village or glade; tap = happy "popcorn" hops + "wheek-wheek" + hearts; all themes | Done/Live afb2830 (bundle index-WGa-NEHY.js) | 2026-11-26 | 0.25 |
+| 185 | Pufferfish: a little pufferfish in the Seashell Bay shallows; tap = it puffs up round and spiky-soft, then shrinks back + a "pwoomp" + bubbles; hidden in snowy themes | Done/Live afb2830 (bundle index-WGa-NEHY.js) | 2026-11-26 | 0.25 |
+| 186 | Pika in a tiny scarf: a round little pika that only comes out in snowy themes (winter, Christmas); tap = an "eep!" squeak, holds up a little hay bundle + snow puff | Done/Live afb2830 (bundle index-WGa-NEHY.js) | 2026-11-26 | 0.25 |
 
 ## Recently done
 
