@@ -3,16 +3,12 @@
 // Keep each bullet short and simple: kids read these.
 // icon: 'wood' | 'fruit' | 'berry' | 'star' | 'heart' (a little picture beside the line).
 
-export const VERSION = '2026-11-25-polish-171-178';
+export const VERSION = '2026-11-26-polish-179-182';
 
 export type WhatsNewItem = { icon: 'wood' | 'fruit' | 'berry' | 'star' | 'heart'; text: string };
 export const ITEMS: WhatsNewItem[] = [
-  { icon: 'heart', text: 'A baby alligator by the river! Tap it — a big CHOMP yawn!' },
-  { icon: 'wood', text: 'A baby camel on the hills! Tap it — wiggle wiggle go its humps!' },
-  { icon: 'fruit', text: 'A rainbow parrot in the orchard! Tap it — it says hel-lo!' },
-  { icon: 'star', text: 'A husky puppy! It comes out when it snows. Tap it — awoo!' },
-  { icon: 'heart', text: 'A little seahorse in the bay! Tap it — twirl twirl!' },
-  { icon: 'wood', text: 'A fluffy ostrich chick! Tap it — zoom, round and round!' },
-  { icon: 'fruit', text: 'A baby gorilla in the grove! Tap it — bum-bum-bum!' },
-  { icon: 'berry', text: 'A yak in a red sweater! It comes out when it snows. Tap it — shake shake, jingle!' },
+  { icon: 'wood', text: 'A baby bison with a leafy harvest necklace! Tap it — boing, boing, boing!' },
+  { icon: 'star', text: 'A tiger cub in the grove! Tap it — peekaboo!' },
+  { icon: 'berry', text: 'A fuzzy kiwi bird! Tap it — it finds a berry. Kee-wee!' },
+  { icon: 'heart', text: 'A snow monkey in a warm pool! It comes out when it snows. Tap it — splash!' },
 ];

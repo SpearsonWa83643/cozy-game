@@ -1084,6 +1084,38 @@ class Synth {
     this.voice(170, 0.5, 0.03, 0.3, 'sawtooth', 0.04);
   }
 
+  /** 179: a baby bison's bouncy pronk hops (soft thumps + leaf rustle) and a low happy "mrrumph". */
+  bisonRumble() {
+    if (!this.ready) return;
+    for (let i = 0; i < 3; i++) { this.noiseBurst(0.07, 200, 0.8, 0.05, 'lowpass', 0.25 + i * 0.53, 0); this.noiseBurst(0.12, 3200, 0.7, 0.018, 'highpass', 0.27 + i * 0.53, 0); }
+    this.voice(98, 0, 0.045, 0.32, 'sawtooth', 0.05); this.voice(122, 0.16, 0.035, 0.26, 'triangle', 0.04);
+  }
+
+  /** 180: a tiger cub's purr behind its paws, then a giggly "hee-hee" when it pops out of peekaboo. */
+  tigerGiggle() {
+    if (!this.ready) return;
+    for (let i = 0; i < 10; i++) this.noiseBurst(0.05, 170, 1.2, 0.03, 'lowpass', i * 0.08, 0);
+    this.voice(82, 0, 0.02, 0.8, 'triangle', 0.1);
+    [880, 990, 880, 1046].forEach((f, i) => this.voice(f, 1.08 + i * 0.1, 0.026, 0.08, 'triangle', 0.004));
+    this.voice(1320, 1.5, 0.014, 0.18, 'sine', 0.01);
+  }
+
+  /** 181: a kiwi's beak digging in the soil, then a bright "kee-wee!" call. */
+  kiwiCall() {
+    if (!this.ready) return;
+    for (let i = 0; i < 4; i++) this.noiseBurst(0.04, 600, 1, 0.04, 'lowpass', 0.12 + i * 0.1, 0);
+    [1700, 1950, 2250].forEach((f, i) => this.voice(f, 0.95 + i * 0.04, 0.022, 0.06, 'sine', 0.004));
+    [1500, 1800, 2100, 1900].forEach((f, i) => this.voice(f, 1.2 + i * 0.05, 0.022, 0.07, 'sine', 0.004));
+  }
+
+  /** 182: a snow monkey's happy splash in its warm spring + a cheery "ook-ook". */
+  monkeySplash() {
+    if (!this.ready) return;
+    this.noiseBurst(0.3, 1100, 0.7, 0.06, 'bandpass', 0, -0.5);
+    for (let i = 0; i < 5; i++) this.voice(900 + i * 110, 0.06 + i * 0.05, 0.012, 0.05, 'sine', 0.003);
+    for (const t of [0.35, 0.62]) { this.voice(330, t, 0.03, 0.12, 'triangle', 0.01); this.voice(420, t + 0.07, 0.03, 0.1, 'triangle', 0.01); }
+  }
+
   /** 171: a baby alligator's bubbly little grumble (low gurgle + popping bubbles) after a big chomp-yawn. */
   gatorGrumble() {
     if (!this.ready) return;
