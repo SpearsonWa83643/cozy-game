@@ -1116,6 +1116,37 @@ class Synth {
     for (const t of [0.35, 0.62]) { this.voice(330, t, 0.03, 0.12, 'triangle', 0.01); this.voice(420, t + 0.07, 0.03, 0.1, 'triangle', 0.01); }
   }
 
+  /** 183: a chameleon's rainbow color-change "bloop" + a quick tongue flick. */
+  chameleonBloop() {
+    if (!this.ready) return;
+    [520, 660, 780, 990, 1180].forEach((f, i) => this.voice(f, i * 0.06, 0.02, 0.12, 'sine', 0.01));
+    this.noiseBurst(0.05, 2600, 1.2, 0.03, 'bandpass', 0.42, 0.4);
+    this.voice(1500, 0.46, 0.014, 0.05, 'triangle', 0.003);
+  }
+
+  /** 184: a guinea pig's excited "wheek-wheek" with little popcorn hop pats. */
+  guineaWheek() {
+    if (!this.ready) return;
+    for (const t of [0, 0.24, 0.48]) { this.voice(1450, t, 0.02, 0.06, 'triangle', 0.004); this.voice(1900, t + 0.05, 0.022, 0.09, 'triangle', 0.004); }
+    for (let i = 0; i < 4; i++) this.noiseBurst(0.03, 400, 1, 0.03, 'lowpass', 0.12 + i * 0.22, 0);
+  }
+
+  /** 185: a pufferfish puffing up "pwoomp" (a swelling whoosh) + bubbles as it shrinks back. */
+  pufferPwoomp() {
+    if (!this.ready) return;
+    this.noiseBurst(0.22, 300, 1, 0.05, 'lowpass', 0, 1.2);
+    [180, 240, 320].forEach((f, i) => this.voice(f, i * 0.05, 0.03, 0.16, 'sine', 0.02));
+    for (let i = 0; i < 6; i++) this.voice(700 + (i % 3) * 180, 0.9 + i * 0.09, 0.014, 0.05, 'sine', 0.003);
+  }
+
+  /** 186: a pika's tiny high "eep!" + a soft hay rustle. */
+  pikaEep() {
+    if (!this.ready) return;
+    this.voice(2600, 0, 0.022, 0.07, 'sine', 0.003); this.voice(3000, 0.05, 0.018, 0.06, 'sine', 0.003);
+    this.voice(2700, 0.45, 0.016, 0.06, 'sine', 0.003);
+    this.noiseBurst(0.25, 3800, 0.6, 0.016, 'highpass', 0.15, 0);
+  }
+
   /** 171: a baby alligator's bubbly little grumble (low gurgle + popping bubbles) after a big chomp-yawn. */
   gatorGrumble() {
     if (!this.ready) return;
