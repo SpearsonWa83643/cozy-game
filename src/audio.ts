@@ -1178,6 +1178,34 @@ class Synth {
     this.voice(520, 0.42, 0.024, 0.08, 'triangle', 0.01); this.voice(680, 0.5, 0.024, 0.12, 'triangle', 0.01); this.voice(860, 0.6, 0.016, 0.08, 'sine', 0.01);
   }
 
+  /** 191: a baby tapir's whistly little "squeak" (tapirs really whistle!). */
+  tapirSqueak() {
+    if (!this.ready) return;
+    this.voice(1800, 0, 0.022, 0.16, 'sine', 0.01); this.voice(2300, 0.14, 0.02, 0.12, 'sine', 0.01);
+    for (let i = 0; i < 3; i++) this.noiseBurst(0.04, 350, 1, 0.03, 'lowpass', 0.3 + i * 0.26, 0);
+  }
+
+  /** 192: a hamster's "nom-nom" seed nibbles. */
+  hamsterNom() {
+    if (!this.ready) return;
+    for (let i = 0; i < 6; i++) this.noiseBurst(0.025, 4200, 2, 0.022, 'bandpass', i * 0.09, 0);
+    this.voice(1100, 0.62, 0.016, 0.06, 'triangle', 0.004); this.voice(1350, 0.72, 0.016, 0.07, 'triangle', 0.004);
+  }
+
+  /** 193: a manatee's low, gentle "mmm-hmm" hum + a big bubble blub. */
+  manateeHum() {
+    if (!this.ready) return;
+    this.voice(180, 0, 0.03, 0.32, 'triangle', 0.04); this.voice(220, 0.34, 0.03, 0.26, 'triangle', 0.04);
+    this.voice(420, 0.75, 0.024, 0.1, 'sine', 0.006); this.voice(620, 0.82, 0.016, 0.06, 'sine', 0.003);
+  }
+
+  /** 194: a wolf pup's excited "yip-yip!" + a soft snowball pat. */
+  wolfYip() {
+    if (!this.ready) return;
+    for (const t of [0.05, 0.22]) { this.voice(950, t, 0.024, 0.05, 'triangle', 0.003); this.voice(1250, t + 0.03, 0.02, 0.06, 'triangle', 0.003); }
+    this.noiseBurst(0.08, 1400, 0.7, 0.035, 'lowpass', 0.85, 0);
+  }
+
   /** 171: a baby alligator's bubbly little grumble (low gurgle + popping bubbles) after a big chomp-yawn. */
   gatorGrumble() {
     if (!this.ready) return;
