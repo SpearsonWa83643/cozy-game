@@ -1147,6 +1147,37 @@ class Synth {
     this.noiseBurst(0.25, 3800, 0.6, 0.016, 'highpass', 0.15, 0);
   }
 
+  /** 187: a quokka's happy "hee-hee" chirp with a little hop thump. */
+  quokkaHee() {
+    if (!this.ready) return;
+    for (const [t, f] of [[0, 1250], [0.16, 1500], [0.34, 1300], [0.48, 1650]] as [number, number][]) this.voice(f, t, 0.02, 0.08, 'triangle', 0.004);
+    this.noiseBurst(0.05, 300, 1, 0.04, 'lowpass', 0.05, 0);
+  }
+
+  /** 188: an axolotl's bubbly "blip-blip" + soft water plinks. */
+  axolotlBlip() {
+    if (!this.ready) return;
+    [600, 900, 750, 1100].forEach((f, i) => this.voice(f, i * 0.12, 0.022, 0.07, 'sine', 0.004));
+    for (let i = 0; i < 5; i++) this.voice(1300 + (i % 3) * 260, 0.55 + i * 0.08, 0.012, 0.04, 'sine', 0.002);
+    this.noiseBurst(0.12, 900, 1.4, 0.02, 'bandpass', 0, 0.6);
+  }
+
+  /** 189: a baby anteater's sniff-sniff-sniff and a tiny "achoo!" */
+  anteaterSniff() {
+    if (!this.ready) return;
+    for (let i = 0; i < 4; i++) this.noiseBurst(0.06, 2200, 2, 0.025, 'bandpass', i * 0.18, 0);
+    this.noiseBurst(0.06, 1500, 1.2, 0.03, 'bandpass', 1.2, 0.8);
+    this.voice(700, 1.15, 0.018, 0.08, 'triangle', 0.01);
+    this.noiseBurst(0.18, 3000, 0.8, 0.05, 'highpass', 1.32, 0.5);
+  }
+
+  /** 190: a lynx kitten's pounce "mrrp!" + a soft snow crunch. */
+  lynxMrrp() {
+    if (!this.ready) return;
+    this.noiseBurst(0.16, 1200, 0.7, 0.04, 'lowpass', 0.3, 0);
+    this.voice(520, 0.42, 0.024, 0.08, 'triangle', 0.01); this.voice(680, 0.5, 0.024, 0.12, 'triangle', 0.01); this.voice(860, 0.6, 0.016, 0.08, 'sine', 0.01);
+  }
+
   /** 171: a baby alligator's bubbly little grumble (low gurgle + popping bubbles) after a big chomp-yawn. */
   gatorGrumble() {
     if (!this.ready) return;
