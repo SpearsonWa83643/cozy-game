@@ -338,6 +338,15 @@ A little variety from the animal batches: two small alive-world touches plus two
 | 185 | Pufferfish: a little pufferfish in the Seashell Bay shallows; tap = it puffs up round and spiky-soft, then shrinks back + a "pwoomp" + bubbles; hidden in snowy themes | Done/Live afb2830 (bundle index-WGa-NEHY.js) | 2026-11-26 | 0.25 |
 | 186 | Pika in a tiny scarf: a round little pika that only comes out in snowy themes (winter, Christmas); tap = an "eep!" squeak, holds up a little hay bundle + snow puff | Done/Live afb2830 (bundle index-WGa-NEHY.js) | 2026-11-26 | 0.25 |
 
+## Self-added polish (2026-11-27; backlog empty; no Walker decision or spending needed)
+
+| Order | Task | Status | ETA live | Estimate (dev days) |
+|---|---|---|---|---|
+| 187 | Quokka: a smiley little quokka on a lawn by the village or glade paths; tap = the world's biggest smile + a happy hop + "hee-hee" chirp + hearts; all themes | In progress (wip/polish-187-190) | 2026-11-27 | 0.25 |
+| 188 | Axolotl: a pink axolotl peeking out of Shellwater Lake; tap = it wiggles its frilly gills, waves a tiny hand + a bubbly "blip-blip" + bubbles; hidden in snowy themes (lake is frozen) | In progress (wip/polish-187-190) | 2026-11-27 | 0.25 |
+| 189 | Baby anteater: a fluffy anteater pup by the orchard or hills paths (off the dirt); tap = it sniffs along with its long nose, then sneezes "achoo!" + a little dust puff; hidden in snowy themes | In progress (wip/polish-187-190) | 2026-11-27 | 0.25 |
+| 190 | Lynx kitten in a Christmas hat: a tufty-eared lynx kitten that only comes out in snowy themes (winter, Christmas); tap = it pounces into the snow and pops back out + a "mrrp!" + snow puff | In progress (wip/polish-187-190) | 2026-11-27 | 0.25 |
+
 ## Recently done
 
 - 21: Real-iPad FPS check and tuning. Done 2026-10-27, Walker said the playtest went OK.
