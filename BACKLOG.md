@@ -346,10 +346,10 @@ A little variety from the animal batches: two small alive-world touches plus two
 | 188 | Axolotl: a pink axolotl peeking out of Shellwater Lake; tap = it wiggles its frilly gills, waves a tiny hand + a bubbly "blip-blip" + bubbles; hidden in snowy themes (lake is frozen) | Done/Live 533f472 (bundle index-DBW0keGv.js) | 2026-11-27 | 0.25 |
 | 189 | Baby anteater: a fluffy anteater pup by the orchard or hills paths (off the dirt); tap = it sniffs along with its long nose, then sneezes "achoo!" + a little dust puff; hidden in snowy themes | Done/Live 533f472 (bundle index-DBW0keGv.js) | 2026-11-27 | 0.25 |
 | 190 | Lynx kitten in a Christmas hat: a tufty-eared lynx kitten that only comes out in snowy themes (winter, Christmas); tap = it pounces into the snow and pops back out + a "mrrp!" + snow puff | Done/Live 533f472 (bundle index-DBW0keGv.js) | 2026-11-27 | 0.25 |
-| 191 | Baby tapir: a little striped-and-spotted tapir calf by the river or grove paths (off the dirt); tap = wiggles its tiny trunk-nose and does a happy bounce + a whistly "squeak" + leaves; hidden in snowy themes | In progress (wip/polish-191-194) | 2026-11-27 | 0.25 |
-| 192 | Hamster: a round golden hamster on a lawn by the village or meadow paths; tap = stuffs a sunflower seed in its cheeks (cheeks puff up big) + "nom-nom" + sparkles; all themes | In progress (wip/polish-191-194) | 2026-11-27 | 0.25 |
-| 193 | Manatee: a gentle gray manatee in the Seashell Bay shallows; tap = rolls over to show its belly and blows a bubble + a low "mmm-hmm" hum + bubbles; hidden in snowy themes | In progress (wip/polish-191-194) | 2026-11-27 | 0.25 |
-| 194 | Wolf pup in a red scarf: a fluffy gray wolf pup that only comes out in snowy themes (winter, Christmas); tap = tosses a little snowball up and catches it + "yip-yip!" + snow puff | In progress (wip/polish-191-194) | 2026-11-27 | 0.25 |
+| 191 | Baby tapir: a little striped-and-spotted tapir calf by the river or grove paths (off the dirt); tap = wiggles its tiny trunk-nose and does a happy bounce + a whistly "squeak" + leaves; hidden in snowy themes | Done/Live 26a4b67 (bundle index-DN2Wnw6G.js) | 2026-11-27 | 0.25 |
+| 192 | Hamster: a round golden hamster on a lawn by the village or meadow paths; tap = stuffs a sunflower seed in its cheeks (cheeks puff up big) + "nom-nom" + sparkles; all themes | Done/Live 26a4b67 (bundle index-DN2Wnw6G.js) | 2026-11-27 | 0.25 |
+| 193 | Manatee: a gentle gray manatee in the Seashell Bay shallows; tap = rolls over to show its belly and blows a bubble + a low "mmm-hmm" hum + bubbles; hidden in snowy themes | Done/Live 26a4b67 (bundle index-DN2Wnw6G.js) | 2026-11-27 | 0.25 |
+| 194 | Wolf pup in a red scarf: a fluffy gray wolf pup that only comes out in snowy themes (winter, Christmas); tap = tosses a little snowball up and catches it + "yip-yip!" + snow puff | Done/Live 26a4b67 (bundle index-DN2Wnw6G.js) | 2026-11-27 | 0.25 |
 
 ## Recently done
 
